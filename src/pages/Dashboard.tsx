@@ -79,28 +79,28 @@ export default function Dashboard() {
       label: "Faturamento Mensal",
       value: "R$ 0,00",
       change: "Configure seu negócio",
-      changeType: "neutral" as const,
+      color: "primary" as const,
     },
     {
       icon: Calculator,
       label: "CMV Médio",
       value: "0%",
       change: "Adicione fichas técnicas",
-      changeType: "neutral" as const,
+      color: "primary" as const,
     },
     {
       icon: TrendingUp,
       label: "Margem Líquida",
       value: "0%",
       change: "Complete o cadastro",
-      changeType: "neutral" as const,
+      color: "success" as const,
     },
     {
       icon: FileSpreadsheet,
       label: "Fichas Técnicas",
       value: "0",
       change: "Limite: 3 (trial)",
-      changeType: "neutral" as const,
+      color: "primary" as const,
     },
   ];
 
@@ -116,10 +116,10 @@ export default function Dashboard() {
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <span className="font-display font-bold text-primary-foreground text-sm">P</span>
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <span className="font-logo text-primary-foreground text-sm">P</span>
               </div>
-              <span className="font-display font-bold text-xl">PRECIFY</span>
+              <span className="font-logo text-xl text-foreground">PRECIFY</span>
             </div>
           </div>
 
@@ -149,7 +149,7 @@ export default function Dashboard() {
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
+                <p className="text-sm font-medium truncate text-foreground">
                   {user?.user_metadata?.full_name || "Usuário"}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
@@ -188,14 +188,14 @@ export default function Dashboard() {
                 <Menu className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="font-display text-xl font-bold">Dashboard</h1>
+                <h1 className="font-display text-xl font-bold text-foreground">Dashboard</h1>
                 <p className="text-sm text-muted-foreground">
                   Visão geral do seu negócio
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 text-warning text-sm font-medium">
-              <AlertTriangle className="w-4 h-4" />
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 text-warning-foreground border border-warning/20 text-sm font-medium">
+              <AlertTriangle className="w-4 h-4 text-warning" />
               Trial: 7 dias restantes
             </div>
           </div>
@@ -204,15 +204,15 @@ export default function Dashboard() {
         {/* Content */}
         <div className="p-6">
           {/* Welcome Card */}
-          <div className="bg-gradient-primary rounded-2xl p-6 md:p-8 mb-8 text-primary-foreground">
+          <div className="bg-primary rounded-2xl p-6 md:p-8 mb-8 text-primary-foreground">
             <h2 className="font-display text-2xl md:text-3xl font-bold mb-2">
               Bem-vindo ao PRECIFY! 👋
             </h2>
-            <p className="opacity-90 mb-4 max-w-xl">
+            <p className="opacity-90 mb-4 max-w-xl leading-relaxed">
               Complete o cadastro do seu negócio para começar a precificar seus produtos 
               com precisão. Siga o passo a passo abaixo.
             </p>
-            <Button variant="glass" size="lg">
+            <Button variant="secondary" size="lg">
               Começar Onboarding
             </Button>
           </div>
@@ -222,41 +222,41 @@ export default function Dashboard() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="bg-card rounded-xl p-5 border border-border"
+                className="bg-card rounded-xl p-5 border border-border shadow-card"
               >
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <stat.icon className="w-5 h-5 text-primary" />
+                  <div className={`w-10 h-10 rounded-lg ${stat.color === 'success' ? 'bg-success/10' : 'bg-primary/10'} flex items-center justify-center`}>
+                    <stat.icon className={`w-5 h-5 ${stat.color === 'success' ? 'text-success' : 'text-primary'}`} />
                   </div>
                   <span className="text-sm text-muted-foreground">{stat.label}</span>
                 </div>
-                <p className="font-display text-2xl font-bold mb-1">{stat.value}</p>
+                <p className="font-display text-2xl font-bold mb-1 text-foreground">{stat.value}</p>
                 <p className="text-xs text-muted-foreground">{stat.change}</p>
               </div>
             ))}
           </div>
 
           {/* Quick Actions */}
-          <div className="bg-card rounded-xl border border-border p-6">
-            <h3 className="font-display font-semibold text-lg mb-4">Próximos Passos</h3>
+          <div className="bg-card rounded-xl border border-border p-6 shadow-card">
+            <h3 className="font-display font-semibold text-lg mb-4 text-foreground">Próximos Passos</h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <button className="p-4 rounded-xl border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors text-left">
-                <Building2 className="w-8 h-8 text-primary mb-3" />
-                <h4 className="font-semibold mb-1">Configurar Negócio</h4>
+              <button className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group">
+                <Building2 className="w-8 h-8 text-primary mb-3 group-hover:scale-110 transition-transform" />
+                <h4 className="font-semibold mb-1 text-foreground">Configurar Negócio</h4>
                 <p className="text-sm text-muted-foreground">
                   Cadastre custos, despesas e impostos
                 </p>
               </button>
-              <button className="p-4 rounded-xl border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors text-left">
-                <Package className="w-8 h-8 text-primary mb-3" />
-                <h4 className="font-semibold mb-1">Adicionar Insumos</h4>
+              <button className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group">
+                <Package className="w-8 h-8 text-primary mb-3 group-hover:scale-110 transition-transform" />
+                <h4 className="font-semibold mb-1 text-foreground">Adicionar Insumos</h4>
                 <p className="text-sm text-muted-foreground">
                   Cadastre os ingredientes das receitas
                 </p>
               </button>
-              <button className="p-4 rounded-xl border border-dashed border-border hover:border-primary hover:bg-primary/5 transition-colors text-left">
-                <FileSpreadsheet className="w-8 h-8 text-primary mb-3" />
-                <h4 className="font-semibold mb-1">Criar Ficha Técnica</h4>
+              <button className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group">
+                <FileSpreadsheet className="w-8 h-8 text-primary mb-3 group-hover:scale-110 transition-transform" />
+                <h4 className="font-semibold mb-1 text-foreground">Criar Ficha Técnica</h4>
                 <p className="text-sm text-muted-foreground">
                   Monte a receita de um produto
                 </p>

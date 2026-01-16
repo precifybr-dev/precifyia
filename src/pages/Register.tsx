@@ -59,45 +59,34 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero flex">
+    <div className="min-h-screen bg-background flex">
       {/* Left Side - Decorative */}
-      <div className="hidden lg:flex flex-1 bg-card items-center justify-center p-12 border-r border-border">
+      <div className="hidden lg:flex flex-1 bg-primary/5 items-center justify-center p-12 border-r border-border">
         <div className="max-w-md">
-          <div className="w-24 h-24 rounded-2xl bg-gradient-primary flex items-center justify-center mb-8 shadow-glow">
-            <span className="font-display font-bold text-4xl text-primary-foreground">P</span>
+          <div className="w-24 h-24 rounded-2xl bg-primary flex items-center justify-center mb-8 shadow-lg">
+            <span className="font-logo text-4xl text-primary-foreground">P</span>
           </div>
-          <h2 className="font-display text-2xl font-bold mb-4">
+          <h2 className="font-display text-2xl font-bold mb-4 text-foreground">
             Comece seu trial grátis
           </h2>
-          <p className="text-muted-foreground mb-8">
+          <p className="text-muted-foreground mb-8 leading-relaxed">
             7 dias para testar todas as funcionalidades. Sem cartão de crédito.
           </p>
 
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
-                <span className="text-success font-semibold text-sm">✓</span>
+            {[
+              "Até 35 insumos cadastrados",
+              "Até 3 fichas técnicas",
+              "Dashboard completo",
+              "Suporte por email"
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+                  <span className="text-success font-semibold text-sm">✓</span>
+                </div>
+                <span className="text-foreground">{item}</span>
               </div>
-              <span>Até 35 insumos cadastrados</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
-                <span className="text-success font-semibold text-sm">✓</span>
-              </div>
-              <span>Até 3 fichas técnicas</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
-                <span className="text-success font-semibold text-sm">✓</span>
-              </div>
-              <span>Dashboard completo</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-success/10 flex items-center justify-center">
-                <span className="text-success font-semibold text-sm">✓</span>
-              </div>
-              <span>Suporte por email</span>
-            </div>
+            ))}
           </div>
         </div>
       </div>
@@ -115,12 +104,12 @@ export default function Register() {
 
           <div className="mb-8">
             <Link to="/" className="flex items-center gap-2 mb-6 lg:hidden">
-              <div className="w-10 h-10 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <span className="font-display font-bold text-primary-foreground">P</span>
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                <span className="font-logo text-primary-foreground">P</span>
               </div>
-              <span className="font-display font-bold text-2xl">PRECIFY</span>
+              <span className="font-logo text-2xl text-foreground">PRECIFY</span>
             </Link>
-            <h1 className="font-display text-3xl font-bold mb-2">Criar sua conta</h1>
+            <h1 className="font-display text-3xl font-bold mb-2 text-foreground">Criar sua conta</h1>
             <p className="text-muted-foreground">
               Preencha os dados para começar seu trial de 7 dias
             </p>
@@ -137,7 +126,7 @@ export default function Register() {
                   placeholder="João Silva"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-12"
                   required
                 />
               </div>
@@ -153,7 +142,7 @@ export default function Register() {
                   placeholder="Burger House"
                   value={businessName}
                   onChange={(e) => setBusinessName(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-12"
                   required
                 />
               </div>
@@ -169,7 +158,7 @@ export default function Register() {
                   placeholder="seu@email.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 h-12"
                   required
                 />
               </div>
@@ -185,7 +174,7 @@ export default function Register() {
                   placeholder="Mínimo 6 caracteres"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-10 h-12"
                   minLength={6}
                   required
                 />

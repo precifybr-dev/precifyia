@@ -1,4 +1,4 @@
-import { ArrowRight, Calculator, TrendingUp, Utensils } from "lucide-react";
+import { ArrowRight, Calculator, TrendingUp, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -6,9 +6,10 @@ export function HeroSection() {
   return (
     <section className="relative min-h-screen bg-gradient-hero overflow-hidden">
       {/* Background Pattern */}
-      <div className="absolute inset-0 opacity-30">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent/20 rounded-full blur-3xl" />
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-20 right-10 w-96 h-96 bg-success/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/3 rounded-full blur-3xl" />
       </div>
 
       <div className="container relative z-10 px-4 pt-32 pb-20 mx-auto">
@@ -16,19 +17,18 @@ export function HeroSection() {
           {/* Left Content */}
           <div className="space-y-8 animate-slide-up">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm">
-              <Utensils className="w-4 h-4" />
-              <span>Plataforma #1 para Food Service</span>
+              <BarChart3 className="w-4 h-4" />
+              <span>Plataforma de Precificação Inteligente</span>
             </div>
 
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-tight">
-              Precifique com{" "}
-              <span className="text-gradient">precisão</span>,{" "}
-              lucre com <span className="text-gradient">inteligência</span>
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground">
+              Precifique seus produtos com{" "}
+              <span className="text-gradient">precisão e confiança</span>
             </h1>
 
             <p className="text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
-              Substitua suas planilhas por uma plataforma completa de precificação. 
-              Calcule custos, CMV, margens e preços sugeridos em tempo real.
+              Substitua suas planilhas por uma plataforma simples e profissional. 
+              Calcule custos, CMV e margens para tomar decisões melhores.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4">
@@ -52,8 +52,10 @@ export function HeroSection() {
                   {[1, 2, 3, 4].map((i) => (
                     <div
                       key={i}
-                      className="w-8 h-8 rounded-full bg-gradient-primary border-2 border-background"
-                    />
+                      className="w-8 h-8 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center"
+                    >
+                      <span className="text-xs font-medium text-primary">{i}</span>
+                    </div>
                   ))}
                 </div>
                 <span className="text-sm text-muted-foreground">
@@ -81,21 +83,21 @@ export function HeroSection() {
           <div className="relative lg:pl-8 animate-fade-in" style={{ animationDelay: "0.3s" }}>
             <div className="relative">
               {/* Main Card */}
-              <div className="bg-card rounded-2xl shadow-xl p-6 border border-border">
+              <div className="bg-card rounded-2xl shadow-card-hover p-6 border border-border">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-display font-semibold text-lg">Dashboard</h3>
-                  <span className="text-xs text-muted-foreground">Tempo real</span>
+                  <span className="text-xs text-muted-foreground bg-success/10 text-success px-2 py-1 rounded-full">Ao vivo</span>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="p-4 rounded-xl bg-gradient-card border border-border">
+                  <div className="p-4 rounded-xl bg-background border border-border">
                     <div className="flex items-center gap-2 mb-2">
                       <TrendingUp className="w-4 h-4 text-success" />
                       <span className="text-xs text-muted-foreground">Margem Média</span>
                     </div>
                     <span className="font-display text-2xl font-bold text-success">32.5%</span>
                   </div>
-                  <div className="p-4 rounded-xl bg-gradient-card border border-border">
+                  <div className="p-4 rounded-xl bg-background border border-border">
                     <div className="flex items-center gap-2 mb-2">
                       <Calculator className="w-4 h-4 text-primary" />
                       <span className="text-xs text-muted-foreground">CMV Praticado</span>
@@ -109,21 +111,26 @@ export function HeroSection() {
                   <table className="w-full text-sm">
                     <thead className="bg-muted">
                       <tr>
-                        <th className="text-left px-4 py-2 font-medium">Produto</th>
-                        <th className="text-right px-4 py-2 font-medium">Custo</th>
-                        <th className="text-right px-4 py-2 font-medium">Preço</th>
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">Produto</th>
+                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Custo</th>
+                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Preço</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr className="border-t border-border">
-                        <td className="px-4 py-3">X-Burguer</td>
-                        <td className="text-right px-4 py-3">R$ 8,50</td>
+                        <td className="px-4 py-3 font-medium">X-Burguer</td>
+                        <td className="text-right px-4 py-3 text-muted-foreground">R$ 8,50</td>
                         <td className="text-right px-4 py-3 text-success font-semibold">R$ 25,00</td>
                       </tr>
                       <tr className="border-t border-border">
-                        <td className="px-4 py-3">X-Salada</td>
-                        <td className="text-right px-4 py-3">R$ 9,20</td>
+                        <td className="px-4 py-3 font-medium">X-Salada</td>
+                        <td className="text-right px-4 py-3 text-muted-foreground">R$ 9,20</td>
                         <td className="text-right px-4 py-3 text-success font-semibold">R$ 28,00</td>
+                      </tr>
+                      <tr className="border-t border-border">
+                        <td className="px-4 py-3 font-medium">X-Bacon</td>
+                        <td className="text-right px-4 py-3 text-muted-foreground">R$ 11,40</td>
+                        <td className="text-right px-4 py-3 text-success font-semibold">R$ 32,00</td>
                       </tr>
                     </tbody>
                   </table>
@@ -132,9 +139,9 @@ export function HeroSection() {
 
               {/* Floating Cards */}
               <div className="absolute -top-4 -right-4 p-4 rounded-xl bg-card shadow-lg border border-border animate-float">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-gradient-success flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4 text-success-foreground" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
+                    <TrendingUp className="w-5 h-5 text-success" />
                   </div>
                   <div>
                     <span className="text-xs text-muted-foreground block">Lucro Líquido</span>
@@ -144,9 +151,9 @@ export function HeroSection() {
               </div>
 
               <div className="absolute -bottom-4 -left-4 p-4 rounded-xl bg-card shadow-lg border border-border animate-float" style={{ animationDelay: "2s" }}>
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Calculator className="w-4 h-4 text-primary" />
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Calculator className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <span className="text-xs text-muted-foreground block">Fichas Técnicas</span>
