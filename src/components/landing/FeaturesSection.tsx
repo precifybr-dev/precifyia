@@ -24,7 +24,7 @@ const features = [
   {
     icon: TrendingUp,
     title: "Preço Sugerido",
-    description: "Preços calculados para cardápio e iFood considerando taxas de marketplace e margem desejada."
+    description: "Preços calculados para cardápio e delivery considerando taxas e margem desejada."
   },
   {
     icon: Package,
@@ -70,7 +70,7 @@ export function FeaturesSection() {
           <span className="inline-block px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm mb-4">
             Funcionalidades
           </span>
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-foreground">
             Tudo que você precisa para{" "}
             <span className="text-gradient">precificar com precisão</span>
           </h2>
@@ -85,29 +85,29 @@ export function FeaturesSection() {
           {features.map((feature, index) => (
             <div
               key={feature.title}
-              className="group p-6 rounded-2xl bg-card border border-border hover:border-primary/50 hover:shadow-lg transition-all duration-300"
+              className="group p-6 rounded-2xl bg-card border border-border hover:border-primary/30 hover:shadow-card-hover transition-all duration-300"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                <feature.icon className="w-6 h-6 text-primary-foreground" />
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary group-hover:scale-110 transition-all duration-300">
+                <feature.icon className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
               </div>
-              <h3 className="font-display font-semibold text-lg mb-2">{feature.title}</h3>
-              <p className="text-muted-foreground">{feature.description}</p>
+              <h3 className="font-display font-semibold text-lg mb-2 text-foreground">{feature.title}</h3>
+              <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
             </div>
           ))}
         </div>
 
         {/* Highlights */}
-        <div className="bg-gradient-card rounded-3xl p-8 md:p-12 border border-border">
+        <div className="bg-card rounded-2xl p-8 md:p-12 border border-border shadow-card">
           <div className="grid md:grid-cols-3 gap-8">
             {highlights.map((highlight) => (
               <div key={highlight.title} className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <highlight.icon className="w-5 h-5 text-primary" />
+                <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
+                  <highlight.icon className="w-6 h-6 text-success" />
                 </div>
                 <div>
-                  <h4 className="font-display font-semibold mb-1">{highlight.title}</h4>
-                  <p className="text-sm text-muted-foreground">{highlight.description}</p>
+                  <h4 className="font-display font-semibold text-foreground mb-1">{highlight.title}</h4>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{highlight.description}</p>
                 </div>
               </div>
             ))}

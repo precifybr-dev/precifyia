@@ -12,15 +12,15 @@ export function Header() {
   ];
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
       <div className="container px-4 mx-auto">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-              <span className="font-display font-bold text-primary-foreground text-sm">P</span>
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <span className="font-logo text-primary-foreground text-sm">P</span>
             </div>
-            <span className="font-display font-bold text-xl">PRECIFY</span>
+            <span className="font-logo text-xl text-foreground">PRECIFY</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -52,7 +52,7 @@ export function Header() {
 
           {/* Mobile Menu Button */}
           <button
-            className="md:hidden p-2"
+            className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
             onClick={() => setIsOpen(!isOpen)}
             aria-label="Toggle menu"
           >
@@ -66,7 +66,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="md:hidden py-4 border-t border-border/50">
+          <div className="md:hidden py-4 border-t border-border/50 animate-fade-in">
             <nav className="flex flex-col gap-4">
               {navLinks.map((link) => (
                 <a
@@ -78,7 +78,7 @@ export function Header() {
                   {link.label}
                 </a>
               ))}
-              <div className="flex flex-col gap-2 pt-4">
+              <div className="flex flex-col gap-2 pt-4 border-t border-border">
                 <Link to="/login" onClick={() => setIsOpen(false)}>
                   <Button variant="outline" className="w-full">
                     Entrar

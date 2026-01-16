@@ -8,21 +8,21 @@ export function Footer() {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <span className="font-display font-bold text-primary-foreground text-sm">P</span>
+              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+                <span className="font-logo text-primary-foreground text-sm">P</span>
               </div>
-              <span className="font-display font-bold text-xl">PRECIFY</span>
+              <span className="font-logo text-xl text-foreground">PRECIFY</span>
             </Link>
-            <p className="text-muted-foreground max-w-md">
-              A plataforma completa de precificação para food service. 
+            <p className="text-muted-foreground max-w-md leading-relaxed">
+              A plataforma simples e profissional de precificação para pequenos negócios. 
               Calcule custos, CMV e margens com precisão.
             </p>
           </div>
 
           {/* Links */}
           <div>
-            <h4 className="font-display font-semibold mb-4">Produto</h4>
-            <ul className="space-y-2">
+            <h4 className="font-display font-semibold mb-4 text-foreground">Produto</h4>
+            <ul className="space-y-3">
               <li>
                 <a href="#features" className="text-muted-foreground hover:text-foreground transition-colors">
                   Funcionalidades
@@ -37,8 +37,8 @@ export function Footer() {
           </div>
 
           <div>
-            <h4 className="font-display font-semibold mb-4">Suporte</h4>
-            <ul className="space-y-2">
+            <h4 className="font-display font-semibold mb-4 text-foreground">Suporte</h4>
+            <ul className="space-y-3">
               <li>
                 <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
                   Central de Ajuda

@@ -62,7 +62,7 @@ export function PricingSection() {
           <span className="inline-block px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm mb-4">
             Planos
           </span>
-          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4">
+          <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-foreground">
             Escolha o plano ideal para{" "}
             <span className="text-gradient">seu negócio</span>
           </h2>
@@ -72,50 +72,50 @@ export function PricingSection() {
         </div>
 
         {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {plans.map((plan) => (
             <div
               key={plan.name}
-              className={`relative p-8 rounded-2xl bg-card border ${
+              className={`relative p-8 rounded-2xl bg-card border-2 ${
                 plan.popular
-                  ? "border-primary shadow-glow scale-105 z-10"
+                  ? "border-primary shadow-lg scale-[1.02]"
                   : "border-border"
-              } transition-all duration-300 hover:shadow-lg`}
+              } transition-all duration-300 hover:shadow-card-hover`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="inline-flex items-center gap-1 px-4 py-1.5 rounded-full bg-gradient-primary text-primary-foreground text-sm font-semibold">
+                  <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary text-primary-foreground text-sm font-semibold shadow-lg">
                     <Sparkles className="w-4 h-4" />
                     Mais Popular
                   </span>
                 </div>
               )}
 
-              <div className="text-center mb-6">
-                <h3 className="font-display font-bold text-xl mb-2">{plan.name}</h3>
+              <div className="text-center mb-8">
+                <h3 className="font-display font-bold text-xl mb-2 text-foreground">{plan.name}</h3>
                 <p className="text-sm text-muted-foreground mb-4">{plan.description}</p>
                 <div className="flex items-baseline justify-center gap-1">
-                  <span className="font-display text-4xl font-bold">{plan.price}</span>
+                  <span className="font-display text-4xl font-bold text-foreground">{plan.price}</span>
                   <span className="text-muted-foreground">{plan.period}</span>
                 </div>
               </div>
 
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-4 mb-8">
                 {plan.features.map((feature) => (
                   <li key={feature.text} className="flex items-center gap-3">
                     {feature.included ? (
-                      <div className="w-5 h-5 rounded-full bg-success/10 flex items-center justify-center">
-                        <Check className="w-3 h-3 text-success" />
+                      <div className="w-5 h-5 rounded-full bg-success/10 flex items-center justify-center flex-shrink-0">
+                        <Check className="w-3.5 h-3.5 text-success" />
                       </div>
                     ) : (
-                      <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center">
-                        <X className="w-3 h-3 text-muted-foreground" />
+                      <div className="w-5 h-5 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <X className="w-3.5 h-3.5 text-muted-foreground" />
                       </div>
                     )}
                     <span
-                      className={
+                      className={`text-sm ${
                         feature.included ? "text-foreground" : "text-muted-foreground"
-                      }
+                      }`}
                     >
                       {feature.text}
                     </span>
@@ -139,7 +139,7 @@ export function PricingSection() {
         {/* FAQ Note */}
         <p className="text-center text-muted-foreground mt-12">
           Dúvidas? Entre em contato pelo{" "}
-          <a href="#" className="text-primary hover:underline">
+          <a href="mailto:suporte@precify.com.br" className="text-primary hover:underline font-medium">
             suporte@precify.com.br
           </a>
         </p>
