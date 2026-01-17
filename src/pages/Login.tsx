@@ -38,7 +38,8 @@ export default function Login() {
           title: "Login realizado!",
           description: "Bem-vindo de volta ao PRECIFY.",
         });
-        navigate("/dashboard");
+        // Redirect to onboarding - it will check if completed and redirect to dashboard
+        navigate("/onboarding");
       }
     } catch (error) {
       toast({

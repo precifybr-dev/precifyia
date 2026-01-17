@@ -19,31 +19,53 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
+    const checkAuthAndOnboarding = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session?.user) {
+        navigate("/login");
+        return;
+      }
+
+      setUser(session.user);
+
+      // Check onboarding status
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .single();
+
+      if (!profileData || profileData.onboarding_step !== "completed") {
+        navigate("/onboarding");
+        return;
+      }
+
+      setProfile(profileData);
+      setIsLoading(false);
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (session?.user) {
-          setUser(session.user);
-        } else {
+      async (event, session) => {
+        if (!session?.user) {
           navigate("/login");
+          return;
         }
-        setIsLoading(false);
+        
+        if (event === "SIGNED_IN") {
+          checkAuthAndOnboarding();
+        }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        navigate("/login");
-      }
-      setIsLoading(false);
-    });
+    checkAuthAndOnboarding();
 
     return () => subscription.unsubscribe();
   }, [navigate]);
