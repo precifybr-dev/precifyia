@@ -45,7 +45,8 @@ export default function Register() {
           title: "Conta criada com sucesso!",
           description: "Bem-vindo ao PRECIFY. Seu trial de 7 dias começou!",
         });
-        navigate("/dashboard");
+        // Redirect to onboarding for new users
+        navigate("/onboarding");
       }
     } catch (error) {
       toast({
