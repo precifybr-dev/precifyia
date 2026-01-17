@@ -1,163 +1,166 @@
-import { ArrowRight, Calculator, TrendingUp, BarChart3 } from "lucide-react";
+import { ArrowRight, Play, TrendingUp, DollarSign, PieChart, Calculator, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 export function HeroSection() {
   return (
-    <section className="relative min-h-screen bg-gradient-hero overflow-hidden">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-10 w-96 h-96 bg-success/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/3 rounded-full blur-3xl" />
+    <section className="relative pt-24 lg:pt-32 pb-16 lg:pb-24 bg-gradient-hero overflow-hidden">
+      {/* Background decorations */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-success/5 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/3 rounded-full blur-3xl" />
       </div>
 
-      <div className="container relative z-10 px-4 pt-32 pb-20 mx-auto">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Left Content */}
-          <div className="space-y-8 animate-slide-up">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm">
-              <BarChart3 className="w-4 h-4" />
-              <span>Plataforma de Precificação Inteligente</span>
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          {/* Content */}
+          <div className="text-center lg:text-left animate-slide-up">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+              Novo: Fichas técnicas com IA
             </div>
 
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold leading-tight text-foreground">
-              Precifique seus produtos com{" "}
-              <span className="text-gradient">precisão e confiança</span>
+            {/* Headline */}
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight mb-6">
+              Precificação inteligente,{" "}
+              <span className="text-gradient">sem planilhas.</span>
             </h1>
 
-            <p className="text-lg md:text-xl text-muted-foreground max-w-xl leading-relaxed">
-              Substitua suas planilhas por uma plataforma simples e profissional. 
-              Calcule custos, CMV e margens para tomar decisões melhores.
+            {/* Subheadline */}
+            <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
+              Calcule custos, margens e preço de venda em minutos. Tudo online, simples e feito para pequenos negócios.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4">
+            {/* CTAs */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link to="/register">
-                <Button variant="hero" size="xl" className="w-full sm:w-auto">
-                  Começar Grátis
-                  <ArrowRight className="w-5 h-5" />
+                <Button size="lg" className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 w-full sm:w-auto group">
+                  Começar grátis
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <Link to="/login">
-                <Button variant="outline" size="xl" className="w-full sm:w-auto">
-                  Já tenho conta
+              <a href="#como-funciona">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto group border-border hover:bg-muted">
+                  <Play className="w-4 h-4 mr-2 text-primary" />
+                  Ver como funciona
                 </Button>
-              </Link>
+              </a>
             </div>
 
-            {/* Trust Indicators */}
-            <div className="flex items-center gap-6 pt-4">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className="w-8 h-8 rounded-full bg-primary/20 border-2 border-background flex items-center justify-center"
-                    >
-                      <span className="text-xs font-medium text-primary">{i}</span>
-                    </div>
-                  ))}
-                </div>
-                <span className="text-sm text-muted-foreground">
-                  +500 negócios
-                </span>
+            {/* Trust indicators */}
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-8 pt-8 border-t border-border justify-center lg:justify-start">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span>7 dias grátis</span>
               </div>
-              <div className="h-6 w-px bg-border" />
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <svg
-                    key={i}
-                    className="w-4 h-4 text-warning"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
-                  >
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-                <span className="text-sm text-muted-foreground ml-1">4.9/5</span>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span>Sem cartão de crédito</span>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <CheckCircle className="w-4 h-4 text-success" />
+                <span>Cancele quando quiser</span>
               </div>
             </div>
           </div>
 
-          {/* Right Content - Dashboard Preview */}
-          <div className="relative lg:pl-8 animate-fade-in" style={{ animationDelay: "0.3s" }}>
+          {/* Dashboard Mockup */}
+          <div className="relative animate-fade-in lg:pl-8">
             <div className="relative">
-              {/* Main Card */}
-              <div className="bg-card rounded-2xl shadow-card-hover p-6 border border-border">
+              {/* Main dashboard card */}
+              <div className="bg-card rounded-2xl shadow-xl border border-border p-6 lg:p-8">
+                {/* Header */}
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="font-display font-semibold text-lg">Dashboard</h3>
-                  <span className="text-xs text-muted-foreground bg-success/10 text-success px-2 py-1 rounded-full">Ao vivo</span>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 mb-6">
-                  <div className="p-4 rounded-xl bg-background border border-border">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TrendingUp className="w-4 h-4 text-success" />
-                      <span className="text-xs text-muted-foreground">Margem Média</span>
-                    </div>
-                    <span className="font-display text-2xl font-bold text-success">32.5%</span>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Visão Geral</p>
+                    <h3 className="text-lg font-semibold text-foreground">Dashboard de Precificação</h3>
                   </div>
-                  <div className="p-4 rounded-xl bg-background border border-border">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Calculator className="w-4 h-4 text-primary" />
-                      <span className="text-xs text-muted-foreground">CMV Praticado</span>
-                    </div>
-                    <span className="font-display text-2xl font-bold text-foreground">28.3%</span>
+                  <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-success/10 text-success text-xs font-medium">
+                    <TrendingUp className="w-3 h-3" />
+                    +12%
                   </div>
                 </div>
 
-                {/* Sample Table */}
-                <div className="rounded-xl border border-border overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted">
-                      <tr>
-                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">Produto</th>
-                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Custo</th>
-                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Preço</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-t border-border">
-                        <td className="px-4 py-3 font-medium">X-Burguer</td>
-                        <td className="text-right px-4 py-3 text-muted-foreground">R$ 8,50</td>
-                        <td className="text-right px-4 py-3 text-success font-semibold">R$ 25,00</td>
-                      </tr>
-                      <tr className="border-t border-border">
-                        <td className="px-4 py-3 font-medium">X-Salada</td>
-                        <td className="text-right px-4 py-3 text-muted-foreground">R$ 9,20</td>
-                        <td className="text-right px-4 py-3 text-success font-semibold">R$ 28,00</td>
-                      </tr>
-                      <tr className="border-t border-border">
-                        <td className="px-4 py-3 font-medium">X-Bacon</td>
-                        <td className="text-right px-4 py-3 text-muted-foreground">R$ 11,40</td>
-                        <td className="text-right px-4 py-3 text-success font-semibold">R$ 32,00</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <div className="bg-muted/50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <DollarSign className="w-4 h-4 text-primary" />
+                      </div>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">R$ 15.420</p>
+                    <p className="text-xs text-muted-foreground">Faturamento mensal</p>
+                  </div>
+                  <div className="bg-muted/50 rounded-xl p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4 text-success" />
+                      </div>
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">32%</p>
+                    <p className="text-xs text-muted-foreground">Margem líquida</p>
+                  </div>
+                </div>
+
+                {/* Products list */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-warning/20 flex items-center justify-center text-lg">
+                        🍔
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">X-Bacon Especial</p>
+                        <p className="text-xs text-muted-foreground">CMV: 28%</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-success">R$ 32,90</p>
+                      <p className="text-xs text-muted-foreground">Preço sugerido</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-lg">
+                        🍕
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Pizza Margherita</p>
+                        <p className="text-xs text-muted-foreground">CMV: 25%</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-success">R$ 54,90</p>
+                      <p className="text-xs text-muted-foreground">Preço sugerido</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* Floating Cards */}
-              <div className="absolute -top-4 -right-4 p-4 rounded-xl bg-card shadow-lg border border-border animate-float">
+              {/* Floating cards */}
+              <div className="absolute -left-4 lg:-left-8 top-1/4 bg-card rounded-xl shadow-lg border border-border p-4 animate-float hidden sm:block">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-                    <TrendingUp className="w-5 h-5 text-success" />
+                  <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                    <PieChart className="w-5 h-5 text-success" />
                   </div>
                   <div>
-                    <span className="text-xs text-muted-foreground block">Lucro Líquido</span>
-                    <span className="font-display font-bold text-success">+R$ 12.450</span>
+                    <p className="text-xs text-muted-foreground">Lucro Líquido</p>
+                    <p className="text-lg font-bold text-success">R$ 4.934</p>
                   </div>
                 </div>
               </div>
 
-              <div className="absolute -bottom-4 -left-4 p-4 rounded-xl bg-card shadow-lg border border-border animate-float" style={{ animationDelay: "2s" }}>
+              <div className="absolute -right-4 lg:-right-8 bottom-1/4 bg-card rounded-xl shadow-lg border border-border p-4 animate-float hidden sm:block" style={{ animationDelay: "2s" }}>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Calculator className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <span className="text-xs text-muted-foreground block">Fichas Técnicas</span>
-                    <span className="font-display font-bold">15 produtos</span>
+                    <p className="text-xs text-muted-foreground">Fichas técnicas</p>
+                    <p className="text-lg font-bold text-foreground">24 produtos</p>
                   </div>
                 </div>
               </div>
