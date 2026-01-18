@@ -41,7 +41,13 @@ export function HeroSection() {
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <a href="#como-funciona">
+              <a 
+                href="#funcionalidades"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" });
+                }}
+              >
                 <Button size="lg" variant="outline" className="w-full sm:w-auto group border-border hover:bg-muted">
                   <Play className="w-4 h-4 mr-2 text-primary" />
                   Ver como funciona

@@ -63,7 +63,7 @@ const highlights = [
 
 export function FeaturesSection() {
   return (
-    <section className="py-24 bg-background" id="features">
+    <section className="py-24 bg-background" id="funcionalidades">
       <div className="container px-4 mx-auto">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
