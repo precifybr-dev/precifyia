@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      ingredients: {
+        Row: {
+          code: number
+          correction_factor: number | null
+          created_at: string
+          id: string
+          name: string
+          purchase_price: number
+          purchase_quantity: number
+          unit: string
+          unit_price: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          code?: number
+          correction_factor?: number | null
+          created_at?: string
+          id?: string
+          name: string
+          purchase_price?: number
+          purchase_quantity?: number
+          unit?: string
+          unit_price?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          code?: number
+          correction_factor?: number | null
+          created_at?: string
+          id?: string
+          name?: string
+          purchase_price?: number
+          purchase_quantity?: number
+          unit?: string
+          unit_price?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           business_name: string | null
