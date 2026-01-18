@@ -1,16 +1,40 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
 
   const navLinks = [
     { href: "#funcionalidades", label: "Funcionalidades" },
     { href: "#precos", label: "Preços" },
     { href: "#como-funciona", label: "Como funciona" },
   ];
+
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    setIsOpen(false);
+    
+    // Get the section id from href
+    const sectionId = href.replace("#", "");
+    const element = document.getElementById(sectionId);
+    
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleLogin = () => {
+    setIsOpen(false);
+    navigate("/login");
+  };
+
+  const handleRegister = () => {
+    setIsOpen(false);
+    navigate("/register");
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border">
@@ -30,7 +54,8 @@ export function Header() {
               <a
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                onClick={(e) => handleNavClick(e, link.href)}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
               >
                 {link.label}
               </a>
@@ -39,16 +64,21 @@ export function Header() {
 
           {/* Desktop CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Link to="/login">
-              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
-                Entrar
-              </Button>
-            </Link>
-            <Link to="/register">
-              <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground">
-                Começar grátis
-              </Button>
-            </Link>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-muted-foreground hover:text-foreground"
+              onClick={handleLogin}
+            >
+              Entrar
+            </Button>
+            <Button 
+              size="sm" 
+              className="bg-success hover:bg-success/90 text-success-foreground"
+              onClick={handleRegister}
+            >
+              Começar grátis
+            </Button>
           </div>
 
           {/* Mobile Menu Button */}
@@ -74,22 +104,25 @@ export function Header() {
                   key={link.href}
                   href={link.href}
                   className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-2"
-                  onClick={() => setIsOpen(false)}
+                  onClick={(e) => handleNavClick(e, link.href)}
                 >
                   {link.label}
                 </a>
               ))}
               <div className="flex flex-col gap-2 pt-4 border-t border-border">
-                <Link to="/login" onClick={() => setIsOpen(false)}>
-                  <Button variant="ghost" className="w-full justify-center text-muted-foreground">
-                    Entrar
-                  </Button>
-                </Link>
-                <Link to="/register" onClick={() => setIsOpen(false)}>
-                  <Button className="w-full bg-success hover:bg-success/90 text-success-foreground">
-                    Começar grátis
-                  </Button>
-                </Link>
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-center text-muted-foreground"
+                  onClick={handleLogin}
+                >
+                  Entrar
+                </Button>
+                <Button 
+                  className="w-full bg-success hover:bg-success/90 text-success-foreground"
+                  onClick={handleRegister}
+                >
+                  Começar grátis
+                </Button>
               </div>
             </nav>
           </div>

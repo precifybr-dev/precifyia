@@ -11,17 +11,26 @@ import {
   TrendingUp,
   Calculator,
   DollarSign,
-  AlertTriangle
+  AlertTriangle,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+type NavItem = {
+  icon: typeof LayoutDashboard;
+  label: string;
+  path: string;
+  active?: boolean;
+};
 
 export default function Dashboard() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeNav, setActiveNav] = useState("dashboard");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -41,7 +50,7 @@ export default function Dashboard() {
         .from("profiles")
         .select("*")
         .eq("user_id", session.user.id)
-        .single();
+        .maybeSingle();
 
       if (!profileData || profileData.onboarding_step !== "completed") {
         navigate("/onboarding");
@@ -79,6 +88,42 @@ export default function Dashboard() {
     navigate("/");
   };
 
+  const handleNavClick = (path: string, label: string) => {
+    setActiveNav(path);
+    setSidebarOpen(false);
+    
+    // For now, show toast for sections under construction
+    if (path !== "dashboard") {
+      toast({
+        title: `${label}`,
+        description: "Esta seção estará disponível em breve.",
+      });
+    }
+  };
+
+  const handleStartOnboarding = () => {
+    navigate("/onboarding");
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case "business":
+        navigate("/onboarding");
+        break;
+      case "ingredients":
+        navigate("/onboarding");
+        break;
+      case "recipe":
+        navigate("/onboarding");
+        break;
+      default:
+        toast({
+          title: "Ação",
+          description: "Funcionalidade em desenvolvimento.",
+        });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -87,12 +132,12 @@ export default function Dashboard() {
     );
   }
 
-  const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", active: true },
-    { icon: Building2, label: "Área do Negócio", active: false },
-    { icon: Package, label: "Insumos", active: false },
-    { icon: Wine, label: "Bebidas", active: false },
-    { icon: FileSpreadsheet, label: "Fichas Técnicas", active: false },
+  const navItems: NavItem[] = [
+    { icon: LayoutDashboard, label: "Dashboard", path: "dashboard" },
+    { icon: Building2, label: "Área do Negócio", path: "business" },
+    { icon: Package, label: "Insumos", path: "ingredients" },
+    { icon: Wine, label: "Bebidas", path: "beverages" },
+    { icon: FileSpreadsheet, label: "Fichas Técnicas", path: "recipes" },
   ];
 
   const stats = [
@@ -137,27 +182,34 @@ export default function Dashboard() {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-6 border-b border-border">
-            <div className="flex items-center gap-2">
+            <button 
+              onClick={() => navigate("/")}
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+            >
               <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                 <span className="font-logo text-primary-foreground text-sm">P</span>
               </div>
               <span className="font-logo text-xl text-foreground">PRECIFY</span>
-            </div>
+            </button>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
             {navItems.map((item) => (
               <button
-                key={item.label}
+                key={item.path}
+                onClick={() => handleNavClick(item.path, item.label)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  item.active
+                  activeNav === item.path
                     ? "bg-primary/10 text-primary font-medium"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 }`}
               >
                 <item.icon className="w-5 h-5" />
                 <span>{item.label}</span>
+                {activeNav !== item.path && (
+                  <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+                )}
               </button>
             ))}
           </nav>
@@ -172,14 +224,14 @@ export default function Dashboard() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate text-foreground">
-                  {user?.user_metadata?.full_name || "Usuário"}
+                  {profile?.business_name || user?.user_metadata?.full_name || "Usuário"}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
             <Button
               variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground"
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
               onClick={handleLogout}
             >
               <LogOut className="w-5 h-5" />
@@ -206,6 +258,7 @@ export default function Dashboard() {
               <button
                 className="lg:hidden p-2 hover:bg-muted rounded-lg"
                 onClick={() => setSidebarOpen(true)}
+                aria-label="Abrir menu"
               >
                 <Menu className="w-5 h-5" />
               </button>
@@ -234,8 +287,14 @@ export default function Dashboard() {
               Complete o cadastro do seu negócio para começar a precificar seus produtos 
               com precisão. Siga o passo a passo abaixo.
             </p>
-            <Button variant="secondary" size="lg">
+            <Button 
+              variant="secondary" 
+              size="lg"
+              onClick={handleStartOnboarding}
+              className="group"
+            >
               Começar Onboarding
+              <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
           </div>
 
@@ -244,7 +303,8 @@ export default function Dashboard() {
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="bg-card rounded-xl p-5 border border-border shadow-card"
+                className="bg-card rounded-xl p-5 border border-border shadow-card hover:shadow-card-hover transition-shadow cursor-pointer"
+                onClick={() => handleNavClick(stat.label === "Fichas Técnicas" ? "recipes" : "dashboard", stat.label)}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className={`w-10 h-10 rounded-lg ${stat.color === 'success' ? 'bg-success/10' : 'bg-primary/10'} flex items-center justify-center`}>
@@ -262,21 +322,30 @@ export default function Dashboard() {
           <div className="bg-card rounded-xl border border-border p-6 shadow-card">
             <h3 className="font-display font-semibold text-lg mb-4 text-foreground">Próximos Passos</h3>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <button className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group">
+              <button 
+                onClick={() => handleQuickAction("business")}
+                className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+              >
                 <Building2 className="w-8 h-8 text-primary mb-3 group-hover:scale-110 transition-transform" />
                 <h4 className="font-semibold mb-1 text-foreground">Configurar Negócio</h4>
                 <p className="text-sm text-muted-foreground">
                   Cadastre custos, despesas e impostos
                 </p>
               </button>
-              <button className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group">
+              <button 
+                onClick={() => handleQuickAction("ingredients")}
+                className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+              >
                 <Package className="w-8 h-8 text-primary mb-3 group-hover:scale-110 transition-transform" />
                 <h4 className="font-semibold mb-1 text-foreground">Adicionar Insumos</h4>
                 <p className="text-sm text-muted-foreground">
                   Cadastre os ingredientes das receitas
                 </p>
               </button>
-              <button className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group">
+              <button 
+                onClick={() => handleQuickAction("recipe")}
+                className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+              >
                 <FileSpreadsheet className="w-8 h-8 text-primary mb-3 group-hover:scale-110 transition-transform" />
                 <h4 className="font-semibold mb-1 text-foreground">Criar Ficha Técnica</h4>
                 <p className="text-sm text-muted-foreground">
