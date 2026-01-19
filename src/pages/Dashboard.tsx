@@ -88,16 +88,20 @@ export default function Dashboard() {
     navigate("/");
   };
 
-  const handleNavClick = (path: string, label: string) => {
+  const handleNavClick = (path: string) => {
     setActiveNav(path);
     setSidebarOpen(false);
     
-    // For now, show toast for sections under construction
-    if (path !== "dashboard") {
-      toast({
-        title: `${label}`,
-        description: "Esta seção estará disponível em breve.",
-      });
+    const routes: Record<string, string> = {
+      dashboard: "/dashboard",
+      business: "/business",
+      ingredients: "/ingredients",
+      beverages: "/beverages",
+      recipes: "/recipes",
+    };
+    
+    if (routes[path]) {
+      navigate(routes[path]);
     }
   };
 
@@ -108,13 +112,13 @@ export default function Dashboard() {
   const handleQuickAction = (action: string) => {
     switch (action) {
       case "business":
-        navigate("/onboarding");
+        navigate("/business");
         break;
       case "ingredients":
-        navigate("/onboarding");
+        navigate("/ingredients");
         break;
       case "recipe":
-        navigate("/onboarding");
+        navigate("/recipes");
         break;
       default:
         toast({
@@ -198,7 +202,7 @@ export default function Dashboard() {
             {navItems.map((item) => (
               <button
                 key={item.path}
-                onClick={() => handleNavClick(item.path, item.label)}
+                onClick={() => handleNavClick(item.path)}
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                   activeNav === item.path
                     ? "bg-primary/10 text-primary font-medium"
@@ -304,7 +308,7 @@ export default function Dashboard() {
               <div
                 key={stat.label}
                 className="bg-card rounded-xl p-5 border border-border shadow-card hover:shadow-card-hover transition-shadow cursor-pointer"
-                onClick={() => handleNavClick(stat.label === "Fichas Técnicas" ? "recipes" : "dashboard", stat.label)}
+                onClick={() => handleNavClick(stat.label === "Fichas Técnicas" ? "recipes" : "dashboard")}
               >
                 <div className="flex items-center gap-3 mb-3">
                   <div className={`w-10 h-10 rounded-lg ${stat.color === 'success' ? 'bg-success/10' : 'bg-primary/10'} flex items-center justify-center`}>
