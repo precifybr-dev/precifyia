@@ -106,6 +106,10 @@ export default function Dashboard() {
   };
 
   const handleStartOnboarding = () => {
+    toast({
+      title: "Iniciando onboarding...",
+      description: "Redirecionando para configuração do negócio.",
+    });
     navigate("/onboarding");
   };
 
@@ -295,7 +299,7 @@ export default function Dashboard() {
               variant="secondary" 
               size="lg"
               onClick={handleStartOnboarding}
-              className="group"
+              className="group active:scale-95 transition-all"
             >
               Começar Onboarding
               <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
