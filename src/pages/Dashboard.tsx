@@ -17,6 +17,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import OnboardingProgress from "@/components/dashboard/OnboardingProgress";
 
 type NavItem = {
   icon: typeof LayoutDashboard;
@@ -304,6 +305,11 @@ export default function Dashboard() {
               Começar Onboarding
               <ChevronRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
+          </div>
+
+          {/* Onboarding Progress */}
+          <div className="mb-8">
+            <OnboardingProgress profile={profile} userId={user?.id} />
           </div>
 
           {/* Stats Grid */}
