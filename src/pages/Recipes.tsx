@@ -15,7 +15,10 @@ import {
   Calculator,
   Save,
   X,
-  AlertCircle
+  AlertCircle,
+  DollarSign,
+  TrendingUp,
+  Percent
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,6 +67,7 @@ export default function Recipes() {
   const [recipeName, setRecipeName] = useState("");
   const [servings, setServings] = useState("1");
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
+  const [profitMargin, setProfitMargin] = useState("");
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -118,6 +122,8 @@ export default function Recipes() {
     setRecipeName("");
     setServings("1");
     setRecipeIngredients([createEmptyIngredient()]);
+    // Usa a margem padrão do perfil, se disponível
+    setProfitMargin(profile?.default_profit_margin?.toString() || "30");
     setShowForm(true);
   };
 
@@ -211,6 +217,14 @@ export default function Recipes() {
 
   const totalCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
   const costPerServing = totalCost / (parseInt(servings) || 1);
+  
+  // Cálculo do preço de venda baseado na margem de lucro
+  // Fórmula: Preço de Venda = CMV / (1 - Margem%)
+  const margin = parseFloat(profitMargin) || 0;
+  const suggestedPrice = margin < 100 && margin > 0 
+    ? costPerServing / (1 - margin / 100) 
+    : costPerServing;
+  const profit = suggestedPrice - costPerServing;
 
   const handleSaveRecipe = async () => {
     if (!recipeName.trim()) {
@@ -479,7 +493,7 @@ export default function Recipes() {
               </div>
 
               {/* Cost Summary */}
-              <div className="bg-primary/5 rounded-xl p-4 mb-6">
+              <div className="bg-primary/5 rounded-xl p-4 mb-4">
                 <div className="flex items-center gap-2 text-primary mb-3">
                   <Calculator className="w-5 h-5" />
                   <span className="font-medium">Resumo de Custos (CMV)</span>
@@ -492,9 +506,71 @@ export default function Recipes() {
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Custo por Porção</p>
+                    <p className="text-sm text-muted-foreground">Custo por Porção (CMV)</p>
                     <p className="font-display text-2xl font-bold text-primary">
                       {formatCurrency(costPerServing)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Pricing Section */}
+              <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 text-success mb-3">
+                  <DollarSign className="w-5 h-5" />
+                  <span className="font-medium">Precificação</span>
+                </div>
+                
+                <div className="grid sm:grid-cols-4 gap-4 items-end">
+                  {/* Margin input */}
+                  <div className="space-y-2">
+                    <Label className="text-sm flex items-center gap-1">
+                      <Percent className="w-3 h-3" />
+                      Margem de Lucro
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="99"
+                        step="1"
+                        value={profitMargin}
+                        onChange={(e) => setProfitMargin(e.target.value)}
+                        className="pr-8"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
+                    </div>
+                    {profile?.default_profit_margin && (
+                      <p className="text-xs text-muted-foreground">
+                        Padrão do negócio: {profile.default_profit_margin}%
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Suggested price */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">Preço de Venda</p>
+                    <p className="font-display text-2xl font-bold text-success">
+                      {formatCurrency(suggestedPrice)}
+                    </p>
+                  </div>
+
+                  {/* Profit */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" />
+                      Lucro por Porção
+                    </p>
+                    <p className="font-display text-xl font-bold text-foreground">
+                      {formatCurrency(profit)}
+                    </p>
+                  </div>
+
+                  {/* CMV percentage */}
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-1">CMV %</p>
+                    <p className="font-display text-xl font-bold text-muted-foreground">
+                      {suggestedPrice > 0 ? ((costPerServing / suggestedPrice) * 100).toFixed(1) : 0}%
                     </p>
                   </div>
                 </div>
