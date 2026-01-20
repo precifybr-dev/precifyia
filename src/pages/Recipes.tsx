@@ -10,17 +10,61 @@ import {
   Package,
   Wine,
   ChevronRight,
-  Plus
+  Plus,
+  Trash2,
+  Calculator,
+  Save,
+  X,
+  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { IngredientSelector, type IngredientData } from "@/components/recipes/IngredientSelector";
+import { formatIngredientCode, calculateIngredientCost, convertToBaseUnit } from "@/lib/ingredient-utils";
+
+interface RecipeIngredient {
+  id: string;
+  ingredientId: string | null;
+  ingredientCode: number | null;
+  name: string;
+  quantity: string;
+  unit: string;
+  unitPrice: number;
+  baseUnit: string;
+  cost: number;
+}
+
+const units = [
+  { value: "g", label: "Gramas (g)" },
+  { value: "kg", label: "Quilos (kg)" },
+  { value: "ml", label: "Mililitros (ml)" },
+  { value: "l", label: "Litros (L)" },
+  { value: "un", label: "Unidade (un)" },
+];
 
 export default function Recipes() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [ingredients, setIngredients] = useState<IngredientData[]>([]);
+  
+  // Recipe form state
+  const [recipeName, setRecipeName] = useState("");
+  const [servings, setServings] = useState("1");
+  const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -45,16 +89,158 @@ export default function Recipes() {
       }
 
       setProfile(profileData);
+      await fetchIngredients(session.user.id);
       setIsLoading(false);
     };
 
     checkAuth();
   }, [navigate]);
 
+  const fetchIngredients = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("ingredients")
+      .select("*")
+      .eq("user_id", userId)
+      .order("code", { ascending: true });
+
+    if (!error && data) {
+      setIngredients(data as IngredientData[]);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({ title: "Logout realizado", description: "Até logo!" });
     navigate("/");
+  };
+
+  const handleNewRecipe = () => {
+    setRecipeName("");
+    setServings("1");
+    setRecipeIngredients([createEmptyIngredient()]);
+    setShowForm(true);
+  };
+
+  const createEmptyIngredient = (): RecipeIngredient => ({
+    id: crypto.randomUUID(),
+    ingredientId: null,
+    ingredientCode: null,
+    name: "",
+    quantity: "",
+    unit: "g",
+    unitPrice: 0,
+    baseUnit: "kg",
+    cost: 0,
+  });
+
+  const handleSelectIngredient = (index: number, ing: IngredientData) => {
+    const unitPrice = ing.unit_price ?? (ing.purchase_price / ing.purchase_quantity);
+    
+    setRecipeIngredients((prev) => {
+      const updated = [...prev];
+      const current = updated[index];
+      
+      // Mantém a quantidade se já existir e recalcula o custo
+      const qty = parseFloat(current.quantity) || 0;
+      const cost = qty > 0 ? calculateIngredientCost(unitPrice, qty, current.unit, ing.unit) : 0;
+      
+      updated[index] = {
+        ...current,
+        ingredientId: ing.id,
+        ingredientCode: ing.code,
+        name: ing.name,
+        unitPrice: unitPrice,
+        baseUnit: ing.unit,
+        cost: cost,
+      };
+      
+      return updated;
+    });
+  };
+
+  const handleQuantityChange = (index: number, value: string) => {
+    setRecipeIngredients((prev) => {
+      const updated = [...prev];
+      const current = updated[index];
+      const qty = parseFloat(value) || 0;
+      
+      // Recalcula o custo baseado na quantidade em gramas/ml convertida para kg/l
+      const cost = qty > 0 && current.unitPrice > 0 
+        ? calculateIngredientCost(current.unitPrice, qty, current.unit, current.baseUnit)
+        : 0;
+      
+      updated[index] = {
+        ...current,
+        quantity: value,
+        cost: cost,
+      };
+      
+      return updated;
+    });
+  };
+
+  const handleUnitChange = (index: number, unit: string) => {
+    setRecipeIngredients((prev) => {
+      const updated = [...prev];
+      const current = updated[index];
+      const qty = parseFloat(current.quantity) || 0;
+      
+      // Recalcula o custo com a nova unidade
+      const cost = qty > 0 && current.unitPrice > 0 
+        ? calculateIngredientCost(current.unitPrice, qty, unit, current.baseUnit)
+        : 0;
+      
+      updated[index] = {
+        ...current,
+        unit: unit,
+        cost: cost,
+      };
+      
+      return updated;
+    });
+  };
+
+  const addIngredientRow = () => {
+    setRecipeIngredients((prev) => [...prev, createEmptyIngredient()]);
+  };
+
+  const removeIngredientRow = (index: number) => {
+    if (recipeIngredients.length === 1) return;
+    setRecipeIngredients((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const totalCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
+  const costPerServing = totalCost / (parseInt(servings) || 1);
+
+  const handleSaveRecipe = async () => {
+    if (!recipeName.trim()) {
+      toast({ title: "Erro", description: "Informe o nome da ficha técnica", variant: "destructive" });
+      return;
+    }
+
+    const validIngredients = recipeIngredients.filter((i) => i.ingredientId && parseFloat(i.quantity) > 0);
+    if (validIngredients.length === 0) {
+      toast({ title: "Erro", description: "Adicione pelo menos um insumo com quantidade", variant: "destructive" });
+      return;
+    }
+
+    // TODO: Salvar no banco de dados quando a tabela de recipes for criada
+    toast({ 
+      title: "Ficha técnica criada! 🎉", 
+      description: `CMV calculado: R$ ${totalCost.toFixed(2)} | Por porção: R$ ${costPerServing.toFixed(2)}` 
+    });
+    
+    setShowForm(false);
+    setRecipeName("");
+    setServings("1");
+    setRecipeIngredients([]);
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
   };
 
   const navItems = [
@@ -136,7 +322,7 @@ export default function Recipes() {
                 <p className="text-sm text-muted-foreground">Crie e gerencie receitas com cálculo de CMV</p>
               </div>
             </div>
-            <Button className="gap-2" onClick={() => toast({ title: "Em breve", description: "Funcionalidade em desenvolvimento" })}>
+            <Button className="gap-2" onClick={handleNewRecipe}>
               <Plus className="w-4 h-4" />
               Nova Ficha
             </Button>
@@ -144,17 +330,200 @@ export default function Recipes() {
         </header>
 
         <div className="p-6">
-          <div className="bg-card rounded-xl border border-border p-12 shadow-card text-center">
-            <FileSpreadsheet className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
-            <h3 className="font-display text-xl font-semibold mb-2 text-foreground">Nenhuma ficha técnica cadastrada</h3>
-            <p className="text-muted-foreground mb-6">
-              Crie fichas técnicas para calcular o CMV e precificar seus produtos.
-            </p>
-            <Button onClick={() => toast({ title: "Em breve", description: "Funcionalidade em desenvolvimento" })}>
-              <Plus className="w-4 h-4 mr-2" />
-              Criar Primeira Ficha Técnica
-            </Button>
-          </div>
+          {showForm ? (
+            <div className="bg-card rounded-xl border border-border p-6 shadow-card">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileSpreadsheet className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="font-display text-lg font-bold text-foreground">Nova Ficha Técnica</h2>
+                    <p className="text-sm text-muted-foreground">Selecione insumos pelo código para montagem rápida</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+
+              {/* Dica de uso */}
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-foreground mb-1">Dica: Use o código do insumo</p>
+                  <p className="text-muted-foreground">
+                    Digite o número do insumo (ex: #001) para selecionar rapidamente. O custo é calculado automaticamente
+                    baseado na quantidade usada. Ex: 50g de um insumo a R$ 11,20/kg = R$ 0,56
+                  </p>
+                </div>
+              </div>
+
+              {/* Recipe info */}
+              <div className="grid sm:grid-cols-2 gap-4 mb-6">
+                <div className="space-y-2">
+                  <Label>Nome do Produto *</Label>
+                  <Input
+                    placeholder="Ex: X-Bacon Especial"
+                    value={recipeName}
+                    onChange={(e) => setRecipeName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Rendimento (porções)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={servings}
+                    onChange={(e) => setServings(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Ingredients list */}
+              <div className="space-y-3 mb-6">
+                <Label>Ingredientes da Receita</Label>
+                
+                {recipeIngredients.map((ing, index) => (
+                  <div
+                    key={ing.id}
+                    className="grid grid-cols-12 gap-3 items-end p-4 bg-muted/50 rounded-lg"
+                  >
+                    {/* Ingredient selector */}
+                    <div className="col-span-12 sm:col-span-5 space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Insumo (busque por código ou nome)
+                      </Label>
+                      <IngredientSelector
+                        ingredients={ingredients}
+                        onSelect={(selected) => handleSelectIngredient(index, selected)}
+                        selectedId={ing.ingredientId || undefined}
+                        placeholder="Digite #001 ou nome..."
+                      />
+                      {ing.ingredientCode && (
+                        <p className="text-xs text-primary mt-1">
+                          {formatIngredientCode(ing.ingredientCode)} - {ing.name}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Quantity */}
+                    <div className="col-span-4 sm:col-span-2 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Quantidade</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        placeholder="50"
+                        value={ing.quantity}
+                        onChange={(e) => handleQuantityChange(index, e.target.value)}
+                      />
+                    </div>
+
+                    {/* Unit */}
+                    <div className="col-span-4 sm:col-span-2 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Unidade</Label>
+                      <Select
+                        value={ing.unit}
+                        onValueChange={(value) => handleUnitChange(index, value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {units.map((u) => (
+                            <SelectItem key={u.value} value={u.value}>
+                              {u.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Cost (calculated) */}
+                    <div className="col-span-3 sm:col-span-2 space-y-1">
+                      <Label className="text-xs text-muted-foreground">Custo</Label>
+                      <div className="h-9 px-3 py-2 bg-background border border-input rounded-md flex items-center">
+                        <span className={`text-sm font-medium ${ing.cost > 0 ? "text-primary" : "text-muted-foreground"}`}>
+                          {formatCurrency(ing.cost)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Remove button */}
+                    <div className="col-span-1 flex justify-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive h-9 w-9"
+                        onClick={() => removeIngredientRow(index)}
+                        disabled={recipeIngredients.length === 1}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-dashed"
+                  onClick={addIngredientRow}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar ingrediente
+                </Button>
+              </div>
+
+              {/* Cost Summary */}
+              <div className="bg-primary/5 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 text-primary mb-3">
+                  <Calculator className="w-5 h-5" />
+                  <span className="font-medium">Resumo de Custos (CMV)</span>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Custo Total da Receita</p>
+                    <p className="font-display text-2xl font-bold text-foreground">
+                      {formatCurrency(totalCost)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Custo por Porção</p>
+                    <p className="font-display text-2xl font-bold text-primary">
+                      {formatCurrency(costPerServing)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 justify-end">
+                <Button variant="outline" onClick={() => setShowForm(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveRecipe} className="gap-2">
+                  <Save className="w-4 h-4" />
+                  Salvar Ficha Técnica
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-card rounded-xl border border-border p-12 shadow-card text-center">
+              <FileSpreadsheet className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="font-display text-xl font-semibold mb-2 text-foreground">Nenhuma ficha técnica cadastrada</h3>
+              <p className="text-muted-foreground mb-6">
+                Crie fichas técnicas para calcular o CMV e precificar seus produtos.
+              </p>
+              <Button onClick={handleNewRecipe}>
+                <Plus className="w-4 h-4 mr-2" />
+                Criar Primeira Ficha Técnica
+              </Button>
+            </div>
+          )}
         </div>
       </main>
     </div>

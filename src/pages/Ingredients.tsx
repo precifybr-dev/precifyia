@@ -22,6 +22,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatIngredientCode } from "@/lib/ingredient-utils";
 
 type Ingredient = {
   id: string;
@@ -308,7 +309,7 @@ export default function Ingredients() {
                 ) : (
                   ingredients.map((ing) => (
                     <TableRow key={ing.id}>
-                      <TableCell className="font-mono text-muted-foreground">{ing.code}</TableCell>
+                      <TableCell className="font-mono text-primary font-semibold">{formatIngredientCode(ing.code)}</TableCell>
                       <TableCell className="font-medium">{ing.name}</TableCell>
                       <TableCell>{ing.unit}</TableCell>
                       <TableCell className="text-right">{ing.purchase_quantity.toFixed(2)}</TableCell>
