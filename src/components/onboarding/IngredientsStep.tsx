@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { formatIngredientCode } from "@/lib/ingredient-utils";
 
 interface IngredientsStepProps {
   onAdvance: () => Promise<void>;
@@ -435,8 +436,8 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
                 <TableRow key={ingredient.id}>
                   {editingId === ingredient.id ? (
                     <>
-                      <TableCell className="font-mono text-sm text-muted-foreground">
-                        #{ingredient.code}
+                      <TableCell className="font-mono text-sm text-primary font-semibold">
+                        {formatIngredientCode(ingredient.code)}
                       </TableCell>
                       <TableCell>
                         <Input
@@ -518,8 +519,8 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
                     </>
                   ) : (
                     <>
-                      <TableCell className="font-mono text-sm text-muted-foreground">
-                        #{ingredient.code}
+                      <TableCell className="font-mono text-sm text-primary font-semibold">
+                        {formatIngredientCode(ingredient.code)}
                       </TableCell>
                       <TableCell className="font-medium">{ingredient.name}</TableCell>
                       <TableCell>{ingredient.unit}</TableCell>
