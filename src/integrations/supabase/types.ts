@@ -90,6 +90,7 @@ export type Database = {
         Row: {
           business_name: string | null
           business_type: string | null
+          cost_limit_percent: number | null
           created_at: string
           default_cmv: number | null
           id: string
@@ -102,6 +103,7 @@ export type Database = {
         Insert: {
           business_name?: string | null
           business_type?: string | null
+          cost_limit_percent?: number | null
           created_at?: string
           default_cmv?: number | null
           id?: string
@@ -114,6 +116,7 @@ export type Database = {
         Update: {
           business_name?: string | null
           business_type?: string | null
+          cost_limit_percent?: number | null
           created_at?: string
           default_cmv?: number | null
           id?: string

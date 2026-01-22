@@ -567,6 +567,18 @@ export default function BusinessArea() {
               fixedExpensesTotal={fixedExpensesTotal}
               variableExpensesTotal={variableExpensesTotal}
               monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
+              costLimitPercent={profile?.cost_limit_percent ?? 40}
+              onLimitChange={async (newLimit) => {
+                const { error } = await supabase
+                  .from("profiles")
+                  .update({ cost_limit_percent: newLimit })
+                  .eq("user_id", user.id);
+                
+                if (!error) {
+                  setProfile({ ...profile, cost_limit_percent: newLimit });
+                  toast({ title: "Sucesso!", description: "Limite atualizado" });
+                }
+              }}
             />
           </div>
 
