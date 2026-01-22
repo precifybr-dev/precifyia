@@ -47,6 +47,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { IngredientSelector, type IngredientData } from "@/components/recipes/IngredientSelector";
 import { calculateIngredientCost } from "@/lib/ingredient-utils";
+import { ColorDot } from "@/components/ui/color-picker";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Recipe = Tables<"recipes">;
@@ -61,6 +62,7 @@ interface RecipeIngredient {
   unitPrice: number;
   baseUnit: string;
   cost: number;
+  color: string | null;
 }
 
 interface RecipeWithIngredients extends Recipe {
@@ -78,6 +80,7 @@ interface RecipeWithIngredients extends Recipe {
       unit_price: number | null;
       purchase_price: number;
       purchase_quantity: number;
+      color: string | null;
     };
   }[];
 }
@@ -210,7 +213,8 @@ export default function Recipes() {
           unit,
           unit_price,
           purchase_price,
-          purchase_quantity
+          purchase_quantity,
+          color
         )
       `)
       .eq("recipe_id", recipe.id);
@@ -234,6 +238,7 @@ export default function Recipes() {
         unitPrice: unitPrice,
         baseUnit: ri.ingredients?.unit || "kg",
         cost: ri.cost,
+        color: ri.ingredients?.color || null,
       };
     });
 
@@ -279,6 +284,7 @@ export default function Recipes() {
     unitPrice: 0,
     baseUnit: "kg",
     cost: 0,
+    color: null,
   });
 
   const handleSelectIngredient = (index: number, ing: IngredientData) => {
@@ -299,6 +305,7 @@ export default function Recipes() {
         unitPrice: unitPrice,
         baseUnit: ing.unit,
         cost: cost,
+        color: ing.color,
       };
       
       return updated;
@@ -618,7 +625,8 @@ export default function Recipes() {
                         placeholder="Digite 1 ou nome..."
                       />
                       {ing.ingredientCode && (
-                        <p className="text-xs text-primary mt-1">
+                        <p className="text-xs text-primary mt-1 flex items-center gap-1.5">
+                          <ColorDot color={ing.color} size="sm" />
                           {ing.ingredientCode} - {ing.name}
                         </p>
                       )}
