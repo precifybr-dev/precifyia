@@ -40,6 +40,7 @@ import FixedExpensesBlock from "@/components/business/FixedExpensesBlock";
 import VariableExpensesBlock from "@/components/business/VariableExpensesBlock";
 import TotalBusinessCostBlock from "@/components/business/TotalBusinessCostBlock";
 import TotalProductCostBlock from "@/components/business/TotalProductCostBlock";
+import SimplifiedDREBlock from "@/components/business/SimplifiedDREBlock";
 import MonthlyRevenueBlock from "@/components/business/MonthlyRevenueBlock";
 
 interface BusinessMetrics {
@@ -695,6 +696,15 @@ export default function BusinessArea() {
                   : null
               }
               averagePrice={metrics.averagePrice}
+            />
+          </div>
+
+          {/* ========== SECTION: Simplified DRE ========== */}
+          <div className="mt-8">
+            <SimplifiedDREBlock
+              monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
+              fixedExpensesTotal={fixedExpensesTotal}
+              variableExpensesTotal={variableExpensesTotal}
             />
           </div>
 
