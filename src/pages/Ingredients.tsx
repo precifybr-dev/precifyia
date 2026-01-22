@@ -19,6 +19,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -35,6 +42,15 @@ type Ingredient = {
   correction_factor: number | null;
 };
 
+const units = [
+  { value: "un", label: "Unidade (un)" },
+  { value: "kg", label: "Quilograma (kg)" },
+  { value: "g", label: "Grama (g)" },
+  { value: "l", label: "Litro (L)" },
+  { value: "ml", label: "Mililitro (ml)" },
+  { value: "dz", label: "Dúzia (dz)" },
+];
+
 export default function Ingredients() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -45,7 +61,7 @@ export default function Ingredients() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
-    unit: "kg",
+    unit: "un",
     purchase_quantity: "",
     purchase_price: "",
     correction_factor: "",
@@ -101,7 +117,7 @@ export default function Ingredients() {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", unit: "kg", purchase_quantity: "", purchase_price: "", correction_factor: "" });
+    setFormData({ name: "", unit: "un", purchase_quantity: "", purchase_price: "", correction_factor: "" });
     setShowForm(false);
     setEditingId(null);
   };
@@ -274,8 +290,22 @@ export default function Ingredients() {
                   <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Ex: Farinha de Trigo" />
                 </div>
                 <div>
-                  <Label>Unidade</Label>
-                  <Input value={formData.unit} onChange={(e) => setFormData({ ...formData, unit: e.target.value })} placeholder="kg, L, un" />
+                  <Label>Unidade *</Label>
+                  <Select 
+                    value={formData.unit} 
+                    onValueChange={(value) => setFormData({ ...formData, unit: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {units.map((unit) => (
+                        <SelectItem key={unit.value} value={unit.value}>
+                          {unit.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Quantidade *</Label>
