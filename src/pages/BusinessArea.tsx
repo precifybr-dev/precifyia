@@ -38,6 +38,7 @@ import VariableCostsBlock from "@/components/business/VariableCostsBlock";
 import FixedExpensesBlock from "@/components/business/FixedExpensesBlock";
 import VariableExpensesBlock from "@/components/business/VariableExpensesBlock";
 import TotalBusinessCostBlock from "@/components/business/TotalBusinessCostBlock";
+import MonthlyRevenueBlock from "@/components/business/MonthlyRevenueBlock";
 
 interface BusinessMetrics {
   ingredientsCount: number;
@@ -80,6 +81,7 @@ export default function BusinessArea() {
   const [variableCostsTotal, setVariableCostsTotal] = useState(0);
   const [fixedExpensesTotal, setFixedExpensesTotal] = useState(0);
   const [variableExpensesTotal, setVariableExpensesTotal] = useState(0);
+  const [calculatedMonthlyRevenue, setCalculatedMonthlyRevenue] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     business_name: "",
     business_type: "",
@@ -566,6 +568,18 @@ export default function BusinessArea() {
             )}
           </div>
 
+          {/* ========== SECTION: Monthly Revenue ========== */}
+          <div className="mt-8">
+            <MonthlyRevenueBlock 
+              userId={user?.id}
+              onAverageChange={(avg) => {
+                setCalculatedMonthlyRevenue(avg);
+                // Update profile with new average
+                setProfile((prev: any) => prev ? { ...prev, monthly_revenue: avg } : prev);
+              }}
+            />
+          </div>
+
           {/* ========== SECTION: Production Costs (per item) ========== */}
           <div className="mt-8">
             <div className="flex items-center gap-3 mb-4">
@@ -618,7 +632,7 @@ export default function BusinessArea() {
             <TotalBusinessCostBlock
               fixedExpensesTotal={fixedExpensesTotal}
               variableExpensesTotal={variableExpensesTotal}
-              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
+              monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
               costLimitPercent={profile?.cost_limit_percent ?? 40}
               onLimitChange={async (newLimit) => {
                 const { error } = await supabase
@@ -637,12 +651,12 @@ export default function BusinessArea() {
             <div className="mt-6 grid lg:grid-cols-2 gap-6">
               <FixedExpensesBlock 
                 userId={user?.id} 
-                monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
+                monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
                 onTotalChange={setFixedExpensesTotal}
               />
               <VariableExpensesBlock 
                 userId={user?.id} 
-                monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
+                monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
                 onTotalChange={setVariableExpensesTotal}
               />
             </div>
