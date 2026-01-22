@@ -169,7 +169,7 @@ export default function FixedExpensesBlock({ userId, monthlyRevenue, onTotalChan
           </div>
           <div>
             <h3 className="font-display font-semibold text-lg text-foreground">Despesas Fixas</h3>
-            <p className="text-sm text-muted-foreground">Custos mensais recorrentes</p>
+            <p className="text-sm text-muted-foreground">Gastos mensais recorrentes do negócio</p>
           </div>
         </div>
       </div>
@@ -276,7 +276,7 @@ export default function FixedExpensesBlock({ userId, monthlyRevenue, onTotalChan
       {/* Add new expense */}
       <div className="flex items-center gap-2 pt-4 border-t border-border">
         <Input
-          placeholder="Nome da despesa (ex: Aluguel)"
+          placeholder="Ex: Aluguel, Luz, Água, Funcionários"
           value={newExpense.name}
           onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
           className="flex-1"

@@ -843,11 +843,11 @@ export default function Recipes() {
                 </div>
               </div>
 
-              {/* Business Cost per Item Section */}
+              {/* Business Expenses per Item Section */}
               <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mb-6">
                 <div className="flex items-center gap-2 text-amber-600 mb-3">
                   <Building2Icon className="w-5 h-5" />
-                  <span className="font-medium">Custo Fixo + Variável por Item</span>
+                  <span className="font-medium">Despesas Fixas + Variáveis por Item</span>
                 </div>
                 
                 {totalBusinessCostPercent !== null ? (
@@ -861,7 +861,7 @@ export default function Recipes() {
                         {totalBusinessCostPercent.toFixed(2)}%
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Custos fixos + variáveis sobre faturamento
+                        Despesas fixas + variáveis sobre faturamento
                       </p>
                     </div>
                     <div>
@@ -952,8 +952,8 @@ export default function Recipes() {
 
                 <div className="mt-4 p-3 bg-muted/50 rounded-lg">
                   <p className="text-xs text-muted-foreground">
-                    <strong>Fórmula:</strong> Margem R$ = Preço de Venda − Custo com perda − Custo Fixo + Variável por item. 
-                    Este é o lucro real após cobrir todos os custos diretos e indiretos.
+                    <strong>Fórmula:</strong> Margem R$ = Preço de Venda − Custo com perda − Despesas por item. 
+                    Este é o lucro real após cobrir todos os custos diretos e despesas do negócio.
                   </p>
                 </div>
               </div>

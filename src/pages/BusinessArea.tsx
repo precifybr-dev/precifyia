@@ -424,7 +424,7 @@ export default function BusinessArea() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Base para cálculo de percentuais de custos fixos e variáveis (não interfere no preço de venda)
+                    Base para cálculo de percentuais de despesas fixas e variáveis (não interfere no preço de venda)
                   </p>
                 </div>
               </div>
@@ -446,7 +446,7 @@ export default function BusinessArea() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Base global para cálculo de percentuais de custos fixos e variáveis
+                    Base global para cálculo de percentuais de despesas fixas e variáveis
                   </p>
                 </div>
 
