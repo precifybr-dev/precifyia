@@ -18,7 +18,8 @@ import {
   DollarSign,
   Wallet,
   BarChart3,
-  Hash
+  Hash,
+  Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,8 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import FixedCostsBlock from "@/components/business/FixedCostsBlock";
+import VariableCostsBlock from "@/components/business/VariableCostsBlock";
 import FixedExpensesBlock from "@/components/business/FixedExpensesBlock";
 import VariableExpensesBlock from "@/components/business/VariableExpensesBlock";
 import TotalBusinessCostBlock from "@/components/business/TotalBusinessCostBlock";
@@ -73,6 +76,8 @@ export default function BusinessArea() {
     averageMargin: null,
     averageCMV: null,
   });
+  const [fixedCostsTotal, setFixedCostsTotal] = useState(0);
+  const [variableCostsTotal, setVariableCostsTotal] = useState(0);
   const [fixedExpensesTotal, setFixedExpensesTotal] = useState(0);
   const [variableExpensesTotal, setVariableExpensesTotal] = useState(0);
   const [formData, setFormData] = useState({
@@ -561,8 +566,55 @@ export default function BusinessArea() {
             )}
           </div>
 
-          {/* Total Business Cost Block */}
-          <div className="mt-6">
+          {/* ========== SECTION: Production Costs (per item) ========== */}
+          <div className="mt-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                <Package className="w-4 h-4 text-blue-500" />
+              </div>
+              <div>
+                <h2 className="font-display font-semibold text-lg text-foreground">Custos de Produção</h2>
+                <p className="text-sm text-muted-foreground">Custos diretamente ligados à produção por item (embalagem, etiqueta, perdas)</p>
+              </div>
+            </div>
+            <div className="grid lg:grid-cols-2 gap-6">
+              <FixedCostsBlock 
+                userId={user?.id} 
+                onTotalChange={setFixedCostsTotal}
+              />
+              <VariableCostsBlock 
+                userId={user?.id} 
+                onTotalChange={setVariableCostsTotal}
+              />
+            </div>
+            {(fixedCostsTotal > 0 || variableCostsTotal > 0) && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg border border-blue-500/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total de Custos por Item:</span>
+                  <span className="font-display text-xl font-bold text-foreground">
+                    R$ {(fixedCostsTotal + variableCostsTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Este valor será adicionado ao custo de cada item nas fichas técnicas
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* ========== SECTION: Business Expenses (monthly) ========== */}
+          <div className="mt-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                <Receipt className="w-4 h-4 text-rose-500" />
+              </div>
+              <div>
+                <h2 className="font-display font-semibold text-lg text-foreground">Despesas do Negócio</h2>
+                <p className="text-sm text-muted-foreground">Gastos mensais do negócio (aluguel, luz, funcionários) - abatidos do faturamento</p>
+              </div>
+            </div>
+
+            {/* Total Business Expenses Block */}
             <TotalBusinessCostBlock
               fixedExpensesTotal={fixedExpensesTotal}
               variableExpensesTotal={variableExpensesTotal}
@@ -580,20 +632,20 @@ export default function BusinessArea() {
                 }
               }}
             />
-          </div>
 
-          {/* Expenses Blocks */}
-          <div className="mt-6 grid lg:grid-cols-2 gap-6">
-            <FixedExpensesBlock 
-              userId={user?.id} 
-              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
-              onTotalChange={setFixedExpensesTotal}
-            />
-            <VariableExpensesBlock 
-              userId={user?.id} 
-              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
-              onTotalChange={setVariableExpensesTotal}
-            />
+            {/* Expenses Blocks */}
+            <div className="mt-6 grid lg:grid-cols-2 gap-6">
+              <FixedExpensesBlock 
+                userId={user?.id} 
+                monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
+                onTotalChange={setFixedExpensesTotal}
+              />
+              <VariableExpensesBlock 
+                userId={user?.id} 
+                monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
+                onTotalChange={setVariableExpensesTotal}
+              />
+            </div>
           </div>
 
           {/* Quick Actions */}
