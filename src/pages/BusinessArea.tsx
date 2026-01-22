@@ -19,7 +19,8 @@ import {
   Wallet,
   BarChart3,
   Hash,
-  Receipt
+  Receipt,
+  Calculator
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ import VariableCostsBlock from "@/components/business/VariableCostsBlock";
 import FixedExpensesBlock from "@/components/business/FixedExpensesBlock";
 import VariableExpensesBlock from "@/components/business/VariableExpensesBlock";
 import TotalBusinessCostBlock from "@/components/business/TotalBusinessCostBlock";
+import TotalProductCostBlock from "@/components/business/TotalProductCostBlock";
 import MonthlyRevenueBlock from "@/components/business/MonthlyRevenueBlock";
 
 interface BusinessMetrics {
@@ -45,6 +47,7 @@ interface BusinessMetrics {
   recipesCount: number;
   averageMargin: number | null;
   averageCMV: number | null;
+  averagePrice: number | null;
 }
 
 const businessTypes = [
@@ -76,6 +79,7 @@ export default function BusinessArea() {
     recipesCount: 0,
     averageMargin: null,
     averageCMV: null,
+    averagePrice: null,
   });
   const [fixedCostsTotal, setFixedCostsTotal] = useState(0);
   const [variableCostsTotal, setVariableCostsTotal] = useState(0);
@@ -107,6 +111,7 @@ export default function BusinessArea() {
 
     let averageMargin: number | null = null;
     let averageCMV: number | null = null;
+    let averagePrice: number | null = null;
 
     if (recipesData && recipesData.length > 0) {
       // Calculate average CMV target (what user configured)
@@ -122,6 +127,12 @@ export default function BusinessArea() {
       if (margins.length > 0) {
         averageMargin = margins.reduce((a, b) => a + b, 0) / margins.length;
       }
+
+      // Calculate average selling price
+      const prices = recipesData.filter(r => r.suggested_price > 0).map(r => r.suggested_price);
+      if (prices.length > 0) {
+        averagePrice = prices.reduce((a, b) => a + b, 0) / prices.length;
+      }
     }
 
     setMetrics({
@@ -129,6 +140,7 @@ export default function BusinessArea() {
       recipesCount: recipesCount || 0,
       averageMargin,
       averageCMV,
+      averagePrice,
     });
   };
 
@@ -660,6 +672,30 @@ export default function BusinessArea() {
                 onTotalChange={setVariableExpensesTotal}
               />
             </div>
+          </div>
+
+          {/* ========== SECTION: Total Product Cost (consolidated) ========== */}
+          <div className="mt-8">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Calculator className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="font-display font-semibold text-lg text-foreground">Custo Total Consolidado</h2>
+                <p className="text-sm text-muted-foreground">Impacto total dos custos e despesas sobre o preço do produto</p>
+              </div>
+            </div>
+
+            <TotalProductCostBlock
+              fixedCostsTotal={fixedCostsTotal}
+              variableCostsTotal={variableCostsTotal}
+              businessExpensesPercent={
+                (calculatedMonthlyRevenue ?? profile?.monthly_revenue) && (calculatedMonthlyRevenue ?? profile?.monthly_revenue) > 0
+                  ? ((fixedExpensesTotal + variableExpensesTotal) / (calculatedMonthlyRevenue ?? profile?.monthly_revenue)) * 100
+                  : null
+              }
+              averagePrice={metrics.averagePrice}
+            />
           </div>
 
           {/* Quick Actions */}
