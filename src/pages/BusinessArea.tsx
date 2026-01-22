@@ -33,6 +33,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import FixedExpensesBlock from "@/components/business/FixedExpensesBlock";
+import VariableExpensesBlock from "@/components/business/VariableExpensesBlock";
 
 interface BusinessMetrics {
   ingredientsCount: number;
@@ -557,9 +558,13 @@ export default function BusinessArea() {
             )}
           </div>
 
-          {/* Fixed Expenses Block */}
-          <div className="mt-6">
+          {/* Expenses Blocks */}
+          <div className="mt-6 grid lg:grid-cols-2 gap-6">
             <FixedExpensesBlock 
+              userId={user?.id} 
+              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null} 
+            />
+            <VariableExpensesBlock 
               userId={user?.id} 
               monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null} 
             />
