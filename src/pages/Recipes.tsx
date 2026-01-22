@@ -409,6 +409,16 @@ export default function Recipes() {
     ? suggestedPrice * (totalBusinessCostPercent / 100)
     : null;
 
+  // Cálculo da Margem Real do Produto
+  // Margem R$ = Preço de Venda − Custo com perda − Valor do Custo Fixo + Variável
+  // Margem % = Margem R$ ÷ Preço de Venda
+  const realMarginValue = businessCostPerItem !== null && suggestedPrice > 0
+    ? suggestedPrice - costPerServing - businessCostPerItem
+    : null;
+  const realMarginPercent = realMarginValue !== null && suggestedPrice > 0
+    ? (realMarginValue / suggestedPrice) * 100
+    : null;
+
   const handleSaveRecipe = async () => {
     if (!recipeName.trim()) {
       toast({ title: "Erro", description: "Informe o nome da ficha técnica", variant: "destructive" });
@@ -887,6 +897,63 @@ export default function Recipes() {
                     <strong>Nota:</strong> Este percentual representa quanto do valor de cada item vendido será usado 
                     para pagar as despesas fixas e variáveis do negócio. <strong>Não interfere no cálculo do preço de venda</strong>, 
                     que é definido exclusivamente pelo CMV.
+                  </p>
+                </div>
+              </div>
+
+              {/* Real Margin Section */}
+              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 text-emerald-600 mb-3">
+                  <TrendingUp className="w-5 h-5" />
+                  <span className="font-medium">Margem Real do Produto</span>
+                </div>
+                
+                {realMarginValue !== null && realMarginPercent !== null ? (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                        <DollarSign className="w-3 h-3" />
+                        Margem R$
+                      </p>
+                      <p className={`font-display text-2xl font-bold ${realMarginValue >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                        {formatCurrency(realMarginValue)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Preço − Custo − Despesas
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                        <Percent className="w-3 h-3" />
+                        Margem %
+                      </p>
+                      <p className={`font-display text-2xl font-bold ${realMarginPercent >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                        {realMarginPercent.toFixed(2)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Margem R$ ÷ Preço de Venda
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">
+                      Configure o faturamento mensal e despesas na{" "}
+                      <button 
+                        onClick={() => navigate("/business")}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Área do Negócio
+                      </button>{" "}
+                      para visualizar a margem real.
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Fórmula:</strong> Margem R$ = Preço de Venda − Custo com perda − Custo Fixo + Variável por item. 
+                    Este é o lucro real após cobrir todos os custos diretos e indiretos.
                   </p>
                 </div>
               </div>
