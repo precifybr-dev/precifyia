@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Package, 
@@ -52,6 +52,7 @@ export default function Ingredients() {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -151,6 +152,15 @@ export default function Ingredients() {
     });
     setEditingId(ingredient.id);
     setShowForm(true);
+    
+    toast({
+      title: "Modo edição",
+      description: `Editando: ${ingredient.name}`,
+    });
+    
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const handleDelete = async (id: string) => {
@@ -251,7 +261,7 @@ export default function Ingredients() {
 
         <div className="p-6">
           {showForm && (
-            <div className="bg-card rounded-xl border border-border p-6 mb-6 shadow-card">
+            <div ref={formRef} className="bg-card rounded-xl border border-border p-6 mb-6 shadow-card">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold text-foreground">{editingId ? "Editar Insumo" : "Novo Insumo"}</h3>
                 <Button variant="ghost" size="sm" onClick={resetForm}>
@@ -308,7 +318,7 @@ export default function Ingredients() {
                   </TableRow>
                 ) : (
                   ingredients.map((ing) => (
-                    <TableRow key={ing.id}>
+                    <TableRow key={ing.id} className={editingId === ing.id ? "bg-primary/10 border-l-2 border-l-primary" : ""}>
                       <TableCell className="font-mono text-primary font-semibold">{formatIngredientCode(ing.code)}</TableCell>
                       <TableCell className="font-medium">{ing.name}</TableCell>
                       <TableCell>{ing.unit}</TableCell>
@@ -319,10 +329,22 @@ export default function Ingredients() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="sm" onClick={() => handleEdit(ing)}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEdit(ing)}
+                            title="Editar insumo"
+                            className="hover:bg-primary/10 hover:text-primary h-9 w-9 p-0"
+                          >
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDelete(ing.id)}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9 p-0" 
+                            onClick={() => handleDelete(ing.id)}
+                            title="Excluir insumo"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
