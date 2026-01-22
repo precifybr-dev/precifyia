@@ -168,8 +168,8 @@ export default function VariableExpensesBlock({ userId, monthlyRevenue, onTotalC
             <TrendingDown className="w-5 h-5 text-orange-500" />
           </div>
           <div>
-            <h3 className="font-display font-semibold text-lg text-foreground">Despesas Variáveis</h3>
-            <p className="text-sm text-muted-foreground">Gastos do negócio que variam com o faturamento</p>
+            <h3 className="font-display font-semibold text-lg text-foreground">Despesas Variáveis do Negócio</h3>
+            <p className="text-sm text-muted-foreground">Gastos mensais que variam conforme operação</p>
           </div>
         </div>
       </div>
@@ -269,7 +269,7 @@ export default function VariableExpensesBlock({ userId, monthlyRevenue, onTotalC
       {/* Add new expense */}
       <div className="flex items-center gap-2 pt-4 border-t border-border">
         <Input
-          placeholder="Ex: Taxa de Cartão, Gás, Manutenção"
+          placeholder="Ex: Gás, Taxas administrativas, Comissões, Manutenção"
           value={newExpense.name}
           onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
           className="flex-1"
