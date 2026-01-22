@@ -14,7 +14,9 @@ import {
   Pencil,
   Trash2,
   Save,
-  X
+  X,
+  HelpCircle,
+  Calculator
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,6 +28,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -64,11 +77,46 @@ export default function Ingredients() {
     unit: "un",
     purchase_quantity: "",
     purchase_price: "",
-    correction_factor: "",
+    correction_factor: "1",
+  });
+  const [fcCalculator, setFcCalculator] = useState({
+    grossQuantity: "",
+    netQuantity: "",
   });
   const navigate = useNavigate();
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
+
+  // Calcula o F.C automaticamente quando os valores mudam
+  const calculateFC = () => {
+    const gross = parseFloat(fcCalculator.grossQuantity);
+    const net = parseFloat(fcCalculator.netQuantity);
+    if (gross > 0 && net > 0 && net <= gross) {
+      const fc = (gross / net).toFixed(2);
+      setFormData({ ...formData, correction_factor: fc });
+      toast({
+        title: "F.C calculado!",
+        description: `Fator de Correção: ${fc}`,
+      });
+    } else if (net > gross) {
+      toast({
+        title: "Valores inválidos",
+        description: "A quantidade líquida não pode ser maior que a bruta",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Calcula o custo unitário com F.C em tempo real
+  const calculateUnitPrice = () => {
+    const qty = parseFloat(formData.purchase_quantity) || 0;
+    const price = parseFloat(formData.purchase_price) || 0;
+    const fc = parseFloat(formData.correction_factor) || 1;
+    if (qty > 0 && price > 0) {
+      return ((price / qty) * fc).toFixed(2);
+    }
+    return "—";
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -117,7 +165,8 @@ export default function Ingredients() {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", unit: "un", purchase_quantity: "", purchase_price: "", correction_factor: "" });
+    setFormData({ name: "", unit: "un", purchase_quantity: "", purchase_price: "", correction_factor: "1" });
+    setFcCalculator({ grossQuantity: "", netQuantity: "" });
     setShowForm(false);
     setEditingId(null);
   };
@@ -164,8 +213,9 @@ export default function Ingredients() {
       unit: ingredient.unit,
       purchase_quantity: ingredient.purchase_quantity.toString(),
       purchase_price: ingredient.purchase_price.toString(),
-      correction_factor: ingredient.correction_factor?.toString() || "",
+      correction_factor: ingredient.correction_factor?.toString() || "1",
     });
+    setFcCalculator({ grossQuantity: "", netQuantity: "" });
     setEditingId(ingredient.id);
     setShowForm(true);
     
@@ -284,7 +334,7 @@ export default function Ingredients() {
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
                 <div className="lg:col-span-2">
                   <Label>Nome *</Label>
                   <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Ex: Farinha de Trigo" />
@@ -315,7 +365,109 @@ export default function Ingredients() {
                   <Label>Preço (R$) *</Label>
                   <Input type="number" step="0.01" value={formData.purchase_price} onChange={(e) => setFormData({ ...formData, purchase_price: e.target.value })} placeholder="10.00" />
                 </div>
+                <div>
+                  <div className="flex items-center gap-1 mb-2">
+                    <Label className="mb-0">F.C</Label>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button type="button" className="text-muted-foreground hover:text-primary transition-colors">
+                            <HelpCircle className="w-4 h-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs p-4">
+                          <p className="font-semibold mb-2">Fator de Correção (F.C)</p>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            Usado para ajustar perdas no preparo dos alimentos.
+                          </p>
+                          <p className="text-sm text-muted-foreground mb-2">
+                            <strong>Exemplo:</strong> Você compra 1 kg bruto de um alimento, mas após limpeza sobram 800 g.
+                          </p>
+                          <p className="text-sm font-mono bg-muted px-2 py-1 rounded">
+                            F.C = 1 ÷ 0,8 = 1,25
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-2">
+                            Esse fator garante que o custo unitário reflita o custo real do produto.
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button type="button" className="text-muted-foreground hover:text-primary transition-colors ml-1" title="Calculadora de F.C">
+                          <Calculator className="w-4 h-4" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72" align="start">
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Calculator className="w-4 h-4 text-primary" />
+                            <span className="font-semibold text-sm">Calculadora de F.C</span>
+                          </div>
+                          <div className="space-y-2">
+                            <div>
+                              <Label className="text-xs">Quantidade Bruta</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="Ex: 1000" 
+                                value={fcCalculator.grossQuantity}
+                                onChange={(e) => setFcCalculator({ ...fcCalculator, grossQuantity: e.target.value })}
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Quantidade Líquida</Label>
+                              <Input 
+                                type="number" 
+                                step="0.01" 
+                                placeholder="Ex: 800" 
+                                value={fcCalculator.netQuantity}
+                                onChange={(e) => setFcCalculator({ ...fcCalculator, netQuantity: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                          <Button 
+                            type="button" 
+                            size="sm" 
+                            className="w-full" 
+                            onClick={calculateFC}
+                            disabled={!fcCalculator.grossQuantity || !fcCalculator.netQuantity}
+                          >
+                            Calcular F.C
+                          </Button>
+                          <p className="text-xs text-muted-foreground text-center">
+                            F.C = Bruto ÷ Líquido
+                          </p>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <Input 
+                    type="number" 
+                    step="0.01" 
+                    min="1"
+                    value={formData.correction_factor} 
+                    onChange={(e) => setFormData({ ...formData, correction_factor: e.target.value })} 
+                    placeholder="1.00" 
+                  />
+                </div>
               </div>
+              
+              {/* Preview do custo unitário calculado */}
+              {formData.purchase_quantity && formData.purchase_price && (
+                <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Custo unitário calculado:</span>
+                    <span className="font-semibold text-primary text-lg">R$ {calculateUnitPrice()}/{formData.unit}</span>
+                  </div>
+                  {parseFloat(formData.correction_factor) > 1 && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Inclui F.C de {formData.correction_factor} (ajuste de perdas)
+                    </p>
+                  )}
+                </div>
+              )}
+              
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="outline" onClick={resetForm}>Cancelar</Button>
                 <Button onClick={handleSave} className="gap-2">
@@ -333,8 +485,9 @@ export default function Ingredients() {
                   <TableHead className="w-16">Cód.</TableHead>
                   <TableHead>Nome</TableHead>
                   <TableHead>Unidade</TableHead>
-                  <TableHead className="text-right">Qtd. Compra</TableHead>
-                  <TableHead className="text-right">Preço Compra</TableHead>
+                  <TableHead className="text-right">Qtd.</TableHead>
+                  <TableHead className="text-right">Preço</TableHead>
+                  <TableHead className="text-right">F.C</TableHead>
                   <TableHead className="text-right">Custo Unit.</TableHead>
                   <TableHead className="w-24">Ações</TableHead>
                 </TableRow>
@@ -342,7 +495,7 @@ export default function Ingredients() {
               <TableBody>
                 {ingredients.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       Nenhum insumo cadastrado. Clique em "Novo Insumo" para começar.
                     </TableCell>
                   </TableRow>
@@ -354,6 +507,13 @@ export default function Ingredients() {
                       <TableCell>{ing.unit}</TableCell>
                       <TableCell className="text-right">{ing.purchase_quantity.toFixed(2)}</TableCell>
                       <TableCell className="text-right">R$ {ing.purchase_price.toFixed(2)}</TableCell>
+                      <TableCell className="text-right">
+                        {ing.correction_factor && ing.correction_factor > 1 ? (
+                          <span className="text-primary font-medium">{ing.correction_factor.toFixed(2)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">1.00</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-right font-semibold text-primary">
                         R$ {ing.unit_price?.toFixed(2) || "—"}
                       </TableCell>
