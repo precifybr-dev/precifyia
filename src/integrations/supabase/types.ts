@@ -17,6 +17,7 @@ export type Database = {
       ingredients: {
         Row: {
           code: number
+          color: string | null
           correction_factor: number | null
           created_at: string
           id: string
@@ -30,6 +31,7 @@ export type Database = {
         }
         Insert: {
           code?: number
+          color?: string | null
           correction_factor?: number | null
           created_at?: string
           id?: string
@@ -43,6 +45,7 @@ export type Database = {
         }
         Update: {
           code?: number
+          color?: string | null
           correction_factor?: number | null
           created_at?: string
           id?: string

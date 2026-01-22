@@ -3,6 +3,7 @@ import { Search, Package, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { parseIngredientCode } from "@/lib/ingredient-utils";
 import { cn } from "@/lib/utils";
+import { ColorDot } from "@/components/ui/color-picker";
 
 export interface IngredientData {
   id: string;
@@ -12,6 +13,7 @@ export interface IngredientData {
   unit_price: number | null;
   purchase_price: number;
   purchase_quantity: number;
+  color: string | null;
 }
 
 interface IngredientSelectorProps {
@@ -156,7 +158,8 @@ export function IngredientSelector({
                     selectedId === ing.id && "bg-primary/10"
                   )}
                 >
-                  <span className="font-mono text-sm text-primary font-semibold min-w-[2rem]">
+                  <span className="font-mono text-sm text-primary font-semibold min-w-[2rem] flex items-center gap-1.5">
+                    <ColorDot color={ing.color} size="sm" />
                     {ing.code}
                   </span>
                   <div className="flex-1 min-w-0">

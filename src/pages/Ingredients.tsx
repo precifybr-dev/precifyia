@@ -54,6 +54,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatIngredientCode } from "@/lib/ingredient-utils";
+import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
 
 type Ingredient = {
   id: string;
@@ -64,6 +65,7 @@ type Ingredient = {
   purchase_price: number;
   unit_price: number | null;
   correction_factor: number | null;
+  color: string | null;
 };
 
 const units = [
@@ -90,6 +92,7 @@ export default function Ingredients() {
     purchase_quantity: "",
     purchase_price: "",
     correction_factor: "1",
+    color: null as string | null,
   });
   const [fcCalculator, setFcCalculator] = useState({
     grossQuantity: "",
@@ -185,7 +188,7 @@ export default function Ingredients() {
   };
 
   const resetForm = () => {
-    setFormData({ code: "", name: "", unit: "un", purchase_quantity: "", purchase_price: "", correction_factor: "1" });
+    setFormData({ code: "", name: "", unit: "un", purchase_quantity: "", purchase_price: "", correction_factor: "1", color: null });
     setFcCalculator({ grossQuantity: "", netQuantity: "" });
     setShowForm(false);
     setEditingId(null);
@@ -224,6 +227,7 @@ export default function Ingredients() {
       purchase_quantity: parseFloat(formData.purchase_quantity),
       purchase_price: parseFloat(formData.purchase_price),
       correction_factor: formData.correction_factor ? parseFloat(formData.correction_factor) : null,
+      color: formData.color,
     };
 
     if (editingId) {
@@ -255,6 +259,7 @@ export default function Ingredients() {
       purchase_quantity: ingredient.purchase_quantity.toString(),
       purchase_price: ingredient.purchase_price.toString(),
       correction_factor: ingredient.correction_factor?.toString() || "1",
+      color: ingredient.color || null,
     });
     setFcCalculator({ grossQuantity: "", netQuantity: "" });
     setEditingId(ingredient.id);
@@ -520,6 +525,18 @@ export default function Ingredients() {
                 </div>
               </div>
               
+              {/* Seletor de cor */}
+              <div className="mt-4">
+                <Label className="mb-2 block">Cor (opcional)</Label>
+                <ColorPicker 
+                  value={formData.color}
+                  onChange={(color) => setFormData({ ...formData, color })}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use cores para categorizar seus insumos (ex: verde para vegetais, vermelho para carnes)
+                </p>
+              </div>
+              
               {/* Preview do custo unitário calculado */}
               {formData.purchase_quantity && formData.purchase_price && (
                 <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-lg">
@@ -569,7 +586,12 @@ export default function Ingredients() {
                 ) : (
                   ingredients.map((ing) => (
                     <TableRow key={ing.id} className={editingId === ing.id ? "bg-primary/10 border-l-2 border-l-primary" : ""}>
-                      <TableCell className="font-mono text-primary font-semibold">{ing.code}</TableCell>
+                      <TableCell className="font-mono text-primary font-semibold">
+                        <div className="flex items-center gap-2">
+                          <ColorDot color={ing.color} size="md" />
+                          {ing.code}
+                        </div>
+                      </TableCell>
                       <TableCell className="font-medium">{ing.name}</TableCell>
                       <TableCell>{ing.unit}</TableCell>
                       <TableCell className="text-right">{ing.purchase_quantity.toFixed(2)}</TableCell>
