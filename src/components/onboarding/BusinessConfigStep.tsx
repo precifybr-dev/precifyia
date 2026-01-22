@@ -51,8 +51,8 @@ export function BusinessConfigStep({
   const [businessName, setBusinessName] = useState(profile.business_name || "");
   const [businessType, setBusinessType] = useState(profile.business_type || "");
   const [taxRegime, setTaxRegime] = useState(profile.tax_regime || "");
-  const [profitMargin, setProfitMargin] = useState(
-    profile.default_profit_margin?.toString() || "30"
+  const [cmvTarget, setCmvTarget] = useState(
+    profile.default_cmv?.toString() || "30"
   );
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -69,9 +69,9 @@ export function BusinessConfigStep({
       newErrors.businessType = "Selecione o tipo de negócio";
     }
 
-    const margin = parseFloat(profitMargin);
-    if (isNaN(margin) || margin < 0 || margin > 100) {
-      newErrors.profitMargin = "Margem deve ser entre 0 e 100";
+    const cmv = parseFloat(cmvTarget);
+    if (isNaN(cmv) || cmv < 1 || cmv > 99) {
+      newErrors.cmvTarget = "CMV deve ser entre 1% e 99%";
     }
 
     setErrors(newErrors);
@@ -90,7 +90,7 @@ export function BusinessConfigStep({
         business_name: businessName.trim(),
         business_type: businessType,
         tax_regime: taxRegime || null,
-        default_profit_margin: parseFloat(profitMargin),
+        default_cmv: parseFloat(cmvTarget),
       });
 
       toast({
@@ -204,41 +204,42 @@ export function BusinessConfigStep({
           </Select>
         </div>
 
-        {/* Profit Margin */}
+        {/* CMV Target */}
         <div className="space-y-2">
-          <Label htmlFor="profitMargin" className="flex items-center gap-2">
-            Margem de Lucro Padrão (%)
+          <Label htmlFor="cmvTarget" className="flex items-center gap-2">
+            CMV Desejado (%)
             <Tooltip>
               <TooltipTrigger asChild>
                 <Info className="w-4 h-4 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent className="max-w-xs">
                 <p>
-                  Margem de lucro que será aplicada por padrão nas fichas
-                  técnicas. Você pode ajustar individualmente depois.
+                  CMV (Custo de Mercadoria Vendida) é o percentual do custo
+                  sobre o preço de venda. Ex: CMV de 30% significa que o custo
+                  representa 30% do preço final.
                 </p>
               </TooltipContent>
             </Tooltip>
           </Label>
           <div className="relative">
             <Input
-              id="profitMargin"
+              id="cmvTarget"
               type="number"
-              min="0"
-              max="100"
+              min="1"
+              max="99"
               step="1"
-              value={profitMargin}
-              onChange={(e) => setProfitMargin(e.target.value)}
-              className={`pr-8 ${errors.profitMargin ? "border-destructive" : ""}`}
+              value={cmvTarget}
+              onChange={(e) => setCmvTarget(e.target.value)}
+              className={`pr-8 ${errors.cmvTarget ? "border-destructive" : ""}`}
             />
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
               %
             </span>
           </div>
-          {errors.profitMargin && (
+          {errors.cmvTarget && (
             <p className="text-sm text-destructive flex items-center gap-1">
               <AlertTriangle className="w-4 h-4" />
-              {errors.profitMargin}
+              {errors.cmvTarget}
             </p>
           )}
         </div>
