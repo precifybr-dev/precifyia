@@ -18,7 +18,9 @@ import {
   AlertCircle,
   DollarSign,
   TrendingUp,
-  Percent
+  Percent,
+  Pencil,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,10 +32,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { IngredientSelector, type IngredientData } from "@/components/recipes/IngredientSelector";
-import { calculateIngredientCost, convertToBaseUnit } from "@/lib/ingredient-utils";
+import { calculateIngredientCost } from "@/lib/ingredient-utils";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Recipe = Tables<"recipes">;
 
 interface RecipeIngredient {
   id: string;
@@ -45,6 +61,25 @@ interface RecipeIngredient {
   unitPrice: number;
   baseUnit: string;
   cost: number;
+}
+
+interface RecipeWithIngredients extends Recipe {
+  recipe_ingredients: {
+    id: string;
+    ingredient_id: string;
+    quantity: number;
+    unit: string;
+    cost: number;
+    ingredients: {
+      id: string;
+      code: number;
+      name: string;
+      unit: string;
+      unit_price: number | null;
+      purchase_price: number;
+      purchase_quantity: number;
+    };
+  }[];
 }
 
 const units = [
@@ -62,12 +97,19 @@ export default function Recipes() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [ingredients, setIngredients] = useState<IngredientData[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
   
   // Recipe form state
   const [recipeName, setRecipeName] = useState("");
   const [servings, setServings] = useState("1");
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
   const [profitMargin, setProfitMargin] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -93,7 +135,10 @@ export default function Recipes() {
       }
 
       setProfile(profileData);
-      await fetchIngredients(session.user.id);
+      await Promise.all([
+        fetchIngredients(session.user.id),
+        fetchRecipes(session.user.id)
+      ]);
       setIsLoading(false);
     };
 
@@ -112,19 +157,116 @@ export default function Recipes() {
     }
   };
 
+  const fetchRecipes = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("recipes")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) {
+      setRecipes(data);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({ title: "Logout realizado", description: "Até logo!" });
     navigate("/");
   };
 
+  const resetForm = () => {
+    setRecipeName("");
+    setServings("1");
+    setRecipeIngredients([createEmptyIngredient()]);
+    setProfitMargin(profile?.default_profit_margin?.toString() || "30");
+    setEditingId(null);
+    setShowForm(false);
+  };
+
   const handleNewRecipe = () => {
     setRecipeName("");
     setServings("1");
     setRecipeIngredients([createEmptyIngredient()]);
-    // Usa a margem padrão do perfil, se disponível
     setProfitMargin(profile?.default_profit_margin?.toString() || "30");
+    setEditingId(null);
     setShowForm(true);
+  };
+
+  const handleEditRecipe = async (recipe: Recipe) => {
+    // Fetch recipe with ingredients
+    const { data, error } = await supabase
+      .from("recipe_ingredients")
+      .select(`
+        id,
+        ingredient_id,
+        quantity,
+        unit,
+        cost,
+        ingredients (
+          id,
+          code,
+          name,
+          unit,
+          unit_price,
+          purchase_price,
+          purchase_quantity
+        )
+      `)
+      .eq("recipe_id", recipe.id);
+
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível carregar os ingredientes", variant: "destructive" });
+      return;
+    }
+
+    const loadedIngredients: RecipeIngredient[] = data.map((ri: any) => {
+      const unitPrice = ri.ingredients?.unit_price ?? 
+        ((ri.ingredients?.purchase_price ?? 0) / (ri.ingredients?.purchase_quantity ?? 1));
+      
+      return {
+        id: ri.id,
+        ingredientId: ri.ingredient_id,
+        ingredientCode: ri.ingredients?.code || null,
+        name: ri.ingredients?.name || "",
+        quantity: ri.quantity.toString(),
+        unit: ri.unit,
+        unitPrice: unitPrice,
+        baseUnit: ri.ingredients?.unit || "kg",
+        cost: ri.cost,
+      };
+    });
+
+    setRecipeName(recipe.name);
+    setServings(recipe.servings.toString());
+    setProfitMargin(recipe.profit_margin?.toString() || "30");
+    setRecipeIngredients(loadedIngredients.length > 0 ? loadedIngredients : [createEmptyIngredient()]);
+    setEditingId(recipe.id);
+    setShowForm(true);
+  };
+
+  const handleDeleteClick = (recipe: Recipe) => {
+    setRecipeToDelete(recipe);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!recipeToDelete) return;
+
+    const { error } = await supabase
+      .from("recipes")
+      .delete()
+      .eq("id", recipeToDelete.id);
+
+    if (error) {
+      toast({ title: "Erro", description: "Não foi possível excluir a ficha técnica", variant: "destructive" });
+    } else {
+      toast({ title: "Sucesso", description: "Ficha técnica removida!" });
+      await fetchRecipes(user.id);
+    }
+
+    setDeleteDialogOpen(false);
+    setRecipeToDelete(null);
   };
 
   const createEmptyIngredient = (): RecipeIngredient => ({
@@ -146,7 +288,6 @@ export default function Recipes() {
       const updated = [...prev];
       const current = updated[index];
       
-      // Mantém a quantidade se já existir e recalcula o custo
       const qty = parseFloat(current.quantity) || 0;
       const cost = qty > 0 ? calculateIngredientCost(unitPrice, qty, current.unit, ing.unit) : 0;
       
@@ -170,7 +311,6 @@ export default function Recipes() {
       const current = updated[index];
       const qty = parseFloat(value) || 0;
       
-      // Recalcula o custo baseado na quantidade em gramas/ml convertida para kg/l
       const cost = qty > 0 && current.unitPrice > 0 
         ? calculateIngredientCost(current.unitPrice, qty, current.unit, current.baseUnit)
         : 0;
@@ -191,7 +331,6 @@ export default function Recipes() {
       const current = updated[index];
       const qty = parseFloat(current.quantity) || 0;
       
-      // Recalcula o custo com a nova unidade
       const cost = qty > 0 && current.unitPrice > 0 
         ? calculateIngredientCost(current.unitPrice, qty, unit, current.baseUnit)
         : 0;
@@ -218,8 +357,6 @@ export default function Recipes() {
   const totalCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
   const costPerServing = totalCost / (parseInt(servings) || 1);
   
-  // Cálculo do preço de venda baseado na margem de lucro
-  // Fórmula: Preço de Venda = CMV / (1 - Margem%)
   const margin = parseFloat(profitMargin) || 0;
   const suggestedPrice = margin < 100 && margin > 0 
     ? costPerServing / (1 - margin / 100) 
@@ -238,16 +375,80 @@ export default function Recipes() {
       return;
     }
 
-    // TODO: Salvar no banco de dados quando a tabela de recipes for criada
-    toast({ 
-      title: "Ficha técnica criada! 🎉", 
-      description: `CMV calculado: R$ ${totalCost.toFixed(2)} | Por porção: R$ ${costPerServing.toFixed(2)}` 
-    });
-    
-    setShowForm(false);
-    setRecipeName("");
-    setServings("1");
-    setRecipeIngredients([]);
+    setIsSaving(true);
+
+    try {
+      const recipeData = {
+        user_id: user.id,
+        name: recipeName,
+        servings: parseInt(servings) || 1,
+        profit_margin: parseFloat(profitMargin) || 30,
+        total_cost: parseFloat(totalCost.toFixed(2)),
+        cost_per_serving: parseFloat(costPerServing.toFixed(2)),
+        suggested_price: parseFloat(suggestedPrice.toFixed(2)),
+      };
+
+      let recipeId = editingId;
+
+      if (editingId) {
+        // Update existing recipe
+        const { error: updateError } = await supabase
+          .from("recipes")
+          .update(recipeData)
+          .eq("id", editingId);
+
+        if (updateError) throw updateError;
+
+        // Delete existing ingredients
+        const { error: deleteError } = await supabase
+          .from("recipe_ingredients")
+          .delete()
+          .eq("recipe_id", editingId);
+
+        if (deleteError) throw deleteError;
+      } else {
+        // Insert new recipe
+        const { data: newRecipe, error: insertError } = await supabase
+          .from("recipes")
+          .insert(recipeData)
+          .select()
+          .single();
+
+        if (insertError) throw insertError;
+        recipeId = newRecipe.id;
+      }
+
+      // Insert recipe ingredients
+      const ingredientsData = validIngredients.map((ing) => ({
+        recipe_id: recipeId!,
+        ingredient_id: ing.ingredientId!,
+        quantity: parseFloat(ing.quantity),
+        unit: ing.unit,
+        cost: parseFloat(ing.cost.toFixed(2)),
+      }));
+
+      const { error: ingredientsError } = await supabase
+        .from("recipe_ingredients")
+        .insert(ingredientsData);
+
+      if (ingredientsError) throw ingredientsError;
+
+      toast({ 
+        title: editingId ? "Ficha atualizada!" : "Ficha técnica criada! 🎉", 
+        description: `CMV: R$ ${totalCost.toFixed(2)} | Preço sugerido: R$ ${suggestedPrice.toFixed(2)}` 
+      });
+      
+      await fetchRecipes(user.id);
+      resetForm();
+    } catch (error: any) {
+      toast({ 
+        title: "Erro ao salvar", 
+        description: error.message || "Não foi possível salvar a ficha técnica", 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const formatCurrency = (value: number) => {
@@ -352,11 +553,13 @@ export default function Recipes() {
                     <FileSpreadsheet className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-display text-lg font-bold text-foreground">Nova Ficha Técnica</h2>
+                    <h2 className="font-display text-lg font-bold text-foreground">
+                      {editingId ? "Editar Ficha Técnica" : "Nova Ficha Técnica"}
+                    </h2>
                     <p className="text-sm text-muted-foreground">Selecione insumos pelo código para montagem rápida</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => setShowForm(false)}>
+                <Button variant="ghost" size="sm" onClick={resetForm}>
                   <X className="w-4 h-4" />
                 </Button>
               </div>
@@ -367,7 +570,7 @@ export default function Recipes() {
                 <div className="text-sm">
                   <p className="font-medium text-foreground mb-1">Dica: Use o código do insumo</p>
                   <p className="text-muted-foreground">
-                    Digite o número do insumo (ex: #001) para selecionar rapidamente. O custo é calculado automaticamente
+                    Digite o número do insumo (ex: 1) para selecionar rapidamente. O custo é calculado automaticamente
                     baseado na quantidade usada. Ex: 50g de um insumo a R$ 11,20/kg = R$ 0,56
                   </p>
                 </div>
@@ -412,7 +615,7 @@ export default function Recipes() {
                         ingredients={ingredients}
                         onSelect={(selected) => handleSelectIngredient(index, selected)}
                         selectedId={ing.ingredientId || undefined}
-                        placeholder="Digite #001 ou nome..."
+                        placeholder="Digite 1 ou nome..."
                       />
                       {ing.ingredientCode && (
                         <p className="text-xs text-primary mt-1">
@@ -578,16 +781,16 @@ export default function Recipes() {
 
               {/* Actions */}
               <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={() => setShowForm(false)}>
+                <Button variant="outline" onClick={resetForm}>
                   Cancelar
                 </Button>
-                <Button onClick={handleSaveRecipe} className="gap-2">
+                <Button onClick={handleSaveRecipe} disabled={isSaving} className="gap-2">
                   <Save className="w-4 h-4" />
-                  Salvar Ficha Técnica
+                  {isSaving ? "Salvando..." : "Salvar Ficha Técnica"}
                 </Button>
               </div>
             </div>
-          ) : (
+          ) : recipes.length === 0 ? (
             <div className="bg-card rounded-xl border border-border p-12 shadow-card text-center">
               <FileSpreadsheet className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
               <h3 className="font-display text-xl font-semibold mb-2 text-foreground">Nenhuma ficha técnica cadastrada</h3>
@@ -599,9 +802,91 @@ export default function Recipes() {
                 Criar Primeira Ficha Técnica
               </Button>
             </div>
+          ) : (
+            <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead className="text-center">Porções</TableHead>
+                    <TableHead className="text-right">Custo Total</TableHead>
+                    <TableHead className="text-right">CMV/Porção</TableHead>
+                    <TableHead className="text-right">Margem</TableHead>
+                    <TableHead className="text-right">Preço Sugerido</TableHead>
+                    <TableHead className="w-24">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recipes.map((recipe) => (
+                    <TableRow key={recipe.id}>
+                      <TableCell className="font-medium">{recipe.name}</TableCell>
+                      <TableCell className="text-center">{recipe.servings}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(recipe.total_cost)}</TableCell>
+                      <TableCell className="text-right font-semibold text-primary">
+                        {formatCurrency(recipe.cost_per_serving)}
+                      </TableCell>
+                      <TableCell className="text-right">{recipe.profit_margin}%</TableCell>
+                      <TableCell className="text-right font-semibold text-success">
+                        {formatCurrency(recipe.suggested_price)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEditRecipe(recipe)}
+                            title="Editar ficha"
+                            className="hover:bg-primary/10 hover:text-primary h-9 w-9 p-0"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9 p-0" 
+                            onClick={() => handleDeleteClick(recipe)}
+                            title="Excluir ficha"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </div>
       </main>
+
+      {/* AlertDialog de confirmação de exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Confirmar exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir a ficha técnica{" "}
+              <span className="font-semibold text-foreground">
+                "{recipeToDelete?.name}"
+              </span>
+              ? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

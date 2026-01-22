@@ -92,12 +92,96 @@ export type Database = {
         }
         Relationships: []
       }
+      recipe_ingredients: {
+        Row: {
+          cost: number
+          created_at: string
+          id: string
+          ingredient_id: string
+          quantity: number
+          recipe_id: string
+          unit: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          id?: string
+          ingredient_id: string
+          quantity: number
+          recipe_id: string
+          unit?: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          id?: string
+          ingredient_id?: string
+          quantity?: number
+          recipe_id?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recipe_ingredients_recipe_id_fkey"
+            columns: ["recipe_id"]
+            isOneToOne: false
+            referencedRelation: "recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipes: {
+        Row: {
+          cost_per_serving: number
+          created_at: string
+          id: string
+          name: string
+          profit_margin: number | null
+          servings: number
+          suggested_price: number
+          total_cost: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cost_per_serving?: number
+          created_at?: string
+          id?: string
+          name: string
+          profit_margin?: number | null
+          servings?: number
+          suggested_price?: number
+          total_cost?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cost_per_serving?: number
+          created_at?: string
+          id?: string
+          name?: string
+          profit_margin?: number | null
+          servings?: number
+          suggested_price?: number
+          total_cost?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      user_owns_recipe: { Args: { _recipe_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
