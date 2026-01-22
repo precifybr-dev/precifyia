@@ -355,7 +355,7 @@ export default function Ingredients() {
                       <TableCell className="text-right">{ing.purchase_quantity.toFixed(2)}</TableCell>
                       <TableCell className="text-right">R$ {ing.purchase_price.toFixed(2)}</TableCell>
                       <TableCell className="text-right font-semibold text-primary">
-                        R$ {ing.unit_price?.toFixed(4) || "—"}
+                        R$ {ing.unit_price?.toFixed(2) || "—"}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
