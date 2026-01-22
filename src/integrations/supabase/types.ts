@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      fixed_costs: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+          value_per_item: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+          value_per_item?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          value_per_item?: number
+        }
+        Relationships: []
+      }
       fixed_expenses: {
         Row: {
           created_at: string
@@ -209,6 +236,33 @@ export type Database = {
           total_cost?: number
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      variable_costs: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+          value_per_item: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          user_id: string
+          value_per_item?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+          value_per_item?: number
         }
         Relationships: []
       }
