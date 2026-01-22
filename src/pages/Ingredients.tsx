@@ -16,7 +16,8 @@ import {
   Save,
   X,
   HelpCircle,
-  Calculator
+  Calculator,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +43,16 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { formatIngredientCode } from "@/lib/ingredient-utils";
 
 type Ingredient = {
@@ -84,6 +95,8 @@ export default function Ingredients() {
     grossQuantity: "",
     netQuantity: "",
   });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [ingredientToDelete, setIngredientToDelete] = useState<Ingredient | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
@@ -257,14 +270,24 @@ export default function Ingredients() {
     }, 100);
   };
 
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("ingredients").delete().eq("id", id);
+  const handleDeleteClick = (ingredient: Ingredient) => {
+    setIngredientToDelete(ingredient);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!ingredientToDelete) return;
+    
+    const { error } = await supabase.from("ingredients").delete().eq("id", ingredientToDelete.id);
     if (error) {
       toast({ title: "Erro", description: "Não foi possível excluir", variant: "destructive" });
     } else {
       toast({ title: "Sucesso", description: "Insumo removido!" });
       await fetchIngredients(user.id);
     }
+    
+    setDeleteDialogOpen(false);
+    setIngredientToDelete(null);
   };
 
   const navItems = [
@@ -576,7 +599,7 @@ export default function Ingredients() {
                             variant="ghost" 
                             size="sm" 
                             className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9 p-0" 
-                            onClick={() => handleDelete(ing.id)}
+                            onClick={() => handleDeleteClick(ing)}
                             title="Excluir insumo"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -591,6 +614,34 @@ export default function Ingredients() {
           </div>
         </div>
       </main>
+
+      {/* AlertDialog de confirmação de exclusão */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Confirmar exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir o insumo{" "}
+              <span className="font-semibold text-foreground">
+                "{ingredientToDelete?.name}"
+              </span>
+              ? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
