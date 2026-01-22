@@ -69,8 +69,8 @@ export default function TotalBusinessCostBlock({
             )}
           </div>
           <div>
-            <h3 className="font-display font-semibold text-lg text-foreground">Custo Total do Negócio</h3>
-            <p className="text-sm text-muted-foreground">Percentual do faturamento consumido pelas despesas</p>
+            <h3 className="font-display font-semibold text-lg text-foreground">Despesas Totais do Negócio</h3>
+            <p className="text-sm text-muted-foreground">Percentual do faturamento consumido pelas despesas fixas e variáveis</p>
           </div>
         </div>
 
@@ -129,22 +129,22 @@ export default function TotalBusinessCostBlock({
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Custos Fixos */}
+        {/* Despesas Fixas */}
         <div className="text-center p-4 bg-rose-500/10 rounded-lg border border-rose-500/20">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Receipt className="w-4 h-4 text-rose-500" />
-            <span className="text-sm text-muted-foreground">Fixos</span>
+            <span className="text-sm text-muted-foreground">Desp. Fixas</span>
           </div>
           <p className={`font-display text-2xl font-bold ${fixedPercent !== null ? 'text-rose-600' : 'text-muted-foreground'}`}>
             {formatPercent(fixedPercent)}
           </p>
         </div>
 
-        {/* Custos Variáveis */}
+        {/* Despesas Variáveis */}
         <div className="text-center p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
           <div className="flex items-center justify-center gap-2 mb-2">
             <TrendingDown className="w-4 h-4 text-orange-500" />
-            <span className="text-sm text-muted-foreground">Variáveis</span>
+            <span className="text-sm text-muted-foreground">Desp. Variáveis</span>
           </div>
           <p className={`font-display text-2xl font-bold ${variablePercent !== null ? 'text-orange-600' : 'text-muted-foreground'}`}>
             {formatPercent(variablePercent)}

@@ -169,7 +169,7 @@ export default function VariableExpensesBlock({ userId, monthlyRevenue, onTotalC
           </div>
           <div>
             <h3 className="font-display font-semibold text-lg text-foreground">Despesas Variáveis</h3>
-            <p className="text-sm text-muted-foreground">Custos que variam com o faturamento</p>
+            <p className="text-sm text-muted-foreground">Gastos do negócio que variam com o faturamento</p>
           </div>
         </div>
       </div>
@@ -269,7 +269,7 @@ export default function VariableExpensesBlock({ userId, monthlyRevenue, onTotalC
       {/* Add new expense */}
       <div className="flex items-center gap-2 pt-4 border-t border-border">
         <Input
-          placeholder="Nome da despesa (ex: Taxa de Cartão)"
+          placeholder="Ex: Taxa de Cartão, Gás, Manutenção"
           value={newExpense.name}
           onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
           className="flex-1"
