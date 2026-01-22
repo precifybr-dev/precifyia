@@ -14,7 +14,10 @@ import {
   Pencil,
   Save,
   X,
-  Check
+  TrendingUp,
+  DollarSign,
+  BarChart3,
+  Hash
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +31,13 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+interface BusinessMetrics {
+  ingredientsCount: number;
+  recipesCount: number;
+  averageMargin: number | null;
+  averageCMV: number | null;
+}
 
 const businessTypes = [
   { value: "restaurante", label: "Restaurante" },
@@ -53,6 +63,12 @@ export default function BusinessArea() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [metrics, setMetrics] = useState<BusinessMetrics>({
+    ingredientsCount: 0,
+    recipesCount: 0,
+    averageMargin: null,
+    averageCMV: null,
+  });
   const [formData, setFormData] = useState({
     business_name: "",
     business_type: "",
@@ -61,6 +77,46 @@ export default function BusinessArea() {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const fetchMetrics = async (userId: string) => {
+    // Fetch ingredients count
+    const { count: ingredientsCount } = await supabase
+      .from("ingredients")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
+
+    // Fetch recipes with margin and cost data
+    const { data: recipesData, count: recipesCount } = await supabase
+      .from("recipes")
+      .select("profit_margin, cost_per_serving, suggested_price", { count: "exact" })
+      .eq("user_id", userId);
+
+    let averageMargin: number | null = null;
+    let averageCMV: number | null = null;
+
+    if (recipesData && recipesData.length > 0) {
+      // Calculate average margin
+      const margins = recipesData.filter(r => r.profit_margin !== null).map(r => r.profit_margin as number);
+      if (margins.length > 0) {
+        averageMargin = margins.reduce((a, b) => a + b, 0) / margins.length;
+      }
+
+      // Calculate average CMV (cost per serving / suggested price * 100)
+      const cmvRatios = recipesData
+        .filter(r => r.suggested_price > 0 && r.cost_per_serving > 0)
+        .map(r => (r.cost_per_serving / r.suggested_price) * 100);
+      if (cmvRatios.length > 0) {
+        averageCMV = cmvRatios.reduce((a, b) => a + b, 0) / cmvRatios.length;
+      }
+    }
+
+    setMetrics({
+      ingredientsCount: ingredientsCount || 0,
+      recipesCount: recipesCount || 0,
+      averageMargin,
+      averageCMV,
+    });
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -89,6 +145,8 @@ export default function BusinessArea() {
         tax_regime: profileData.tax_regime || "",
         default_profit_margin: profileData.default_profit_margin?.toString() || "",
       });
+      
+      await fetchMetrics(session.user.id);
       setIsLoading(false);
     };
 
@@ -339,25 +397,112 @@ export default function BusinessArea() {
                 </div>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid sm:grid-cols-2 gap-4">
                 <div className="p-4 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Nome do Negócio</p>
-                  <p className="font-semibold text-foreground">{profile?.business_name || "—"}</p>
+                  <p className="font-semibold text-foreground text-lg">{profile?.business_name || "—"}</p>
                 </div>
                 <div className="p-4 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Tipo</p>
-                  <p className="font-semibold text-foreground">{getBusinessTypeLabel(profile?.business_type)}</p>
+                  <p className="font-semibold text-foreground text-lg">{getBusinessTypeLabel(profile?.business_type)}</p>
                 </div>
                 <div className="p-4 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Regime Tributário</p>
-                  <p className="font-semibold text-foreground">{getTaxRegimeLabel(profile?.tax_regime)}</p>
+                  <p className="font-semibold text-foreground text-lg">{getTaxRegimeLabel(profile?.tax_regime)}</p>
                 </div>
                 <div className="p-4 bg-muted/50 rounded-lg">
                   <p className="text-sm text-muted-foreground mb-1">Margem Padrão</p>
-                  <p className="font-semibold text-foreground">
+                  <p className="font-semibold text-foreground text-lg">
                     {profile?.default_profit_margin ? `${profile.default_profit_margin}%` : "—"}
                   </p>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Business Metrics Dashboard */}
+          <div className="mt-6 bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl border border-primary/20 p-6">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-display font-semibold text-lg text-foreground">Resumo do Negócio</h3>
+                <p className="text-sm text-muted-foreground">Visão geral da saúde financeira</p>
+              </div>
+            </div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Insumos cadastrados */}
+              <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                    <Package className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">Insumos</span>
+                </div>
+                <p className="font-display text-3xl font-bold text-foreground">
+                  {metrics.ingredientsCount}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">cadastrados</p>
+              </div>
+
+              {/* Fichas técnicas */}
+              <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
+                    <FileSpreadsheet className="w-4 h-4 text-green-500" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">Fichas Técnicas</span>
+                </div>
+                <p className="font-display text-3xl font-bold text-foreground">
+                  {metrics.recipesCount}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">criadas</p>
+              </div>
+
+              {/* CMV Médio */}
+              <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                    <DollarSign className="w-4 h-4 text-amber-500" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">CMV Médio</span>
+                </div>
+                <p className="font-display text-3xl font-bold text-foreground">
+                  {metrics.averageCMV !== null ? `${metrics.averageCMV.toFixed(1)}%` : "—"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">custo sobre venda</p>
+              </div>
+
+              {/* Margem Média */}
+              <div className="bg-card rounded-xl p-4 shadow-sm border border-border">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+                    <TrendingUp className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <span className="text-sm text-muted-foreground">Margem Média</span>
+                </div>
+                <p className="font-display text-3xl font-bold text-success">
+                  {metrics.averageMargin !== null ? `${metrics.averageMargin.toFixed(1)}%` : "—"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">lucro planejado</p>
+              </div>
+            </div>
+
+            {metrics.recipesCount === 0 && (
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">
+                  Cadastre fichas técnicas para visualizar métricas de CMV e margem
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => navigate("/recipes")}
+                >
+                  Criar primeira ficha
+                </Button>
               </div>
             )}
           </div>
