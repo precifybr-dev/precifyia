@@ -66,6 +66,7 @@ export type Database = {
           created_at: string
           default_cmv: number | null
           id: string
+          monthly_revenue: number | null
           onboarding_step: string
           tax_regime: string | null
           updated_at: string
@@ -77,6 +78,7 @@ export type Database = {
           created_at?: string
           default_cmv?: number | null
           id?: string
+          monthly_revenue?: number | null
           onboarding_step?: string
           tax_regime?: string | null
           updated_at?: string
@@ -88,6 +90,7 @@ export type Database = {
           created_at?: string
           default_cmv?: number | null
           id?: string
+          monthly_revenue?: number | null
           onboarding_step?: string
           tax_regime?: string | null
           updated_at?: string

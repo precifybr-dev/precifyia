@@ -16,6 +16,7 @@ import {
   X,
   TrendingUp,
   DollarSign,
+  Wallet,
   BarChart3,
   Hash
 } from "lucide-react";
@@ -74,6 +75,7 @@ export default function BusinessArea() {
     business_type: "",
     tax_regime: "",
     default_cmv: "",
+    monthly_revenue: "",
   });
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -144,6 +146,7 @@ export default function BusinessArea() {
         business_type: profileData.business_type || "",
         tax_regime: profileData.tax_regime || "",
         default_cmv: profileData.default_cmv?.toString() || "",
+        monthly_revenue: profileData.monthly_revenue?.toString() || "",
       });
       
       await fetchMetrics(session.user.id);
@@ -174,6 +177,7 @@ export default function BusinessArea() {
         business_type: formData.business_type,
         tax_regime: formData.tax_regime,
         default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
+        monthly_revenue: formData.monthly_revenue ? parseFloat(formData.monthly_revenue) : null,
       })
       .eq("user_id", user.id);
 
@@ -186,6 +190,7 @@ export default function BusinessArea() {
         business_type: formData.business_type,
         tax_regime: formData.tax_regime,
         default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
+        monthly_revenue: formData.monthly_revenue ? parseFloat(formData.monthly_revenue) : null,
       });
       toast({ title: "Sucesso!", description: "Configurações atualizadas" });
       setIsEditing(false);
@@ -200,6 +205,7 @@ export default function BusinessArea() {
       business_type: profile.business_type || "",
       tax_regime: profile.tax_regime || "",
       default_cmv: profile.default_cmv?.toString() || "",
+      monthly_revenue: profile.monthly_revenue?.toString() || "",
     });
     setIsEditing(false);
   };
@@ -395,26 +401,69 @@ export default function BusinessArea() {
                   </div>
                   <p className="text-xs text-muted-foreground">Percentual do custo sobre o preço de venda</p>
                 </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label className="flex items-center gap-1">
+                    <Wallet className="w-3 h-3" />
+                    Faturamento Mensal Médio
+                  </Label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                    <Input 
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.monthly_revenue}
+                      onChange={(e) => setFormData({ ...formData, monthly_revenue: e.target.value })}
+                      placeholder="10000.00"
+                      className="pl-10"
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Base para cálculo de percentuais de custos fixos e variáveis (não interfere no preço de venda)
+                  </p>
+                </div>
               </div>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-4">
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Nome do Negócio</p>
-                  <p className="font-semibold text-foreground text-lg">{profile?.business_name || "—"}</p>
-                </div>
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Tipo</p>
-                  <p className="font-semibold text-foreground text-lg">{getBusinessTypeLabel(profile?.business_type)}</p>
-                </div>
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Regime Tributário</p>
-                  <p className="font-semibold text-foreground text-lg">{getTaxRegimeLabel(profile?.tax_regime)}</p>
-                </div>
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">CMV Padrão</p>
-                  <p className="font-semibold text-foreground text-lg">
-                    {profile?.default_cmv ? `${profile.default_cmv}%` : "—"}
+              <div className="space-y-4">
+                {/* Faturamento em destaque */}
+                <div className="p-5 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                      <Wallet className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Faturamento Mensal</p>
+                      <p className="font-display text-2xl font-bold text-foreground">
+                        {profile?.monthly_revenue 
+                          ? `R$ ${Number(profile.monthly_revenue).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                          : "Não informado"}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Base global para cálculo de percentuais de custos fixos e variáveis
                   </p>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Nome do Negócio</p>
+                    <p className="font-semibold text-foreground text-lg">{profile?.business_name || "—"}</p>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Tipo</p>
+                    <p className="font-semibold text-foreground text-lg">{getBusinessTypeLabel(profile?.business_type)}</p>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">Regime Tributário</p>
+                    <p className="font-semibold text-foreground text-lg">{getTaxRegimeLabel(profile?.tax_regime)}</p>
+                  </div>
+                  <div className="p-4 bg-muted/50 rounded-lg">
+                    <p className="text-sm text-muted-foreground mb-1">CMV Padrão</p>
+                    <p className="font-semibold text-foreground text-lg">
+                      {profile?.default_cmv ? `${profile.default_cmv}%` : "—"}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
