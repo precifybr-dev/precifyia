@@ -33,7 +33,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { IngredientSelector, type IngredientData } from "@/components/recipes/IngredientSelector";
-import { formatIngredientCode, calculateIngredientCost, convertToBaseUnit } from "@/lib/ingredient-utils";
+import { calculateIngredientCost, convertToBaseUnit } from "@/lib/ingredient-utils";
 
 interface RecipeIngredient {
   id: string;
@@ -416,7 +416,7 @@ export default function Recipes() {
                       />
                       {ing.ingredientCode && (
                         <p className="text-xs text-primary mt-1">
-                          {formatIngredientCode(ing.ingredientCode)} - {ing.name}
+                          {ing.ingredientCode} - {ing.name}
                         </p>
                       )}
                     </div>

@@ -1,8 +1,8 @@
 /**
- * Formata o código do insumo para exibição (ex: 1 -> #001)
+ * Formata o código do insumo para exibição (número simples, sem formatação)
  */
 export function formatIngredientCode(code: number): string {
-  return `#${code.toString().padStart(3, "0")}`;
+  return code.toString();
 }
 
 /**

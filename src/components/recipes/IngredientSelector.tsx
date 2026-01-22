@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Search, Package, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { formatIngredientCode, parseIngredientCode } from "@/lib/ingredient-utils";
+import { parseIngredientCode } from "@/lib/ingredient-utils";
 import { cn } from "@/lib/utils";
 
 export interface IngredientData {
@@ -156,8 +156,8 @@ export function IngredientSelector({
                     selectedId === ing.id && "bg-primary/10"
                   )}
                 >
-                  <span className="font-mono text-sm text-primary font-semibold min-w-[3rem]">
-                    {formatIngredientCode(ing.code)}
+                  <span className="font-mono text-sm text-primary font-semibold min-w-[2rem]">
+                    {ing.code}
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-foreground truncate">

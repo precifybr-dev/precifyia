@@ -73,6 +73,7 @@ export default function Ingredients() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
+    code: "",
     name: "",
     unit: "un",
     purchase_quantity: "",
@@ -164,21 +165,47 @@ export default function Ingredients() {
     navigate("/");
   };
 
+  const getNextCode = () => {
+    if (ingredients.length === 0) return 1;
+    const maxCode = Math.max(...ingredients.map(ing => ing.code));
+    return maxCode + 1;
+  };
+
   const resetForm = () => {
-    setFormData({ name: "", unit: "un", purchase_quantity: "", purchase_price: "", correction_factor: "1" });
+    setFormData({ code: "", name: "", unit: "un", purchase_quantity: "", purchase_price: "", correction_factor: "1" });
     setFcCalculator({ grossQuantity: "", netQuantity: "" });
     setShowForm(false);
     setEditingId(null);
   };
 
   const handleSave = async () => {
-    if (!formData.name || !formData.purchase_quantity || !formData.purchase_price) {
+    if (!formData.code || !formData.name || !formData.purchase_quantity || !formData.purchase_price) {
       toast({ title: "Erro", description: "Preencha os campos obrigatórios", variant: "destructive" });
+      return;
+    }
+
+    const codeNum = parseInt(formData.code);
+    if (isNaN(codeNum) || codeNum < 1) {
+      toast({ title: "Erro", description: "O número deve ser um inteiro maior que zero", variant: "destructive" });
+      return;
+    }
+
+    // Verificar duplicidade de código
+    const existingCode = ingredients.find(
+      ing => ing.code === codeNum && ing.id !== editingId
+    );
+    if (existingCode) {
+      toast({
+        title: "Número já existe",
+        description: `O insumo "${existingCode.name}" já usa o número ${codeNum}`,
+        variant: "destructive",
+      });
       return;
     }
 
     const ingredientData = {
       user_id: user.id,
+      code: codeNum,
       name: formData.name,
       unit: formData.unit,
       purchase_quantity: parseFloat(formData.purchase_quantity),
@@ -209,6 +236,7 @@ export default function Ingredients() {
 
   const handleEdit = (ingredient: Ingredient) => {
     setFormData({
+      code: ingredient.code.toString(),
       name: ingredient.name,
       unit: ingredient.unit,
       purchase_quantity: ingredient.purchase_quantity.toString(),
@@ -318,7 +346,10 @@ export default function Ingredients() {
                 <p className="text-sm text-muted-foreground">Gerencie os ingredientes das suas receitas</p>
               </div>
             </div>
-            <Button onClick={() => setShowForm(true)} className="gap-2">
+            <Button onClick={() => {
+              setFormData({ ...formData, code: getNextCode().toString() });
+              setShowForm(true);
+            }} className="gap-2">
               <Plus className="w-4 h-4" />
               Novo Insumo
             </Button>
@@ -334,7 +365,20 @@ export default function Ingredients() {
                   <X className="w-4 h-4" />
                 </Button>
               </div>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              <div className="grid sm:grid-cols-2 lg:grid-cols-7 gap-4">
+                <div>
+                  <Label>Nº *</Label>
+                  <Input 
+                    type="number" 
+                    min="1"
+                    value={formData.code} 
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, "");
+                      setFormData({ ...formData, code: value });
+                    }}
+                    placeholder="1" 
+                  />
+                </div>
                 <div className="lg:col-span-2">
                   <Label>Nome *</Label>
                   <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} placeholder="Ex: Farinha de Trigo" />
@@ -502,7 +546,7 @@ export default function Ingredients() {
                 ) : (
                   ingredients.map((ing) => (
                     <TableRow key={ing.id} className={editingId === ing.id ? "bg-primary/10 border-l-2 border-l-primary" : ""}>
-                      <TableCell className="font-mono text-primary font-semibold">{formatIngredientCode(ing.code)}</TableCell>
+                      <TableCell className="font-mono text-primary font-semibold">{ing.code}</TableCell>
                       <TableCell className="font-medium">{ing.name}</TableCell>
                       <TableCell>{ing.unit}</TableCell>
                       <TableCell className="text-right">{ing.purchase_quantity.toFixed(2)}</TableCell>
