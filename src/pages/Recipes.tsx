@@ -20,7 +20,8 @@ import {
   TrendingUp,
   Percent,
   Pencil,
-  AlertTriangle
+  AlertTriangle,
+  Building2 as Building2Icon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -103,6 +104,9 @@ export default function Recipes() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Business cost state
+  const [totalBusinessCostPercent, setTotalBusinessCostPercent] = useState<number | null>(null);
+  
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
@@ -116,6 +120,25 @@ export default function Recipes() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const fetchBusinessCosts = async (userId: string, monthlyRevenue: number | null) => {
+    if (!monthlyRevenue || monthlyRevenue <= 0) {
+      setTotalBusinessCostPercent(null);
+      return;
+    }
+
+    const [{ data: fixedData }, { data: variableData }] = await Promise.all([
+      supabase.from("fixed_expenses").select("monthly_value").eq("user_id", userId),
+      supabase.from("variable_expenses").select("monthly_value").eq("user_id", userId),
+    ]);
+
+    const fixedTotal = fixedData?.reduce((sum, e) => sum + Number(e.monthly_value), 0) || 0;
+    const variableTotal = variableData?.reduce((sum, e) => sum + Number(e.monthly_value), 0) || 0;
+    const totalExpenses = fixedTotal + variableTotal;
+    const percent = (totalExpenses / monthlyRevenue) * 100;
+    
+    setTotalBusinessCostPercent(percent);
+  };
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -140,7 +163,8 @@ export default function Recipes() {
       setProfile(profileData);
       await Promise.all([
         fetchIngredients(session.user.id),
-        fetchRecipes(session.user.id)
+        fetchRecipes(session.user.id),
+        fetchBusinessCosts(session.user.id, profileData.monthly_revenue ? Number(profileData.monthly_revenue) : null),
       ]);
       setIsLoading(false);
     };
@@ -378,6 +402,12 @@ export default function Recipes() {
     : costPerServing;
   const profit = suggestedPrice - costPerServing;
   const realMargin = suggestedPrice > 0 ? ((profit / suggestedPrice) * 100) : 0;
+
+  // Cálculo do Custo Fixo + Variável por item
+  // Valor R$ = Preço de Venda × Percentual Total
+  const businessCostPerItem = totalBusinessCostPercent !== null && suggestedPrice > 0
+    ? suggestedPrice * (totalBusinessCostPercent / 100)
+    : null;
 
   const handleSaveRecipe = async () => {
     if (!recipeName.trim()) {
@@ -800,6 +830,64 @@ export default function Recipes() {
                       {suggestedPrice > 0 ? ((costPerServing / suggestedPrice) * 100).toFixed(1) : 0}%
                     </p>
                   </div>
+                </div>
+              </div>
+
+              {/* Business Cost per Item Section */}
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 text-amber-600 mb-3">
+                  <Building2Icon className="w-5 h-5" />
+                  <span className="font-medium">Custo Fixo + Variável por Item</span>
+                </div>
+                
+                {totalBusinessCostPercent !== null ? (
+                  <div className="grid sm:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                        <Percent className="w-3 h-3" />
+                        Percentual do Negócio
+                      </p>
+                      <p className="font-display text-2xl font-bold text-amber-600">
+                        {totalBusinessCostPercent.toFixed(2)}%
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Custos fixos + variáveis sobre faturamento
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                        <DollarSign className="w-3 h-3" />
+                        Valor por Item Vendido
+                      </p>
+                      <p className="font-display text-2xl font-bold text-foreground">
+                        {businessCostPerItem !== null ? formatCurrency(businessCostPerItem) : "—"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Preço de venda × {totalBusinessCostPercent.toFixed(2)}%
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground">
+                      Configure o faturamento mensal e despesas na{" "}
+                      <button 
+                        onClick={() => navigate("/business")}
+                        className="text-primary hover:underline font-medium"
+                      >
+                        Área do Negócio
+                      </button>{" "}
+                      para visualizar este cálculo.
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Nota:</strong> Este percentual representa quanto do valor de cada item vendido será usado 
+                    para pagar as despesas fixas e variáveis do negócio. <strong>Não interfere no cálculo do preço de venda</strong>, 
+                    que é definido exclusivamente pelo CMV.
+                  </p>
                 </div>
               </div>
 
