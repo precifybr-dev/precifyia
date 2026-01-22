@@ -64,7 +64,7 @@ export type Database = {
           business_name: string | null
           business_type: string | null
           created_at: string
-          default_profit_margin: number | null
+          default_cmv: number | null
           id: string
           onboarding_step: string
           tax_regime: string | null
@@ -75,7 +75,7 @@ export type Database = {
           business_name?: string | null
           business_type?: string | null
           created_at?: string
-          default_profit_margin?: number | null
+          default_cmv?: number | null
           id?: string
           onboarding_step?: string
           tax_regime?: string | null
@@ -86,7 +86,7 @@ export type Database = {
           business_name?: string | null
           business_type?: string | null
           created_at?: string
-          default_profit_margin?: number | null
+          default_cmv?: number | null
           id?: string
           onboarding_step?: string
           tax_regime?: string | null
@@ -142,11 +142,11 @@ export type Database = {
       }
       recipes: {
         Row: {
+          cmv_target: number | null
           cost_per_serving: number
           created_at: string
           id: string
           name: string
-          profit_margin: number | null
           servings: number
           suggested_price: number
           total_cost: number
@@ -154,11 +154,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          cmv_target?: number | null
           cost_per_serving?: number
           created_at?: string
           id?: string
           name: string
-          profit_margin?: number | null
           servings?: number
           suggested_price?: number
           total_cost?: number
@@ -166,11 +166,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          cmv_target?: number | null
           cost_per_serving?: number
           created_at?: string
           id?: string
           name?: string
-          profit_margin?: number | null
           servings?: number
           suggested_price?: number
           total_cost?: number

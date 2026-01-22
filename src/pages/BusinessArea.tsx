@@ -73,7 +73,7 @@ export default function BusinessArea() {
     business_name: "",
     business_type: "",
     tax_regime: "",
-    default_profit_margin: "",
+    default_cmv: "",
   });
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -85,28 +85,28 @@ export default function BusinessArea() {
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId);
 
-    // Fetch recipes with margin and cost data
+    // Fetch recipes with cmv_target and cost data
     const { data: recipesData, count: recipesCount } = await supabase
       .from("recipes")
-      .select("profit_margin, cost_per_serving, suggested_price", { count: "exact" })
+      .select("cmv_target, cost_per_serving, suggested_price", { count: "exact" })
       .eq("user_id", userId);
 
     let averageMargin: number | null = null;
     let averageCMV: number | null = null;
 
     if (recipesData && recipesData.length > 0) {
-      // Calculate average margin
-      const margins = recipesData.filter(r => r.profit_margin !== null).map(r => r.profit_margin as number);
-      if (margins.length > 0) {
-        averageMargin = margins.reduce((a, b) => a + b, 0) / margins.length;
+      // Calculate average CMV target (what user configured)
+      const cmvTargets = recipesData.filter(r => r.cmv_target !== null).map(r => r.cmv_target as number);
+      if (cmvTargets.length > 0) {
+        averageCMV = cmvTargets.reduce((a, b) => a + b, 0) / cmvTargets.length;
       }
 
-      // Calculate average CMV (cost per serving / suggested price * 100)
-      const cmvRatios = recipesData
+      // Calculate average realized margin (profit / price * 100)
+      const margins = recipesData
         .filter(r => r.suggested_price > 0 && r.cost_per_serving > 0)
-        .map(r => (r.cost_per_serving / r.suggested_price) * 100);
-      if (cmvRatios.length > 0) {
-        averageCMV = cmvRatios.reduce((a, b) => a + b, 0) / cmvRatios.length;
+        .map(r => ((r.suggested_price - r.cost_per_serving) / r.suggested_price) * 100);
+      if (margins.length > 0) {
+        averageMargin = margins.reduce((a, b) => a + b, 0) / margins.length;
       }
     }
 
@@ -143,7 +143,7 @@ export default function BusinessArea() {
         business_name: profileData.business_name || "",
         business_type: profileData.business_type || "",
         tax_regime: profileData.tax_regime || "",
-        default_profit_margin: profileData.default_profit_margin?.toString() || "",
+        default_cmv: profileData.default_cmv?.toString() || "",
       });
       
       await fetchMetrics(session.user.id);
@@ -173,7 +173,7 @@ export default function BusinessArea() {
         business_name: formData.business_name,
         business_type: formData.business_type,
         tax_regime: formData.tax_regime,
-        default_profit_margin: formData.default_profit_margin ? parseFloat(formData.default_profit_margin) : null,
+        default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
       })
       .eq("user_id", user.id);
 
@@ -185,7 +185,7 @@ export default function BusinessArea() {
         business_name: formData.business_name,
         business_type: formData.business_type,
         tax_regime: formData.tax_regime,
-        default_profit_margin: formData.default_profit_margin ? parseFloat(formData.default_profit_margin) : null,
+        default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
       });
       toast({ title: "Sucesso!", description: "Configurações atualizadas" });
       setIsEditing(false);
@@ -199,7 +199,7 @@ export default function BusinessArea() {
       business_name: profile.business_name || "",
       business_type: profile.business_type || "",
       tax_regime: profile.tax_regime || "",
-      default_profit_margin: profile.default_profit_margin?.toString() || "",
+      default_cmv: profile.default_cmv?.toString() || "",
     });
     setIsEditing(false);
   };
@@ -379,21 +379,21 @@ export default function BusinessArea() {
                 <div className="space-y-2">
                   <Label className="flex items-center gap-1">
                     <Percent className="w-3 h-3" />
-                    Margem de Lucro Padrão
+                    CMV Desejado (Padrão)
                   </Label>
                   <div className="relative">
                     <Input 
                       type="number"
-                      min="0"
-                      max="100"
-                      value={formData.default_profit_margin}
-                      onChange={(e) => setFormData({ ...formData, default_profit_margin: e.target.value })}
+                      min="1"
+                      max="99"
+                      value={formData.default_cmv}
+                      onChange={(e) => setFormData({ ...formData, default_cmv: e.target.value })}
                       placeholder="30"
                       className="pr-8"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                   </div>
-                  <p className="text-xs text-muted-foreground">Será usada como padrão nas fichas técnicas</p>
+                  <p className="text-xs text-muted-foreground">Percentual do custo sobre o preço de venda</p>
                 </div>
               </div>
             ) : (
@@ -411,9 +411,9 @@ export default function BusinessArea() {
                   <p className="font-semibold text-foreground text-lg">{getTaxRegimeLabel(profile?.tax_regime)}</p>
                 </div>
                 <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm text-muted-foreground mb-1">Margem Padrão</p>
+                  <p className="text-sm text-muted-foreground mb-1">CMV Padrão</p>
                   <p className="font-semibold text-foreground text-lg">
-                    {profile?.default_profit_margin ? `${profile.default_profit_margin}%` : "—"}
+                    {profile?.default_cmv ? `${profile.default_cmv}%` : "—"}
                   </p>
                 </div>
               </div>

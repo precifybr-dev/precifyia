@@ -111,7 +111,7 @@ export default function Recipes() {
   const [recipeName, setRecipeName] = useState("");
   const [servings, setServings] = useState("1");
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([]);
-  const [profitMargin, setProfitMargin] = useState("");
+  const [cmvTarget, setCmvTarget] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   
   const navigate = useNavigate();
@@ -182,7 +182,7 @@ export default function Recipes() {
     setRecipeName("");
     setServings("1");
     setRecipeIngredients([createEmptyIngredient()]);
-    setProfitMargin(profile?.default_profit_margin?.toString() || "30");
+    setCmvTarget(profile?.default_cmv?.toString() || "30");
     setEditingId(null);
     setShowForm(false);
   };
@@ -191,7 +191,7 @@ export default function Recipes() {
     setRecipeName("");
     setServings("1");
     setRecipeIngredients([createEmptyIngredient()]);
-    setProfitMargin(profile?.default_profit_margin?.toString() || "30");
+    setCmvTarget(profile?.default_cmv?.toString() || "30");
     setEditingId(null);
     setShowForm(true);
   };
@@ -251,7 +251,7 @@ export default function Recipes() {
 
     setRecipeName(recipe.name);
     setServings(recipe.servings.toString());
-    setProfitMargin(recipe.profit_margin?.toString() || "30");
+    setCmvTarget(recipe.cmv_target?.toString() || "30");
     setRecipeIngredients(loadedIngredients.length > 0 ? loadedIngredients : [createEmptyIngredient()]);
     setEditingId(recipe.id);
     setShowForm(true);
@@ -371,11 +371,13 @@ export default function Recipes() {
   const totalCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
   const costPerServing = totalCost / (parseInt(servings) || 1);
   
-  const margin = parseFloat(profitMargin) || 0;
-  const suggestedPrice = margin < 100 && margin > 0 
-    ? costPerServing / (1 - margin / 100) 
+  // Nova fórmula: Preço = Custo / (CMV desejado / 100)
+  const cmv = parseFloat(cmvTarget) || 30;
+  const suggestedPrice = cmv > 0 && cmv < 100 
+    ? costPerServing / (cmv / 100) 
     : costPerServing;
   const profit = suggestedPrice - costPerServing;
+  const realMargin = suggestedPrice > 0 ? ((profit / suggestedPrice) * 100) : 0;
 
   const handleSaveRecipe = async () => {
     if (!recipeName.trim()) {
@@ -396,7 +398,7 @@ export default function Recipes() {
         user_id: user.id,
         name: recipeName,
         servings: parseInt(servings) || 1,
-        profit_margin: parseFloat(profitMargin) || 30,
+        cmv_target: parseFloat(cmvTarget) || 30,
         total_cost: parseFloat(totalCost.toFixed(2)),
         cost_per_serving: parseFloat(costPerServing.toFixed(2)),
         suggested_price: parseFloat(suggestedPrice.toFixed(2)),
@@ -747,27 +749,27 @@ export default function Recipes() {
                 </div>
                 
                 <div className="grid sm:grid-cols-4 gap-4 items-end">
-                  {/* Margin input */}
+                  {/* CMV input */}
                   <div className="space-y-2">
                     <Label className="text-sm flex items-center gap-1">
                       <Percent className="w-3 h-3" />
-                      Margem de Lucro
+                      CMV Desejado
                     </Label>
                     <div className="relative">
                       <Input
                         type="number"
-                        min="0"
+                        min="1"
                         max="99"
                         step="1"
-                        value={profitMargin}
-                        onChange={(e) => setProfitMargin(e.target.value)}
+                        value={cmvTarget}
+                        onChange={(e) => setCmvTarget(e.target.value)}
                         className="pr-8"
                       />
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                     </div>
-                    {profile?.default_profit_margin && (
+                    {profile?.default_cmv && (
                       <p className="text-xs text-muted-foreground">
-                        Padrão do negócio: {profile.default_profit_margin}%
+                        Padrão do negócio: {profile.default_cmv}%
                       </p>
                     )}
                   </div>
@@ -833,7 +835,7 @@ export default function Recipes() {
                     <TableHead className="text-center">Porções</TableHead>
                     <TableHead className="text-right">Custo Total</TableHead>
                     <TableHead className="text-right">CMV/Porção</TableHead>
-                    <TableHead className="text-right">Margem</TableHead>
+                    <TableHead className="text-right">CMV</TableHead>
                     <TableHead className="text-right">Preço Sugerido</TableHead>
                     <TableHead className="w-24">Ações</TableHead>
                   </TableRow>
@@ -847,7 +849,7 @@ export default function Recipes() {
                       <TableCell className="text-right font-semibold text-primary">
                         {formatCurrency(recipe.cost_per_serving)}
                       </TableCell>
-                      <TableCell className="text-right">{recipe.profit_margin}%</TableCell>
+                      <TableCell className="text-right">{recipe.cmv_target}%</TableCell>
                       <TableCell className="text-right font-semibold text-success">
                         {formatCurrency(recipe.suggested_price)}
                       </TableCell>

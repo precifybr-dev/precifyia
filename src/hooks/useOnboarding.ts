@@ -12,7 +12,7 @@ export interface Profile {
   business_name: string | null;
   business_type: string | null;
   tax_regime: string | null;
-  default_profit_margin: number | null;
+  default_cmv: number | null;
   created_at: string;
   updated_at: string;
 }
