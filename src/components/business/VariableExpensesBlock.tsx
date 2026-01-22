@@ -14,9 +14,10 @@ interface VariableExpense {
 interface VariableExpensesBlockProps {
   userId: string;
   monthlyRevenue: number | null;
+  onTotalChange?: (total: number) => void;
 }
 
-export default function VariableExpensesBlock({ userId, monthlyRevenue }: VariableExpensesBlockProps) {
+export default function VariableExpensesBlock({ userId, monthlyRevenue, onTotalChange }: VariableExpensesBlockProps) {
   const [expenses, setExpenses] = useState<VariableExpense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newExpense, setNewExpense] = useState({ name: "", value: "" });
@@ -35,7 +36,10 @@ export default function VariableExpensesBlock({ userId, monthlyRevenue }: Variab
     if (error) {
       toast({ title: "Erro", description: "Não foi possível carregar as despesas variáveis", variant: "destructive" });
     } else {
-      setExpenses(data || []);
+      const expensesList = data || [];
+      setExpenses(expensesList);
+      const total = expensesList.reduce((sum, exp) => sum + Number(exp.monthly_value), 0);
+      onTotalChange?.(total);
     }
     setIsLoading(false);
   };
@@ -78,9 +82,12 @@ export default function VariableExpensesBlock({ userId, monthlyRevenue }: Variab
     if (error) {
       toast({ title: "Erro", description: "Não foi possível adicionar a despesa", variant: "destructive" });
     } else {
-      setExpenses([...expenses, data]);
+      const newExpenses = [...expenses, data];
+      setExpenses(newExpenses);
       setNewExpense({ name: "", value: "" });
       toast({ title: "Sucesso!", description: "Despesa variável adicionada" });
+      const total = newExpenses.reduce((sum, exp) => sum + Number(exp.monthly_value), 0);
+      onTotalChange?.(total);
     }
 
     setIsAdding(false);
@@ -105,11 +112,14 @@ export default function VariableExpensesBlock({ userId, monthlyRevenue }: Variab
     if (error) {
       toast({ title: "Erro", description: "Não foi possível atualizar a despesa", variant: "destructive" });
     } else {
-      setExpenses(expenses.map(exp => 
+      const updatedExpenses = expenses.map(exp => 
         exp.id === id ? { ...exp, name: editValue.name.trim(), monthly_value: value } : exp
-      ));
+      );
+      setExpenses(updatedExpenses);
       setEditingId(null);
       toast({ title: "Sucesso!", description: "Despesa atualizada" });
+      const total = updatedExpenses.reduce((sum, exp) => sum + Number(exp.monthly_value), 0);
+      onTotalChange?.(total);
     }
   };
 
@@ -122,8 +132,11 @@ export default function VariableExpensesBlock({ userId, monthlyRevenue }: Variab
     if (error) {
       toast({ title: "Erro", description: "Não foi possível remover a despesa", variant: "destructive" });
     } else {
-      setExpenses(expenses.filter(exp => exp.id !== id));
+      const filteredExpenses = expenses.filter(exp => exp.id !== id);
+      setExpenses(filteredExpenses);
       toast({ title: "Sucesso!", description: "Despesa removida" });
+      const total = filteredExpenses.reduce((sum, exp) => sum + Number(exp.monthly_value), 0);
+      onTotalChange?.(total);
     }
   };
 
