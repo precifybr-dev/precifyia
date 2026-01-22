@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import FixedExpensesBlock from "@/components/business/FixedExpensesBlock";
 
 interface BusinessMetrics {
   ingredientsCount: number;
@@ -554,6 +555,14 @@ export default function BusinessArea() {
                 </Button>
               </div>
             )}
+          </div>
+
+          {/* Fixed Expenses Block */}
+          <div className="mt-6">
+            <FixedExpensesBlock 
+              userId={user?.id} 
+              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null} 
+            />
           </div>
 
           {/* Quick Actions */}
