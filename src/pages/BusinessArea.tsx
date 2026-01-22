@@ -34,6 +34,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import FixedExpensesBlock from "@/components/business/FixedExpensesBlock";
 import VariableExpensesBlock from "@/components/business/VariableExpensesBlock";
+import TotalBusinessCostBlock from "@/components/business/TotalBusinessCostBlock";
 
 interface BusinessMetrics {
   ingredientsCount: number;
@@ -72,6 +73,8 @@ export default function BusinessArea() {
     averageMargin: null,
     averageCMV: null,
   });
+  const [fixedExpensesTotal, setFixedExpensesTotal] = useState(0);
+  const [variableExpensesTotal, setVariableExpensesTotal] = useState(0);
   const [formData, setFormData] = useState({
     business_name: "",
     business_type: "",
@@ -558,15 +561,26 @@ export default function BusinessArea() {
             )}
           </div>
 
+          {/* Total Business Cost Block */}
+          <div className="mt-6">
+            <TotalBusinessCostBlock
+              fixedExpensesTotal={fixedExpensesTotal}
+              variableExpensesTotal={variableExpensesTotal}
+              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
+            />
+          </div>
+
           {/* Expenses Blocks */}
           <div className="mt-6 grid lg:grid-cols-2 gap-6">
             <FixedExpensesBlock 
               userId={user?.id} 
-              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null} 
+              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
+              onTotalChange={setFixedExpensesTotal}
             />
             <VariableExpensesBlock 
               userId={user?.id} 
-              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null} 
+              monthlyRevenue={profile?.monthly_revenue ? Number(profile.monthly_revenue) : null}
+              onTotalChange={setVariableExpensesTotal}
             />
           </div>
 
