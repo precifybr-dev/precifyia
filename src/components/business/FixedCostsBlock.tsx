@@ -164,8 +164,8 @@ export default function FixedCostsBlock({ userId, onTotalChange }: FixedCostsBlo
             <Package className="w-5 h-5 text-blue-500" />
           </div>
           <div>
-            <h3 className="font-display font-semibold text-lg text-foreground">Custos Fixos</h3>
-            <p className="text-sm text-muted-foreground">Custos de produção fixos por item</p>
+            <h3 className="font-display font-semibold text-lg text-foreground">Custos Fixos de Produção</h3>
+            <p className="text-sm text-muted-foreground">Gastos de produção que não variam por volume de venda</p>
           </div>
         </div>
       </div>
@@ -250,7 +250,7 @@ export default function FixedCostsBlock({ userId, onTotalChange }: FixedCostsBlo
       {/* Add new cost */}
       <div className="flex items-center gap-2 pt-4 border-t border-border">
         <Input
-          placeholder="Ex: Embalagem, Etiqueta, Sacola"
+          placeholder="Ex: Depreciação de equipamentos, Custo fixo unitário"
           value={newCost.name}
           onChange={(e) => setNewCost({ ...newCost, name: e.target.value })}
           className="flex-1"

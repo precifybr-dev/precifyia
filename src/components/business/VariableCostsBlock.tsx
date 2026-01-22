@@ -164,8 +164,8 @@ export default function VariableCostsBlock({ userId, onTotalChange }: VariableCo
             <Layers className="w-5 h-5 text-cyan-500" />
           </div>
           <div>
-            <h3 className="font-display font-semibold text-lg text-foreground">Custos Variáveis</h3>
-            <p className="text-sm text-muted-foreground">Custos de produção variáveis por item</p>
+            <h3 className="font-display font-semibold text-lg text-foreground">Custos Variáveis de Produção</h3>
+            <p className="text-sm text-muted-foreground">Custos diretos que variam conforme quantidade produzida</p>
           </div>
         </div>
       </div>
@@ -250,7 +250,7 @@ export default function VariableCostsBlock({ userId, onTotalChange }: VariableCo
       {/* Add new cost */}
       <div className="flex items-center gap-2 pt-4 border-t border-border">
         <Input
-          placeholder="Ex: Taxa por Item, Perda Estimada, Frete Unitário"
+          placeholder="Ex: Embalagem, Perda estimada, Taxa por item"
           value={newCost.name}
           onChange={(e) => setNewCost({ ...newCost, name: e.target.value })}
           className="flex-1"
