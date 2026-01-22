@@ -104,8 +104,10 @@ export default function Recipes() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // Business cost state
+  // Business cost state (expenses as % of revenue)
   const [totalBusinessCostPercent, setTotalBusinessCostPercent] = useState<number | null>(null);
+  // Production costs per item (fixed + variable)
+  const [productionCostsPerItem, setProductionCostsPerItem] = useState<number>(0);
   
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -122,6 +124,17 @@ export default function Recipes() {
   const { toast } = useToast();
 
   const fetchBusinessCosts = async (userId: string, monthlyRevenue: number | null) => {
+    // Fetch production costs (per item)
+    const [{ data: fixedCostsData }, { data: variableCostsData }] = await Promise.all([
+      supabase.from("fixed_costs").select("value_per_item").eq("user_id", userId),
+      supabase.from("variable_costs").select("value_per_item").eq("user_id", userId),
+    ]);
+
+    const fixedCostsTotal = fixedCostsData?.reduce((sum, c) => sum + Number(c.value_per_item), 0) || 0;
+    const variableCostsTotal = variableCostsData?.reduce((sum, c) => sum + Number(c.value_per_item), 0) || 0;
+    setProductionCostsPerItem(fixedCostsTotal + variableCostsTotal);
+
+    // Fetch business expenses (% of revenue)
     if (!monthlyRevenue || monthlyRevenue <= 0) {
       setTotalBusinessCostPercent(null);
       return;
@@ -392,32 +405,42 @@ export default function Recipes() {
     setRecipeIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const totalCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
-  const costPerServing = totalCost / (parseInt(servings) || 1);
+  // Custo dos insumos da receita
+  const ingredientsCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
+  const ingredientsCostPerServing = ingredientsCost / (parseInt(servings) || 1);
   
-  // Nova fórmula: Preço = Custo / (CMV desejado / 100)
+  // Custo Total = Insumos + Custos de Produção (por item)
+  // Os custos de produção são aplicados por porção
+  const totalCostPerServing = ingredientsCostPerServing + productionCostsPerItem;
+  
+  // Nova fórmula: Preço = Custo Total / (CMV desejado / 100)
   const cmv = parseFloat(cmvTarget) || 30;
   const suggestedPrice = cmv > 0 && cmv < 100 
-    ? costPerServing / (cmv / 100) 
-    : costPerServing;
-  const profit = suggestedPrice - costPerServing;
-  const realMargin = suggestedPrice > 0 ? ((profit / suggestedPrice) * 100) : 0;
+    ? totalCostPerServing / (cmv / 100) 
+    : totalCostPerServing;
+  
+  // Lucro bruto (sem considerar despesas do negócio)
+  const profit = suggestedPrice - totalCostPerServing;
+  const grossMarginPercent = suggestedPrice > 0 ? ((profit / suggestedPrice) * 100) : 0;
 
-  // Cálculo do Custo Fixo + Variável por item
-  // Valor R$ = Preço de Venda × Percentual Total
-  const businessCostPerItem = totalBusinessCostPercent !== null && suggestedPrice > 0
+  // Impacto das Despesas do Negócio por item
+  // Valor R$ = Preço de Venda × Percentual de Despesas
+  const businessExpensesPerItem = totalBusinessCostPercent !== null && suggestedPrice > 0
     ? suggestedPrice * (totalBusinessCostPercent / 100)
     : null;
 
-  // Cálculo da Margem Real do Produto
-  // Margem R$ = Preço de Venda − Custo com perda − Valor do Custo Fixo + Variável
+  // Cálculo da Margem Real do Produto (Margem Líquida)
+  // Margem R$ = Preço de Venda − Custo Total − Despesas do Negócio
   // Margem % = Margem R$ ÷ Preço de Venda
-  const realMarginValue = businessCostPerItem !== null && suggestedPrice > 0
-    ? suggestedPrice - costPerServing - businessCostPerItem
+  const realMarginValue = businessExpensesPerItem !== null && suggestedPrice > 0
+    ? suggestedPrice - totalCostPerServing - businessExpensesPerItem
     : null;
   const realMarginPercent = realMarginValue !== null && suggestedPrice > 0
     ? (realMarginValue / suggestedPrice) * 100
     : null;
+  
+  // Para compatibilidade com salvamento (total_cost usa custo de ingredientes)
+  const totalCost = ingredientsCost;
 
   const handleSaveRecipe = async () => {
     if (!recipeName.trim()) {
@@ -439,8 +462,8 @@ export default function Recipes() {
         name: recipeName,
         servings: parseInt(servings) || 1,
         cmv_target: parseFloat(cmvTarget) || 30,
-        total_cost: parseFloat(totalCost.toFixed(2)),
-        cost_per_serving: parseFloat(costPerServing.toFixed(2)),
+        total_cost: parseFloat(ingredientsCost.toFixed(2)),
+        cost_per_serving: parseFloat(totalCostPerServing.toFixed(2)),
         suggested_price: parseFloat(suggestedPrice.toFixed(2)),
       };
 
@@ -775,8 +798,13 @@ export default function Recipes() {
                   <div>
                     <p className="text-sm text-muted-foreground">Custo por Porção (CMV)</p>
                     <p className="font-display text-2xl font-bold text-primary">
-                      {formatCurrency(costPerServing)}
+                      {formatCurrency(totalCostPerServing)}
                     </p>
+                    {productionCostsPerItem > 0 && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Insumos: {formatCurrency(ingredientsCostPerServing)} + Produção: {formatCurrency(productionCostsPerItem)}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -837,7 +865,7 @@ export default function Recipes() {
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">CMV %</p>
                     <p className="font-display text-xl font-bold text-muted-foreground">
-                      {suggestedPrice > 0 ? ((costPerServing / suggestedPrice) * 100).toFixed(1) : 0}%
+                      {suggestedPrice > 0 ? ((totalCostPerServing / suggestedPrice) * 100).toFixed(1) : 0}%
                     </p>
                   </div>
                 </div>
@@ -870,7 +898,7 @@ export default function Recipes() {
                         Valor por Item Vendido
                       </p>
                       <p className="font-display text-2xl font-bold text-foreground">
-                        {businessCostPerItem !== null ? formatCurrency(businessCostPerItem) : "—"}
+                        {businessExpensesPerItem !== null ? formatCurrency(businessExpensesPerItem) : "—"}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         Preço de venda × {totalBusinessCostPercent.toFixed(2)}%
