@@ -225,8 +225,15 @@ export default function Recipes() {
     }
 
     const loadedIngredients: RecipeIngredient[] = data.map((ri: any) => {
+      // SEMPRE usar unit_price atual do insumo (já inclui F.C aplicado no banco)
       const unitPrice = ri.ingredients?.unit_price ?? 
         ((ri.ingredients?.purchase_price ?? 0) / (ri.ingredients?.purchase_quantity ?? 1));
+      
+      const qty = parseFloat(ri.quantity) || 0;
+      // Recalcular custo com base no preço ATUAL do insumo, não o valor salvo
+      const recalculatedCost = qty > 0 
+        ? calculateIngredientCost(unitPrice, qty, ri.unit, ri.ingredients?.unit || "kg")
+        : 0;
       
       return {
         id: ri.id,
@@ -237,7 +244,7 @@ export default function Recipes() {
         unit: ri.unit,
         unitPrice: unitPrice,
         baseUnit: ri.ingredients?.unit || "kg",
-        cost: ri.cost,
+        cost: recalculatedCost, // Usar custo recalculado, não o armazenado
         color: ri.ingredients?.color || null,
       };
     });
@@ -625,10 +632,17 @@ export default function Recipes() {
                         placeholder="Digite 1 ou nome..."
                       />
                       {ing.ingredientCode && (
-                        <p className="text-xs text-primary mt-1 flex items-center gap-1.5">
-                          <ColorDot color={ing.color} size="sm" />
-                          {ing.ingredientCode} - {ing.name}
-                        </p>
+                        <div className="flex items-center justify-between mt-1">
+                          <p className="text-xs text-primary flex items-center gap-1.5">
+                            <ColorDot color={ing.color} size="sm" />
+                            <span className="font-mono font-semibold">{ing.ingredientCode}</span>
+                            <span>-</span>
+                            <span>{ing.name}</span>
+                          </p>
+                          <span className="text-xs text-muted-foreground">
+                            {formatCurrency(ing.unitPrice)}/{ing.baseUnit}
+                          </span>
+                        </div>
                       )}
                     </div>
 
