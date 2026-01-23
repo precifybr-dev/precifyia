@@ -70,13 +70,22 @@ export function HeroSection() {
             </div>
 
             {/* CTA */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Link to="/register">
-                <Button size="lg" className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 w-full sm:w-auto group text-base px-8">
-                  Descubra se você lucra no iFood
-                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                </Button>
-              </Link>
+            <div className="flex flex-col gap-4 justify-center lg:justify-start">
+              <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
+                <Link to="/register">
+                  <Button size="lg" className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 w-full sm:w-auto group text-base px-8">
+                    Descubra se você lucra no iFood
+                    <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                  </Button>
+                </Link>
+              </div>
+              <a 
+                href="#como-funciona" 
+                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors group justify-center lg:justify-start"
+              >
+                Veja como calcular dois preços automaticamente
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+              </a>
             </div>
 
             {/* Trust indicators */}
