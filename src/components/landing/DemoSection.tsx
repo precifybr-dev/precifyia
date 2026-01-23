@@ -56,7 +56,7 @@ export function DemoSection() {
             Veja na prática
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Preencha com os dados do seu produto e veja instantaneamente os dois preços
+            Preencha com os dados do seu produto e veja o preço certo para cada canal de venda
           </p>
         </div>
 
@@ -183,7 +183,7 @@ export function DemoSection() {
                   <div className="grid grid-cols-2 gap-4">
                     {/* Direct Sale */}
                     <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
-                      <div className="text-xs text-muted-foreground mb-1">Venda Direta</div>
+                      <div className="text-xs text-muted-foreground mb-1">Balcão / Delivery Próprio</div>
                       <p className="text-2xl font-bold text-primary">
                         R$ {formatCurrency(salePrice)}
                       </p>
@@ -192,13 +192,13 @@ export function DemoSection() {
                         Lucro: R$ {formatCurrency(calculations.profitDirect)}
                       </div>
                       <p className="text-[10px] text-muted-foreground mt-2 leading-tight">
-                        Preço para balcão, WhatsApp ou delivery próprio
+                        Sem taxas de intermediários
                       </p>
                     </div>
 
                     {/* Marketplace */}
                     <div className="p-4 rounded-xl bg-success/5 border border-success/20">
-                      <div className="text-xs text-muted-foreground mb-1">Preço Marketplace</div>
+                      <div className="text-xs text-muted-foreground mb-1">Marketplace (iFood, Rappi...)</div>
                       <p className="text-2xl font-bold text-success">
                         R$ {formatCurrency(calculations.marketplacePrice)}
                       </p>
@@ -207,7 +207,7 @@ export function DemoSection() {
                         Mesma margem líquida
                       </div>
                       <p className="text-[10px] text-muted-foreground mt-2 leading-tight">
-                        Maior porque inclui taxas e comissões do app
+                        Ajustado para cobrir taxas do app
                       </p>
                     </div>
                   </div>
@@ -228,11 +228,11 @@ export function DemoSection() {
           {/* Supporting text */}
           <div className="text-center mt-8">
             <p className="text-xl font-semibold text-foreground">
-              O mesmo produto.{" "}
-              <span className="text-primary">Dois preços corretos.</span>
+              Um produto.{" "}
+              <span className="text-primary">Um preço para cada canal.</span>
             </p>
             <p className="text-muted-foreground mt-2 text-sm">
-              Cada canal tem suas taxas. O sistema faz a conta por você.
+              Balcão, delivery próprio ou marketplace — cada um com a margem que você definiu.
             </p>
           </div>
         </div>

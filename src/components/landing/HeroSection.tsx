@@ -35,7 +35,7 @@ export function HeroSection() {
 
             {/* Subheadline */}
             <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
-              Calcule o preço certo dos seus produtos considerando custos, taxas do iFood, cupons e despesas do negócio. Pare de adivinhar e comece a lucrar de verdade.
+              Calcule o preço certo dos seus produtos considerando custos, despesas e taxas de cada canal de venda. Pare de adivinhar e comece a lucrar de verdade.
             </p>
 
             {/* Benefits */}
@@ -50,7 +50,7 @@ export function HeroSection() {
                 <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
                   <CheckCircle className="w-4 h-4 text-success" />
                 </div>
-                <span className="text-base">Veja o impacto real das taxas e cupons do iFood</span>
+                <span className="text-base">Veja o impacto real das taxas de cada canal (iFood, Rappi, etc.)</span>
               </div>
               <div className="flex items-center gap-3 text-foreground">
                 <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
@@ -63,8 +63,8 @@ export function HeroSection() {
                   <CheckCircle className="w-4 h-4 text-success" />
                 </div>
                 <div>
-                  <span className="text-base">Tenha um preço para venda direta e outro para iFood — sem refazer cálculos</span>
-                  <p className="text-sm text-muted-foreground mt-0.5">O custo é o mesmo. O sistema ajusta o preço conforme o canal.</p>
+                  <span className="text-base">Tenha um preço para cada canal — balcão, delivery próprio ou marketplace</span>
+                  <p className="text-sm text-muted-foreground mt-0.5">O custo é o mesmo. O sistema ajusta o preço conforme as taxas de cada canal.</p>
                 </div>
               </div>
             </div>
@@ -82,7 +82,7 @@ export function HeroSection() {
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
                 <Link to="/register">
                   <Button size="lg" className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 w-full sm:w-auto group text-base px-8">
-                    Descubra se você lucra no iFood
+                    Calcular meus preços grátis
                     <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
@@ -166,11 +166,11 @@ export function HeroSection() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-primary/10 rounded-lg p-2 text-center">
-                        <p className="text-[10px] text-primary font-medium uppercase tracking-wide">Venda Direta</p>
+                        <p className="text-[10px] text-primary font-medium uppercase tracking-wide">Balcão / Delivery</p>
                         <p className="text-sm font-bold text-primary">R$ 32,90</p>
                       </div>
                       <div className="bg-success/10 rounded-lg p-2 text-center">
-                        <p className="text-[10px] text-success font-medium uppercase tracking-wide">Preço iFood</p>
+                        <p className="text-[10px] text-success font-medium uppercase tracking-wide">Marketplace</p>
                         <p className="text-sm font-bold text-success">R$ 45,07</p>
                       </div>
                     </div>
@@ -187,11 +187,11 @@ export function HeroSection() {
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-primary/10 rounded-lg p-2 text-center">
-                        <p className="text-[10px] text-primary font-medium uppercase tracking-wide">Venda Direta</p>
+                        <p className="text-[10px] text-primary font-medium uppercase tracking-wide">Balcão / Delivery</p>
                         <p className="text-sm font-bold text-primary">R$ 54,90</p>
                       </div>
                       <div className="bg-success/10 rounded-lg p-2 text-center">
-                        <p className="text-[10px] text-success font-medium uppercase tracking-wide">Preço iFood</p>
+                        <p className="text-[10px] text-success font-medium uppercase tracking-wide">Marketplace</p>
                         <p className="text-sm font-bold text-success">R$ 75,21</p>
                       </div>
                     </div>
