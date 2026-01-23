@@ -17,7 +17,8 @@ import {
   X,
   HelpCircle,
   Calculator,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatIngredientCode } from "@/lib/ingredient-utils";
 import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
+import { IfoodImportModal } from "@/components/ifood-import/IfoodImportModal";
+import { useIfoodImport } from "@/hooks/useIfoodImport";
 
 type Ingredient = {
   id: string;
@@ -100,9 +103,16 @@ export default function Ingredients() {
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ingredientToDelete, setIngredientToDelete] = useState<Ingredient | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
+  
+  // Hook for iFood import functionality
+  const { userPlan, canImport, remainingUsage, checkUsage } = useIfoodImport({
+    userId: user?.id || null,
+    importType: "ingredients",
+  });
 
   // Calcula o F.C automaticamente quando os valores mudam
   const calculateFC = () => {
@@ -295,6 +305,33 @@ export default function Ingredients() {
     setIngredientToDelete(null);
   };
 
+  // Handle iFood import
+  const handleIfoodImport = async (items: { name: string; category?: string }[]) => {
+    if (!user?.id || items.length === 0) return;
+
+    const startCode = getNextCode();
+    const newIngredients = items.map((item, index) => ({
+      user_id: user.id,
+      code: startCode + index,
+      name: item.name,
+      unit: "un",
+      purchase_quantity: 1,
+      purchase_price: 0,
+      correction_factor: 1,
+      color: null,
+    }));
+
+    const { error } = await supabase.from("ingredients").insert(newIngredients);
+    if (error) {
+      throw error;
+    }
+    
+    toast({
+      title: "Importação concluída!",
+      description: `${items.length} insumos foram criados. Complete as informações de cada um.`,
+    });
+  };
+
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
     { icon: Building2, label: "Área do Negócio", path: "/business" },
@@ -374,14 +411,33 @@ export default function Ingredients() {
                 <p className="text-sm text-muted-foreground">Gerencie os ingredientes das suas receitas</p>
               </div>
             </div>
-            <Button onClick={() => {
-              setFormData({ ...formData, code: getNextCode().toString() });
-              setShowForm(true);
-            }} className="gap-2">
-              <Plus className="w-4 h-4" />
-              Novo Insumo
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setImportModalOpen(true)}
+                className="gap-2 text-muted-foreground"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">Importar do iFood (IA)</span>
+                <span className="sm:hidden">iFood</span>
+              </Button>
+              <Button onClick={() => {
+                setFormData({ ...formData, code: getNextCode().toString() });
+                setShowForm(true);
+              }} className="gap-2">
+                <Plus className="w-4 h-4" />
+                Novo Insumo
+              </Button>
+            </div>
           </div>
+          
+          {/* AI Import microcopy */}
+          {canImport && userPlan !== "pro" && (
+            <p className="text-xs text-muted-foreground mt-2 text-right">
+              {remainingUsage} importação{remainingUsage !== 1 ? "ções" : ""} restante{remainingUsage !== 1 ? "s" : ""} este mês
+            </p>
+          )}
         </header>
 
         <div className="p-6">
@@ -664,6 +720,20 @@ export default function Ingredients() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* iFood Import Modal */}
+      <IfoodImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        importType="ingredients"
+        userId={user?.id || ""}
+        userPlan={userPlan}
+        onImportComplete={handleIfoodImport}
+        onRefreshData={async () => {
+          await fetchIngredients(user.id);
+          await checkUsage();
+        }}
+      />
     </div>
   );
 }

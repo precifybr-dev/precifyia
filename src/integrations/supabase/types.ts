@@ -68,6 +68,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ifood_import_usage: {
+        Row: {
+          created_at: string
+          id: string
+          import_type: string
+          imported_count: number
+          store_name: string | null
+          store_url: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          import_type: string
+          imported_count?: number
+          store_name?: string | null
+          store_url?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          import_type?: string
+          imported_count?: number
+          store_name?: string | null
+          store_url?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ingredients: {
         Row: {
           code: number
@@ -183,6 +213,7 @@ export type Database = {
           tax_regime: string | null
           updated_at: string
           user_id: string
+          user_plan: string | null
         }
         Insert: {
           business_name?: string | null
@@ -209,6 +240,7 @@ export type Database = {
           tax_regime?: string | null
           updated_at?: string
           user_id: string
+          user_plan?: string | null
         }
         Update: {
           business_name?: string | null
@@ -235,6 +267,7 @@ export type Database = {
           tax_regime?: string | null
           updated_at?: string
           user_id?: string
+          user_plan?: string | null
         }
         Relationships: []
       }
