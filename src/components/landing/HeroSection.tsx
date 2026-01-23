@@ -1,4 +1,4 @@
-import { ArrowRight, Play, TrendingUp, DollarSign, PieChart, Calculator, CheckCircle } from "lucide-react";
+import { ArrowRight, TrendingUp, DollarSign, PieChart, Calculator, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
@@ -17,53 +17,63 @@ export function HeroSection() {
           {/* Content */}
           <div className="text-center lg:text-left animate-slide-up">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent text-accent-foreground text-xs font-medium mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
-              Novo: Fichas técnicas com IA
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
+              Você pode estar vendendo no prejuízo
             </div>
 
             {/* Headline */}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight mb-6">
-              Precificação inteligente,{" "}
-              <span className="text-gradient">sem planilhas.</span>
+              Saiba exatamente quanto{" "}
+              <span className="text-gradient">lucra em cada venda.</span>
             </h1>
 
             {/* Subheadline */}
             <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
-              Calcule custos, margens e preço de venda em minutos. Tudo online, simples e feito para pequenos negócios.
+              Calcule o preço certo dos seus produtos considerando custos, taxas do iFood, cupons e despesas do negócio. Pare de adivinhar e comece a lucrar de verdade.
             </p>
 
-            {/* CTAs */}
+            {/* Benefits */}
+            <div className="flex flex-col gap-3 mb-8 max-w-xl mx-auto lg:mx-0">
+              <div className="flex items-center gap-3 text-foreground">
+                <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                </div>
+                <span className="text-base">Descubra quanto realmente sobra no seu bolso</span>
+              </div>
+              <div className="flex items-center gap-3 text-foreground">
+                <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                </div>
+                <span className="text-base">Veja o impacto real das taxas e cupons do iFood</span>
+              </div>
+              <div className="flex items-center gap-3 text-foreground">
+                <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                </div>
+                <span className="text-base">Precifique com segurança e durma tranquilo</span>
+              </div>
+            </div>
+
+            {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
               <Link to="/register">
-                <Button size="lg" className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 w-full sm:w-auto group">
-                  Começar grátis
+                <Button size="lg" className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 w-full sm:w-auto group text-base px-8">
+                  Descubra se você lucra no iFood
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>
-              <a 
-                href="#funcionalidades"
-                onClick={(e) => {
-                  e.preventDefault();
-                  document.getElementById("funcionalidades")?.scrollIntoView({ behavior: "smooth" });
-                }}
-              >
-                <Button size="lg" variant="outline" className="w-full sm:w-auto group border-border hover:bg-muted">
-                  <Play className="w-4 h-4 mr-2 text-primary" />
-                  Ver como funciona
-                </Button>
-              </a>
             </div>
 
             {/* Trust indicators */}
             <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-8 pt-8 border-t border-border justify-center lg:justify-start">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CheckCircle className="w-4 h-4 text-success" />
-                <span>7 dias grátis</span>
+                <span>Grátis por 7 dias</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CheckCircle className="w-4 h-4 text-success" />
-                <span>Sem cartão de crédito</span>
+                <span>Sem cartão</span>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CheckCircle className="w-4 h-4 text-success" />
