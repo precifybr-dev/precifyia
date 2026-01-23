@@ -4,6 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useEffect } from "react";
 
 const faqs = [
   {
@@ -38,7 +39,46 @@ const faqs = [
   },
 ];
 
+// Generate JSON-LD schema for FAQ
+const generateFAQSchema = () => {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: faqs.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+};
+
 export function FAQSection() {
+  useEffect(() => {
+    // Add JSON-LD schema to head
+    const script = document.createElement("script");
+    script.type = "application/ld+json";
+    script.text = JSON.stringify(generateFAQSchema());
+    script.id = "faq-schema";
+    
+    // Remove existing if any
+    const existing = document.getElementById("faq-schema");
+    if (existing) {
+      existing.remove();
+    }
+    
+    document.head.appendChild(script);
+
+    return () => {
+      const schemaScript = document.getElementById("faq-schema");
+      if (schemaScript) {
+        schemaScript.remove();
+      }
+    };
+  }, []);
+
   return (
     <section className="py-16 lg:py-24 bg-muted/30">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
