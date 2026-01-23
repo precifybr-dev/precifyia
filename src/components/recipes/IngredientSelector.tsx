@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { Search, Package, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { parseIngredientCode } from "@/lib/ingredient-utils";
@@ -24,6 +25,13 @@ interface IngredientSelectorProps {
   selectedId?: string;
 }
 
+interface DropdownPosition {
+  top: number;
+  left: number;
+  width: number;
+  openUp: boolean;
+}
+
 export function IngredientSelector({
   ingredients,
   onSelect,
@@ -34,8 +42,10 @@ export function IngredientSelector({
   const [search, setSearch] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [dropdownPosition, setDropdownPosition] = useState<DropdownPosition | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Filtra ingredientes por código ou nome
   const filteredIngredients = ingredients.filter((ing) => {
@@ -57,21 +67,62 @@ export function IngredientSelector({
     return ing.name.toLowerCase().includes(searchLower);
   });
 
+  // Calcula a posição do dropdown
+  const updateDropdownPosition = useCallback(() => {
+    if (!inputRef.current) return;
+    
+    const rect = inputRef.current.getBoundingClientRect();
+    const dropdownHeight = 260; // max-h-64 + padding
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openUp = spaceBelow < dropdownHeight && rect.top > dropdownHeight;
+    
+    setDropdownPosition({
+      top: openUp ? rect.top - 4 : rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      openUp,
+    });
+  }, []);
+
   // Reset highlight quando a lista muda
   useEffect(() => {
     setHighlightedIndex(0);
   }, [filteredIngredients.length]);
 
+  // Atualiza posição ao abrir e em scroll/resize
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    updateDropdownPosition();
+    
+    const handleUpdate = () => updateDropdownPosition();
+    window.addEventListener("scroll", handleUpdate, true);
+    window.addEventListener("resize", handleUpdate);
+    
+    return () => {
+      window.removeEventListener("scroll", handleUpdate, true);
+      window.removeEventListener("resize", handleUpdate);
+    };
+  }, [isOpen, updateDropdownPosition]);
+
   // Fecha dropdown ao clicar fora
   useEffect(() => {
+    if (!isOpen) return;
+    
     const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (
+        containerRef.current && 
+        !containerRef.current.contains(target) &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(target)
+      ) {
         setIsOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
@@ -137,8 +188,19 @@ export function IngredientSelector({
         />
       </div>
 
-      {isOpen && (
-        <div className="absolute z-[9999] w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-64 overflow-auto">
+      {isOpen && dropdownPosition && createPortal(
+        <div 
+          ref={dropdownRef}
+          className="bg-popover border border-border rounded-lg shadow-lg max-h-64 overflow-auto"
+          style={{
+            position: 'fixed',
+            top: dropdownPosition.openUp ? 'auto' : dropdownPosition.top,
+            bottom: dropdownPosition.openUp ? window.innerHeight - dropdownPosition.top : 'auto',
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+            zIndex: 9999,
+          }}
+        >
           {filteredIngredients.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground text-sm">
               <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
@@ -177,7 +239,8 @@ export function IngredientSelector({
               ))}
             </div>
           )}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
