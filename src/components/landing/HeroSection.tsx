@@ -154,8 +154,8 @@ export function HeroSection() {
 
                 {/* Products list */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-3">
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3 mb-3">
                       <div className="w-10 h-10 rounded-lg bg-warning/20 flex items-center justify-center text-lg">
                         🍔
                       </div>
@@ -164,13 +164,19 @@ export function HeroSection() {
                         <p className="text-xs text-muted-foreground">CMV: 28%</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-success">R$ 32,90</p>
-                      <p className="text-xs text-muted-foreground">Preço sugerido</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-primary/10 rounded-lg p-2 text-center">
+                        <p className="text-[10px] text-primary font-medium uppercase tracking-wide">Venda Direta</p>
+                        <p className="text-sm font-bold text-primary">R$ 32,90</p>
+                      </div>
+                      <div className="bg-success/10 rounded-lg p-2 text-center">
+                        <p className="text-[10px] text-success font-medium uppercase tracking-wide">Preço iFood</p>
+                        <p className="text-sm font-bold text-success">R$ 45,07</p>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-3">
+                  <div className="p-3 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-3 mb-3">
                       <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-lg">
                         🍕
                       </div>
@@ -179,9 +185,15 @@ export function HeroSection() {
                         <p className="text-xs text-muted-foreground">CMV: 25%</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-success">R$ 54,90</p>
-                      <p className="text-xs text-muted-foreground">Preço sugerido</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-primary/10 rounded-lg p-2 text-center">
+                        <p className="text-[10px] text-primary font-medium uppercase tracking-wide">Venda Direta</p>
+                        <p className="text-sm font-bold text-primary">R$ 54,90</p>
+                      </div>
+                      <div className="bg-success/10 rounded-lg p-2 text-center">
+                        <p className="text-[10px] text-success font-medium uppercase tracking-wide">Preço iFood</p>
+                        <p className="text-sm font-bold text-success">R$ 75,21</p>
+                      </div>
                     </div>
                   </div>
                 </div>
