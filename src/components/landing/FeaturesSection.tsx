@@ -5,59 +5,59 @@ import {
   Package, 
   PieChart, 
   Smartphone,
-  Zap,
-  Shield,
-  RefreshCw
+  DollarSign,
+  Target,
+  ShoppingBag
 } from "lucide-react";
 
-const features = [
+const benefits = [
   {
     icon: FileSpreadsheet,
-    title: "Ficha Técnica Inteligente",
-    description: "Monte receitas puxando insumos por código. Cálculo automático de custos por item e receita completa."
+    title: "Saiba exatamente quanto custa cada prato",
+    description: "Monte suas receitas e veja o custo real de cada item, incluindo perdas e preparo."
   },
   {
     icon: Calculator,
-    title: "CMV em Tempo Real",
-    description: "Compare seu CMV praticado vs desejado. Alertas automáticos quando estiver fora da meta."
+    title: "Nunca mais venda no prejuízo",
+    description: "O sistema avisa quando seu preço não cobre os custos — antes de você perder dinheiro."
   },
   {
     icon: TrendingUp,
-    title: "Preço Sugerido",
-    description: "Preços calculados para cardápio e delivery considerando taxas e margem desejada."
+    title: "Defina o preço certo para lucrar de verdade",
+    description: "Receba o preço ideal baseado no lucro que você quer ter, não em achismo."
   },
   {
     icon: Package,
-    title: "Gestão de Insumos",
-    description: "Cadastre insumos com fator de correção automático. Atualização em massa reflete em todas as fichas."
+    title: "Atualize um insumo, todas as fichas recalculam",
+    description: "Subiu a farinha? Todos os produtos que usam são recalculados automaticamente."
   },
   {
     icon: PieChart,
-    title: "Dashboard Completo",
-    description: "Ponto de equilíbrio, margens, comparativo de canais de venda e muito mais em um só lugar."
+    title: "Veja quanto sobra no final do mês",
+    description: "Calcule sua margem líquida real, descontando todas as despesas e taxas."
   },
   {
     icon: Smartphone,
-    title: "100% Online",
-    description: "Acesse de qualquer dispositivo. Seus dados sempre atualizados e seguros na nuvem."
+    title: "Acesse de qualquer lugar, a qualquer hora",
+    description: "Consulte seus preços pelo celular, mesmo no meio de uma compra no atacado."
   }
 ];
 
 const highlights = [
   {
-    icon: Zap,
-    title: "Cálculos Instantâneos",
-    description: "Alterou um insumo? Todas as fichas técnicas são atualizadas em tempo real."
+    icon: DollarSign,
+    title: "Entenda o impacto real do iFood",
+    description: "Simule taxas, cupons e frete para saber quanto realmente sobra por pedido."
   },
   {
-    icon: Shield,
-    title: "Dados Seguros",
-    description: "Criptografia de ponta a ponta e backups automáticos diários."
+    icon: Target,
+    title: "Separe balcão de delivery",
+    description: "Preços diferentes para canais diferentes — cada um com sua margem garantida."
   },
   {
-    icon: RefreshCw,
-    title: "Sincronização Total",
-    description: "Despesas, custos e receitas sempre conectados para margem real."
+    icon: ShoppingBag,
+    title: "Controle custos e despesas separados",
+    description: "Saiba o que é custo de produção e o que é despesa do negócio, sem misturar."
   }
 ];
 
@@ -67,43 +67,47 @@ export function FeaturesSection() {
       <div className="container px-4 mx-auto">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="inline-block px-4 py-2 rounded-full bg-primary/10 text-primary font-medium text-sm mb-4">
-            Funcionalidades
+          <span className="inline-block px-4 py-2 rounded-full bg-success/10 text-success font-medium text-sm mb-4">
+            O que você ganha
           </span>
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-foreground">
-            Tudo que você precisa para{" "}
-            <span className="text-gradient">precificar com precisão</span>
+            Pare de trabalhar no escuro.{" "}
+            <span className="text-gradient">Saiba se está lucrando.</span>
           </h2>
           <p className="text-lg text-muted-foreground">
-            Substitua planilhas complexas por uma plataforma intuitiva que calcula 
-            tudo automaticamente para você.
+            Chega de achar que está ganhando e descobrir no fim do mês que não sobrou nada.
           </p>
         </div>
 
-        {/* Features Grid */}
+        {/* Benefits Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-20">
-          {features.map((feature, index) => (
+          {benefits.map((benefit, index) => (
             <div
-              key={feature.title}
-              className="group p-6 rounded-2xl bg-card border border-border hover:border-primary/30 hover:shadow-card-hover transition-all duration-300"
+              key={benefit.title}
+              className="group p-6 rounded-2xl bg-card border border-border hover:border-success/30 hover:shadow-card-hover transition-all duration-300"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary group-hover:scale-110 transition-all duration-300">
-                <feature.icon className="w-6 h-6 text-primary group-hover:text-primary-foreground transition-colors" />
+              <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center mb-4 group-hover:bg-success group-hover:scale-110 transition-all duration-300">
+                <benefit.icon className="w-6 h-6 text-success group-hover:text-success-foreground transition-colors" />
               </div>
-              <h3 className="font-display font-semibold text-lg mb-2 text-foreground">{feature.title}</h3>
-              <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
+              <h3 className="font-display font-semibold text-lg mb-2 text-foreground">{benefit.title}</h3>
+              <p className="text-muted-foreground leading-relaxed">{benefit.description}</p>
             </div>
           ))}
         </div>
 
-        {/* Highlights */}
+        {/* Highlights - iFood specific */}
         <div className="bg-card rounded-2xl p-8 md:p-12 border border-border shadow-card">
+          <div className="text-center mb-8">
+            <h3 className="font-display text-xl md:text-2xl font-bold text-foreground">
+              Especialmente feito pra quem vende no <span className="text-destructive">iFood</span>
+            </h3>
+          </div>
           <div className="grid md:grid-cols-3 gap-8">
             {highlights.map((highlight) => (
               <div key={highlight.title} className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-success/10 flex items-center justify-center flex-shrink-0">
-                  <highlight.icon className="w-6 h-6 text-success" />
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <highlight.icon className="w-6 h-6 text-primary" />
                 </div>
                 <div>
                   <h4 className="font-display font-semibold text-foreground mb-1">{highlight.title}</h4>
