@@ -7,7 +7,7 @@ const plans = [
     name: "Trial",
     price: "Grátis",
     period: "7 dias",
-    description: "Teste todas as funcionalidades",
+    description: "Veja se funciona pra você",
     features: [
       { text: "Até 35 insumos", included: true },
       { text: "Até 3 fichas técnicas", included: true },
@@ -16,14 +16,14 @@ const plans = [
       { text: "Exportação de relatórios", included: false },
       { text: "IA para produtos", included: false },
     ],
-    cta: "Começar Trial",
+    cta: "Começar agora — é grátis",
     popular: false,
   },
   {
     name: "Básico",
     price: "R$ 49",
     period: "/mês",
-    description: "Para pequenos negócios",
+    description: "Para quem quer lucrar certo",
     features: [
       { text: "Até 100 insumos", included: true },
       { text: "Até 15 fichas técnicas", included: true },
@@ -32,14 +32,14 @@ const plans = [
       { text: "Exportação PDF/CSV", included: true },
       { text: "IA para produtos", included: false },
     ],
-    cta: "Assinar Básico",
+    cta: "Quero precificar certo",
     popular: false,
   },
   {
     name: "Pro",
     price: "R$ 99",
     period: "/mês",
-    description: "Recursos ilimitados + IA",
+    description: "Controle total do negócio",
     features: [
       { text: "Insumos ilimitados", included: true },
       { text: "Fichas técnicas ilimitadas", included: true },
@@ -48,7 +48,7 @@ const plans = [
       { text: "Relatórios completos", included: true },
       { text: "IA para nomes e descrições", included: true },
     ],
-    cta: "Assinar Pro",
+    cta: "Ter controle total agora",
     popular: true,
   },
 ];
@@ -137,12 +137,27 @@ export function PricingSection() {
         </div>
 
         {/* FAQ Note */}
-        <p className="text-center text-muted-foreground mt-12">
-          Dúvidas? Entre em contato pelo{" "}
-          <a href="mailto:suporte@precify.com.br" className="text-primary hover:underline font-medium">
-            suporte@precify.com.br
-          </a>
-        </p>
+        <div className="text-center mt-12 space-y-3">
+          <p className="text-muted-foreground">
+            Prefere falar com alguém?
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <a 
+              href="https://wa.me/5511999999999?text=Oi!%20Quero%20tirar%20uma%20dúvida%20sobre%20o%20Precify" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors font-medium text-sm"
+            >
+              💬 Chamar no WhatsApp
+            </a>
+            <a 
+              href="mailto:suporte@precify.com.br" 
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors font-medium text-sm"
+            >
+              ✉️ Falar por email
+            </a>
+          </div>
+        </div>
       </div>
     </section>
   );
