@@ -49,6 +49,7 @@ import { useToast } from "@/hooks/use-toast";
 import { IngredientSelector, type IngredientData } from "@/components/recipes/IngredientSelector";
 import { calculateIngredientCost } from "@/lib/ingredient-utils";
 import { ColorDot } from "@/components/ui/color-picker";
+import IfoodPriceCalculator from "@/components/recipes/IfoodPriceCalculator";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Recipe = Tables<"recipes">;
@@ -108,6 +109,8 @@ export default function Recipes() {
   const [totalBusinessCostPercent, setTotalBusinessCostPercent] = useState<number | null>(null);
   // Production costs per item (fixed + variable)
   const [productionCostsPerItem, setProductionCostsPerItem] = useState<number>(0);
+  // iFood real percentage from profile
+  const [ifoodRealPercentage, setIfoodRealPercentage] = useState<number | null>(null);
   
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -174,6 +177,8 @@ export default function Recipes() {
       }
 
       setProfile(profileData);
+      // Set iFood real percentage from profile
+      setIfoodRealPercentage(profileData.ifood_real_percentage ? Number(profileData.ifood_real_percentage) : null);
       await Promise.all([
         fetchIngredients(session.user.id),
         fetchRecipes(session.user.id),
@@ -927,6 +932,14 @@ export default function Recipes() {
                     que é definido exclusivamente pelo CMV.
                   </p>
                 </div>
+              </div>
+
+              {/* iFood Price Calculator */}
+              <div className="mb-6">
+                <IfoodPriceCalculator 
+                  basePrice={suggestedPrice} 
+                  ifoodRealPercentage={ifoodRealPercentage}
+                />
               </div>
 
               {/* Real Margin Section */}

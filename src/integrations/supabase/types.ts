@@ -151,6 +151,15 @@ export type Database = {
           created_at: string
           default_cmv: number | null
           id: string
+          ifood_base_rate: number | null
+          ifood_coupon_type: string | null
+          ifood_coupon_value: number | null
+          ifood_delivery_absorber: string | null
+          ifood_delivery_fee: number | null
+          ifood_has_delivery_fee: boolean | null
+          ifood_offers_coupon: boolean | null
+          ifood_plan_type: string | null
+          ifood_real_percentage: number | null
           monthly_revenue: number | null
           onboarding_step: string
           tax_regime: string | null
@@ -164,6 +173,15 @@ export type Database = {
           created_at?: string
           default_cmv?: number | null
           id?: string
+          ifood_base_rate?: number | null
+          ifood_coupon_type?: string | null
+          ifood_coupon_value?: number | null
+          ifood_delivery_absorber?: string | null
+          ifood_delivery_fee?: number | null
+          ifood_has_delivery_fee?: boolean | null
+          ifood_offers_coupon?: boolean | null
+          ifood_plan_type?: string | null
+          ifood_real_percentage?: number | null
           monthly_revenue?: number | null
           onboarding_step?: string
           tax_regime?: string | null
@@ -177,6 +195,15 @@ export type Database = {
           created_at?: string
           default_cmv?: number | null
           id?: string
+          ifood_base_rate?: number | null
+          ifood_coupon_type?: string | null
+          ifood_coupon_value?: number | null
+          ifood_delivery_absorber?: string | null
+          ifood_delivery_fee?: number | null
+          ifood_has_delivery_fee?: boolean | null
+          ifood_offers_coupon?: boolean | null
+          ifood_plan_type?: string | null
+          ifood_real_percentage?: number | null
           monthly_revenue?: number | null
           onboarding_step?: string
           tax_regime?: string | null

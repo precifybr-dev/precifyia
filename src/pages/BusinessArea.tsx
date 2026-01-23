@@ -42,6 +42,7 @@ import TotalBusinessCostBlock from "@/components/business/TotalBusinessCostBlock
 import TotalProductCostBlock from "@/components/business/TotalProductCostBlock";
 import SimplifiedDREBlock from "@/components/business/SimplifiedDREBlock";
 import MonthlyRevenueBlock from "@/components/business/MonthlyRevenueBlock";
+import IfoodPlanBlock from "@/components/business/IfoodPlanBlock";
 
 interface BusinessMetrics {
   ingredientsCount: number;
@@ -706,6 +707,11 @@ export default function BusinessArea() {
               fixedExpensesTotal={fixedExpensesTotal}
               variableExpensesTotal={variableExpensesTotal}
             />
+          </div>
+
+          {/* ========== SECTION: iFood Plan ========== */}
+          <div className="mt-8">
+            <IfoodPlanBlock userId={user?.id} />
           </div>
 
           {/* Quick Actions */}
