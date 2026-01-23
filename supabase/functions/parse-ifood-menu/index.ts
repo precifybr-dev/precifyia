@@ -43,10 +43,23 @@ serve(async (req) => {
       );
     }
 
-    // Extract store slug from URL
-    const storeMatch = ifoodUrl.match(/\/delivery\/([^\/\?]+)/i) || 
-                       ifoodUrl.match(/ifood\.com\.br\/([^\/\?]+)/i);
-    const storeSlug = storeMatch ? storeMatch[1] : null;
+    // Extract store info from URL
+    // URL format: https://www.ifood.com.br/delivery/{city-state}/{store-slug}/{store-id}
+    const urlParts = ifoodUrl.match(/\/delivery\/([^\/]+)\/([^\/]+)\/([a-f0-9-]+)/i);
+    
+    let storeSlug: string;
+    let storeId: string | null = null;
+    
+    if (urlParts) {
+      // Full URL with city, slug, and ID
+      storeSlug = urlParts[2]; // store-slug (e.g., "lanches-parana-andorinha")
+      storeId = urlParts[3];   // store-id (UUID)
+    } else {
+      // Fallback: try simpler patterns
+      const simpleMatch = ifoodUrl.match(/\/delivery\/[^\/]+\/([^\/\?]+)/i) || 
+                          ifoodUrl.match(/ifood\.com\.br\/([^\/\?]+)/i);
+      storeSlug = simpleMatch ? simpleMatch[1] : null;
+    }
 
     if (!storeSlug) {
       return new Response(

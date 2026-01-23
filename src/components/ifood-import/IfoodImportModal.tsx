@@ -63,7 +63,7 @@ export function IfoodImportModal({
 
   // Plan limits
   const planLimits: Record<string, number> = {
-    free: 0,
+    free: 1,
     basic: 2,
     pro: Infinity,
   };
@@ -76,7 +76,7 @@ export function IfoodImportModal({
   useEffect(() => {
     if (open) {
       checkUsage();
-      setStep(userPlan === "free" ? "limit-reached" : "intro");
+      setStep(canImport ? "intro" : "limit-reached");
       setIfoodUrl("");
       setStoreName("");
       setParsedItems([]);
@@ -202,9 +202,9 @@ export function IfoodImportModal({
                 Funcionalidade Indisponível
               </DialogTitle>
               <DialogDescription>
-                {userPlan === "free" 
-                  ? "Esta funcionalidade não está disponível no plano gratuito."
-                  : "Você atingiu o limite do seu plano este mês."}
+                {!canImport
+                  ? "Você atingiu o limite de importações do seu plano este mês."
+                  : "Esta funcionalidade não está disponível no seu plano atual."}
               </DialogDescription>
             </DialogHeader>
             <div className="py-4 text-center">
