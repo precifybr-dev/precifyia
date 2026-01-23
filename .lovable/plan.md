@@ -1,116 +1,71 @@
 
-# Corrigir Dropdown de Ingredientes - Integrar na Pagina
+# Ajuste Fino da Proposta de Valor - Linha de Qualificacao de Publico
 
-## Problema Identificado
+## Objetivo
 
-O dropdown de sugestoes de ingredientes usa `position: absolute` dentro de uma tabela que tem `overflow-x: auto`. Isso faz com que o dropdown seja cortado/escondido quando o usuario rola a pagina ou quando ele fica atras do botao "+ Adicionar ingrediente".
+Adicionar uma linha curta de qualificacao de publico logo abaixo da headline existente, sem alterar nenhum texto atual. Isso deixara claro que o sistema atende diferentes tipos de negocios de alimentacao e nao apenas quem vende no iFood.
 
-## Causa Tecnica
+## Estrutura Atual (linhas 25-34)
 
 ```text
-+-------------------------------------------+
-| div.overflow-x-auto                       |
-|   +---------------------------------------+
-|   | Table                                 |
-|   |   +----------------------------------+|
-|   |   | IngredientSelector               ||
-|   |   |   +----------------------------+ ||
-|   |   |   | Dropdown (position:absolute)| || <-- CORTADO pelo overflow
-|   |   |   +----------------------------+ ||
-|   |   +----------------------------------+|
-|   +---------------------------------------+
-+-------------------------------------------+
-| Button "+ Adicionar ingrediente"          | <-- COBRE o dropdown
-+-------------------------------------------+
+[Badge de alerta]
+     ↓
+[Headline] "Saiba exatamente quanto lucra em cada venda."
+     ↓
+[Subheadline] "Calcule o preco certo dos seus produtos..."
+```
+
+## Estrutura Proposta
+
+```text
+[Badge de alerta]
+     ↓
+[Headline] "Saiba exatamente quanto lucra em cada venda."
+     ↓
+[NOVA LINHA] "Para restaurantes, lanchonetes, marmitarias e quem vende no balcao ou delivery"
+     ↓
+[Subheadline] "Calcule o preco certo dos seus produtos..."
 ```
 
 ---
 
-## Solucao Proposta
+## Alteracao Tecnica
 
-Usar React Portal para renderizar o dropdown fora da hierarquia DOM da tabela, permitindo que ele apareca sobre qualquer elemento.
+**Arquivo:** `src/components/landing/HeroSection.tsx`
 
-### Alteracoes
+**Posicao:** Entre a linha 29 (fim do h1) e linha 31 (inicio da subheadline)
 
-**1. IngredientSelector.tsx**
+**Codigo a adicionar:**
 
-- Usar `createPortal` do React para renderizar o dropdown no `document.body`
-- Calcular a posicao absoluta do input na tela usando `getBoundingClientRect()`
-- Detectar se ha espaco suficiente abaixo do input, caso contrario abrir para cima
-- Adicionar listener para reposicionar ao fazer scroll
-
-```text
-+-------------------------------------------+
-| Tabela (overflow-x: auto)                 |
-|   +---------------------------------------+
-|   | Input de busca                        |
-|   +---------------------------------------+
-+-------------------------------------------+
-
-+-------------------------------------------+  <-- Portal renderizado no body
-| Dropdown posicionado via getBoundingClientRect()
-| z-index: 9999
-+-------------------------------------------+
+```tsx
+{/* Audience qualifier */}
+<p className="text-sm sm:text-base text-muted-foreground/80 mb-4">
+  Para restaurantes, lanchonetes, marmitarias e quem vende no balcao ou delivery
+</p>
 ```
 
 ---
 
-## Detalhes Tecnicos
+## Detalhes de Estilo
 
-### Novo Comportamento do Dropdown
+| Propriedade | Valor | Justificativa |
+|-------------|-------|---------------|
+| Tamanho | `text-sm sm:text-base` | Menor que a subheadline para hierarquia visual |
+| Cor | `text-muted-foreground/80` | Sutil, nao compete com headline |
+| Espacamento | `mb-4` | Separacao adequada antes da subheadline |
 
-1. Ao focar no input, calcular a posicao exata na tela
-2. Renderizar dropdown via Portal no `document.body`
-3. Posicionar usando `position: fixed` + coordenadas calculadas
-4. Detectar se abre para cima ou para baixo baseado no espaco disponivel
-5. Atualizar posicao em eventos de scroll/resize
-6. Fechar ao clicar fora ou ao perder foco
+---
 
-### Estados Adicionais
+## Resultado Visual
 
-- `dropdownPosition: { top, left, width }` - posicao calculada do dropdown
-- `openDirection: 'up' | 'down'` - direcao de abertura
-
-### Calculos de Posicao
-
-```typescript
-// Ao abrir o dropdown
-const rect = inputRef.current.getBoundingClientRect();
-const spaceBelow = window.innerHeight - rect.bottom;
-const dropdownHeight = 256; // max-h-64 = 16rem = 256px
-
-if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
-  // Abrir para cima
-  setDropdownPosition({
-    top: rect.top - dropdownHeight,
-    left: rect.left,
-    width: rect.width
-  });
-  setOpenDirection('up');
-} else {
-  // Abrir para baixo (padrao)
-  setDropdownPosition({
-    top: rect.bottom + 4,
-    left: rect.left,
-    width: rect.width
-  });
-  setOpenDirection('down');
-}
-```
+A linha funcionara como um "qualificador" que:
+1. Expande o publico-alvo alem do iFood
+2. Menciona os dois canais de venda (balcao e delivery)
+3. Lista tipos de negocios que se identificarao imediatamente
 
 ---
 
 ## Arquivos a Modificar
 
-1. `src/components/recipes/IngredientSelector.tsx`
-   - Importar `createPortal` do `react-dom`
-   - Adicionar estados para posicao e direcao
-   - Calcular posicao ao focar/abrir
-   - Adicionar listeners para scroll e resize
-   - Renderizar dropdown via Portal com `position: fixed`
-
----
-
-## Resultado Final
-
-O dropdown de ingredientes sera renderizado fora da tabela, aparecendo sempre na frente de todos os elementos, incluindo o botao "+ Adicionar ingrediente". Alem disso, detectara automaticamente se deve abrir para cima ou para baixo baseado no espaco disponivel na tela.
+1. `src/components/landing/HeroSection.tsx`
+   - Adicionar paragrafo de qualificacao entre a headline e a subheadline (apos linha 29)
