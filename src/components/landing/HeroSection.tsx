@@ -58,6 +58,15 @@ export function HeroSection() {
                 </div>
                 <span className="text-base">Precifique com segurança e durma tranquilo</span>
               </div>
+              <div className="flex items-start gap-3 text-foreground">
+                <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <CheckCircle className="w-4 h-4 text-success" />
+                </div>
+                <div>
+                  <span className="text-base">Tenha um preço para venda direta e outro para iFood — sem refazer cálculos</span>
+                  <p className="text-sm text-muted-foreground mt-0.5">O custo é o mesmo. O sistema ajusta o preço conforme o canal.</p>
+                </div>
+              </div>
             </div>
 
             {/* CTA */}
