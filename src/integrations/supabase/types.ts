@@ -151,13 +151,17 @@ export type Database = {
           created_at: string
           default_cmv: number | null
           id: string
+          ifood_average_ticket: number | null
           ifood_base_rate: number | null
+          ifood_coupon_absorber: string | null
           ifood_coupon_type: string | null
           ifood_coupon_value: number | null
           ifood_delivery_absorber: string | null
           ifood_delivery_fee: number | null
           ifood_has_delivery_fee: boolean | null
+          ifood_monthly_orders: number | null
           ifood_offers_coupon: boolean | null
+          ifood_orders_with_coupon: number | null
           ifood_plan_type: string | null
           ifood_real_percentage: number | null
           monthly_revenue: number | null
@@ -173,13 +177,17 @@ export type Database = {
           created_at?: string
           default_cmv?: number | null
           id?: string
+          ifood_average_ticket?: number | null
           ifood_base_rate?: number | null
+          ifood_coupon_absorber?: string | null
           ifood_coupon_type?: string | null
           ifood_coupon_value?: number | null
           ifood_delivery_absorber?: string | null
           ifood_delivery_fee?: number | null
           ifood_has_delivery_fee?: boolean | null
+          ifood_monthly_orders?: number | null
           ifood_offers_coupon?: boolean | null
+          ifood_orders_with_coupon?: number | null
           ifood_plan_type?: string | null
           ifood_real_percentage?: number | null
           monthly_revenue?: number | null
@@ -195,13 +203,17 @@ export type Database = {
           created_at?: string
           default_cmv?: number | null
           id?: string
+          ifood_average_ticket?: number | null
           ifood_base_rate?: number | null
+          ifood_coupon_absorber?: string | null
           ifood_coupon_type?: string | null
           ifood_coupon_value?: number | null
           ifood_delivery_absorber?: string | null
           ifood_delivery_fee?: number | null
           ifood_has_delivery_fee?: boolean | null
+          ifood_monthly_orders?: number | null
           ifood_offers_coupon?: boolean | null
+          ifood_orders_with_coupon?: number | null
           ifood_plan_type?: string | null
           ifood_real_percentage?: number | null
           monthly_revenue?: number | null
