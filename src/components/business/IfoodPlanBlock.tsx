@@ -7,7 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Smartphone, Truck, Calculator, Percent, Info } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Smartphone, Truck, Calculator, Percent, Info, ShoppingCart, Receipt, Gift, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -19,26 +20,53 @@ interface IfoodPlanBlockProps {
 interface IfoodSettings {
   planType: string | null;
   baseRate: number | null;
+  // Volume de Vendas
+  monthlyOrders: number | null;
+  averageTicket: number | null;
+  // Cupons Detalhados
   offersCoupon: boolean;
+  ordersWithCoupon: number | null;
   couponValue: number | null;
   couponType: string;
+  couponAbsorber: string;
+  // Taxa de Entrega
   hasDeliveryFee: boolean;
   deliveryFee: number | null;
   deliveryAbsorber: string;
+  // Resultado
   realPercentage: number | null;
+}
+
+interface CalculatedMetrics {
+  monthlyRevenue: number;
+  couponMonthlyCost: number;
+  couponImpactPercent: number;
+  deliveryMonthlyCost: number;
+  deliveryImpactPercent: number;
 }
 
 export default function IfoodPlanBlock({ userId, onRealPercentageChange }: IfoodPlanBlockProps) {
   const [settings, setSettings] = useState<IfoodSettings>({
     planType: null,
     baseRate: null,
+    monthlyOrders: null,
+    averageTicket: null,
     offersCoupon: false,
+    ordersWithCoupon: null,
     couponValue: null,
     couponType: "percent",
+    couponAbsorber: "business",
     hasDeliveryFee: false,
     deliveryFee: null,
     deliveryAbsorber: "client",
     realPercentage: null,
+  });
+  const [metrics, setMetrics] = useState<CalculatedMetrics>({
+    monthlyRevenue: 0,
+    couponMonthlyCost: 0,
+    couponImpactPercent: 0,
+    deliveryMonthlyCost: 0,
+    deliveryImpactPercent: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -49,7 +77,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
       try {
         const { data, error } = await supabase
           .from("profiles")
-          .select("ifood_plan_type, ifood_base_rate, ifood_offers_coupon, ifood_coupon_value, ifood_coupon_type, ifood_has_delivery_fee, ifood_delivery_fee, ifood_delivery_absorber, ifood_real_percentage")
+          .select("ifood_plan_type, ifood_base_rate, ifood_monthly_orders, ifood_average_ticket, ifood_offers_coupon, ifood_orders_with_coupon, ifood_coupon_value, ifood_coupon_type, ifood_coupon_absorber, ifood_has_delivery_fee, ifood_delivery_fee, ifood_delivery_absorber, ifood_real_percentage")
           .eq("user_id", userId)
           .single();
 
@@ -59,13 +87,17 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
           setSettings({
             planType: data.ifood_plan_type,
             baseRate: data.ifood_base_rate,
+            monthlyOrders: data.ifood_monthly_orders,
+            averageTicket: data.ifood_average_ticket ? Number(data.ifood_average_ticket) : null,
             offersCoupon: data.ifood_offers_coupon || false,
-            couponValue: data.ifood_coupon_value,
+            ordersWithCoupon: data.ifood_orders_with_coupon,
+            couponValue: data.ifood_coupon_value ? Number(data.ifood_coupon_value) : null,
             couponType: data.ifood_coupon_type || "percent",
+            couponAbsorber: data.ifood_coupon_absorber || "business",
             hasDeliveryFee: data.ifood_has_delivery_fee || false,
-            deliveryFee: data.ifood_delivery_fee,
+            deliveryFee: data.ifood_delivery_fee ? Number(data.ifood_delivery_fee) : null,
             deliveryAbsorber: data.ifood_delivery_absorber || "client",
-            realPercentage: data.ifood_real_percentage,
+            realPercentage: data.ifood_real_percentage ? Number(data.ifood_real_percentage) : null,
           });
         }
       } catch (error) {
@@ -80,40 +112,96 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
     }
   }, [userId]);
 
-  // Calculate real percentage whenever settings change
+  // Calculate real percentage and metrics whenever settings change
   useEffect(() => {
     if (!settings.planType || settings.baseRate === null) {
+      setMetrics({
+        monthlyRevenue: 0,
+        couponMonthlyCost: 0,
+        couponImpactPercent: 0,
+        deliveryMonthlyCost: 0,
+        deliveryImpactPercent: 0,
+      });
       return;
     }
+
+    // Calculate monthly revenue
+    const monthlyRevenue = (settings.monthlyOrders || 0) * (settings.averageTicket || 0);
 
     // Start with base rate
     let realPercentage = settings.baseRate;
 
-    // Add coupon impact (if business offers coupon)
-    if (settings.offersCoupon && settings.couponValue !== null && settings.couponValue > 0) {
+    // Calculate coupon impact
+    let couponMonthlyCost = 0;
+    let couponImpactPercent = 0;
+
+    if (settings.offersCoupon && settings.couponValue !== null && settings.couponValue > 0 && settings.couponAbsorber !== "ifood") {
+      const ordersWithCoupon = settings.ordersWithCoupon || 0;
+      const averageTicket = settings.averageTicket || 0;
+
       if (settings.couponType === "percent") {
-        // Coupon percentage adds directly to the real percentage
-        realPercentage += settings.couponValue;
+        // Percentage coupon: value% of ticket per order with coupon
+        couponMonthlyCost = ordersWithCoupon * averageTicket * (settings.couponValue / 100);
       } else {
-        // Fixed coupon - we'll estimate impact as percentage
-        // This is approximate since it depends on average order value
-        // For now, we'll add it as a fixed percentage estimate (e.g., 5% per R$10)
-        realPercentage += (settings.couponValue / 100) * 5;
+        // Fixed coupon: fixed value per order with coupon
+        couponMonthlyCost = ordersWithCoupon * settings.couponValue;
+      }
+
+      // Adjust for partial absorption
+      if (settings.couponAbsorber === "partial") {
+        couponMonthlyCost = couponMonthlyCost * 0.5;
+      }
+
+      // Calculate impact percentage
+      if (monthlyRevenue > 0) {
+        couponImpactPercent = (couponMonthlyCost / monthlyRevenue) * 100;
+        realPercentage += couponImpactPercent;
       }
     }
 
-    // Add delivery fee impact (if business absorbs)
+    // Calculate delivery impact
+    let deliveryMonthlyCost = 0;
+    let deliveryImpactPercent = 0;
+
     if (settings.hasDeliveryFee && settings.deliveryAbsorber === "business" && settings.deliveryFee !== null && settings.deliveryFee > 0) {
-      // Estimate delivery impact as percentage
-      // This is approximate - typically R$8-10 represents ~8-10% on a R$100 order
-      realPercentage += (settings.deliveryFee / 100) * 10;
+      // Delivery fee absorbed by business
+      deliveryMonthlyCost = (settings.monthlyOrders || 0) * settings.deliveryFee;
+
+      // Calculate impact percentage
+      if (monthlyRevenue > 0) {
+        deliveryImpactPercent = (deliveryMonthlyCost / monthlyRevenue) * 100;
+        realPercentage += deliveryImpactPercent;
+      }
     }
 
     // Round to 2 decimal places
     realPercentage = Math.round(realPercentage * 100) / 100;
+    couponImpactPercent = Math.round(couponImpactPercent * 100) / 100;
+    deliveryImpactPercent = Math.round(deliveryImpactPercent * 100) / 100;
+
+    setMetrics({
+      monthlyRevenue,
+      couponMonthlyCost,
+      couponImpactPercent,
+      deliveryMonthlyCost,
+      deliveryImpactPercent,
+    });
 
     setSettings(prev => ({ ...prev, realPercentage }));
-  }, [settings.planType, settings.baseRate, settings.offersCoupon, settings.couponValue, settings.couponType, settings.hasDeliveryFee, settings.deliveryFee, settings.deliveryAbsorber]);
+  }, [
+    settings.planType,
+    settings.baseRate,
+    settings.monthlyOrders,
+    settings.averageTicket,
+    settings.offersCoupon,
+    settings.ordersWithCoupon,
+    settings.couponValue,
+    settings.couponType,
+    settings.couponAbsorber,
+    settings.hasDeliveryFee,
+    settings.deliveryFee,
+    settings.deliveryAbsorber,
+  ]);
 
   // Auto-save settings whenever they change
   useEffect(() => {
@@ -127,9 +215,13 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
           .update({
             ifood_plan_type: settings.planType,
             ifood_base_rate: settings.baseRate,
+            ifood_monthly_orders: settings.monthlyOrders,
+            ifood_average_ticket: settings.averageTicket,
             ifood_offers_coupon: settings.offersCoupon,
+            ifood_orders_with_coupon: settings.ordersWithCoupon,
             ifood_coupon_value: settings.couponValue,
             ifood_coupon_type: settings.couponType,
+            ifood_coupon_absorber: settings.couponAbsorber,
             ifood_has_delivery_fee: settings.hasDeliveryFee,
             ifood_delivery_fee: settings.deliveryFee,
             ifood_delivery_absorber: settings.deliveryAbsorber,
@@ -156,6 +248,13 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
     return () => clearTimeout(timeoutId);
   }, [settings, isLoading, userId, onRealPercentageChange]);
 
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("pt-BR", {
+      style: "currency",
+      currency: "BRL",
+    }).format(value);
+  };
+
   const handlePlanTypeChange = (value: string) => {
     setSettings(prev => ({ ...prev, planType: value }));
   };
@@ -165,12 +264,28 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
     setSettings(prev => ({ ...prev, baseRate: rate }));
   };
 
+  const handleMonthlyOrdersChange = (value: string) => {
+    const orders = value === "" ? null : parseInt(value);
+    setSettings(prev => ({ ...prev, monthlyOrders: orders }));
+  };
+
+  const handleAverageTicketChange = (value: string) => {
+    const ticket = value === "" ? null : parseFloat(value);
+    setSettings(prev => ({ ...prev, averageTicket: ticket }));
+  };
+
   const handleCouponToggle = (checked: boolean) => {
-    setSettings(prev => ({ 
-      ...prev, 
+    setSettings(prev => ({
+      ...prev,
       offersCoupon: checked,
-      couponValue: checked ? prev.couponValue : null 
+      ordersWithCoupon: checked ? prev.ordersWithCoupon : null,
+      couponValue: checked ? prev.couponValue : null,
     }));
+  };
+
+  const handleOrdersWithCouponChange = (value: string) => {
+    const orders = value === "" ? null : parseInt(value);
+    setSettings(prev => ({ ...prev, ordersWithCoupon: orders }));
   };
 
   const handleCouponValueChange = (value: string) => {
@@ -182,11 +297,15 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
     setSettings(prev => ({ ...prev, couponType: value }));
   };
 
+  const handleCouponAbsorberChange = (value: string) => {
+    setSettings(prev => ({ ...prev, couponAbsorber: value }));
+  };
+
   const handleDeliveryFeeToggle = (checked: boolean) => {
-    setSettings(prev => ({ 
-      ...prev, 
+    setSettings(prev => ({
+      ...prev,
       hasDeliveryFee: checked,
-      deliveryFee: checked ? prev.deliveryFee : null 
+      deliveryFee: checked ? prev.deliveryFee : null,
     }));
   };
 
@@ -217,6 +336,8 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
       </Card>
     );
   }
+
+  const hasVolumeData = settings.monthlyOrders !== null && settings.monthlyOrders > 0 && settings.averageTicket !== null && settings.averageTicket > 0;
 
   return (
     <Card className="border-red-200 bg-gradient-to-br from-red-50 to-orange-50">
@@ -259,9 +380,9 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
           </RadioGroup>
         </div>
 
-        {/* Base Rate Input - Only show when plan is selected */}
         {settings.planType && (
           <>
+            {/* Base Rate */}
             <div className="space-y-2">
               <Label htmlFor="base_rate" className="text-sm font-medium">
                 Taxa Base do iFood (%)
@@ -282,24 +403,70 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Info className="h-3 w-3" />
-                Informe a taxa de comissão base cobrada pelo iFood
+                Taxa de comissão base cobrada pelo iFood
               </p>
             </div>
 
             <Separator />
 
-            {/* Real Percentage Calculator */}
+            {/* Volume de Vendas */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Calculator className="h-5 w-5 text-red-600" />
-                <h4 className="font-semibold">Calculadora de Porcentagem Real</h4>
+                <ShoppingCart className="h-5 w-5 text-red-600" />
+                <h4 className="font-semibold">Volume de Vendas iFood</h4>
               </div>
 
-              {/* Coupon Section */}
-              <div className="space-y-3 p-3 bg-white/50 rounded-lg border border-red-100">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-white/50 rounded-lg border border-red-100">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Total de Pedidos Mensais</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    placeholder="Ex: 500"
+                    value={settings.monthlyOrders ?? ""}
+                    onChange={(e) => handleMonthlyOrdersChange(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Ticket Médio (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="Ex: 45.00"
+                    value={settings.averageTicket ?? ""}
+                    onChange={(e) => handleAverageTicketChange(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Calculated Monthly Revenue */}
+              {hasVolumeData && (
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium">Faturamento Mensal iFood</span>
+                  </div>
+                  <span className="text-lg font-bold text-blue-700">
+                    {formatCurrency(metrics.monthlyRevenue)}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <Separator />
+
+            {/* Política de Cupons */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Gift className="h-5 w-5 text-red-600" />
+                <h4 className="font-semibold">Política de Cupons iFood</h4>
+              </div>
+
+              <div className="space-y-4 p-4 bg-white/50 rounded-lg border border-red-100">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="offers_coupon" className="text-sm font-medium">
-                    O negócio oferece cupom?
+                    O negócio utiliza cupons?
                   </Label>
                   <Switch
                     id="offers_coupon"
@@ -309,36 +476,96 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                 </div>
 
                 {settings.offersCoupon && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Valor do Cupom</Label>
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Total de Pedidos com Cupom (mensal)</Label>
                       <Input
                         type="number"
-                        step="0.01"
                         min="0"
-                        placeholder="Ex: 10"
-                        value={settings.couponValue ?? ""}
-                        onChange={(e) => handleCouponValueChange(e.target.value)}
+                        placeholder="Ex: 150"
+                        value={settings.ordersWithCoupon ?? ""}
+                        onChange={(e) => handleOrdersWithCouponChange(e.target.value)}
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Tipo</Label>
-                      <Select value={settings.couponType} onValueChange={handleCouponTypeChange}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="percent">Percentual (%)</SelectItem>
-                          <SelectItem value="fixed">Fixo (R$)</SelectItem>
-                        </SelectContent>
-                      </Select>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Tipo de Cupom</Label>
+                        <Select value={settings.couponType} onValueChange={handleCouponTypeChange}>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="percent">Percentual (%)</SelectItem>
+                            <SelectItem value="fixed">Valor Fixo (R$)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">
+                          Valor Médio do Cupom {settings.couponType === "percent" ? "(%)" : "(R$)"}
+                        </Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder={settings.couponType === "percent" ? "Ex: 10" : "Ex: 5.00"}
+                          value={settings.couponValue ?? ""}
+                          onChange={(e) => handleCouponValueChange(e.target.value)}
+                        />
+                      </div>
                     </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Quem absorve o cupom?</Label>
+                      <RadioGroup
+                        value={settings.couponAbsorber}
+                        onValueChange={handleCouponAbsorberChange}
+                        className="grid grid-cols-3 gap-2"
+                      >
+                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.couponAbsorber === "business" ? "border-orange-500 bg-orange-50" : "border-muted"}`}>
+                          <RadioGroupItem value="business" id="coupon_business" />
+                          <Label htmlFor="coupon_business" className="cursor-pointer text-sm">Negócio</Label>
+                        </div>
+                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.couponAbsorber === "partial" ? "border-yellow-500 bg-yellow-50" : "border-muted"}`}>
+                          <RadioGroupItem value="partial" id="coupon_partial" />
+                          <Label htmlFor="coupon_partial" className="cursor-pointer text-sm">Parcial (50%)</Label>
+                        </div>
+                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.couponAbsorber === "ifood" ? "border-green-500 bg-green-50" : "border-muted"}`}>
+                          <RadioGroupItem value="ifood" id="coupon_ifood" />
+                          <Label htmlFor="coupon_ifood" className="cursor-pointer text-sm">iFood</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {/* Coupon Impact */}
+                    {hasVolumeData && settings.couponAbsorber !== "ifood" && metrics.couponMonthlyCost > 0 && (
+                      <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm text-orange-800">Custo Mensal de Cupons</span>
+                          <span className="font-semibold text-orange-900">{formatCurrency(metrics.couponMonthlyCost)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-orange-800">% Impacto Cupom no Faturamento</span>
+                          <Badge className="bg-orange-600 text-white">+{metrics.couponImpactPercent.toFixed(2)}%</Badge>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            </div>
 
-              {/* Delivery Fee Section */}
-              <div className="space-y-3 p-3 bg-white/50 rounded-lg border border-red-100">
+            <Separator />
+
+            {/* Taxa de Entrega */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Truck className="h-5 w-5 text-red-600" />
+                <h4 className="font-semibold">Taxa de Entrega</h4>
+              </div>
+
+              <div className="space-y-4 p-4 bg-white/50 rounded-lg border border-red-100">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="has_delivery_fee" className="text-sm font-medium">
                     Existe taxa de entrega?
@@ -351,9 +578,9 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                 </div>
 
                 {settings.hasDeliveryFee && (
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Valor da Taxa (R$)</Label>
+                  <div className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Valor Médio da Taxa (R$)</Label>
                       <Input
                         type="number"
                         step="0.01"
@@ -363,35 +590,104 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                         onChange={(e) => handleDeliveryFeeChange(e.target.value)}
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-muted-foreground">Quem absorve a taxa?</Label>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Quem absorve a taxa?</Label>
                       <RadioGroup
                         value={settings.deliveryAbsorber}
                         onValueChange={handleDeliveryAbsorberChange}
                         className="grid grid-cols-2 gap-2"
                       >
                         <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.deliveryAbsorber === "client" ? "border-green-500 bg-green-50" : "border-muted"}`}>
-                          <RadioGroupItem value="client" id="client" />
-                          <Label htmlFor="client" className="cursor-pointer text-sm">Cliente</Label>
+                          <RadioGroupItem value="client" id="delivery_client" />
+                          <Label htmlFor="delivery_client" className="cursor-pointer text-sm">Cliente</Label>
                         </div>
                         <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.deliveryAbsorber === "business" ? "border-orange-500 bg-orange-50" : "border-muted"}`}>
-                          <RadioGroupItem value="business" id="business" />
-                          <Label htmlFor="business" className="cursor-pointer text-sm">Negócio</Label>
+                          <RadioGroupItem value="business" id="delivery_business" />
+                          <Label htmlFor="delivery_business" className="cursor-pointer text-sm">Negócio</Label>
                         </div>
                       </RadioGroup>
                     </div>
+
+                    {/* Delivery Impact */}
+                    {hasVolumeData && settings.deliveryAbsorber === "business" && metrics.deliveryMonthlyCost > 0 && (
+                      <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-sm text-purple-800">Custo Mensal de Entrega Absorvida</span>
+                          <span className="font-semibold text-purple-900">{formatCurrency(metrics.deliveryMonthlyCost)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-purple-800">% Impacto Entrega no Faturamento</span>
+                          <Badge className="bg-purple-600 text-white">+{metrics.deliveryImpactPercent.toFixed(2)}%</Badge>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              {/* Result - Real Percentage */}
+            {/* Calculator Result */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Calculator className="h-5 w-5 text-red-600" />
+                <h4 className="font-semibold">Cálculo da Porcentagem Real</h4>
+              </div>
+
+              {/* Breakdown Table */}
+              {settings.baseRate !== null && (
+                <div className="border rounded-lg overflow-hidden bg-white">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-red-100/50">
+                        <TableHead className="font-semibold text-foreground">Componente</TableHead>
+                        <TableHead className="font-semibold text-foreground text-right">Percentual</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium">Taxa Base iFood</TableCell>
+                        <TableCell className="text-right font-mono">{settings.baseRate.toFixed(2)}%</TableCell>
+                      </TableRow>
+                      {settings.offersCoupon && settings.couponAbsorber !== "ifood" && metrics.couponImpactPercent > 0 && (
+                        <TableRow>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              Impacto Cupons
+                              <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-300">
+                                calculado
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-orange-600">+{metrics.couponImpactPercent.toFixed(2)}%</TableCell>
+                        </TableRow>
+                      )}
+                      {settings.hasDeliveryFee && settings.deliveryAbsorber === "business" && metrics.deliveryImpactPercent > 0 && (
+                        <TableRow>
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              Impacto Entrega Absorvida
+                              <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
+                                calculado
+                              </Badge>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-purple-600">+{metrics.deliveryImpactPercent.toFixed(2)}%</TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+
+              {/* Main Result */}
               <div className="p-4 bg-red-600 text-white rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium opacity-90">Porcentagem Real iFood para Precificação</p>
-                    <p className="text-xs opacity-75 mt-1">Valor usado automaticamente nas fichas técnicas</p>
+                    <p className="text-xs opacity-75 mt-1">Valor usado automaticamente em todas as fichas técnicas</p>
                   </div>
                   <div className="text-right">
                     <span className="text-3xl font-bold">
@@ -401,19 +697,30 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                 </div>
               </div>
 
-              {/* Breakdown */}
-              {settings.baseRate !== null && (
-                <div className="text-xs text-muted-foreground space-y-1 p-2 bg-white/30 rounded">
-                  <p><strong>Composição:</strong></p>
-                  <p>• Taxa base iFood: {settings.baseRate}%</p>
-                  {settings.offersCoupon && settings.couponValue !== null && settings.couponValue > 0 && (
-                    <p>• Impacto cupom: +{settings.couponType === "percent" ? `${settings.couponValue}%` : `~${((settings.couponValue / 100) * 5).toFixed(2)}%`}</p>
-                  )}
-                  {settings.hasDeliveryFee && settings.deliveryAbsorber === "business" && settings.deliveryFee !== null && settings.deliveryFee > 0 && (
-                    <p>• Impacto entrega absorvida: +{((settings.deliveryFee / 100) * 10).toFixed(2)}%</p>
-                  )}
+              {/* Warning if no volume data */}
+              {settings.baseRate !== null && !hasVolumeData && (
+                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-sm text-yellow-800">
+                  <div className="flex items-center gap-2">
+                    <Info className="h-4 w-4" />
+                    <span className="font-medium">Preencha o volume de vendas</span>
+                  </div>
+                  <p className="mt-1 text-xs">
+                    Informe o total de pedidos e ticket médio para calcular o impacto real de cupons e entregas sobre o faturamento.
+                  </p>
                 </div>
               )}
+
+              {/* Formula explanation */}
+              <div className="text-xs text-muted-foreground p-3 bg-white/30 rounded border border-red-100">
+                <p className="font-medium mb-2">Fórmula de cálculo:</p>
+                <p className="font-mono">% Real = Taxa Base + % Impacto Cupons + % Impacto Entrega</p>
+                <p className="mt-2">
+                  <strong>Impacto Cupom:</strong> (Custo Total Cupons ÷ Faturamento iFood) × 100
+                </p>
+                <p>
+                  <strong>Impacto Entrega:</strong> (Custo Total Entrega ÷ Faturamento iFood) × 100
+                </p>
+              </div>
             </div>
           </>
         )}
