@@ -1,5 +1,6 @@
 import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
+import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
 import { SocialProofSection } from "@/components/landing/SocialProofSection";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { PricingSection } from "@/components/landing/PricingSection";
@@ -10,6 +11,7 @@ export default function Landing() {
     <div className="min-h-screen">
       <Header />
       <HeroSection />
+      <HowItWorksSection />
       <SocialProofSection />
       <FeaturesSection />
       <PricingSection />
