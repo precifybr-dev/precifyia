@@ -70,14 +70,14 @@ export function Header() {
               className="text-muted-foreground hover:text-foreground"
               onClick={handleLogin}
             >
-              Entrar
+              Acessar minha conta
             </Button>
             <Button 
               size="sm" 
               className="bg-success hover:bg-success/90 text-success-foreground"
               onClick={handleRegister}
             >
-              Começar grátis
+              Testar grátis por 7 dias
             </Button>
           </div>
 
@@ -115,13 +115,13 @@ export function Header() {
                   className="w-full justify-center text-muted-foreground"
                   onClick={handleLogin}
                 >
-                  Entrar
+                  Acessar minha conta
                 </Button>
                 <Button 
                   className="w-full bg-success hover:bg-success/90 text-success-foreground"
                   onClick={handleRegister}
                 >
-                  Começar grátis
+                  Testar grátis por 7 dias
                 </Button>
               </div>
             </nav>
