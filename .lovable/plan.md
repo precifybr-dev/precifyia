@@ -1,255 +1,116 @@
 
-# Redesenho da Ficha Tecnica - Layout de Planilha Profissional
+# Corrigir Dropdown de Ingredientes - Integrar na Pagina
 
-## Visao Geral
+## Problema Identificado
 
-Transformar o formulario atual da Ficha Tecnica em um layout profissional estilo planilha, com tabela de insumos na parte superior e painel de precificacao organizado em blocos abaixo (otimizado para mobile).
+O dropdown de sugestoes de ingredientes usa `position: absolute` dentro de uma tabela que tem `overflow-x: auto`. Isso faz com que o dropdown seja cortado/escondido quando o usuario rola a pagina ou quando ele fica atras do botao "+ Adicionar ingrediente".
 
----
-
-## Estrutura Visual Final
+## Causa Tecnica
 
 ```text
-+------------------------------------------------------------------+
-|  [NOME DO PRODUTO]     [RENDIMENTO]    [CMV DESEJADO %]          |
-+------------------------------------------------------------------+
-
-+------------------------------------------------------------------+
-|  TABELA DE INSUMOS (HEADER VERMELHO ESCURO)                      |
-+------------------------------------------------------------------+
-| Codigo | INGREDIENTES | QTD LIQ | UND | FAT.C | CUSTO LIQ | TOTAL|
-|--------|--------------|---------|-----|-------|-----------|------|
-| [1]    | Farinha...   | 0.5     | kg  | 1.00  | R$ 5,00   | 2,50 |
-| [2]    | Acucar...    | 0.2     | kg  | 1.05  | R$ 4,00   | 0,84 |
-| [+]    | Buscar...    |         |     |       |           |      |
-+------------------------------------------------------------------+
-|  [+ Adicionar ingrediente]                                       |
-+------------------------------------------------------------------+
-
-+------------------------------------------------------------------+
-|                    PAINEL DE PRECIFICACAO                        |
-+------------------------------------------------------------------+
-|  +----------------------------+  +-----------------------------+ |
-|  | PRECO DE VENDA | R$ 19,50  |  | CMV          |    36%       | |
-|  | (editavel)     |           |  | (calculado)  |              | |
-|  +----------------------------+  +-----------------------------+ |
-|  | CUSTO RECEITA  | R$  6,93  |  | CMV DESEJADO |    35%       | |
-|  | CUSTO C/ PERDA | R$  6,93  |  | (editavel)   |              | |
-|  +----------------------------+  +-----------------------------+ |
-|                                  | CALCULADORA PRECO IFOOD     | |
-|  +----------------------------+  | Preco Base   | R$ 19,50     | |
-|  | MARGEM APROX % | 29,45%    |  | Taxa iFood   | 28%          | |
-|  | MARGEM APROX R$| R$  5,74  |  | (editavel)   |              | |
-|  +----------------------------+  | Valor Final  | R$ 27,08     | |
-|                                  +-----------------------------+ |
-|  +----------------------------+                                  |
-|  | PRECO SUGERIDO | R$ 19,81  |                                  |
-|  | PRECO IFOOD    | R$ 27,51  |                                  |
-|  +----------------------------+                                  |
-|                                                                   |
-|  +----------------------------+                                  |
-|  | PROMOCAO       |    5%     |                                  |
-|  | (editavel)     |           |                                  |
-|  | PRECO C/ DESC  | R$ 18,53  |                                  |
-|  +----------------------------+                                  |
-|                                                                   |
-|  +----------------------------+                                  |
-|  | CUSTO FIXO+VAR |   37%     |                                  |
-|  +----------------------------+                                  |
-+------------------------------------------------------------------+
++-------------------------------------------+
+| div.overflow-x-auto                       |
+|   +---------------------------------------+
+|   | Table                                 |
+|   |   +----------------------------------+|
+|   |   | IngredientSelector               ||
+|   |   |   +----------------------------+ ||
+|   |   |   | Dropdown (position:absolute)| || <-- CORTADO pelo overflow
+|   |   |   +----------------------------+ ||
+|   |   +----------------------------------+|
+|   +---------------------------------------+
++-------------------------------------------+
+| Button "+ Adicionar ingrediente"          | <-- COBRE o dropdown
++-------------------------------------------+
 ```
 
 ---
 
-## Componentes a Criar
+## Solucao Proposta
 
-### 1. IngredientsSpreadsheetTable.tsx
+Usar React Portal para renderizar o dropdown fora da hierarquia DOM da tabela, permitindo que ele apareca sobre qualquer elemento.
 
-Tabela de insumos estilo planilha Excel com:
-- Header vermelho escuro (`bg-red-900`) com texto branco
-- Colunas: Codigo, INGREDIENTES, QTD LIQ, UND, FAT.C, CUSTO LIQ KG/UN, CUSTO TOTAL
-- Linhas zebradas para leitura facil
-- Bolinha de cor ao lado do codigo
-- Campo de busca integrado na linha
-- Botao de remover linha (lixeira)
+### Alteracoes
 
-### 2. PricingSummaryPanel.tsx
+**1. IngredientSelector.tsx**
 
-Painel de precificacao organizado em blocos de cards:
+- Usar `createPortal` do React para renderizar o dropdown no `document.body`
+- Calcular a posicao absoluta do input na tela usando `getBoundingClientRect()`
+- Detectar se ha espaco suficiente abaixo do input, caso contrario abrir para cima
+- Adicionar listener para reposicionar ao fazer scroll
 
-**Bloco 1 - Preco de Venda + CMV**
-- Preco de Venda (EDITAVEL - com aviso visual se vazio)
-- CMV Atual (calculado automaticamente, NAO EDITAVEL)
+```text
++-------------------------------------------+
+| Tabela (overflow-x: auto)                 |
+|   +---------------------------------------+
+|   | Input de busca                        |
+|   +---------------------------------------+
++-------------------------------------------+
 
-**Bloco 2 - Custos + CMV Desejado**
-- Custo Receita (soma insumos)
-- Custo com % Perda
-- CMV Desejado (EDITAVEL - pre-preenchido do perfil)
-
-**Bloco 3 - Margens**
-- Margem Aprox % (margem bruta)
-- Margem Aprox R$
-
-**Bloco 4 - Precos Finais**
-- Preco Sugerido (calculado)
-- Preco iFood (calculado)
-
-**Bloco 5 - Calculadora iFood**
-- Preco Base (usa preco de venda)
-- Taxa iFood (EDITAVEL localmente)
-- Valor Final iFood
-
-**Bloco 6 - Promocao**
-- Desconto % (EDITAVEL - padrao 5%)
-- Preco com Desconto
-
-**Bloco 7 - Custo do Negocio**
-- Custo Fixo + Variavel %
++-------------------------------------------+  <-- Portal renderizado no body
+| Dropdown posicionado via getBoundingClientRect()
+| z-index: 9999
++-------------------------------------------+
+```
 
 ---
 
-## Campos e Comportamentos
+## Detalhes Tecnicos
 
-### Campos EDITAVEIS (com aviso visual quando vazios)
+### Novo Comportamento do Dropdown
 
-| Campo | Padrao | Aviso Visual |
-|-------|--------|--------------|
-| Preco de Venda | Vazio (usa sugerido se vazio) | SIM - "Informe o preco" |
-| CMV Desejado | Herda do perfil (ex: 35%) | SIM - "Defina o CMV" |
-| % Desconto (Promocao) | 5% | SIM - se zerado |
-| Taxa iFood (local) | Herda do perfil | SIM - se nao configurado |
-| % Perda | 0% | NAO (opcional) |
+1. Ao focar no input, calcular a posicao exata na tela
+2. Renderizar dropdown via Portal no `document.body`
+3. Posicionar usando `position: fixed` + coordenadas calculadas
+4. Detectar se abre para cima ou para baixo baseado no espaco disponivel
+5. Atualizar posicao em eventos de scroll/resize
+6. Fechar ao clicar fora ou ao perder foco
 
-### Campos CALCULADOS (NAO editaveis)
+### Estados Adicionais
 
-| Campo | Formula |
-|-------|---------|
-| Custo Receita | Soma dos custos dos insumos |
-| Custo com Perda | Custo Receita x (1 + %Perda/100) |
-| Preco Sugerido | Custo com Perda / (CMV Desejado / 100) |
-| CMV Atual | (Custo com Perda / Preco de Venda) x 100 |
-| Preco com Desconto | Preco de Venda x (1 - %Desconto/100) |
-| Preco Final iFood | Preco de Venda / (1 - Taxa iFood/100) |
-| Margem Bruta R$ | Preco de Venda - Custo com Perda |
-| Margem Bruta % | (Margem R$ / Preco de Venda) x 100 |
+- `dropdownPosition: { top, left, width }` - posicao calculada do dropdown
+- `openDirection: 'up' | 'down'` - direcao de abertura
 
----
-
-## Secao Tecnica
-
-### Novos Estados no Recipes.tsx
+### Calculos de Posicao
 
 ```typescript
-// Preco de Venda manual (usuario pode editar)
-const [sellingPrice, setSellingPrice] = useState("");
+// Ao abrir o dropdown
+const rect = inputRef.current.getBoundingClientRect();
+const spaceBelow = window.innerHeight - rect.bottom;
+const dropdownHeight = 256; // max-h-64 = 16rem = 256px
 
-// Percentual de perda (padrao 0%, sem aviso)
-const [lossPercent, setLossPercent] = useState("0");
-
-// Promocao (padrao 5%)
-const [discountPercent, setDiscountPercent] = useState("5");
-
-// Taxa iFood local (editavel no bloco, nao afeta global)
-const [localIfoodRate, setLocalIfoodRate] = useState("");
+if (spaceBelow < dropdownHeight && rect.top > dropdownHeight) {
+  // Abrir para cima
+  setDropdownPosition({
+    top: rect.top - dropdownHeight,
+    left: rect.left,
+    width: rect.width
+  });
+  setOpenDirection('up');
+} else {
+  // Abrir para baixo (padrao)
+  setDropdownPosition({
+    top: rect.bottom + 4,
+    left: rect.left,
+    width: rect.width
+  });
+  setOpenDirection('down');
+}
 ```
-
-### Formulas de Calculo Atualizadas
-
-```typescript
-// Custo com perda
-const lossMultiplier = 1 + (parseFloat(lossPercent) || 0) / 100;
-const costWithLoss = totalCostPerServing * lossMultiplier;
-
-// Preco sugerido (baseado no CMV desejado)
-const cmvDesired = parseFloat(cmvTarget) || 30;
-const suggestedPrice = cmvDesired > 0 && cmvDesired < 100 
-  ? costWithLoss / (cmvDesired / 100) 
-  : costWithLoss;
-
-// Preco de venda final (manual ou sugerido se vazio)
-const finalSellingPrice = parseFloat(sellingPrice) || suggestedPrice;
-
-// CMV Atual (calculado do preco real)
-const actualCMV = finalSellingPrice > 0 
-  ? (costWithLoss / finalSellingPrice) * 100 
-  : 0;
-
-// Preco com desconto (promocao)
-const discountedPrice = finalSellingPrice * (1 - (parseFloat(discountPercent) || 0) / 100);
-
-// Preco iFood (usa taxa local ou global)
-const effectiveIfoodRate = parseFloat(localIfoodRate) || ifoodRealPercentage || 0;
-const ifoodPrice = effectiveIfoodRate > 0 && effectiveIfoodRate < 100
-  ? finalSellingPrice / (1 - effectiveIfoodRate / 100)
-  : finalSellingPrice;
-
-// Margens brutas
-const grossMargin = finalSellingPrice - costWithLoss;
-const grossMarginPercent = finalSellingPrice > 0 
-  ? (grossMargin / finalSellingPrice) * 100 
-  : 0;
-```
-
-### Colunas da Tabela de Insumos
-
-A tabela tera as seguintes colunas com dados:
-
-| Coluna | Origem | Tipo |
-|--------|--------|------|
-| Codigo | `ingredient.code` + `ColorDot` | Display |
-| INGREDIENTES | `IngredientSelector` | Input/Search |
-| QTD LIQ | `ing.quantity` | Input numerico |
-| UND | `ing.unit` | Select (g, kg, ml, l, un) |
-| FAT.C | `ingredient.correction_factor` | Display (herdado) |
-| CUSTO LIQ KG/UN | `ingredient.unit_price` | Display |
-| CUSTO TOTAL | `ing.cost` (calculado) | Display |
-
-### Estilizacao CSS/Tailwind
-
-| Elemento | Classe |
-|----------|--------|
-| Header tabela | `bg-red-900 text-white` |
-| Linhas pares | `bg-white` |
-| Linhas impares | `bg-gray-50` |
-| Campos editaveis | `border-2 border-primary/30` |
-| Aviso campo vazio | `text-muted-foreground animate-pulse text-xs` |
-| Valores calculados | `bg-muted font-mono` |
-| Bloco cards | `rounded-lg border p-4` |
-
-### Responsividade
-
-- Mobile: Tabela com scroll horizontal, blocos em 1 coluna vertical
-- Tablet: Grid 2 colunas para blocos
-- Desktop: Grid 2 colunas lado a lado
 
 ---
-
-## Arquivos a Criar
-
-1. `src/components/recipes/IngredientsSpreadsheetTable.tsx`
-2. `src/components/recipes/PricingSummaryPanel.tsx`
 
 ## Arquivos a Modificar
 
-1. `src/pages/Recipes.tsx`
-   - Adicionar novos estados (sellingPrice, lossPercent, discountPercent, localIfoodRate)
-   - Implementar formulas atualizadas
-   - Substituir layout atual pelos novos componentes
-   - Carregar correction_factor dos insumos para exibir na tabela
-
-2. `src/components/recipes/IfoodPriceCalculator.tsx`
-   - Adicionar prop `editableRate` para permitir edicao local
-   - Renderizar dentro do PricingSummaryPanel como bloco integrado
+1. `src/components/recipes/IngredientSelector.tsx`
+   - Importar `createPortal` do `react-dom`
+   - Adicionar estados para posicao e direcao
+   - Calcular posicao ao focar/abrir
+   - Adicionar listeners para scroll e resize
+   - Renderizar dropdown via Portal com `position: fixed`
 
 ---
 
-## Regras de Negocio (Resumo)
+## Resultado Final
 
-1. **CMV Atual** - sempre calculado automaticamente baseado no Preco de Venda
-2. **CMV Desejado** - editavel, define o Preco Sugerido
-3. **Preco de Venda** - editavel, usuario decide o preco final
-4. **% Perda** - opcional, padrao 0, sem aviso visual
-5. **Promocao** - editavel, padrao 5%
-6. **Taxa iFood** - editavel localmente, nao altera perfil global
-7. **Preco iFood** usa Preco de Venda (nao preco com desconto)
-8. **Repasse de Embalagem** - REMOVIDO conforme solicitado
+O dropdown de ingredientes sera renderizado fora da tabela, aparecendo sempre na frente de todos os elementos, incluindo o botao "+ Adicionar ingrediente". Alem disso, detectara automaticamente se deve abrir para cima ou para baixo baseado no espaco disponivel na tela.
