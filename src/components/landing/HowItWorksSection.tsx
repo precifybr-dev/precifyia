@@ -6,18 +6,21 @@ const steps = [
     icon: Package,
     title: "Cadastre seus custos",
     description: "Insumos e custo real para produzir cada item",
+    tip: "Inclua tudo: embalagem, temperos, até o gás.",
   },
   {
     number: "02",
     icon: Settings,
     title: "Defina as regras do negócio",
     description: "CMV, despesas e margens",
+    tip: "O CMV ideal para food service é entre 28% e 35%.",
   },
   {
     number: "03",
     icon: BadgeDollarSign,
     title: "Veja dois preços prontos",
     description: "Venda direta e iFood, cada um com sua margem correta",
+    tip: "O preço do iFood é maior porque inclui taxas e comissões.",
   },
 ];
 
@@ -63,8 +66,12 @@ export function HowItWorksSection() {
                 <h3 className="text-lg font-semibold text-foreground mb-2">
                   {step.title}
                 </h3>
-                <p className="text-muted-foreground text-sm max-w-xs">
+                <p className="text-muted-foreground text-sm max-w-xs mb-2">
                   {step.description}
+                </p>
+                {/* Educational tip */}
+                <p className="text-xs text-primary/80 bg-primary/5 px-3 py-1.5 rounded-full max-w-xs">
+                  💡 {step.tip}
                 </p>
 
                 {/* Arrow for desktop (between steps) */}
