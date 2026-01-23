@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
 
 const PRESET_COLORS = [
-  { value: "#ef4444", label: "Vermelho" },     // Carnes
   { value: "#f97316", label: "Laranja" },      // Temperos
   { value: "#eab308", label: "Amarelo" },      // Laticínios
   { value: "#22c55e", label: "Verde" },        // Vegetais
@@ -11,6 +10,9 @@ const PRESET_COLORS = [
   { value: "#ec4899", label: "Rosa" },         // Sobremesas
   { value: "#78716c", label: "Cinza" },        // Outros
 ];
+
+// Vermelho (#ef4444) é reservado para Receitas (sub-receitas)
+export const RESERVED_RECIPE_COLOR = "#ef4444";
 
 interface ColorPickerProps {
   value: string | null;
