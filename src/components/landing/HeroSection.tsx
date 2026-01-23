@@ -28,6 +28,11 @@ export function HeroSection() {
               <span className="text-gradient">lucra em cada venda.</span>
             </h1>
 
+            {/* Audience qualifier */}
+            <p className="text-sm sm:text-base text-muted-foreground/80 mb-4">
+              Para restaurantes, lanchonetes, marmitarias e quem vende no balcão ou delivery
+            </p>
+
             {/* Subheadline */}
             <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
               Calcule o preço certo dos seus produtos considerando custos, taxas do iFood, cupons e despesas do negócio. Pare de adivinhar e comece a lucrar de verdade.
