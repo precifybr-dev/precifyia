@@ -191,6 +191,9 @@ export function DemoSection() {
                         <TrendingUp className="w-3 h-3" />
                         Lucro: R$ {formatCurrency(calculations.profitDirect)}
                       </div>
+                      <p className="text-[10px] text-muted-foreground mt-2 leading-tight">
+                        Preço para balcão, WhatsApp ou delivery próprio
+                      </p>
                     </div>
 
                     {/* Marketplace */}
@@ -203,6 +206,9 @@ export function DemoSection() {
                         <DollarSign className="w-3 h-3" />
                         Mesma margem líquida
                       </div>
+                      <p className="text-[10px] text-muted-foreground mt-2 leading-tight">
+                        Maior porque inclui taxas e comissões do app
+                      </p>
                     </div>
                   </div>
 
