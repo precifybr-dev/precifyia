@@ -10,6 +10,7 @@ import {
   Package,
   Wine,
   ChevronRight,
+  ChevronDown,
   Plus,
   Trash2,
   Calculator,
@@ -21,7 +22,7 @@ import {
   Percent,
   Pencil,
   AlertTriangle,
-  Building2 as Building2Icon
+  ChefHat
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -50,6 +56,7 @@ import { IngredientSelector, type IngredientData } from "@/components/recipes/In
 import { calculateIngredientCost } from "@/lib/ingredient-utils";
 import { ColorDot } from "@/components/ui/color-picker";
 import IfoodPriceCalculator from "@/components/recipes/IfoodPriceCalculator";
+import { NavLink } from "@/components/NavLink";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Recipe = Tables<"recipes">;
@@ -104,6 +111,7 @@ export default function Recipes() {
   const [ingredients, setIngredients] = useState<IngredientData[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [fichasSubmenuOpen, setFichasSubmenuOpen] = useState(true);
   
   // Business cost state (expenses as % of revenue)
   const [totalBusinessCostPercent, setTotalBusinessCostPercent] = useState<number | null>(null);
@@ -542,14 +550,6 @@ export default function Recipes() {
     }).format(value);
   };
 
-  const navItems = [
-    { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-    { icon: Building2, label: "Área do Negócio", path: "/business" },
-    { icon: Package, label: "Insumos", path: "/ingredients" },
-    { icon: Wine, label: "Bebidas", path: "/beverages" },
-    { icon: FileSpreadsheet, label: "Fichas Técnicas", path: "/recipes", active: true },
-  ];
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -572,17 +572,48 @@ export default function Recipes() {
           </div>
 
           <nav className="flex-1 p-4 space-y-1">
-            {navItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => { navigate(item.path); setSidebarOpen(false); }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${item.active ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span>{item.label}</span>
-                {!item.active && <ChevronRight className="w-4 h-4 ml-auto opacity-50" />}
-              </button>
-            ))}
+            <NavLink to="/dashboard" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+              <LayoutDashboard className="w-5 h-5" />
+              <span>Dashboard</span>
+              <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+            </NavLink>
+            <NavLink to="/business" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+              <Building2 className="w-5 h-5" />
+              <span>Área do Negócio</span>
+              <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+            </NavLink>
+            <NavLink to="/ingredients" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+              <Package className="w-5 h-5" />
+              <span>Insumos</span>
+              <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+            </NavLink>
+            <NavLink to="/beverages" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+              <Wine className="w-5 h-5" />
+              <span>Bebidas</span>
+              <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+            </NavLink>
+            
+            {/* Fichas Técnicas with submenu */}
+            <Collapsible open={fichasSubmenuOpen} onOpenChange={setFichasSubmenuOpen}>
+              <CollapsibleTrigger className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors bg-primary/10 text-primary font-medium">
+                <FileSpreadsheet className="w-5 h-5" />
+                <span>Fichas Técnicas</span>
+                <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${fichasSubmenuOpen ? 'rotate-180' : ''}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pl-4 mt-1 space-y-1">
+                <button 
+                  onClick={() => navigate("/recipes")}
+                  className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors bg-primary/10 text-primary font-medium"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span className="text-sm">Produtos</span>
+                </button>
+                <NavLink to="/sub-recipes" className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+                  <ChefHat className="w-4 h-4" />
+                  <span className="text-sm">Receitas</span>
+                </NavLink>
+              </CollapsibleContent>
+            </Collapsible>
           </nav>
 
           <div className="p-4 border-t border-border">
@@ -877,9 +908,9 @@ export default function Recipes() {
               </div>
 
               {/* Business Expenses per Item Section */}
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-2 text-amber-600 mb-3">
-                  <Building2Icon className="w-5 h-5" />
+              <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 text-warning mb-3">
+                  <Building2 className="w-5 h-5" />
                   <span className="font-medium">Despesas Fixas + Variáveis por Item</span>
                 </div>
                 
@@ -890,7 +921,7 @@ export default function Recipes() {
                         <Percent className="w-3 h-3" />
                         Percentual do Negócio
                       </p>
-                      <p className="font-display text-2xl font-bold text-amber-600">
+                      <p className="font-display text-2xl font-bold text-warning">
                         {totalBusinessCostPercent.toFixed(2)}%
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -943,8 +974,8 @@ export default function Recipes() {
               </div>
 
               {/* Real Margin Section */}
-              <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-2 text-emerald-600 mb-3">
+              <div className="bg-success/5 border border-success/20 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 text-success mb-3">
                   <TrendingUp className="w-5 h-5" />
                   <span className="font-medium">Margem Real do Produto</span>
                 </div>
@@ -956,7 +987,7 @@ export default function Recipes() {
                         <DollarSign className="w-3 h-3" />
                         Margem R$
                       </p>
-                      <p className={`font-display text-2xl font-bold ${realMarginValue >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                      <p className={`font-display text-2xl font-bold ${realMarginValue >= 0 ? 'text-success' : 'text-destructive'}`}>
                         {formatCurrency(realMarginValue)}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
@@ -968,7 +999,7 @@ export default function Recipes() {
                         <Percent className="w-3 h-3" />
                         Margem %
                       </p>
-                      <p className={`font-display text-2xl font-bold ${realMarginPercent >= 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                      <p className={`font-display text-2xl font-bold ${realMarginPercent >= 0 ? 'text-success' : 'text-destructive'}`}>
                         {realMarginPercent.toFixed(2)}%
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">

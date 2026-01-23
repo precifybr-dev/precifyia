@@ -75,9 +75,11 @@ export type Database = {
           correction_factor: number | null
           created_at: string
           id: string
+          is_sub_recipe: boolean | null
           name: string
           purchase_price: number
           purchase_quantity: number
+          sub_recipe_id: string | null
           unit: string
           unit_price: number | null
           updated_at: string
@@ -89,9 +91,11 @@ export type Database = {
           correction_factor?: number | null
           created_at?: string
           id?: string
+          is_sub_recipe?: boolean | null
           name: string
           purchase_price?: number
           purchase_quantity?: number
+          sub_recipe_id?: string | null
           unit?: string
           unit_price?: number | null
           updated_at?: string
@@ -103,15 +107,25 @@ export type Database = {
           correction_factor?: number | null
           created_at?: string
           id?: string
+          is_sub_recipe?: boolean | null
           name?: string
           purchase_price?: number
           purchase_quantity?: number
+          sub_recipe_id?: string | null
           unit?: string
           unit_price?: number | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ingredients_sub_recipe_id_fkey"
+            columns: ["sub_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "sub_recipes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       monthly_revenues: {
         Row: {
@@ -308,6 +322,90 @@ export type Database = {
         }
         Relationships: []
       }
+      sub_recipe_ingredients: {
+        Row: {
+          cost: number
+          created_at: string
+          id: string
+          ingredient_id: string
+          quantity: number
+          sub_recipe_id: string
+          unit: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          id?: string
+          ingredient_id: string
+          quantity: number
+          sub_recipe_id: string
+          unit?: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          id?: string
+          ingredient_id?: string
+          quantity?: number
+          sub_recipe_id?: string
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sub_recipe_ingredients_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sub_recipe_ingredients_sub_recipe_id_fkey"
+            columns: ["sub_recipe_id"]
+            isOneToOne: false
+            referencedRelation: "sub_recipes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sub_recipes: {
+        Row: {
+          code: number
+          created_at: string
+          id: string
+          name: string
+          total_cost: number
+          unit: string
+          unit_cost: number
+          updated_at: string
+          user_id: string
+          yield_quantity: number
+        }
+        Insert: {
+          code?: number
+          created_at?: string
+          id?: string
+          name: string
+          total_cost?: number
+          unit?: string
+          unit_cost?: number
+          updated_at?: string
+          user_id: string
+          yield_quantity?: number
+        }
+        Update: {
+          code?: number
+          created_at?: string
+          id?: string
+          name?: string
+          total_cost?: number
+          unit?: string
+          unit_cost?: number
+          updated_at?: string
+          user_id?: string
+          yield_quantity?: number
+        }
+        Relationships: []
+      }
       variable_costs: {
         Row: {
           created_at: string
@@ -368,6 +466,10 @@ export type Database = {
     }
     Functions: {
       user_owns_recipe: { Args: { _recipe_id: string }; Returns: boolean }
+      user_owns_sub_recipe: {
+        Args: { _sub_recipe_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
