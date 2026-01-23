@@ -19,7 +19,7 @@ interface UseIfoodImportReturn {
 }
 
 const PLAN_LIMITS: Record<UserPlan, number> = {
-  free: 0,
+  free: 1,
   basic: 2,
   pro: Infinity,
 };
