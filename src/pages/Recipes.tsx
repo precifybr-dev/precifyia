@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Pencil,
   AlertTriangle,
-  ChefHat
+  ChefHat,
+  Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,8 @@ import { calculateIngredientCost } from "@/lib/ingredient-utils";
 import { NavLink } from "@/components/NavLink";
 import IngredientsSpreadsheetTable from "@/components/recipes/IngredientsSpreadsheetTable";
 import PricingSummaryPanel from "@/components/recipes/PricingSummaryPanel";
+import { IfoodImportModal } from "@/components/ifood-import/IfoodImportModal";
+import { useIfoodImport } from "@/hooks/useIfoodImport";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Recipe = Tables<"recipes">;
@@ -107,6 +110,9 @@ export default function Recipes() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
   
+  // iFood import modal state
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  
   // Recipe form state
   const [recipeName, setRecipeName] = useState("");
   const [servings, setServings] = useState("1");
@@ -122,6 +128,12 @@ export default function Recipes() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Hook for iFood import functionality
+  const { userPlan, canImport, remainingUsage, checkUsage } = useIfoodImport({
+    userId: user?.id || null,
+    importType: "recipes",
+  });
 
   const fetchBusinessCosts = async (userId: string, monthlyRevenue: number | null) => {
     // Fetch production costs (per item)
@@ -573,6 +585,31 @@ export default function Recipes() {
     }).format(value);
   };
 
+  // Handle iFood import for recipes
+  const handleIfoodImport = async (items: { name: string; category?: string }[]) => {
+    if (!user?.id || items.length === 0) return;
+
+    const newRecipes = items.map((item) => ({
+      user_id: user.id,
+      name: item.name,
+      servings: 1,
+      cmv_target: profile?.default_cmv || 30,
+      total_cost: 0,
+      cost_per_serving: 0,
+      suggested_price: 0,
+    }));
+
+    const { error } = await supabase.from("recipes").insert(newRecipes);
+    if (error) {
+      throw error;
+    }
+    
+    toast({
+      title: "Importação concluída!",
+      description: `${items.length} fichas técnicas foram criadas. Adicione os insumos de cada uma.`,
+    });
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -675,11 +712,30 @@ export default function Recipes() {
                 <p className="text-sm text-muted-foreground">Crie e gerencie receitas com cálculo de CMV</p>
               </div>
             </div>
-            <Button className="gap-2" onClick={handleNewRecipe}>
-              <Plus className="w-4 h-4" />
-              Nova Ficha
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => setImportModalOpen(true)}
+                className="gap-2 text-muted-foreground"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span className="hidden sm:inline">Importar do iFood (IA)</span>
+                <span className="sm:hidden">iFood</span>
+              </Button>
+              <Button className="gap-2" onClick={handleNewRecipe}>
+                <Plus className="w-4 h-4" />
+                Nova Ficha
+              </Button>
+            </div>
           </div>
+          
+          {/* AI Import microcopy */}
+          {canImport && userPlan !== "pro" && (
+            <p className="text-xs text-muted-foreground mt-2 text-right">
+              {remainingUsage} importação{remainingUsage !== 1 ? "ções" : ""} restante{remainingUsage !== 1 ? "s" : ""} este mês
+            </p>
+          )}
         </header>
 
         <div className="p-6">
@@ -901,6 +957,20 @@ export default function Recipes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* iFood Import Modal */}
+      <IfoodImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        importType="recipes"
+        userId={user?.id || ""}
+        userPlan={userPlan}
+        onImportComplete={handleIfoodImport}
+        onRefreshData={async () => {
+          await fetchRecipes(user.id);
+          await checkUsage();
+        }}
+      />
     </div>
   );
 }

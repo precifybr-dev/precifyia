@@ -7,7 +7,8 @@ import {
   Smartphone,
   DollarSign,
   Target,
-  ShoppingBag
+  ShoppingBag,
+  Sparkles
 } from "lucide-react";
 
 const benefits = [
@@ -58,6 +59,11 @@ const highlights = [
     icon: ShoppingBag,
     title: "Controle custos e despesas separados",
     description: "Saiba o que é custo de produção e o que é despesa do negócio, sem misturar."
+  },
+  {
+    icon: Sparkles,
+    title: "Importe seu cardápio do iFood com IA",
+    description: "Cadastre insumos e fichas técnicas automaticamente. A IA faz o trabalho pesado."
   }
 ];
 
