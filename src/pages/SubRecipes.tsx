@@ -48,10 +48,10 @@ import {
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { IngredientSelector, type IngredientData } from "@/components/recipes/IngredientSelector";
+import { type IngredientData } from "@/components/recipes/IngredientSelector";
 import { calculateIngredientCost } from "@/lib/ingredient-utils";
-import { ColorDot } from "@/components/ui/color-picker";
 import { NavLink } from "@/components/NavLink";
+import IngredientsSpreadsheetTable from "@/components/recipes/IngredientsSpreadsheetTable";
 
 // Sub-recipe red color constant
 const SUB_RECIPE_COLOR = "#ef4444";
@@ -80,6 +80,7 @@ interface SubRecipeIngredient {
   baseUnit: string;
   cost: number;
   color: string | null;
+  correctionFactor?: number | null;
 }
 
 const units = [
@@ -188,6 +189,7 @@ export default function SubRecipes() {
     baseUnit: "kg",
     cost: 0,
     color: null,
+    correctionFactor: null,
   });
 
   const resetForm = () => {
@@ -256,6 +258,7 @@ export default function SubRecipes() {
         baseUnit: ri.ingredients?.unit || "kg",
         cost: recalculatedCost,
         color: ri.ingredients?.color || null,
+        correctionFactor: ri.ingredients?.correction_factor || null,
       };
     });
 
@@ -317,6 +320,7 @@ export default function SubRecipes() {
         baseUnit: ing.unit,
         cost: cost,
         color: ing.color,
+        correctionFactor: (ing as any).correction_factor || null,
       };
       
       return updated;
@@ -423,7 +427,7 @@ export default function SubRecipes() {
           .delete()
           .eq("sub_recipe_id", editingId);
 
-        // Update the auto-created ingredient
+        // Update the auto-created ingredient (unit_price is a generated column, don't set it)
         await supabase
           .from("ingredients")
           .update({
@@ -431,7 +435,6 @@ export default function SubRecipes() {
             unit: yieldUnit,
             purchase_price: parseFloat(totalCost.toFixed(2)),
             purchase_quantity: yieldQty,
-            unit_price: parseFloat(unitCost.toFixed(2)),
             color: SUB_RECIPE_COLOR,
           })
           .eq("sub_recipe_id", editingId);
@@ -449,6 +452,7 @@ export default function SubRecipes() {
         subRecipeCode = newSubRecipe.code;
 
         // Create auto-ingredient entry (will appear in ingredients list)
+        // Note: unit_price is a generated column, it will be calculated automatically
         const { error: ingredientError } = await supabase
           .from("ingredients")
           .insert({
@@ -458,7 +462,6 @@ export default function SubRecipes() {
             unit: yieldUnit,
             purchase_price: parseFloat(totalCost.toFixed(2)),
             purchase_quantity: yieldQty,
-            unit_price: parseFloat(unitCost.toFixed(2)),
             correction_factor: 1,
             color: SUB_RECIPE_COLOR,
             is_sub_recipe: true,
@@ -690,105 +693,18 @@ export default function SubRecipes() {
                 </div>
               </div>
 
-              {/* Ingredients list */}
-              <div className="space-y-3 mb-6">
-                <Label>Insumos da Receita</Label>
-                
-                {recipeIngredients.map((ing, index) => (
-                  <div
-                    key={ing.id}
-                    className="grid grid-cols-12 gap-3 items-end p-4 bg-muted/50 rounded-lg"
-                  >
-                    <div className="col-span-12 sm:col-span-5 space-y-1">
-                      <Label className="text-xs text-muted-foreground">
-                        Insumo (busque por código ou nome)
-                      </Label>
-                      <IngredientSelector
-                        ingredients={ingredients}
-                        onSelect={(selected) => handleSelectIngredient(index, selected)}
-                        selectedId={ing.ingredientId || undefined}
-                        placeholder="Digite 1 ou nome..."
-                      />
-                      {ing.ingredientCode && (
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-xs text-primary flex items-center gap-1.5">
-                            <ColorDot color={ing.color} size="sm" />
-                            <span className="font-mono font-semibold">{ing.ingredientCode}</span>
-                            <span>-</span>
-                            <span>{ing.name}</span>
-                          </p>
-                          <span className="text-xs text-muted-foreground">
-                            {formatCurrency(ing.unitPrice)}/{ing.baseUnit}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="col-span-4 sm:col-span-2 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Quantidade</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        placeholder="500"
-                        value={ing.quantity}
-                        onChange={(e) => handleQuantityChange(index, e.target.value)}
-                      />
-                    </div>
-
-                    <div className="col-span-4 sm:col-span-2 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Unidade</Label>
-                      <Select
-                        value={ing.unit}
-                        onValueChange={(value) => handleUnitChange(index, value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {units.map((u) => (
-                            <SelectItem key={u.value} value={u.value}>
-                              {u.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="col-span-3 sm:col-span-2 space-y-1">
-                      <Label className="text-xs text-muted-foreground">Custo</Label>
-                      <div className="h-9 px-3 py-2 bg-background border border-input rounded-md flex items-center">
-                        <span className={`text-sm font-medium ${ing.cost > 0 ? "text-primary" : "text-muted-foreground"}`}>
-                          {formatCurrency(ing.cost)}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="col-span-1 flex justify-end">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="text-muted-foreground hover:text-destructive h-9 w-9"
-                        onClick={() => removeIngredientRow(index)}
-                        disabled={recipeIngredients.length === 1}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="border-dashed"
-                  onClick={addIngredientRow}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar insumo
-                </Button>
+              {/* Ingredients list - Spreadsheet style */}
+              <div className="mb-6">
+                <Label className="mb-3 block">Insumos da Receita</Label>
+                <IngredientsSpreadsheetTable
+                  ingredients={ingredients}
+                  recipeIngredients={recipeIngredients}
+                  onSelectIngredient={handleSelectIngredient}
+                  onQuantityChange={handleQuantityChange}
+                  onUnitChange={handleUnitChange}
+                  onAddRow={addIngredientRow}
+                  onRemoveRow={removeIngredientRow}
+                />
               </div>
 
               {/* Cost Summary */}
