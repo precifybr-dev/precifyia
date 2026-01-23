@@ -69,6 +69,14 @@ export function HeroSection() {
               </div>
             </div>
 
+            {/* Impact statement */}
+            <div className="flex items-center gap-2 mb-8 p-3 rounded-lg bg-warning/10 border border-warning/20 max-w-xl mx-auto lg:mx-0">
+              <span className="text-warning text-lg">⚠️</span>
+              <p className="text-sm text-foreground">
+                <span className="font-semibold">Dado real:</span> A maioria dos negócios descobre que estava perdendo dinheiro em pelo menos 3 produtos.
+              </p>
+            </div>
+
             {/* CTA */}
             <div className="flex flex-col gap-4 justify-center lg:justify-start">
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
