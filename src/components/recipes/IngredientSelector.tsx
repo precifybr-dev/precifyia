@@ -138,7 +138,7 @@ export function IngredientSelector({
       </div>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-64 overflow-auto">
+        <div className="absolute z-[9999] w-full mt-1 bg-popover border border-border rounded-lg shadow-lg max-h-64 overflow-auto">
           {filteredIngredients.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground text-sm">
               <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
