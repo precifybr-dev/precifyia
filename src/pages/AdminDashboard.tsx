@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import { RequirePermission } from "@/components/rbac";
+import { UserManagement } from "@/components/admin/UserManagement";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -43,10 +44,10 @@ import {
   Eye,
   Calendar,
   Shield,
+  UserCog,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { roleLabels, roleColors } from "@/lib/permissions";
 
 const PLAN_COLORS = {
   free: "hsl(var(--muted-foreground))",
@@ -331,15 +332,15 @@ export default function AdminDashboard() {
           </div>
 
           {/* Main Content */}
-          <Tabs defaultValue="charts" className="space-y-4">
+          <Tabs defaultValue="management" className="space-y-4">
             <TabsList>
+              <TabsTrigger value="management">
+                <UserCog className="h-4 w-4 mr-2" />
+                Gestão de Usuários
+              </TabsTrigger>
               <TabsTrigger value="charts">
                 <TrendingUp className="h-4 w-4 mr-2" />
                 Gráficos
-              </TabsTrigger>
-              <TabsTrigger value="users">
-                <Users className="h-4 w-4 mr-2" />
-                Usuários Recentes
               </TabsTrigger>
               <TabsTrigger value="alerts">
                 <Bell className="h-4 w-4 mr-2" />
@@ -355,6 +356,10 @@ export default function AdminDashboard() {
                 Logs
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="management">
+              <UserManagement />
+            </TabsContent>
 
             <TabsContent value="charts" className="space-y-4">
               <Card>

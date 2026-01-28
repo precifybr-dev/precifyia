@@ -80,6 +80,45 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_audit_logs: {
+        Row: {
+          action: string
+          action_type: string
+          admin_user_id: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          new_value: Json | null
+          old_value: Json | null
+          target_user_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          action_type: string
+          admin_user_id: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          target_user_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          action_type?: string
+          admin_user_id?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          target_user_id?: string | null
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       collaborators: {
         Row: {
           created_at: string
@@ -353,8 +392,11 @@ export type Database = {
           ifood_orders_with_coupon: number | null
           ifood_plan_type: string | null
           ifood_real_percentage: number | null
+          last_access_at: string | null
           monthly_revenue: number | null
           onboarding_step: string
+          subscription_expires_at: string | null
+          subscription_status: string
           tax_regime: string | null
           updated_at: string
           user_id: string
@@ -380,8 +422,11 @@ export type Database = {
           ifood_orders_with_coupon?: number | null
           ifood_plan_type?: string | null
           ifood_real_percentage?: number | null
+          last_access_at?: string | null
           monthly_revenue?: number | null
           onboarding_step?: string
+          subscription_expires_at?: string | null
+          subscription_status?: string
           tax_regime?: string | null
           updated_at?: string
           user_id: string
@@ -407,8 +452,11 @@ export type Database = {
           ifood_orders_with_coupon?: number | null
           ifood_plan_type?: string | null
           ifood_real_percentage?: number | null
+          last_access_at?: string | null
           monthly_revenue?: number | null
           onboarding_step?: string
+          subscription_expires_at?: string | null
+          subscription_status?: string
           tax_regime?: string | null
           updated_at?: string
           user_id?: string
@@ -660,6 +708,84 @@ export type Database = {
           },
         ]
       }
+      support_tickets: {
+        Row: {
+          assigned_to: string | null
+          created_at: string
+          id: string
+          message: string
+          priority: string
+          resolved_at: string | null
+          status: string
+          subject: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          subject: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          priority?: string
+          resolved_at?: string | null
+          status?: string
+          subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          description: string | null
+          external_id: string | null
+          id: string
+          payment_method: string | null
+          plan_type: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          payment_method?: string | null
+          plan_type?: string | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          description?: string | null
+          external_id?: string | null
+          id?: string
+          payment_method?: string | null
+          plan_type?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_permissions: {
         Row: {
           created_at: string
@@ -846,6 +972,21 @@ export type Database = {
     }
     Functions: {
       count_user_stores: { Args: { _user_id: string }; Returns: number }
+      get_all_users_admin: {
+        Args: never
+        Returns: {
+          business_name: string
+          created_at: string
+          email: string
+          id: string
+          last_access_at: string
+          last_sign_in_at: string
+          onboarding_step: string
+          subscription_expires_at: string
+          subscription_status: string
+          user_plan: string
+        }[]
+      }
       get_collaborator_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
