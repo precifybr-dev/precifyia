@@ -241,33 +241,41 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return true;
   }, [stores, activeStore, setActiveStore, toast]);
 
+  // Fetch stores when userId is set (kept OUT of onAuthStateChange to avoid auth deadlocks)
+  useEffect(() => {
+    if (!userId) return;
+    const t = setTimeout(() => {
+      fetchStores(userId);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [userId, fetchStores]);
+
   // Listen for auth state changes
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          await fetchStores(session.user.id);
-        } else {
-          setStores([]);
-          setActiveStoreState(null);
-          setUserPlan(null);
-          setUserId(null);
-          setIsLoading(false);
-        }
-      }
-    );
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const uid = session?.user?.id ?? null;
+      setUserId(uid);
 
-    // Initial check
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        fetchStores(session.user.id);
-      } else {
+      if (!uid) {
+        setStores([]);
+        setActiveStoreState(null);
+        setUserPlan(null);
         setIsLoading(false);
+      } else {
+        // We'll fetch stores in the separate effect above
+        setIsLoading(true);
       }
     });
 
+    // Initial check (also avoids calling Supabase inside auth callback)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const uid = session?.user?.id ?? null;
+      setUserId(uid);
+      if (!uid) setIsLoading(false);
+    });
+
     return () => subscription.unsubscribe();
-  }, [fetchStores]);
+  }, []);
 
   return (
     <StoreContext.Provider
