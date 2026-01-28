@@ -32,7 +32,12 @@ interface ResetPasswordRequest {
   newPassword: string;
 }
 
-type RequestBody = CreateCollaboratorRequest | UpdateCollaboratorRequest | ResetPasswordRequest;
+interface Reset2FARequest {
+  action: 'reset_2fa';
+  userId: string;
+}
+
+type RequestBody = CreateCollaboratorRequest | UpdateCollaboratorRequest | ResetPasswordRequest | Reset2FARequest;
 
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
@@ -92,6 +97,8 @@ serve(async (req: Request) => {
       return await handleUpdateCollaborator(supabase, body);
     } else if (body.action === 'reset_password') {
       return await handleResetPassword(supabase, body);
+    } else if (body.action === 'reset_2fa') {
+      return await handleReset2FA(supabase, body);
     }
 
     return new Response(
@@ -296,6 +303,52 @@ async function handleResetPassword(
       user_id: userId,
       must_change_password: true,
     }, { onConflict: 'user_id' });
+
+  return new Response(
+    JSON.stringify({ success: true }),
+    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
+
+async function handleReset2FA(
+  supabase: any,
+  data: Reset2FARequest
+) {
+  const { userId } = data;
+
+  // Verificar se não é o master
+  const { data: masterRole } = await supabase
+    .from('user_roles')
+    .select('role, is_protected')
+    .eq('user_id', userId)
+    .eq('role', 'master')
+    .maybeSingle();
+
+  if (masterRole?.is_protected) {
+    return new Response(
+      JSON.stringify({ error: 'Não é possível resetar o 2FA do master por este método' }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
+  // Resetar 2FA
+  const { error } = await supabase
+    .from('user_security')
+    .update({
+      mfa_enabled: false,
+      mfa_verified: false,
+      mfa_secret: null,
+      last_mfa_code: null,
+      mfa_code_expires_at: null,
+    })
+    .eq('user_id', userId);
+
+  if (error) {
+    return new Response(
+      JSON.stringify({ error: 'Erro ao resetar 2FA: ' + error.message }),
+      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
 
   return new Response(
     JSON.stringify({ success: true }),
