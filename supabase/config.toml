@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.setup-master-user]
 verify_jwt = false
+
+[functions.manage-collaborator]
+verify_jwt = false
