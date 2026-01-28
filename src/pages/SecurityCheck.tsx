@@ -119,18 +119,10 @@ export default function SecurityCheck() {
   const handleComplete = async () => {
     await logAccess("login_complete", true);
     
-    // Verificar onboarding
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("onboarding_step")
-      .eq("user_id", user?.id)
-      .maybeSingle();
-
-    if (profile?.onboarding_step === "completed") {
-      navigate("/dashboard");
-    } else {
-      navigate("/onboarding");
-    }
+    // Import function to determine redirect based on role
+    const { determineLoginRedirect } = await import("@/hooks/useUserRole");
+    const redirectPath = await determineLoginRedirect(user!.id);
+    navigate(redirectPath);
   };
 
   if (securityLoading || !user) {
