@@ -416,6 +416,36 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_events: {
+        Row: {
+          created_at: string
+          event_category: string
+          event_type: string
+          id: string
+          metadata: Json | null
+          session_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_category?: string
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          session_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_category?: string
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          session_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           business_name: string | null
@@ -994,6 +1024,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          duration_seconds: number | null
+          ended_at: string | null
+          events_count: number | null
+          id: string
+          page_views: number | null
+          session_id: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          duration_seconds?: number | null
+          ended_at?: string | null
+          events_count?: number | null
+          id?: string
+          page_views?: number | null
+          session_id: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          duration_seconds?: number | null
+          ended_at?: string | null
+          events_count?: number | null
+          id?: string
+          page_views?: number | null
+          session_id?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       variable_costs: {
         Row: {
           created_at: string
@@ -1102,9 +1165,44 @@ export type Database = {
           user_plan: string
         }[]
       }
+      get_average_session_duration: {
+        Args: never
+        Returns: {
+          avg_duration_minutes: number
+          sessions_today: number
+          total_sessions: number
+        }[]
+      }
+      get_churn_risk_users: {
+        Args: never
+        Returns: {
+          business_name: string
+          days_since_active: number
+          email: string
+          last_activity: string
+          previous_activity_level: string
+          user_id: string
+          user_plan: string
+        }[]
+      }
       get_collaborator_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_daily_active_users: {
+        Args: { days_back?: number }
+        Returns: {
+          active_users: number
+          activity_date: string
+        }[]
+      }
+      get_event_stats_by_category: {
+        Args: { days_back?: number }
+        Returns: {
+          event_category: string
+          event_count: number
+          unique_users: number
+        }[]
       }
       get_expiring_users_by_plan: {
         Args: { days_ahead?: number }
@@ -1126,6 +1224,24 @@ export type Database = {
           projected_next_month: number
           total_payment_links: number
           total_revenue: number
+        }[]
+      }
+      get_inactive_users: {
+        Args: { inactive_days?: number }
+        Returns: {
+          business_name: string
+          days_inactive: number
+          email: string
+          last_activity: string
+          user_id: string
+        }[]
+      }
+      get_most_used_features: {
+        Args: { days_back?: number }
+        Returns: {
+          feature_name: string
+          unique_users: number
+          usage_count: number
         }[]
       }
       get_mrr_stats: {
@@ -1182,6 +1298,13 @@ export type Database = {
           percentage: number
           plan_type: string
           user_count: number
+        }[]
+      }
+      get_usage_by_hour: {
+        Args: { days_back?: number }
+        Returns: {
+          event_count: number
+          hour_of_day: number
         }[]
       }
       get_user_permissions: {
