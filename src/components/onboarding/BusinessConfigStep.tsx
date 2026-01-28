@@ -16,6 +16,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import type { Profile } from "@/hooks/useOnboarding";
 
 interface BusinessConfigStepProps {
@@ -86,6 +87,35 @@ export function BusinessConfigStep({
     setIsLoading(true);
 
     try {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      // Check if user already has a store
+      const { data: existingStores } = await supabase
+        .from("stores")
+        .select("id")
+        .eq("user_id", user.id)
+        .limit(1);
+
+      // Create the first store if it doesn't exist
+      if (!existingStores || existingStores.length === 0) {
+        const { error: storeError } = await supabase
+          .from("stores")
+          .insert({
+            user_id: user.id,
+            name: businessName.trim(),
+            business_type: businessType,
+            is_default: true,
+          });
+
+        if (storeError) {
+          console.error("Error creating store:", storeError);
+          throw storeError;
+        }
+      }
+
+      // Update profile
       await onUpdate({
         business_name: businessName.trim(),
         business_type: businessType,
@@ -100,6 +130,7 @@ export function BusinessConfigStep({
 
       await onAdvance();
     } catch (error) {
+      console.error("Error in business config:", error);
       toast({
         title: "Erro ao salvar",
         description: "Não foi possível salvar os dados. Tente novamente.",
