@@ -388,7 +388,7 @@ export default function AdminDashboard() {
             </TabsList>
 
             <TabsContent value="management">
-              <UserManagement />
+              <UserManagement onImpersonate={() => navigate("/app")} />
             </TabsContent>
 
             <TabsContent value="financial">
