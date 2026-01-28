@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          store_id: string | null
           updated_at: string
           user_id: string
           value_per_item: number
@@ -27,6 +28,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          store_id?: string | null
           updated_at?: string
           user_id: string
           value_per_item?: number
@@ -35,11 +37,20 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          store_id?: string | null
           updated_at?: string
           user_id?: string
           value_per_item?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fixed_costs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fixed_expenses: {
         Row: {
@@ -47,6 +58,7 @@ export type Database = {
           id: string
           monthly_value: number
           name: string
+          store_id: string | null
           updated_at: string
           user_id: string
         }
@@ -55,6 +67,7 @@ export type Database = {
           id?: string
           monthly_value?: number
           name: string
+          store_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -63,10 +76,19 @@ export type Database = {
           id?: string
           monthly_value?: number
           name?: string
+          store_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "fixed_expenses_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ifood_import_usage: {
         Row: {
@@ -109,6 +131,7 @@ export type Database = {
           name: string
           purchase_price: number
           purchase_quantity: number
+          store_id: string | null
           sub_recipe_id: string | null
           unit: string
           unit_price: number | null
@@ -125,6 +148,7 @@ export type Database = {
           name: string
           purchase_price?: number
           purchase_quantity?: number
+          store_id?: string | null
           sub_recipe_id?: string | null
           unit?: string
           unit_price?: number | null
@@ -141,6 +165,7 @@ export type Database = {
           name?: string
           purchase_price?: number
           purchase_quantity?: number
+          store_id?: string | null
           sub_recipe_id?: string | null
           unit?: string
           unit_price?: number | null
@@ -148,6 +173,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ingredients_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ingredients_sub_recipe_id_fkey"
             columns: ["sub_recipe_id"]
@@ -162,6 +194,7 @@ export type Database = {
           created_at: string
           id: string
           month: number
+          store_id: string | null
           updated_at: string
           user_id: string
           value: number
@@ -171,6 +204,7 @@ export type Database = {
           created_at?: string
           id?: string
           month: number
+          store_id?: string | null
           updated_at?: string
           user_id: string
           value?: number
@@ -180,12 +214,21 @@ export type Database = {
           created_at?: string
           id?: string
           month?: number
+          store_id?: string | null
           updated_at?: string
           user_id?: string
           value?: number
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "monthly_revenues_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -324,6 +367,7 @@ export type Database = {
           id: string
           name: string
           servings: number
+          store_id: string | null
           suggested_price: number
           total_cost: number
           updated_at: string
@@ -336,6 +380,7 @@ export type Database = {
           id?: string
           name: string
           servings?: number
+          store_id?: string | null
           suggested_price?: number
           total_cost?: number
           updated_at?: string
@@ -348,8 +393,47 @@ export type Database = {
           id?: string
           name?: string
           servings?: number
+          store_id?: string | null
           suggested_price?: number
           total_cost?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          logo_url: string | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          logo_url?: string | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          logo_url?: string | null
+          name?: string
           updated_at?: string
           user_id?: string
         }
@@ -406,6 +490,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          store_id: string | null
           total_cost: number
           unit: string
           unit_cost: number
@@ -418,6 +503,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          store_id?: string | null
           total_cost?: number
           unit?: string
           unit_cost?: number
@@ -430,6 +516,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          store_id?: string | null
           total_cost?: number
           unit?: string
           unit_cost?: number
@@ -437,13 +524,22 @@ export type Database = {
           user_id?: string
           yield_quantity?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "sub_recipes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       variable_costs: {
         Row: {
           created_at: string
           id: string
           name: string
+          store_id: string | null
           updated_at: string
           user_id: string
           value_per_item: number
@@ -452,6 +548,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          store_id?: string | null
           updated_at?: string
           user_id: string
           value_per_item?: number
@@ -460,11 +557,20 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          store_id?: string | null
           updated_at?: string
           user_id?: string
           value_per_item?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "variable_costs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       variable_expenses: {
         Row: {
@@ -472,6 +578,7 @@ export type Database = {
           id: string
           monthly_value: number
           name: string
+          store_id: string | null
           updated_at: string
           user_id: string
         }
@@ -480,6 +587,7 @@ export type Database = {
           id?: string
           monthly_value?: number
           name: string
+          store_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -488,17 +596,28 @@ export type Database = {
           id?: string
           monthly_value?: number
           name?: string
+          store_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "variable_expenses_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      count_user_stores: { Args: { _user_id: string }; Returns: number }
       user_owns_recipe: { Args: { _recipe_id: string }; Returns: boolean }
+      user_owns_store: { Args: { _store_id: string }; Returns: boolean }
       user_owns_sub_recipe: {
         Args: { _sub_recipe_id: string }
         Returns: boolean

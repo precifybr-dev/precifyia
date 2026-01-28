@@ -59,6 +59,8 @@ import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
 import { IfoodImportModal } from "@/components/ifood-import/IfoodImportModal";
 import { useIfoodImport } from "@/hooks/useIfoodImport";
 import { Logo } from "@/components/ui/Logo";
+import { StoreSwitcher } from "@/components/store/StoreSwitcher";
+import { useStore } from "@/contexts/StoreContext";
 
 type Ingredient = {
   id: string;
@@ -108,6 +110,7 @@ export default function Ingredients() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
+  const { activeStore } = useStore();
   
   // Hook for iFood import functionality
   const { userPlan, canImport, remainingUsage, checkUsage } = useIfoodImport({
@@ -167,19 +170,34 @@ export default function Ingredients() {
       }
 
       setProfile(profileData);
-      await fetchIngredients(session.user.id);
       setIsLoading(false);
     };
 
     checkAuth();
   }, [navigate]);
 
-  const fetchIngredients = async (userId: string) => {
-    const { data, error } = await supabase
+  // Re-fetch ingredients when activeStore changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchIngredients(user.id, activeStore?.id);
+    }
+  }, [user?.id, activeStore?.id]);
+
+  const fetchIngredients = async (userId: string, storeId?: string | null) => {
+    let query = supabase
       .from("ingredients")
       .select("*")
       .eq("user_id", userId)
       .order("code", { ascending: true });
+    
+    // Filter by store if available
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setIngredients(data);
@@ -232,6 +250,7 @@ export default function Ingredients() {
 
     const ingredientData = {
       user_id: user.id,
+      store_id: activeStore?.id || null,
       code: codeNum,
       name: formData.name,
       unit: formData.unit,
@@ -247,7 +266,7 @@ export default function Ingredients() {
         toast({ title: "Erro", description: "Não foi possível atualizar", variant: "destructive" });
       } else {
         toast({ title: "Sucesso", description: "Insumo atualizado!" });
-        await fetchIngredients(user.id);
+        await fetchIngredients(user.id, activeStore?.id);
         resetForm();
       }
     } else {
@@ -256,7 +275,7 @@ export default function Ingredients() {
         toast({ title: "Erro", description: "Não foi possível salvar", variant: "destructive" });
       } else {
         toast({ title: "Sucesso", description: "Insumo adicionado!" });
-        await fetchIngredients(user.id);
+        await fetchIngredients(user.id, activeStore?.id);
         resetForm();
       }
     }
@@ -299,7 +318,7 @@ export default function Ingredients() {
       toast({ title: "Erro", description: "Não foi possível excluir", variant: "destructive" });
     } else {
       toast({ title: "Sucesso", description: "Insumo removido!" });
-      await fetchIngredients(user.id);
+      await fetchIngredients(user.id, activeStore?.id);
     }
     
     setDeleteDialogOpen(false);
@@ -313,6 +332,7 @@ export default function Ingredients() {
     const startCode = getNextCode();
     const newIngredients = items.map((item, index) => ({
       user_id: user.id,
+      store_id: activeStore?.id || null,
       code: startCode + index,
       name: item.name,
       unit: "un",
@@ -410,6 +430,7 @@ export default function Ingredients() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <StoreSwitcher />
               <Button 
                 variant="outline" 
                 size="sm"

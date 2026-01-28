@@ -51,6 +51,9 @@ import { IfoodImportModal } from "@/components/ifood-import/IfoodImportModal";
 import { useIfoodImport } from "@/hooks/useIfoodImport";
 import type { Tables } from "@/integrations/supabase/types";
 import { Logo } from "@/components/ui/Logo";
+import { StoreSwitcher } from "@/components/store/StoreSwitcher";
+import { useStore } from "@/contexts/StoreContext";
+
 type Recipe = Tables<"recipes">;
 
 interface RecipeIngredient {
@@ -710,6 +713,7 @@ export default function Recipes() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <StoreSwitcher />
               <Button 
                 variant="outline" 
                 size="sm"
