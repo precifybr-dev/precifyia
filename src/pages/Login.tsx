@@ -23,7 +23,7 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
@@ -36,12 +36,26 @@ export default function Login() {
             : error.message,
           variant: "destructive",
         });
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch profile to check onboarding status
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_step")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      toast({
+        title: "Login realizado!",
+        description: "Bem-vindo de volta ao PRECIFY.",
+      });
+
+      // Redirect based on onboarding status
+      if (profile?.onboarding_step === "completed") {
+        navigate("/dashboard");
       } else {
-        toast({
-          title: "Login realizado!",
-          description: "Bem-vindo de volta ao PRECIFY.",
-        });
-        // Redirect to onboarding - it will check if completed and redirect to dashboard
         navigate("/onboarding");
       }
     } catch (error) {
