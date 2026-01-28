@@ -83,6 +83,16 @@ serve(async (req: Request) => {
     const isMaster = masterRole?.role === 'master' && masterRole?.is_protected;
 
     if (!isMaster) {
+      // Registrar tentativa de acesso não autorizado
+      await supabase.from('admin_audit_logs').insert({
+        admin_user_id: user.id,
+        action: 'unauthorized_collaborator_management_attempt',
+        action_type: 'security',
+        new_value: { attempted_action: 'manage_collaborator', ip: req.headers.get('x-forwarded-for') },
+      });
+
+      console.error(`[SECURITY] Unauthorized access attempt by user ${user.id}`);
+
       return new Response(
         JSON.stringify({ error: 'Apenas o usuário master pode gerenciar colaboradores' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -91,14 +101,43 @@ serve(async (req: Request) => {
 
     const body: RequestBody = await req.json();
 
+    // Validação adicional: impedir que master tente criar/promover para master
+    if (body.action === 'create' && body.role === 'master') {
+      await supabase.from('admin_audit_logs').insert({
+        admin_user_id: user.id,
+        action: 'master_creation_attempt_blocked',
+        action_type: 'security',
+        new_value: { attempted_email: body.email, attempted_role: body.role },
+      });
+      
+      return new Response(
+        JSON.stringify({ error: 'Não é permitido criar outro usuário master' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (body.action === 'update' && body.updates?.role === 'master') {
+      await supabase.from('admin_audit_logs').insert({
+        admin_user_id: user.id,
+        action: 'master_promotion_attempt_blocked',
+        action_type: 'security',
+        new_value: { collaborator_id: body.collaboratorId, attempted_role: body.updates.role },
+      });
+      
+      return new Response(
+        JSON.stringify({ error: 'Não é permitido promover para master' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     if (body.action === 'create') {
       return await handleCreateCollaborator(supabase, body, user.id);
     } else if (body.action === 'update') {
-      return await handleUpdateCollaborator(supabase, body);
+      return await handleUpdateCollaborator(supabase, body, user.id);
     } else if (body.action === 'reset_password') {
-      return await handleResetPassword(supabase, body);
+      return await handleResetPassword(supabase, body, user.id);
     } else if (body.action === 'reset_2fa') {
-      return await handleReset2FA(supabase, body);
+      return await handleReset2FA(supabase, body, user.id);
     }
 
     return new Response(
@@ -204,7 +243,8 @@ async function handleCreateCollaborator(
 
 async function handleUpdateCollaborator(
   supabase: any,
-  data: UpdateCollaboratorRequest
+  data: UpdateCollaboratorRequest,
+  masterId: string
 ) {
   const { collaboratorId, updates } = data;
 
@@ -266,7 +306,8 @@ async function handleUpdateCollaborator(
 
 async function handleResetPassword(
   supabase: any,
-  data: ResetPasswordRequest
+  data: ResetPasswordRequest,
+  masterId: string
 ) {
   const { userId, newPassword } = data;
 
@@ -312,7 +353,8 @@ async function handleResetPassword(
 
 async function handleReset2FA(
   supabase: any,
-  data: Reset2FARequest
+  data: Reset2FARequest,
+  masterId: string
 ) {
   const { userId } = data;
 

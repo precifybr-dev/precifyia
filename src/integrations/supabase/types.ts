@@ -1150,6 +1150,7 @@ export type Database = {
     }
     Functions: {
       count_user_stores: { Args: { _user_id: string }; Returns: number }
+      current_user_is_master: { Args: never; Returns: boolean }
       get_all_users_admin: {
         Args: never
         Returns: {
