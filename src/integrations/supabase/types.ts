@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_logs: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          success: boolean
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          success?: boolean
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       fixed_costs: {
         Row: {
           created_at: string
@@ -537,6 +570,75 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          is_protected: boolean
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_protected?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_protected?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_security: {
+        Row: {
+          created_at: string
+          id: string
+          last_mfa_code: string | null
+          mfa_code_expires_at: string | null
+          mfa_enabled: boolean
+          mfa_secret: string | null
+          mfa_verified: boolean
+          must_change_password: boolean
+          password_changed_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_mfa_code?: string | null
+          mfa_code_expires_at?: string | null
+          mfa_enabled?: boolean
+          mfa_secret?: string | null
+          mfa_verified?: boolean
+          must_change_password?: boolean
+          password_changed_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_mfa_code?: string | null
+          mfa_code_expires_at?: string | null
+          mfa_enabled?: boolean
+          mfa_secret?: string | null
+          mfa_verified?: boolean
+          must_change_password?: boolean
+          password_changed_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       variable_costs: {
         Row: {
           created_at: string
@@ -619,6 +721,22 @@ export type Database = {
     }
     Functions: {
       count_user_stores: { Args: { _user_id: string }; Returns: number }
+      get_user_security: {
+        Args: { _user_id: string }
+        Returns: {
+          mfa_enabled: boolean
+          mfa_verified: boolean
+          must_change_password: boolean
+        }[]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_master: { Args: { _user_id: string }; Returns: boolean }
       user_owns_recipe: { Args: { _recipe_id: string }; Returns: boolean }
       user_owns_store: { Args: { _store_id: string }; Returns: boolean }
       user_owns_sub_recipe: {
@@ -627,7 +745,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "user" | "admin" | "master"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -754,6 +872,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["user", "admin", "master"],
+    },
   },
 } as const

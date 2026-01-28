@@ -15,6 +15,7 @@ import Ingredients from "./pages/Ingredients";
 import Beverages from "./pages/Beverages";
 import Recipes from "./pages/Recipes";
 import SubRecipes from "./pages/SubRecipes";
+import SecurityCheck from "./pages/SecurityCheck";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/security-check" element={<SecurityCheck />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/store-onboarding/:storeId" element={<StoreOnboarding />} />
             <Route path="/dashboard" element={<Dashboard />} />
