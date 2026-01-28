@@ -9,7 +9,8 @@ const corsHeaders = {
 interface AdminAction {
   action: 'list_users' | 'get_user' | 'reset_password' | 'change_plan' | 
           'extend_subscription' | 'get_financial_history' | 'get_support_history' |
-          'start_impersonation' | 'end_impersonation' | 'update_status';
+          'start_impersonation' | 'end_impersonation' | 'update_status' |
+          'check_consent' | 'get_session_logs' | 'get_abuse_alerts';
   targetUserId?: string;
   data?: Record<string, any>;
 }
@@ -17,6 +18,10 @@ interface AdminAction {
 // Rate limiting configuration
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 30; // Max requests per window
+
+// Support session limits
+const MAX_SESSION_DURATION_MINUTES = 30;
+const MAX_SESSIONS_PER_ADMIN_PER_DAY = 10;
 
 // In-memory rate limit store (resets on function cold start)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
@@ -209,6 +214,9 @@ serve(async (req: Request) => {
       'get_support_history': 'respond_support',
       'start_impersonation': 'impersonate_user',
       'update_status': 'edit_users',
+      'check_consent': 'impersonate_user',
+      'get_session_logs': 'view_logs',
+      'get_abuse_alerts': 'view_logs',
     };
 
     const requiredPermission = permissionMap[body.action];
@@ -269,6 +277,26 @@ serve(async (req: Request) => {
       }
     }
 
+    // Helper to create abuse alert
+    async function createAbuseAlert(
+      db: any,
+      adminId: string,
+      alertType: string,
+      message: string,
+      metadata: any = {}
+    ) {
+      try {
+        await db.from('support_abuse_alerts').insert({
+          admin_id: adminId,
+          alert_type: alertType,
+          alert_message: message,
+          metadata,
+        });
+      } catch (error) {
+        console.error('[ABUSE] Failed to create alert:', error);
+      }
+    }
+
     // Handle actions
     switch (body.action) {
       case 'list_users': {
@@ -281,8 +309,17 @@ serve(async (req: Request) => {
           .select('user_id, business_name, user_plan, subscription_status, subscription_expires_at, last_access_at, onboarding_step')
           .in('user_id', userIds);
 
+        // Get consent status for each user
+        const { data: consents } = await supabase
+          .from('support_consent')
+          .select('user_id, expires_at, ticket_id')
+          .eq('is_active', true)
+          .is('revoked_at', null)
+          .gt('expires_at', new Date().toISOString());
+
         const enrichedUsers = users.users.map(u => {
           const profile = profiles?.find(p => p.user_id === u.id);
+          const consent = consents?.find(c => c.user_id === u.id);
           return {
             id: u.id,
             email: u.email,
@@ -294,6 +331,8 @@ serve(async (req: Request) => {
             subscription_expires_at: profile?.subscription_expires_at || null,
             last_access_at: profile?.last_access_at || u.last_sign_in_at,
             onboarding_step: profile?.onboarding_step || 'business',
+            has_support_consent: !!consent,
+            consent_expires_at: consent?.expires_at || null,
           };
         });
 
@@ -546,6 +585,35 @@ serve(async (req: Request) => {
         );
       }
 
+      case 'check_consent': {
+        if (!body.targetUserId) {
+          return new Response(
+            JSON.stringify({ error: 'targetUserId é obrigatório' }),
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check for active consent
+        const { data: consent } = await supabase
+          .from('support_consent')
+          .select('id, ticket_id, expires_at, granted_at')
+          .eq('user_id', body.targetUserId)
+          .eq('is_active', true)
+          .is('revoked_at', null)
+          .gt('expires_at', new Date().toISOString())
+          .order('granted_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        return new Response(
+          JSON.stringify({ 
+            hasConsent: !!consent,
+            consent: consent || null,
+          }),
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'start_impersonation': {
         if (!body.targetUserId) {
           return new Response(
@@ -566,39 +634,104 @@ serve(async (req: Request) => {
           );
         }
 
+        // Check for active consent from user
+        const { data: consent } = await supabase
+          .from('support_consent')
+          .select('id, ticket_id, expires_at')
+          .eq('user_id', body.targetUserId)
+          .eq('is_active', true)
+          .is('revoked_at', null)
+          .gt('expires_at', new Date().toISOString())
+          .order('granted_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        if (!consent) {
+          await logAudit(supabase, user.id, 'impersonation_blocked', body.action, body.targetUserId, deviceInfo, null, {
+            reason: 'no_consent'
+          });
+          
+          // Create abuse alert for attempted access without consent
+          await createAbuseAlert(
+            supabase,
+            user.id,
+            'no_consent_attempt',
+            `Admin ${user.email} tentou acessar conta sem consentimento do usuário`,
+            { target_user_id: body.targetUserId }
+          );
+
+          return new Response(
+            JSON.stringify({ 
+              error: 'O usuário não autorizou acesso de suporte à sua conta',
+              requiresConsent: true,
+            }),
+            { status: 403, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check admin's daily session limit
+        const { data: todaySessions } = await supabase.rpc('count_admin_sessions_today', { 
+          _admin_id: user.id 
+        });
+
+        if (todaySessions && todaySessions >= MAX_SESSIONS_PER_ADMIN_PER_DAY) {
+          await logAudit(supabase, user.id, 'impersonation_blocked', body.action, body.targetUserId, deviceInfo, null, {
+            reason: 'daily_limit_exceeded',
+            sessions_today: todaySessions,
+          });
+
+          // Create abuse alert
+          await createAbuseAlert(
+            supabase,
+            user.id,
+            'daily_limit_exceeded',
+            `Admin ${user.email} excedeu o limite diário de ${MAX_SESSIONS_PER_ADMIN_PER_DAY} sessões de suporte`,
+            { sessions_today: todaySessions }
+          );
+
+          return new Response(
+            JSON.stringify({ 
+              error: `Limite diário de ${MAX_SESSIONS_PER_ADMIN_PER_DAY} sessões de suporte atingido`,
+              dailyLimitExceeded: true,
+            }),
+            { status: 429, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         // Get target user data
         const { data: targetUserData, error: targetError } = await supabase.auth.admin.getUserById(body.targetUserId);
         if (targetError) throw targetError;
 
-        // Generate a REAL session for the target user using signInWithId (magic link approach)
-        // We use generateLink to create a session token for the target user
-        const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-          type: 'magiclink',
-          email: targetUserData.user.email!,
-          options: {
-            redirectTo: `${req.headers.get('origin') || 'https://lovable.dev'}/app`,
-          }
-        });
-
-        if (linkError) {
-          console.error('[IMPERSONATION] Failed to generate session link:', linkError);
-          throw linkError;
-        }
-
-        // Extract the token from the link
-        const impersonationToken = `imp_${Date.now()}_${body.targetUserId}`;
+        // Generate session token
+        const sessionToken = `sup_${Date.now()}_${body.targetUserId}_readonly`;
         const startedAt = new Date().toISOString();
+
+        // Create session log entry
+        await supabase.from('support_session_logs').insert({
+          admin_id: user.id,
+          user_id: body.targetUserId,
+          consent_id: consent.id,
+          access_type: 'readonly',
+          started_at: startedAt,
+          admin_ip: deviceInfo.ip,
+          admin_user_agent: deviceInfo.userAgent,
+          session_token: sessionToken,
+          actions_log: [],
+        });
 
         // Log the impersonation start
         await logAudit(supabase, user.id, 'impersonation', 'impersonate_start', body.targetUserId, deviceInfo, null, { 
           started: true,
           target_email: targetUserData.user.email,
-          impersonation_token: impersonationToken,
+          session_token: sessionToken,
           started_at: startedAt,
           admin_email: user.email,
+          access_type: 'readonly',
+          consent_id: consent.id,
+          max_duration_minutes: MAX_SESSION_DURATION_MINUTES,
         });
 
-        // Return the magic link token properties for client-side session creation
+        // Return session info (READ-ONLY mode - no actual auth switch)
         return new Response(
           JSON.stringify({ 
             success: true,
@@ -606,15 +739,13 @@ serve(async (req: Request) => {
               id: targetUserData.user.id,
               email: targetUserData.user.email,
             },
-            impersonationToken,
+            sessionToken,
             adminId: user.id,
             adminEmail: user.email,
             startedAt,
-            // Include the hashed token and redirect info
-            sessionData: {
-              token_hash: linkData.properties?.hashed_token,
-              email: targetUserData.user.email,
-            }
+            accessType: 'readonly',
+            maxDurationMinutes: MAX_SESSION_DURATION_MINUTES,
+            consentId: consent.id,
           }),
           { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
@@ -628,18 +759,85 @@ serve(async (req: Request) => {
           );
         }
 
+        const endedAt = new Date().toISOString();
+        const durationSeconds = body.data?.startedAt 
+          ? Math.floor((Date.now() - new Date(body.data.startedAt).getTime()) / 1000)
+          : null;
+
+        // Update session log
+        if (body.data?.sessionToken) {
+          await supabase
+            .from('support_session_logs')
+            .update({
+              ended_at: endedAt,
+              duration_seconds: durationSeconds,
+              auto_ended: body.data?.autoEnded || false,
+              end_reason: body.data?.endReason || 'manual',
+              actions_log: body.data?.actionsLog || [],
+            })
+            .eq('session_token', body.data.sessionToken);
+        }
+
         await logAudit(supabase, user.id, 'impersonate_end', body.action, body.targetUserId, deviceInfo, null, { 
           ended: true,
-          impersonation_token: body.data?.impersonationToken || null,
+          session_token: body.data?.sessionToken || null,
           started_at: body.data?.startedAt || null,
-          ended_at: new Date().toISOString(),
-          duration_seconds: body.data?.startedAt 
-            ? Math.floor((Date.now() - new Date(body.data.startedAt).getTime()) / 1000)
-            : null,
+          ended_at: endedAt,
+          duration_seconds: durationSeconds,
+          auto_ended: body.data?.autoEnded || false,
+          end_reason: body.data?.endReason || 'manual',
         });
 
         return new Response(
           JSON.stringify({ success: true }),
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get_session_logs': {
+        // Only master can view session logs
+        const { data: isMaster } = await supabase.rpc('is_master', { _user_id: user.id });
+        if (!isMaster) {
+          return new Response(
+            JSON.stringify({ error: 'Apenas o master pode visualizar logs de sessão' }),
+            { status: 403, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: logs, error } = await supabase
+          .from('support_session_logs')
+          .select('*')
+          .order('started_at', { ascending: false })
+          .limit(100);
+
+        if (error) throw error;
+
+        return new Response(
+          JSON.stringify({ logs: logs || [] }),
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get_abuse_alerts': {
+        // Only master can view abuse alerts
+        const { data: isMaster } = await supabase.rpc('is_master', { _user_id: user.id });
+        if (!isMaster) {
+          return new Response(
+            JSON.stringify({ error: 'Apenas o master pode visualizar alertas de abuso' }),
+            { status: 403, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: alerts, error } = await supabase
+          .from('support_abuse_alerts')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (error) throw error;
+
+        return new Response(
+          JSON.stringify({ alerts: alerts || [] }),
           { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
