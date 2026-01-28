@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
-
+import { Logo } from "@/components/ui/Logo";
 export default function Register() {
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -94,9 +94,7 @@ export default function Register() {
       {/* Left Side - Decorative */}
       <div className="hidden lg:flex flex-1 bg-primary/5 items-center justify-center p-12 border-r border-border">
         <div className="max-w-md">
-          <div className="w-24 h-24 rounded-2xl bg-primary flex items-center justify-center mb-8 shadow-lg">
-            <span className="font-logo text-4xl text-primary-foreground">P</span>
-          </div>
+          <Logo size="xl" showText={false} className="mb-8" />
           <h2 className="font-display text-2xl font-bold mb-4 text-foreground">
             Comece seu trial grátis
           </h2>
@@ -134,11 +132,8 @@ export default function Register() {
           </Link>
 
           <div className="mb-8">
-            <Link to="/" className="flex items-center gap-2 mb-6 lg:hidden">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <span className="font-logo text-primary-foreground">P</span>
-              </div>
-              <span className="font-logo text-2xl text-foreground">PRECIFY</span>
+            <Link to="/" className="mb-6 inline-block lg:hidden">
+              <Logo size="md" showText />
             </Link>
             <h1 className="font-display text-3xl font-bold mb-2 text-foreground">Criar sua conta</h1>
             <p className="text-muted-foreground">

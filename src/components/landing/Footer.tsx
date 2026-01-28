@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { Logo } from "@/components/ui/Logo";
 
 export function Footer() {
   const { toast } = useToast();
@@ -26,11 +27,8 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8 mb-8">
           {/* Brand */}
           <div className="md:col-span-2">
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="font-logo text-primary-foreground text-sm">P</span>
-              </div>
-              <span className="font-logo text-xl text-foreground">PRECIFY</span>
+            <Link to="/" className="mb-4 inline-block">
+              <Logo size="sm" showText />
             </Link>
             <p className="text-muted-foreground max-w-md leading-relaxed mb-4">
               Saiba exatamente quanto você lucra em cada venda no iFood e no balcão.

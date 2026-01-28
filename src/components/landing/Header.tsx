@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
+import { Logo } from "@/components/ui/Logo";
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
@@ -41,11 +41,8 @@ export function Header() {
       <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <span className="font-logo text-primary-foreground text-sm">P</span>
-            </div>
-            <span className="font-logo text-xl text-foreground">PRECIFY</span>
+          <Link to="/">
+            <Logo size="sm" showText />
           </Link>
 
           {/* Desktop Navigation */}

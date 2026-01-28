@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Logo } from "@/components/ui/Logo";
 import { OnboardingStepper } from "@/components/onboarding/OnboardingStepper";
 import { BusinessConfigStep } from "@/components/onboarding/BusinessConfigStep";
 import { IngredientsStep } from "@/components/onboarding/IngredientsStep";
@@ -52,11 +53,8 @@ export default function Onboarding() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center">
-                <span className="font-logo text-primary-foreground text-sm">P</span>
-              </div>
-              <span className="font-logo text-xl text-foreground">PRECIFY</span>
+            <Link to="/">
+              <Logo size="lg" showText />
             </Link>
 
             <div className="flex items-center gap-4">
