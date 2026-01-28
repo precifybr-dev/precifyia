@@ -30,7 +30,8 @@ import {
   assignableRoles, 
   permissionLabels, 
   permissionCategories,
-  allPermissions 
+  allPermissions,
+  defaultRolePermissions
 } from "@/lib/permissions";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -499,6 +500,63 @@ export default function Collaborators() {
                     </div>
                     <p className="text-xs text-muted-foreground">
                       O colaborador será obrigado a trocar a senha no primeiro acesso
+                    </p>
+                  </div>
+
+                  {/* Permissions Preview for Selected Role */}
+                  <Separator />
+                  <div className="space-y-3">
+                    <Label className="flex items-center gap-2">
+                      <Shield className="h-4 w-4 text-primary" />
+                      Permissões do papel "{roleLabels[newRole]}"
+                    </Label>
+                    <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                      {Object.entries(permissionCategories).map(([key, category]) => {
+                        const rolePerms = defaultRolePermissions[newRole] || [];
+                        const categoryPerms = category.permissions.filter(p => rolePerms.includes(p));
+                        
+                        if (categoryPerms.length === 0) return null;
+                        
+                        return (
+                          <div key={key} className="space-y-1">
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                              {category.label}
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {categoryPerms.map(perm => (
+                                <Badge key={perm} variant="secondary" className="text-xs">
+                                  <CheckCircle2 className="h-3 w-3 mr-1 text-success" />
+                                  {permissionLabels[perm]}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {/* Show what's NOT included */}
+                      {(() => {
+                        const rolePerms = defaultRolePermissions[newRole] || [];
+                        const missingPerms = allPermissions.filter(p => !rolePerms.includes(p));
+                        if (missingPerms.length === 0) return null;
+                        
+                        return (
+                          <div className="pt-2 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground mb-1">Sem acesso a:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {missingPerms.map(perm => (
+                                <Badge key={perm} variant="outline" className="text-xs text-muted-foreground">
+                                  <XCircle className="h-3 w-3 mr-1" />
+                                  {permissionLabels[perm]}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Você pode adicionar ou remover permissões individuais após criar o colaborador.
                     </p>
                   </div>
                 </div>
