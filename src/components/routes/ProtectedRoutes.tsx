@@ -85,6 +85,7 @@ interface AppRouteProps {
 export function AppRoute({ children }: AppRouteProps) {
   const { isLoading, isAdminUser } = useUserRole();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isImpersonating, setIsImpersonating] = useState(false);
   const location = useLocation();
 
   useEffect(() => {
@@ -94,10 +95,35 @@ export function AppRoute({ children }: AppRouteProps) {
     };
     checkAuth();
 
+    // Check for impersonation session
+    const checkImpersonation = () => {
+      try {
+        const stored = sessionStorage.getItem("impersonation");
+        if (stored) {
+          const session = JSON.parse(stored);
+          const startedAt = new Date(session.startedAt);
+          const now = new Date();
+          const hoursDiff = (now.getTime() - startedAt.getTime()) / (1000 * 60 * 60);
+          
+          // Valid impersonation session (less than 2 hours)
+          if (hoursDiff < 2 && session.targetUser) {
+            setIsImpersonating(true);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error("Error checking impersonation:", error);
+      }
+      setIsImpersonating(false);
+    };
+    
+    checkImpersonation();
+
     // Listen for auth state changes to ensure session validation on all visits
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         setIsAuthenticated(!!session?.user);
+        checkImpersonation();
       }
     );
 
@@ -121,8 +147,13 @@ export function AppRoute({ children }: AppRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If user is master or collaborator, ALWAYS redirect to admin
-  // Master should NEVER see end-user dashboard
+  // IMPORTANT: If admin is impersonating a user, allow access to app routes
+  // This is the key change - we check if there's an active impersonation session
+  if (isImpersonating) {
+    return <>{children}</>;
+  }
+
+  // If user is master or collaborator (and NOT impersonating), redirect to admin
   if (isAdminUser) {
     return <Navigate to="/admin" replace />;
   }

@@ -554,7 +554,7 @@ serve(async (req: Request) => {
           );
         }
 
-        // Check if target is master
+        // Check if target is master - cannot impersonate master users
         const { data: masterCheck } = await supabase.rpc('is_master', { _user_id: body.targetUserId });
         if (masterCheck) {
           await logAudit(supabase, user.id, 'impersonation_blocked', body.action, body.targetUserId, deviceInfo, null, {
@@ -566,28 +566,55 @@ serve(async (req: Request) => {
           );
         }
 
-        // Get target user data for impersonation session
-        const { data: userData, error } = await supabase.auth.admin.getUserById(body.targetUserId);
-        if (error) throw error;
+        // Get target user data
+        const { data: targetUserData, error: targetError } = await supabase.auth.admin.getUserById(body.targetUserId);
+        if (targetError) throw targetError;
 
-        const impersonationToken = `imp_${Date.now()}_${body.targetUserId}`;
-
-        await logAudit(supabase, user.id, 'impersonate_start', body.action, body.targetUserId, deviceInfo, null, { 
-          started: true,
-          target_email: userData.user.email,
-          impersonation_token: impersonationToken,
-          started_at: new Date().toISOString(),
+        // Generate a REAL session for the target user using signInWithId (magic link approach)
+        // We use generateLink to create a session token for the target user
+        const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+          type: 'magiclink',
+          email: targetUserData.user.email!,
+          options: {
+            redirectTo: `${req.headers.get('origin') || 'https://lovable.dev'}/app`,
+          }
         });
 
-        // Return user info - actual impersonation will be handled client-side
+        if (linkError) {
+          console.error('[IMPERSONATION] Failed to generate session link:', linkError);
+          throw linkError;
+        }
+
+        // Extract the token from the link
+        const impersonationToken = `imp_${Date.now()}_${body.targetUserId}`;
+        const startedAt = new Date().toISOString();
+
+        // Log the impersonation start
+        await logAudit(supabase, user.id, 'impersonation', 'impersonate_start', body.targetUserId, deviceInfo, null, { 
+          started: true,
+          target_email: targetUserData.user.email,
+          impersonation_token: impersonationToken,
+          started_at: startedAt,
+          admin_email: user.email,
+        });
+
+        // Return the magic link token properties for client-side session creation
         return new Response(
           JSON.stringify({ 
             success: true,
             targetUser: {
-              id: userData.user.id,
-              email: userData.user.email,
+              id: targetUserData.user.id,
+              email: targetUserData.user.email,
             },
             impersonationToken,
+            adminId: user.id,
+            adminEmail: user.email,
+            startedAt,
+            // Include the hashed token and redirect info
+            sessionData: {
+              token_hash: linkData.properties?.hashed_token,
+              email: targetUserData.user.email,
+            }
           }),
           { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
