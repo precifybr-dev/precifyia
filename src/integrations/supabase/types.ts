@@ -47,6 +47,42 @@ export type Database = {
         }
         Relationships: []
       }
+      collaborators: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          email: string
+          id: string
+          is_active: boolean
+          name: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          email: string
+          id?: string
+          is_active?: boolean
+          name: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       fixed_costs: {
         Row: {
           created_at: string
@@ -442,6 +478,27 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          permission: Database["public"]["Enums"]["app_permission"]
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          permission: Database["public"]["Enums"]["app_permission"]
+          role: Database["public"]["Enums"]["app_role"]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          permission?: Database["public"]["Enums"]["app_permission"]
+          role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
       stores: {
         Row: {
           business_type: string | null
@@ -569,6 +626,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_permissions: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          id: string
+          permission: Database["public"]["Enums"]["app_permission"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          permission: Database["public"]["Enums"]["app_permission"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          id?: string
+          permission?: Database["public"]["Enums"]["app_permission"]
+          user_id?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -721,6 +802,14 @@ export type Database = {
     }
     Functions: {
       count_user_stores: { Args: { _user_id: string }; Returns: number }
+      get_collaborator_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_user_permissions: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_permission"][]
+      }
       get_user_security: {
         Args: { _user_id: string }
         Returns: {
@@ -729,6 +818,13 @@ export type Database = {
           must_change_password: boolean
         }[]
       }
+      has_permission: {
+        Args: {
+          _permission: Database["public"]["Enums"]["app_permission"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -736,6 +832,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_collaborator: { Args: { _user_id: string }; Returns: boolean }
       is_master: { Args: { _user_id: string }; Returns: boolean }
       user_owns_recipe: { Args: { _recipe_id: string }; Returns: boolean }
       user_owns_store: { Args: { _store_id: string }; Returns: boolean }
@@ -745,7 +842,24 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "user" | "admin" | "master"
+      app_permission:
+        | "view_users"
+        | "edit_users"
+        | "impersonate_user"
+        | "reset_password"
+        | "view_financials"
+        | "view_metrics"
+        | "manage_plans"
+        | "respond_support"
+        | "manage_collaborators"
+        | "view_logs"
+      app_role:
+        | "user"
+        | "admin"
+        | "master"
+        | "suporte"
+        | "financeiro"
+        | "analista"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -873,7 +987,26 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["user", "admin", "master"],
+      app_permission: [
+        "view_users",
+        "edit_users",
+        "impersonate_user",
+        "reset_password",
+        "view_financials",
+        "view_metrics",
+        "manage_plans",
+        "respond_support",
+        "manage_collaborators",
+        "view_logs",
+      ],
+      app_role: [
+        "user",
+        "admin",
+        "master",
+        "suporte",
+        "financeiro",
+        "analista",
+      ],
     },
   },
 } as const
