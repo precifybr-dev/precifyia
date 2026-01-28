@@ -6,6 +6,7 @@ import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import { RequirePermission } from "@/components/rbac";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { FinancialDashboard } from "@/components/admin/FinancialDashboard";
+import { SupportDashboard } from "@/components/admin/SupportDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,6 +48,7 @@ import {
   Shield,
   UserCog,
   Wallet,
+  Headphones,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -357,6 +359,10 @@ export default function AdminDashboard() {
                   </Badge>
                 )}
               </TabsTrigger>
+              <TabsTrigger value="support">
+                <Headphones className="h-4 w-4 mr-2" />
+                Suporte
+              </TabsTrigger>
               <TabsTrigger value="logs">
                 <History className="h-4 w-4 mr-2" />
                 Logs
@@ -369,6 +375,10 @@ export default function AdminDashboard() {
 
             <TabsContent value="financial">
               <FinancialDashboard />
+            </TabsContent>
+
+            <TabsContent value="support">
+              <SupportDashboard />
             </TabsContent>
 
             <TabsContent value="charts" className="space-y-4">
