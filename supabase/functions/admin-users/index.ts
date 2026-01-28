@@ -9,7 +9,7 @@ const corsHeaders = {
 interface AdminAction {
   action: 'list_users' | 'get_user' | 'reset_password' | 'change_plan' | 
           'extend_subscription' | 'get_financial_history' | 'get_support_history' |
-          'start_impersonation' | 'update_status';
+          'start_impersonation' | 'end_impersonation' | 'update_status';
   targetUserId?: string;
   data?: Record<string, any>;
 }
@@ -570,10 +570,13 @@ serve(async (req: Request) => {
         const { data: userData, error } = await supabase.auth.admin.getUserById(body.targetUserId);
         if (error) throw error;
 
+        const impersonationToken = `imp_${Date.now()}_${body.targetUserId}`;
+
         await logAudit(supabase, user.id, 'impersonate_start', body.action, body.targetUserId, deviceInfo, null, { 
           started: true,
           target_email: userData.user.email,
-          timestamp: new Date().toISOString(),
+          impersonation_token: impersonationToken,
+          started_at: new Date().toISOString(),
         });
 
         // Return user info - actual impersonation will be handled client-side
@@ -584,8 +587,32 @@ serve(async (req: Request) => {
               id: userData.user.id,
               email: userData.user.email,
             },
-            impersonationToken: `imp_${Date.now()}_${body.targetUserId}` // Token for tracking
+            impersonationToken,
           }),
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'end_impersonation': {
+        if (!body.targetUserId) {
+          return new Response(
+            JSON.stringify({ error: 'targetUserId é obrigatório' }),
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        await logAudit(supabase, user.id, 'impersonate_end', body.action, body.targetUserId, deviceInfo, null, { 
+          ended: true,
+          impersonation_token: body.data?.impersonationToken || null,
+          started_at: body.data?.startedAt || null,
+          ended_at: new Date().toISOString(),
+          duration_seconds: body.data?.startedAt 
+            ? Math.floor((Date.now() - new Date(body.data.startedAt).getTime()) / 1000)
+            : null,
+        });
+
+        return new Response(
+          JSON.stringify({ success: true }),
           { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
