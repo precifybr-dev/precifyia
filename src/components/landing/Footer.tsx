@@ -33,14 +33,12 @@ export function Footer() {
             <p className="text-muted-foreground max-w-md leading-relaxed mb-4">
               Saiba exatamente quanto você lucra em cada venda no iFood e no balcão.
             </p>
-            <a 
-              href="https://wa.me/5547996887776?text=Oi!%20Preciso%20de%20ajuda%20com%20o%20Precify" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors font-medium text-sm"
+            <span 
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success font-medium text-sm select-all cursor-pointer"
+              title="Clique para selecionar e copiar"
             >
-              💬 Precisa de ajuda? Chama no Zap
-            </a>
+              💬 WhatsApp: (47) 99688-7776
+            </span>
           </div>
 
           {/* Links */}
