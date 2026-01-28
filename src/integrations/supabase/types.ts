@@ -763,6 +763,7 @@ export type Database = {
           resolved_at: string | null
           status: string
           subject: string
+          ticket_type: string
           updated_at: string
           user_id: string
         }
@@ -775,6 +776,7 @@ export type Database = {
           resolved_at?: string | null
           status?: string
           subject: string
+          ticket_type?: string
           updated_at?: string
           user_id: string
         }
@@ -787,10 +789,78 @@ export type Database = {
           resolved_at?: string | null
           status?: string
           subject?: string
+          ticket_type?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: []
+      }
+      ticket_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          sender_id: string
+          sender_type: string
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          sender_id: string
+          sender_type?: string
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          sender_id?: string
+          sender_type?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_messages_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_notes: {
+        Row: {
+          admin_id: string
+          created_at: string
+          id: string
+          note: string
+          ticket_id: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          id?: string
+          note: string
+          ticket_id: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          id?: string
+          note?: string
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_notes_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_payments: {
         Row: {
