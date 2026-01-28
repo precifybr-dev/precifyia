@@ -17,6 +17,7 @@ import Recipes from "./pages/Recipes";
 import SubRecipes from "./pages/SubRecipes";
 import SecurityCheck from "./pages/SecurityCheck";
 import Collaborators from "./pages/Collaborators";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/recipes" element={<Recipes />} />
             <Route path="/sub-recipes" element={<SubRecipes />} />
             <Route path="/collaborators" element={<Collaborators />} />
+            <Route path="/admin" element={<AdminDashboard />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

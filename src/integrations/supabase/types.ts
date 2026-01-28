@@ -47,6 +47,39 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_alerts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_read: boolean
+          message: string
+          target_roles: Database["public"]["Enums"]["app_role"][] | null
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_read?: boolean
+          message: string
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
+          title: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_read?: boolean
+          message?: string
+          target_roles?: Database["public"]["Enums"]["app_role"][] | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       collaborators: {
         Row: {
           created_at: string
@@ -798,13 +831,50 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      admin_metrics: {
+        Row: {
+          basic_plan_users: number | null
+          free_plan_users: number | null
+          pro_plan_users: number | null
+          total_users: number | null
+          users_month: number | null
+          users_today: number | null
+          users_week: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       count_user_stores: { Args: { _user_id: string }; Returns: number }
       get_collaborator_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_mrr_stats: {
+        Args: never
+        Returns: {
+          mrr: number
+          plan_type: string
+          user_count: number
+        }[]
+      }
+      get_recent_users: {
+        Args: { limit_count?: number }
+        Returns: {
+          business_name: string
+          created_at: string
+          email: string
+          id: string
+          onboarding_step: string
+          user_plan: string
+        }[]
+      }
+      get_registration_stats: {
+        Args: { days_back?: number }
+        Returns: {
+          registration_date: string
+          user_count: number
+        }[]
       }
       get_user_permissions: {
         Args: { _user_id: string }
