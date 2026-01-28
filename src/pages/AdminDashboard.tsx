@@ -5,6 +5,9 @@ import { useRBAC } from "@/hooks/useRBAC";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import { RequirePermission } from "@/components/rbac";
 import { AdminSecurityGate } from "@/components/admin/AdminSecurityGate";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AdminHeader } from "@/components/admin/AdminHeader";
+import { KPICard } from "@/components/admin/KPICard";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { FinancialDashboard } from "@/components/admin/FinancialDashboard";
 import { SupportDashboard } from "@/components/admin/SupportDashboard";
@@ -52,6 +55,7 @@ import {
   Wallet,
   Headphones,
   BarChart3,
+  LayoutDashboard,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -59,7 +63,7 @@ import { ptBR } from "date-fns/locale";
 const PLAN_COLORS = {
   free: "hsl(var(--muted-foreground))",
   basic: "hsl(var(--primary))",
-  pro: "hsl(var(--chart-1))",
+  pro: "hsl(142 71% 45%)",
 };
 
 const ALERT_ICONS = {
@@ -70,10 +74,10 @@ const ALERT_ICONS = {
 };
 
 const ALERT_COLORS = {
-  info: "text-blue-500",
-  warning: "text-amber-500",
+  info: "text-primary",
+  warning: "text-warning",
   error: "text-destructive",
-  success: "text-emerald-500",
+  success: "text-success",
 };
 
 export default function AdminDashboard() {
@@ -98,6 +102,7 @@ export default function AdminDashboard() {
   } = useAdminDashboard();
 
   const [chartPeriod, setChartPeriod] = useState("30");
+  const [activeTab, setActiveTab] = useState("overview");
 
   useEffect(() => {
     const getUser = async () => {
@@ -124,7 +129,7 @@ export default function AdminDashboard() {
 
   if (rbacLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
@@ -135,7 +140,7 @@ export default function AdminDashboard() {
       <RequirePermission
         permission="view_metrics"
         fallback={
-          <div className="min-h-screen flex items-center justify-center">
+          <div className="min-h-screen flex items-center justify-center bg-background">
             <Card className="max-w-md">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-destructive">
@@ -156,526 +161,461 @@ export default function AdminDashboard() {
           </div>
         }
       >
-        <div className="min-h-screen bg-background">
-          <div className="container mx-auto py-8 px-4">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <Activity className="h-6 w-6" />
-                  Dashboard Administrativo
-                </h1>
-                <p className="text-muted-foreground">
-                  Visão geral da plataforma
-                </p>
-              </div>
+        <AdminLayout unreadAlerts={unreadAlerts.length}>
+          <AdminHeader
+            title="Dashboard Administrativo"
+            subtitle="Visão geral da plataforma"
+            icon={<LayoutDashboard className="h-6 w-6" />}
+            unreadAlerts={unreadAlerts.length}
+            isLoading={isLoading}
+            onRefresh={refetch}
+          />
+
+          <div className="p-6 space-y-6">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <KPICard
+                title="Usuários Ativos"
+                value={activeUsers}
+                subtitle={`+${metrics?.users_today || 0} hoje`}
+                icon={<Users className="h-5 w-5" />}
+                variant="primary"
+              />
+              <KPICard
+                title="MRR"
+                value={formatCurrency(totalMRR)}
+                subtitle="Receita mensal recorrente"
+                icon={<DollarSign className="h-5 w-5" />}
+                variant="success"
+              />
+              <KPICard
+                title="ARPU"
+                value={formatCurrency(arpu)}
+                subtitle="Receita média por usuário"
+                icon={<TrendingUp className="h-5 w-5" />}
+              />
+              <KPICard
+                title="LTV Médio"
+                value={formatCurrency(averageLTV)}
+                subtitle="Lifetime value estimado"
+                icon={<Activity className="h-5 w-5" />}
+              />
             </div>
 
-            <div className="flex items-center gap-2">
-              {unreadAlerts.length > 0 && (
-                <Badge variant="destructive" className="animate-pulse">
-                  {unreadAlerts.length} alertas
-                </Badge>
-              )}
-              <Button variant="outline" size="sm" onClick={refetch} disabled={isLoading}>
-                <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
-                Atualizar
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={async () => {
-                  await supabase.auth.signOut();
-                  navigate("/login");
-                }}
-              >
-                Sair
-              </Button>
-            </div>
-          </div>
-
-          {/* KPI Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Usuários Ativos</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{activeUsers}</div>
-                <p className="text-xs text-muted-foreground">
-                  +{metrics?.users_today || 0} hoje
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">MRR</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(totalMRR)}</div>
-                <p className="text-xs text-muted-foreground">
-                  Receita mensal recorrente
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">ARPU</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(arpu)}</div>
-                <p className="text-xs text-muted-foreground">
-                  Receita média por usuário
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">LTV Médio</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(averageLTV)}</div>
-                <p className="text-xs text-muted-foreground">
-                  Lifetime value estimado
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Secondary KPIs */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium flex items-center gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Novos Cadastros
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-2xl font-bold">{metrics?.users_today || 0}</p>
-                    <p className="text-xs text-muted-foreground">Hoje</p>
+            {/* Secondary KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium flex items-center gap-2">
+                    <UserPlus className="h-4 w-4 text-primary" />
+                    Novos Cadastros
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-2xl font-bold text-primary">{metrics?.users_today || 0}</p>
+                      <p className="text-xs text-muted-foreground">Hoje</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-2xl font-bold">{metrics?.users_week || 0}</p>
+                      <p className="text-xs text-muted-foreground">Semana</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <p className="text-2xl font-bold">{metrics?.users_month || 0}</p>
+                      <p className="text-xs text-muted-foreground">Mês</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">{metrics?.users_week || 0}</p>
-                    <p className="text-xs text-muted-foreground">Semana</p>
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{metrics?.users_month || 0}</p>
-                    <p className="text-xs text-muted-foreground">Mês</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Distribuição de Planos</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  <div className="h-20 w-20">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={planDistribution}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={20}
-                          outerRadius={35}
-                          dataKey="value"
-                        >
-                          {planDistribution.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    {planDistribution.map((plan) => (
-                      <div key={plan.name} className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: plan.color }}
-                          />
-                          <span>{plan.name}</span>
+              <Card className="bg-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Distribuição de Planos</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center gap-4">
+                    <div className="h-20 w-20">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={planDistribution}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={20}
+                            outerRadius={35}
+                            dataKey="value"
+                          >
+                            {planDistribution.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      {planDistribution.map((plan) => (
+                        <div key={plan.name} className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="h-3 w-3 rounded-full"
+                              style={{ backgroundColor: plan.color }}
+                            />
+                            <span className="text-muted-foreground">{plan.name}</span>
+                          </div>
+                          <span className="font-semibold">{plan.value}</span>
                         </div>
-                        <span className="font-medium">{plan.value}</span>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Churn Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold">{churnRate.toFixed(1)}%</p>
-                    <p className="text-xs text-muted-foreground">Taxa de cancelamento</p>
-                  </div>
-                  <div className="text-right text-sm text-muted-foreground">
-                    <p>Meta: &lt; 5%</p>
-                    {churnRate <= 5 ? (
-                      <Badge variant="outline" className="text-emerald-600 border-emerald-600">
-                        Saudável
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="text-amber-600 border-amber-600">
-                        Atenção
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Main Content */}
-          <Tabs defaultValue="management" className="space-y-4">
-            <TabsList className="flex-wrap h-auto gap-1">
-              <TabsTrigger value="management">
-                <UserCog className="h-4 w-4 mr-2" />
-                Gestão de Usuários
-              </TabsTrigger>
-              <TabsTrigger value="financial">
-                <Wallet className="h-4 w-4 mr-2" />
-                Financeiro
-              </TabsTrigger>
-              <TabsTrigger value="charts">
-                <TrendingUp className="h-4 w-4 mr-2" />
-                Gráficos
-              </TabsTrigger>
-              <TabsTrigger value="alerts">
-                <Bell className="h-4 w-4 mr-2" />
-                Alertas
-                {unreadAlerts.length > 0 && (
-                  <Badge variant="destructive" className="ml-2">
-                    {unreadAlerts.length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-              <TabsTrigger value="support">
-                <Headphones className="h-4 w-4 mr-2" />
-                Suporte
-              </TabsTrigger>
-              <TabsTrigger value="usage">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Uso
-              </TabsTrigger>
-              <TabsTrigger value="logs">
-                <History className="h-4 w-4 mr-2" />
-                Logs
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="management">
-              <UserManagement onImpersonate={() => navigate("/app")} />
-            </TabsContent>
-
-            <TabsContent value="financial">
-              <FinancialDashboard />
-            </TabsContent>
-
-            <TabsContent value="support">
-              <SupportDashboard />
-            </TabsContent>
-
-            <TabsContent value="usage">
-              <UsageMetricsDashboard />
-            </TabsContent>
-
-            <TabsContent value="charts" className="space-y-4">
-              <Card>
-                <CardHeader>
+              <Card className="bg-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Churn Rate</CardTitle>
+                </CardHeader>
+                <CardContent>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle>Evolução de Cadastros</CardTitle>
-                      <CardDescription>Novos usuários por dia</CardDescription>
+                      <p className="text-3xl font-bold">{churnRate.toFixed(1)}%</p>
+                      <p className="text-xs text-muted-foreground">Taxa de cancelamento</p>
                     </div>
-                    <Select value={chartPeriod} onValueChange={setChartPeriod}>
-                      <SelectTrigger className="w-[150px]">
-                        <Calendar className="h-4 w-4 mr-2" />
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="7">Últimos 7 dias</SelectItem>
-                        <SelectItem value="30">Últimos 30 dias</SelectItem>
-                        <SelectItem value="90">Últimos 90 dias</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[300px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={registrationStats}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis
-                          dataKey="registration_date"
-                          tickFormatter={(value) =>
-                            format(new Date(value), "dd/MM", { locale: ptBR })
-                          }
-                          className="text-xs"
-                        />
-                        <YAxis className="text-xs" />
-                        <Tooltip
-                          labelFormatter={(value) =>
-                            format(new Date(value), "dd 'de' MMMM", { locale: ptBR })
-                          }
-                          formatter={(value: number) => [value, "Novos usuários"]}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="user_count"
-                          stroke="hsl(var(--primary))"
-                          fill="hsl(var(--primary) / 0.2)"
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>Receita por Plano</CardTitle>
-                  <CardDescription>MRR dividido por tipo de assinatura</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-[250px]">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={mrrStats}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                        <XAxis
-                          dataKey="plan_type"
-                          tickFormatter={(value) => {
-                            const labels: Record<string, string> = {
-                              free: "Gratuito",
-                              basic: "Básico",
-                              pro: "Pro",
-                            };
-                            return labels[value] || value;
-                          }}
-                        />
-                        <YAxis
-                          tickFormatter={(value) => formatCurrency(value)}
-                          className="text-xs"
-                        />
-                        <Tooltip formatter={(value: number) => formatCurrency(value)} />
-                        <Legend />
-                        <Bar
-                          dataKey="mrr"
-                          name="MRR"
-                          fill="hsl(var(--primary))"
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="users">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Usuários Recentes</CardTitle>
-                  <CardDescription>Últimos 20 cadastros na plataforma</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[500px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Email</TableHead>
-                          <TableHead>Negócio</TableHead>
-                          <TableHead>Plano</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Cadastro</TableHead>
-                          <TableHead></TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {recentUsers.map((user) => (
-                          <TableRow key={user.id}>
-                            <TableCell className="font-medium">{user.email}</TableCell>
-                            <TableCell>{user.business_name || "-"}</TableCell>
-                            <TableCell>
-                              <Badge
-                                variant="outline"
-                                className={
-                                  user.user_plan === "pro"
-                                    ? "border-emerald-500 text-emerald-600"
-                                    : user.user_plan === "basic"
-                                    ? "border-primary text-primary"
-                                    : ""
-                                }
-                              >
-                                {user.user_plan === "pro"
-                                  ? "Pro"
-                                  : user.user_plan === "basic"
-                                  ? "Básico"
-                                  : "Gratuito"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              {user.onboarding_step === "completed" ? (
-                                <Badge variant="outline" className="border-emerald-500 text-emerald-600">
-                                  Ativo
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="border-amber-500 text-amber-600">
-                                  Onboarding
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-sm text-muted-foreground">
-                              {formatDistanceToNow(new Date(user.created_at), {
-                                addSuffix: true,
-                                locale: ptBR,
-                              })}
-                            </TableCell>
-                            <TableCell>
-                              <Button variant="ghost" size="sm">
-                                <Eye className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            <TabsContent value="alerts">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Alertas do Sistema</CardTitle>
-                  <CardDescription>Notificações e avisos importantes</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {alerts.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Nenhum alerta no momento</p>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground mb-1">Meta: &lt; 5%</p>
+                      {churnRate <= 5 ? (
+                        <Badge className="bg-success/10 text-success hover:bg-success/20 border-0">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />
+                          Saudável
+                        </Badge>
+                      ) : (
+                        <Badge className="bg-warning/10 text-warning hover:bg-warning/20 border-0">
+                          <AlertTriangle className="h-3 w-3 mr-1" />
+                          Atenção
+                        </Badge>
+                      )}
                     </div>
-                  ) : (
-                    <ScrollArea className="h-[400px]">
-                      <div className="space-y-3">
-                        {alerts.map((alert) => {
-                          const Icon = ALERT_ICONS[alert.type];
-                          return (
-                            <div
-                              key={alert.id}
-                              className={`p-4 rounded-lg border ${
-                                alert.is_read ? "bg-muted/30" : "bg-card"
-                              }`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <Icon className={`h-5 w-5 mt-0.5 ${ALERT_COLORS[alert.type]}`} />
-                                <div className="flex-1">
-                                  <div className="flex items-center justify-between">
-                                    <h4 className="font-medium">{alert.title}</h4>
-                                    <span className="text-xs text-muted-foreground">
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Main Content Tabs */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+              <TabsList className="bg-muted/50 p-1 h-auto flex-wrap gap-1">
+                <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <LayoutDashboard className="h-4 w-4" />
+                  Visão Geral
+                </TabsTrigger>
+                <TabsTrigger value="management" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <UserCog className="h-4 w-4" />
+                  Usuários
+                </TabsTrigger>
+                <TabsTrigger value="financial" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Wallet className="h-4 w-4" />
+                  Financeiro
+                </TabsTrigger>
+                <TabsTrigger value="support" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Headphones className="h-4 w-4" />
+                  Suporte
+                  {unreadAlerts.length > 0 && (
+                    <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                      {unreadAlerts.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="usage" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <BarChart3 className="h-4 w-4" />
+                  Métricas
+                </TabsTrigger>
+                <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <History className="h-4 w-4" />
+                  Logs
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-4">
+                {/* Charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <CardTitle className="text-base">Evolução de Cadastros</CardTitle>
+                          <CardDescription>Novos usuários por dia</CardDescription>
+                        </div>
+                        <Select value={chartPeriod} onValueChange={setChartPeriod}>
+                          <SelectTrigger className="w-[140px]">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="7">7 dias</SelectItem>
+                            <SelectItem value="30">30 dias</SelectItem>
+                            <SelectItem value="90">90 dias</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={registrationStats}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis
+                              dataKey="registration_date"
+                              tickFormatter={(value) =>
+                                format(new Date(value), "dd/MM", { locale: ptBR })
+                              }
+                              className="text-xs"
+                            />
+                            <YAxis className="text-xs" />
+                            <Tooltip
+                              labelFormatter={(value) =>
+                                format(new Date(value), "dd 'de' MMMM", { locale: ptBR })
+                              }
+                              formatter={(value: number) => [value, "Novos usuários"]}
+                              contentStyle={{
+                                backgroundColor: "hsl(var(--card))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "8px",
+                              }}
+                            />
+                            <Area
+                              type="monotone"
+                              dataKey="user_count"
+                              stroke="hsl(var(--primary))"
+                              fill="hsl(var(--primary) / 0.2)"
+                              strokeWidth={2}
+                            />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base">Receita por Plano</CardTitle>
+                      <CardDescription>MRR dividido por tipo de assinatura</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[250px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={mrrStats}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                            <XAxis
+                              dataKey="plan_type"
+                              tickFormatter={(value) =>
+                                value === "free" ? "Gratuito" : value === "basic" ? "Básico" : "Pro"
+                              }
+                              className="text-xs"
+                            />
+                            <YAxis
+                              tickFormatter={(value) => formatCurrency(value)}
+                              className="text-xs"
+                            />
+                            <Tooltip
+                              formatter={(value: number) => [formatCurrency(value), "MRR"]}
+                              contentStyle={{
+                                backgroundColor: "hsl(var(--card))",
+                                border: "1px solid hsl(var(--border))",
+                                borderRadius: "8px",
+                              }}
+                            />
+                            <Bar dataKey="mrr" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Recent Users & Alerts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <UserPlus className="h-4 w-4 text-primary" />
+                        Usuários Recentes
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <ScrollArea className="h-[300px]">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>E-mail</TableHead>
+                              <TableHead>Plano</TableHead>
+                              <TableHead className="text-right">Data</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {recentUsers.slice(0, 10).map((user) => (
+                              <TableRow key={user.id}>
+                                <TableCell className="font-medium text-sm">
+                                  <div>
+                                    <p className="truncate max-w-[200px]">{user.email}</p>
+                                    {user.business_name && (
+                                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                        {user.business_name}
+                                      </p>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={user.user_plan === "pro" ? "default" : "secondary"}
+                                    className="capitalize"
+                                  >
+                                    {user.user_plan || "free"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right text-xs text-muted-foreground">
+                                  {formatDistanceToNow(new Date(user.created_at), {
+                                    addSuffix: true,
+                                    locale: ptBR,
+                                  })}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Bell className="h-4 w-4 text-primary" />
+                        Alertas do Sistema
+                        {unreadAlerts.length > 0 && (
+                          <Badge variant="destructive">{unreadAlerts.length}</Badge>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <ScrollArea className="h-[300px]">
+                        {alerts.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8">
+                            <CheckCircle2 className="h-10 w-10 mb-2 text-success" />
+                            <p>Nenhum alerta no momento</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-1 p-4">
+                            {alerts.slice(0, 10).map((alert) => {
+                              const AlertIcon = ALERT_ICONS[alert.type] || Info;
+                              return (
+                                <div
+                                  key={alert.id}
+                                  className={`flex items-start gap-3 p-3 rounded-lg transition-colors cursor-pointer hover:bg-muted/50 ${
+                                    !alert.is_read ? "bg-muted/30" : ""
+                                  }`}
+                                  onClick={() => markAlertAsRead(alert.id)}
+                                >
+                                  <AlertIcon
+                                    className={`h-5 w-5 flex-shrink-0 ${ALERT_COLORS[alert.type]}`}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-sm">{alert.title}</p>
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {alert.message}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground mt-1">
                                       {formatDistanceToNow(new Date(alert.created_at), {
                                         addSuffix: true,
                                         locale: ptBR,
                                       })}
-                                    </span>
+                                    </p>
                                   </div>
-                                  <p className="text-sm text-muted-foreground mt-1">
-                                    {alert.message}
-                                  </p>
+                                  {!alert.is_read && (
+                                    <div className="h-2 w-2 rounded-full bg-primary flex-shrink-0 mt-2" />
+                                  )}
                                 </div>
-                                {!alert.is_read && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => markAlertAsRead(alert.id)}
-                                  >
-                                    Marcar como lido
-                                  </Button>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </ScrollArea>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
 
-            <TabsContent value="logs">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Logs de Acesso</CardTitle>
-                  <CardDescription>Últimas 50 ações registradas no sistema</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <ScrollArea className="h-[500px]">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Ação</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>IP</TableHead>
-                          <TableHead>Data/Hora</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {accessLogs.map((log) => (
-                          <TableRow key={log.id}>
-                            <TableCell className="font-medium">{log.action}</TableCell>
-                            <TableCell>
-                              {log.success ? (
-                                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                              ) : (
-                                <XCircle className="h-4 w-4 text-destructive" />
-                              )}
-                            </TableCell>
-                            <TableCell className="font-mono text-xs">
-                              {log.ip_address || "-"}
-                            </TableCell>
-                            <TableCell className="text-sm">
-                              {format(new Date(log.created_at), "dd/MM/yyyy HH:mm:ss", {
-                                locale: ptBR,
-                              })}
-                            </TableCell>
+              <TabsContent value="management">
+                <UserManagement onImpersonate={() => navigate("/app")} />
+              </TabsContent>
+
+              <TabsContent value="financial">
+                <FinancialDashboard />
+              </TabsContent>
+
+              <TabsContent value="support">
+                <SupportDashboard />
+              </TabsContent>
+
+              <TabsContent value="usage">
+                <UsageMetricsDashboard />
+              </TabsContent>
+
+              <TabsContent value="logs" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <History className="h-4 w-4 text-primary" />
+                      Logs de Acesso
+                    </CardTitle>
+                    <CardDescription>Últimas 50 ações registradas</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[500px]">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Ação</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>IP</TableHead>
+                            <TableHead className="text-right">Data</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </RequirePermission>
-  </AdminSecurityGate>
+                        </TableHeader>
+                        <TableBody>
+                          {accessLogs.map((log) => (
+                            <TableRow key={log.id}>
+                              <TableCell className="font-medium text-sm">
+                                {log.action}
+                              </TableCell>
+                              <TableCell>
+                                {log.success ? (
+                                  <Badge className="bg-success/10 text-success hover:bg-success/20 border-0">
+                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                    Sucesso
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-destructive/10 text-destructive hover:bg-destructive/20 border-0">
+                                    <XCircle className="h-3 w-3 mr-1" />
+                                    Falha
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs text-muted-foreground font-mono">
+                                {log.ip_address || "—"}
+                              </TableCell>
+                              <TableCell className="text-right text-xs text-muted-foreground">
+                                {format(new Date(log.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </AdminLayout>
+      </RequirePermission>
+    </AdminSecurityGate>
   );
 }
