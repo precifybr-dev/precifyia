@@ -268,19 +268,16 @@ export function useAdminUsers() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // Store impersonation info in sessionStorage
-      sessionStorage.setItem("impersonation", JSON.stringify({
-        token: data.impersonationToken,
+      // Return all necessary data for the impersonation hook
+      return {
+        success: true,
         targetUser: data.targetUser,
-        startedAt: new Date().toISOString(),
-      }));
-
-      toast({
-        title: "Modo Suporte Ativado",
-        description: `Visualizando como: ${data.targetUser.email}`,
-      });
-
-      return data;
+        impersonationToken: data.impersonationToken,
+        adminId: data.adminId,
+        adminEmail: data.adminEmail,
+        startedAt: data.startedAt,
+        sessionData: data.sessionData,
+      };
     } catch (err: any) {
       console.error("Error starting impersonation:", err);
       toast({

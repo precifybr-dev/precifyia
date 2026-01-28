@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAdminUsers, AdminUser } from "@/hooks/useAdminUsers";
+import { useImpersonation } from "@/hooks/useImpersonation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,8 +76,10 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
     extendSubscription,
     getFinancialHistory,
     getSupportHistory,
-    startImpersonation,
+    startImpersonation: startImpersonationApi,
   } = useAdminUsers();
+
+  const { startImpersonation, isLoading: impersonationLoading } = useImpersonation();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -147,9 +150,19 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
   };
 
   const handleImpersonate = async (user: AdminUser) => {
-    const result = await startImpersonation(user.id);
-    if (result && onImpersonate) {
-      onImpersonate(user.id);
+    // First call the API to get impersonation data
+    const result = await startImpersonationApi(user.id);
+    
+    if (result && result.targetUser && result.sessionData) {
+      // Now start the real impersonation with session switching
+      await startImpersonation(
+        result.targetUser,
+        result.adminId,
+        result.adminEmail,
+        result.impersonationToken,
+        result.sessionData
+      );
+      // onImpersonate is not needed anymore - hook handles navigation
     }
   };
 
