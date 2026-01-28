@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.manage-collaborator]
 verify_jwt = false
+
+[functions.admin-stats]
+verify_jwt = false
