@@ -10,6 +10,8 @@ import { AdminRoute, AppRoute, AuthenticatedRoute, PublicOnlyRoute } from "@/com
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 import Forbidden from "./pages/Forbidden";
@@ -59,6 +61,15 @@ const App = () => (
                 </PublicOnlyRoute>
               } 
             />
+            <Route 
+              path="/forgot-password" 
+              element={
+                <PublicOnlyRoute>
+                  <ForgotPassword />
+                </PublicOnlyRoute>
+              } 
+            />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             {/* OAuth callback - handles role-based redirect */}
             <Route path="/auth-callback" element={<AuthCallback />} />
