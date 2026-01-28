@@ -28,7 +28,10 @@ export function Logo({
         className={`${sizeMap[size]} object-contain`}
       />
       {showText && (
-        <span className={`font-logo text-xl text-foreground ${textClassName}`}>
+        <span 
+          className={`font-logo text-xl text-foreground ${textClassName}`}
+          translate="no"
+        >
           PRECIFY
         </span>
       )}
