@@ -69,7 +69,7 @@ export function StoreSwitcher() {
         
         <DropdownMenuContent align="start" className="w-[240px] bg-card border-border z-50">
           <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">
-            Suas Lojas ({storeCount}/{maxStores})
+            Suas Lojas ({storeCount > 0 ? storeCount : 1}/{maxStores})
           </DropdownMenuLabel>
           
           {stores.map((store, index) => {

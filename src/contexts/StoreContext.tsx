@@ -52,19 +52,19 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     // Fetch user plan
     const { data: profileData } = await supabase
       .from("profiles")
-      .select("user_plan")
+      .select("user_plan, business_name, business_type")
       .eq("user_id", uid)
       .maybeSingle();
     
     setUserPlan(profileData?.user_plan || "free");
     setUserId(uid);
 
-    // Fetch stores - cast to any to handle type generation delay
-    const { data: storesData, error } = await (supabase
-      .from("stores" as any)
+    // Fetch stores
+    const { data: storesData, error } = await supabase
+      .from("stores")
       .select("*")
       .eq("user_id", uid)
-      .order("created_at", { ascending: true }) as any);
+      .order("created_at", { ascending: true });
 
     if (error) {
       console.error("Error fetching stores:", error);
@@ -72,7 +72,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const fetchedStores = (storesData || []) as Store[];
+    let fetchedStores = (storesData || []) as Store[];
+
+    // If no stores exist but profile has business_name, create the first store
+    if (fetchedStores.length === 0 && profileData?.business_name) {
+      const { data: newStore, error: createError } = await supabase
+        .from("stores")
+        .insert({
+          user_id: uid,
+          name: profileData.business_name,
+          business_type: profileData.business_type || null,
+          is_default: true,
+        })
+        .select()
+        .single();
+
+      if (!createError && newStore) {
+        fetchedStores = [newStore as Store];
+      }
+    }
+
     setStores(fetchedStores);
 
     // Restore active store from localStorage or set default
@@ -130,8 +149,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const isFirstStore = stores.length === 0;
 
-    const { data, error } = await (supabase
-      .from("stores" as any)
+    const { data, error } = await supabase
+      .from("stores")
       .insert({
         user_id: userId,
         name,
@@ -140,7 +159,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         is_default: isFirstStore,
       })
       .select()
-      .single() as any);
+      .single();
 
     if (error) {
       console.error("Error creating store:", error);
@@ -168,10 +187,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [userId, isPro, storeCount, stores.length, activeStore, setActiveStore, toast]);
 
   const updateStore = useCallback(async (storeId: string, data: Partial<Pick<Store, "name" | "logo_url">>): Promise<boolean> => {
-    const { error } = await (supabase
-      .from("stores" as any)
+    const { error } = await supabase
+      .from("stores")
       .update(data)
-      .eq("id", storeId) as any);
+      .eq("id", storeId);
 
     if (error) {
       console.error("Error updating store:", error);
@@ -209,10 +228,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    const { error } = await (supabase
-      .from("stores" as any)
+    const { error } = await supabase
+      .from("stores")
       .delete()
-      .eq("id", storeId) as any);
+      .eq("id", storeId);
 
     if (error) {
       console.error("Error deleting store:", error);
