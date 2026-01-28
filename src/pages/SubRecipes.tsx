@@ -53,6 +53,8 @@ import { calculateIngredientCost } from "@/lib/ingredient-utils";
 import { NavLink } from "@/components/NavLink";
 import IngredientsSpreadsheetTable from "@/components/recipes/IngredientsSpreadsheetTable";
 import { Logo } from "@/components/ui/Logo";
+import { StoreSwitcher } from "@/components/store/StoreSwitcher";
+import { useStore } from "@/contexts/StoreContext";
 // Sub-recipe red color constant
 const SUB_RECIPE_COLOR = "#ef4444";
 
@@ -613,10 +615,13 @@ export default function SubRecipes() {
                 <p className="text-sm text-muted-foreground">Cadastre molhos, massas, recheios e preparos intermediários</p>
               </div>
             </div>
-            <Button className="gap-2" onClick={handleNewSubRecipe}>
-              <Plus className="w-4 h-4" />
-              Nova Receita
-            </Button>
+            <div className="flex items-center gap-2">
+              <StoreSwitcher />
+              <Button className="gap-2" onClick={handleNewSubRecipe}>
+                <Plus className="w-4 h-4" />
+                Nova Receita
+              </Button>
+            </div>
           </div>
         </header>
 

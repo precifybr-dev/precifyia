@@ -19,6 +19,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import OnboardingProgress from "@/components/dashboard/OnboardingProgress";
 import { Logo } from "@/components/ui/Logo";
+import { StoreSwitcher } from "@/components/store/StoreSwitcher";
+
 type NavItem = {
   icon: typeof LayoutDashboard;
   label: string;
@@ -275,9 +277,12 @@ export default function Dashboard() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 text-warning-foreground border border-warning/20 text-sm font-medium">
-              <AlertTriangle className="w-4 h-4 text-warning" />
-              Trial: 7 dias restantes
+            <div className="flex items-center gap-3">
+              <StoreSwitcher />
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 text-warning-foreground border border-warning/20 text-sm font-medium">
+                <AlertTriangle className="w-4 h-4 text-warning" />
+                Trial: 7 dias restantes
+              </div>
             </div>
           </div>
         </header>

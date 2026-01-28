@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Logo } from "@/components/ui/Logo";
+import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 export default function Beverages() {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -133,10 +134,13 @@ export default function Beverages() {
                 <p className="text-sm text-muted-foreground">Gerencie bebidas e drinks do cardápio</p>
               </div>
             </div>
-            <Button className="gap-2" onClick={() => toast({ title: "Em breve", description: "Funcionalidade em desenvolvimento" })}>
-              <Plus className="w-4 h-4" />
-              Nova Bebida
-            </Button>
+            <div className="flex items-center gap-2">
+              <StoreSwitcher />
+              <Button className="gap-2" onClick={() => toast({ title: "Em breve", description: "Funcionalidade em desenvolvimento" })}>
+                <Plus className="w-4 h-4" />
+                Nova Bebida
+              </Button>
+            </div>
           </div>
         </header>
 

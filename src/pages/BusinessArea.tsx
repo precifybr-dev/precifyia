@@ -44,6 +44,8 @@ import SimplifiedDREBlock from "@/components/business/SimplifiedDREBlock";
 import MonthlyRevenueBlock from "@/components/business/MonthlyRevenueBlock";
 import IfoodPlanBlock from "@/components/business/IfoodPlanBlock";
 import { Logo } from "@/components/ui/Logo";
+import { StoreSwitcher } from "@/components/store/StoreSwitcher";
+import { useStore } from "@/contexts/StoreContext";
 interface BusinessMetrics {
   ingredientsCount: number;
   recipesCount: number;
@@ -323,12 +325,15 @@ export default function BusinessArea() {
                 <p className="text-sm text-muted-foreground">Configure as informações do seu negócio</p>
               </div>
             </div>
-            {!isEditing && (
-              <Button onClick={() => setIsEditing(true)} className="gap-2">
-                <Pencil className="w-4 h-4" />
-                Editar
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              <StoreSwitcher />
+              {!isEditing && (
+                <Button onClick={() => setIsEditing(true)} className="gap-2">
+                  <Pencil className="w-4 h-4" />
+                  Editar
+                </Button>
+              )}
+            </div>
           </div>
         </header>
 
