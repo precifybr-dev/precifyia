@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { AdminRoute, AppRoute, AuthenticatedRoute, PublicOnlyRoute } from "@/components/routes/ProtectedRoutes";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
+import { ReadOnlyModeInterceptor } from "@/components/support/ReadOnlyModeInterceptor";
 
 // Public pages
 import Landing from "./pages/Landing";
@@ -44,6 +45,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <ImpersonationBanner />
+          <ReadOnlyModeInterceptor />
           <Routes>
             {/* ========== PUBLIC ROUTES ========== */}
             <Route path="/" element={<Landing />} />

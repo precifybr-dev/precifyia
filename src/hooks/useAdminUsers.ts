@@ -13,6 +13,8 @@ export interface AdminUser {
   subscription_expires_at: string | null;
   last_access_at: string | null;
   onboarding_step: string | null;
+  has_support_consent?: boolean;
+  consent_expires_at?: string | null;
 }
 
 export interface UserPayment {
@@ -259,6 +261,23 @@ export function useAdminUsers() {
     }
   }, []);
 
+  const checkConsent = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "check_consent", targetUserId: userId },
+      });
+
+      if (error) throw error;
+      return {
+        hasConsent: data.hasConsent,
+        consent: data.consent,
+      };
+    } catch (err: any) {
+      console.error("Error checking consent:", err);
+      return { hasConsent: false, consent: null };
+    }
+  }, []);
+
   const startImpersonation = useCallback(async (userId: string) => {
     try {
       const { data, error } = await supabase.functions.invoke("admin-users", {
@@ -266,17 +285,38 @@ export function useAdminUsers() {
       });
 
       if (error) throw error;
+      
+      if (data.requiresConsent) {
+        toast({
+          title: "Consentimento necessário",
+          description: "O usuário precisa autorizar o acesso de suporte antes.",
+          variant: "destructive",
+        });
+        return null;
+      }
+      
+      if (data.dailyLimitExceeded) {
+        toast({
+          title: "Limite diário atingido",
+          description: data.error,
+          variant: "destructive",
+        });
+        return null;
+      }
+
       if (data.error) throw new Error(data.error);
 
       // Return all necessary data for the impersonation hook
       return {
         success: true,
         targetUser: data.targetUser,
-        impersonationToken: data.impersonationToken,
+        sessionToken: data.sessionToken,
         adminId: data.adminId,
         adminEmail: data.adminEmail,
         startedAt: data.startedAt,
-        sessionData: data.sessionData,
+        accessType: data.accessType,
+        maxDurationMinutes: data.maxDurationMinutes,
+        consentId: data.consentId,
       };
     } catch (err: any) {
       console.error("Error starting impersonation:", err);
@@ -289,12 +329,32 @@ export function useAdminUsers() {
     }
   }, []);
 
-  const endImpersonation = useCallback(() => {
-    sessionStorage.removeItem("impersonation");
-    toast({
-      title: "Modo Suporte Desativado",
-      description: "Voltando para sua conta normal",
-    });
+  const getSessionLogs = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "get_session_logs" },
+      });
+
+      if (error) throw error;
+      return data.logs || [];
+    } catch (err: any) {
+      console.error("Error fetching session logs:", err);
+      return [];
+    }
+  }, []);
+
+  const getAbuseAlerts = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "get_abuse_alerts" },
+      });
+
+      if (error) throw error;
+      return data.alerts || [];
+    } catch (err: any) {
+      console.error("Error fetching abuse alerts:", err);
+      return [];
+    }
   }, []);
 
   return {
@@ -313,7 +373,9 @@ export function useAdminUsers() {
     extendSubscription,
     getFinancialHistory,
     getSupportHistory,
+    checkConsent,
     startImpersonation,
-    endImpersonation,
+    getSessionLogs,
+    getAbuseAlerts,
   };
 }

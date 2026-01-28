@@ -783,6 +783,142 @@ export type Database = {
           },
         ]
       }
+      support_abuse_alerts: {
+        Row: {
+          admin_id: string
+          alert_message: string
+          alert_type: string
+          created_at: string
+          id: string
+          is_read: boolean | null
+          metadata: Json | null
+        }
+        Insert: {
+          admin_id: string
+          alert_message: string
+          alert_type: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          metadata?: Json | null
+        }
+        Update: {
+          admin_id?: string
+          alert_message?: string
+          alert_type?: string
+          created_at?: string
+          id?: string
+          is_read?: boolean | null
+          metadata?: Json | null
+        }
+        Relationships: []
+      }
+      support_consent: {
+        Row: {
+          expires_at: string
+          granted_at: string
+          granted_ip: string | null
+          id: string
+          is_active: boolean
+          metadata: Json | null
+          revoked_at: string | null
+          ticket_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          expires_at?: string
+          granted_at?: string
+          granted_ip?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          revoked_at?: string | null
+          ticket_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          expires_at?: string
+          granted_at?: string
+          granted_ip?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json | null
+          revoked_at?: string | null
+          ticket_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_consent_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_session_logs: {
+        Row: {
+          access_type: string
+          actions_log: Json | null
+          admin_id: string
+          admin_ip: string | null
+          admin_user_agent: string | null
+          auto_ended: boolean | null
+          consent_id: string | null
+          duration_seconds: number | null
+          end_reason: string | null
+          ended_at: string | null
+          id: string
+          session_token: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          access_type?: string
+          actions_log?: Json | null
+          admin_id: string
+          admin_ip?: string | null
+          admin_user_agent?: string | null
+          auto_ended?: boolean | null
+          consent_id?: string | null
+          duration_seconds?: number | null
+          end_reason?: string | null
+          ended_at?: string | null
+          id?: string
+          session_token: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          access_type?: string
+          actions_log?: Json | null
+          admin_id?: string
+          admin_ip?: string | null
+          admin_user_agent?: string | null
+          auto_ended?: boolean | null
+          consent_id?: string | null
+          duration_seconds?: number | null
+          end_reason?: string | null
+          ended_at?: string | null
+          id?: string
+          session_token?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_session_logs_consent_id_fkey"
+            columns: ["consent_id"]
+            isOneToOne: false
+            referencedRelation: "support_consent"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       support_tickets: {
         Row: {
           assigned_to: string | null
@@ -1149,8 +1285,20 @@ export type Database = {
       }
     }
     Functions: {
+      count_admin_sessions_today: {
+        Args: { _admin_id: string }
+        Returns: number
+      }
       count_user_stores: { Args: { _user_id: string }; Returns: number }
       current_user_is_master: { Args: never; Returns: boolean }
+      get_active_consent: {
+        Args: { _user_id: string }
+        Returns: {
+          consent_id: string
+          expires_at: string
+          ticket_id: string
+        }[]
+      }
       get_all_users_admin: {
         Args: never
         Returns: {
@@ -1320,6 +1468,7 @@ export type Database = {
           must_change_password: boolean
         }[]
       }
+      has_active_consent: { Args: { _user_id: string }; Returns: boolean }
       has_permission: {
         Args: {
           _permission: Database["public"]["Enums"]["app_permission"]

@@ -38,6 +38,8 @@ import {
   XCircle,
   AlertTriangle,
   Building2,
+  Shield,
+  ShieldOff,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -150,19 +152,20 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
   };
 
   const handleImpersonate = async (user: AdminUser) => {
-    // First call the API to get impersonation data
+    // First call the API to get impersonation data (with consent check)
     const result = await startImpersonationApi(user.id);
     
-    if (result && result.targetUser && result.sessionData) {
-      // Now start the real impersonation with session switching
+    if (result && result.targetUser) {
+      // Start read-only impersonation session
       await startImpersonation(
         result.targetUser,
         result.adminId,
         result.adminEmail,
-        result.impersonationToken,
-        result.sessionData
+        result.sessionToken,
+        result.maxDurationMinutes || 30,
+        result.consentId || ''
       );
-      // onImpersonate is not needed anymore - hook handles navigation
+      // Hook handles navigation to /app
     }
   };
 
@@ -454,14 +457,43 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                         Prorrogar
                       </Button>
                       <Button 
-                        variant="outline" 
+                        variant={selectedUser.has_support_consent ? "default" : "outline"}
                         size="sm"
                         onClick={() => handleImpersonate(selectedUser)}
+                        disabled={!selectedUser.has_support_consent}
+                        title={selectedUser.has_support_consent 
+                          ? "Acessar conta em modo somente leitura" 
+                          : "Usuário não autorizou acesso de suporte"
+                        }
+                        className={selectedUser.has_support_consent 
+                          ? "bg-amber-500 hover:bg-amber-600 text-white" 
+                          : ""
+                        }
                       >
                         <UserCog className="h-4 w-4 mr-1" />
-                        Suporte
+                        {selectedUser.has_support_consent ? "Modo Suporte" : "Sem Consentimento"}
                       </Button>
                     </div>
+                    
+                    {/* Consent status indicator */}
+                    {selectedUser.has_support_consent ? (
+                      <div className="mt-3 p-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
+                        <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
+                          <Shield className="h-3 w-3" />
+                          <span>Consentimento ativo até {selectedUser.consent_expires_at 
+                            ? format(new Date(selectedUser.consent_expires_at), "dd/MM HH:mm")
+                            : "—"
+                          }</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mt-3 p-2 bg-muted/50 border border-border rounded-lg">
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <ShieldOff className="h-3 w-3" />
+                          <span>Usuário precisa autorizar acesso</span>
+                        </div>
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="financial">
