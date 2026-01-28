@@ -14,10 +14,62 @@ interface AdminAction {
   data?: Record<string, any>;
 }
 
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 30; // Max requests per window
+
+// In-memory rate limit store (resets on function cold start)
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+function checkRateLimit(userId: string): { allowed: boolean; remaining: number; resetIn: number } {
+  const now = Date.now();
+  const userLimit = rateLimitStore.get(userId);
+
+  if (!userLimit || now > userLimit.resetTime) {
+    // New window
+    rateLimitStore.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetIn: RATE_LIMIT_WINDOW_MS };
+  }
+
+  if (userLimit.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return { 
+      allowed: false, 
+      remaining: 0, 
+      resetIn: userLimit.resetTime - now 
+    };
+  }
+
+  userLimit.count++;
+  return { 
+    allowed: true, 
+    remaining: RATE_LIMIT_MAX_REQUESTS - userLimit.count, 
+    resetIn: userLimit.resetTime - now 
+  };
+}
+
+// Enhanced device fingerprint
+function getDeviceFingerprint(req: Request): Record<string, string | null> {
+  return {
+    ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 
+        req.headers.get('cf-connecting-ip') || 
+        req.headers.get('x-real-ip') || 
+        'unknown',
+    userAgent: req.headers.get('user-agent') || 'unknown',
+    country: req.headers.get('cf-ipcountry') || null,
+    city: req.headers.get('cf-ipcity') || null,
+    acceptLanguage: req.headers.get('accept-language') || null,
+    referer: req.headers.get('referer') || null,
+    origin: req.headers.get('origin') || null,
+  };
+}
+
 serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
+
+  const requestStartTime = Date.now();
+  const deviceInfo = getDeviceFingerprint(req);
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -25,6 +77,7 @@ serve(async (req: Request) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
+      console.log('[SECURITY] Unauthorized access attempt', { ...deviceInfo, timestamp: new Date().toISOString() });
       return new Response(
         JSON.stringify({ error: 'Não autorizado' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -39,17 +92,93 @@ serve(async (req: Request) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
 
     if (userError || !user) {
+      console.log('[SECURITY] Invalid token attempt', { ...deviceInfo, timestamp: new Date().toISOString() });
       return new Response(
         JSON.stringify({ error: 'Token inválido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Get IP and User Agent for audit
-    const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('cf-connecting-ip') || 'unknown';
-    const userAgent = req.headers.get('user-agent') || 'unknown';
+    // Check rate limit
+    const rateLimit = checkRateLimit(user.id);
+    const rateLimitHeaders = {
+      'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
+      'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+      'X-RateLimit-Reset': Math.ceil(rateLimit.resetIn / 1000).toString(),
+    };
+
+    if (!rateLimit.allowed) {
+      console.log('[SECURITY] Rate limit exceeded', { 
+        userId: user.id, 
+        ...deviceInfo, 
+        timestamp: new Date().toISOString() 
+      });
+
+      // Log rate limit violation
+      await supabase.from('access_logs').insert({
+        user_id: user.id,
+        action: 'rate_limit_exceeded',
+        success: false,
+        ip_address: deviceInfo.ip,
+        user_agent: deviceInfo.userAgent,
+        metadata: { deviceInfo, reason: 'rate_limit' },
+      });
+
+      return new Response(
+        JSON.stringify({ error: 'Muitas requisições. Tente novamente em breve.' }),
+        { 
+          status: 429, 
+          headers: { 
+            ...corsHeaders, 
+            ...rateLimitHeaders,
+            'Content-Type': 'application/json',
+            'Retry-After': Math.ceil(rateLimit.resetIn / 1000).toString(),
+          } 
+        }
+      );
+    }
 
     const body: AdminAction = await req.json();
+
+    // Verificar MFA para roles sensíveis
+    const { data: roleData } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .single();
+
+    const { data: collaboratorData } = await supabase
+      .from('collaborators')
+      .select('role, is_active')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    const effectiveRole = roleData?.role || collaboratorData?.role || null;
+    const sensitiveRoles = ['master', 'financeiro'];
+
+    // Para roles sensíveis, verificar se MFA foi realizado recentemente
+    if (sensitiveRoles.includes(effectiveRole)) {
+      const { data: securityData } = await supabase
+        .from('user_security')
+        .select('mfa_verified, mfa_code_expires_at')
+        .eq('user_id', user.id)
+        .single();
+
+      // Verificar se MFA está habilitado e verificado
+      if (!securityData?.mfa_verified) {
+        console.log('[SECURITY] MFA not verified for sensitive role', { 
+          userId: user.id, 
+          role: effectiveRole,
+          ...deviceInfo 
+        });
+        
+        return new Response(
+          JSON.stringify({ error: 'Verificação MFA necessária', requiresMfa: true }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
 
     // Check permission based on action
     const permissionMap: Record<string, string> = {
@@ -72,26 +201,55 @@ serve(async (req: Request) => {
       });
 
       if (!hasPermission) {
+        console.log('[SECURITY] Permission denied', { 
+          userId: user.id, 
+          action: body.action,
+          requiredPermission,
+          ...deviceInfo 
+        });
+
+        await logAudit(supabase, user.id, 'permission_denied', body.action, null, deviceInfo, null, {
+          requiredPermission,
+          action: body.action,
+        });
+
         return new Response(
           JSON.stringify({ error: 'Sem permissão para esta ação' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 403, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
     }
 
     // Helper to log audit
-    const logAudit = async (actionType: string, targetUserId: string | null, oldValue: any, newValue: any) => {
-      await supabase.from('admin_audit_logs').insert({
-        admin_user_id: user.id,
-        target_user_id: targetUserId,
-        action: body.action,
-        action_type: actionType,
-        old_value: oldValue,
-        new_value: newValue,
-        ip_address: ipAddress,
-        user_agent: userAgent,
-      });
-    };
+    async function logAudit(
+      db: any, 
+      adminUserId: string, 
+      actionType: string, 
+      action: string, 
+      targetUserId: string | null, 
+      device: Record<string, string | null>,
+      oldValue: any, 
+      newValue: any
+    ) {
+      try {
+        await db.from('admin_audit_logs').insert({
+          admin_user_id: adminUserId,
+          target_user_id: targetUserId,
+          action,
+          action_type: actionType,
+          old_value: oldValue,
+          new_value: { 
+            ...newValue, 
+            device,
+            request_duration_ms: Date.now() - requestStartTime,
+          },
+          ip_address: device.ip,
+          user_agent: device.userAgent,
+        });
+      } catch (error) {
+        console.error('[AUDIT] Failed to log audit:', error);
+      }
+    }
 
     // Handle actions
     switch (body.action) {
@@ -121,9 +279,13 @@ serve(async (req: Request) => {
           };
         });
 
+        await logAudit(supabase, user.id, 'view_all_users', body.action, null, deviceInfo, null, { 
+          user_count: enrichedUsers.length 
+        });
+
         return new Response(
           JSON.stringify({ users: enrichedUsers }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -131,7 +293,7 @@ serve(async (req: Request) => {
         if (!body.targetUserId) {
           return new Response(
             JSON.stringify({ error: 'targetUserId é obrigatório' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -149,7 +311,9 @@ serve(async (req: Request) => {
           .select('id, name, business_type')
           .eq('user_id', body.targetUserId);
 
-        await logAudit('view_user', body.targetUserId, null, null);
+        await logAudit(supabase, user.id, 'view_user_detail', body.action, body.targetUserId, deviceInfo, null, {
+          viewed_email: userData.user.email,
+        });
 
         return new Response(
           JSON.stringify({ 
@@ -157,7 +321,7 @@ serve(async (req: Request) => {
             profile, 
             stores 
           }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -165,16 +329,19 @@ serve(async (req: Request) => {
         if (!body.targetUserId || !body.data?.newPassword) {
           return new Response(
             JSON.stringify({ error: 'targetUserId e newPassword são obrigatórios' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
         // Check if target is master
         const { data: masterCheck } = await supabase.rpc('is_master', { _user_id: body.targetUserId });
         if (masterCheck) {
+          await logAudit(supabase, user.id, 'reset_password_blocked', body.action, body.targetUserId, deviceInfo, null, {
+            reason: 'target_is_master'
+          });
           return new Response(
             JSON.stringify({ error: 'Não é possível resetar a senha do usuário master' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 403, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -190,11 +357,14 @@ serve(async (req: Request) => {
           must_change_password: true,
         }, { onConflict: 'user_id' });
 
-        await logAudit('reset_password', body.targetUserId, null, { forced_change: true });
+        await logAudit(supabase, user.id, 'reset_password', body.action, body.targetUserId, deviceInfo, null, { 
+          forced_change: true,
+          timestamp: new Date().toISOString(),
+        });
 
         return new Response(
           JSON.stringify({ success: true }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -202,7 +372,7 @@ serve(async (req: Request) => {
         if (!body.targetUserId || !body.data?.newPlan) {
           return new Response(
             JSON.stringify({ error: 'targetUserId e newPlan são obrigatórios' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -222,14 +392,14 @@ serve(async (req: Request) => {
 
         if (error) throw error;
 
-        await logAudit('change_plan', body.targetUserId, 
+        await logAudit(supabase, user.id, 'change_plan', body.action, body.targetUserId, deviceInfo,
           { plan: currentProfile?.user_plan }, 
-          { plan: body.data.newPlan }
+          { plan: body.data.newPlan, timestamp: new Date().toISOString() }
         );
 
         return new Response(
           JSON.stringify({ success: true }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -237,7 +407,7 @@ serve(async (req: Request) => {
         if (!body.targetUserId || !body.data?.days) {
           return new Response(
             JSON.stringify({ error: 'targetUserId e days são obrigatórios' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -263,14 +433,14 @@ serve(async (req: Request) => {
 
         if (error) throw error;
 
-        await logAudit('extend_subscription', body.targetUserId, 
+        await logAudit(supabase, user.id, 'extend_subscription', body.action, body.targetUserId, deviceInfo,
           { expires_at: currentProfile?.subscription_expires_at }, 
           { expires_at: newExpiry.toISOString(), days_added: body.data.days }
         );
 
         return new Response(
           JSON.stringify({ success: true, new_expiry: newExpiry.toISOString() }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -278,7 +448,7 @@ serve(async (req: Request) => {
         if (!body.targetUserId || !body.data?.status) {
           return new Response(
             JSON.stringify({ error: 'targetUserId e status são obrigatórios' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -295,14 +465,14 @@ serve(async (req: Request) => {
 
         if (error) throw error;
 
-        await logAudit('change_plan', body.targetUserId, 
+        await logAudit(supabase, user.id, 'update_status', body.action, body.targetUserId, deviceInfo,
           { status: currentProfile?.subscription_status }, 
           { status: body.data.status }
         );
 
         return new Response(
           JSON.stringify({ success: true }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -310,7 +480,7 @@ serve(async (req: Request) => {
         if (!body.targetUserId) {
           return new Response(
             JSON.stringify({ error: 'targetUserId é obrigatório' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -322,11 +492,13 @@ serve(async (req: Request) => {
 
         if (error) throw error;
 
-        await logAudit('view_financial', body.targetUserId, null, null);
+        await logAudit(supabase, user.id, 'view_financial', body.action, body.targetUserId, deviceInfo, null, {
+          records_count: payments?.length || 0,
+        });
 
         return new Response(
           JSON.stringify({ payments: payments || [] }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -334,7 +506,7 @@ serve(async (req: Request) => {
         if (!body.targetUserId) {
           return new Response(
             JSON.stringify({ error: 'targetUserId é obrigatório' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -346,11 +518,13 @@ serve(async (req: Request) => {
 
         if (error) throw error;
 
-        await logAudit('view_support', body.targetUserId, null, null);
+        await logAudit(supabase, user.id, 'view_support', body.action, body.targetUserId, deviceInfo, null, {
+          tickets_count: tickets?.length || 0,
+        });
 
         return new Response(
           JSON.stringify({ tickets: tickets || [] }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -358,16 +532,19 @@ serve(async (req: Request) => {
         if (!body.targetUserId) {
           return new Response(
             JSON.stringify({ error: 'targetUserId é obrigatório' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
         // Check if target is master
         const { data: masterCheck } = await supabase.rpc('is_master', { _user_id: body.targetUserId });
         if (masterCheck) {
+          await logAudit(supabase, user.id, 'impersonation_blocked', body.action, body.targetUserId, deviceInfo, null, {
+            reason: 'target_is_master'
+          });
           return new Response(
             JSON.stringify({ error: 'Não é possível impersonar o usuário master' }),
-            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            { status: 403, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
@@ -375,7 +552,11 @@ serve(async (req: Request) => {
         const { data: userData, error } = await supabase.auth.admin.getUserById(body.targetUserId);
         if (error) throw error;
 
-        await logAudit('impersonate', body.targetUserId, null, { started: true });
+        await logAudit(supabase, user.id, 'impersonate_start', body.action, body.targetUserId, deviceInfo, null, { 
+          started: true,
+          target_email: userData.user.email,
+          timestamp: new Date().toISOString(),
+        });
 
         // Return user info - actual impersonation will be handled client-side
         return new Response(
@@ -387,19 +568,19 @@ serve(async (req: Request) => {
             },
             impersonationToken: `imp_${Date.now()}_${body.targetUserId}` // Token for tracking
           }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
       default:
         return new Response(
           JSON.stringify({ error: 'Ação inválida' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
     }
 
   } catch (error) {
-    console.error('Erro na função admin-users:', error);
+    console.error('[ERROR] admin-users:', error, { ...deviceInfo, timestamp: new Date().toISOString() });
     return new Response(
       JSON.stringify({ error: 'Erro interno do servidor' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -44,9 +44,9 @@ export default function SecurityCheck() {
       // Determinar etapa inicial
       if (security.mustChangePassword) {
         setStep("password");
-      } else if (security.isMaster && security.mfaEnabled && !security.mfaVerified) {
+      } else if ((security.isMaster || security.isFinanceiro) && security.mfaEnabled && !security.mfaVerified) {
         setStep("mfa-send");
-      } else if (!security.mustChangePassword && (!security.isMaster || security.mfaVerified)) {
+      } else if (!security.mustChangePassword && ((!security.isMaster && !security.isFinanceiro) || security.mfaVerified)) {
         // Tudo OK, redirecionar
         handleComplete();
       }
@@ -80,7 +80,7 @@ export default function SecurityCheck() {
       await logAccess("password_changed", true);
       
       // Verificar se precisa de MFA
-      if (security?.isMaster) {
+      if (security?.isMaster || security?.isFinanceiro) {
         setStep("mfa-send");
       } else {
         handleComplete();
