@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useRBAC, useCollaboratorManagement, AppRole, AppPermission } from "@/hooks/useRBAC";
 import { RequirePermission } from "@/components/rbac";
+import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +22,7 @@ import { toast } from "@/hooks/use-toast";
 import { 
   Users, Plus, Shield, History, KeyRound, UserCog, 
   ArrowLeft, Mail, Lock, Eye, EyeOff, RefreshCcw,
-  CheckCircle2, XCircle, AlertTriangle
+  CheckCircle2, XCircle, AlertTriangle, User, Settings
 } from "lucide-react";
 import { 
   roleLabels, 
@@ -135,7 +137,6 @@ export default function Collaborators() {
       setNewPassword("");
       setNewRole("suporte");
       
-      // Log the action
       await logAction("create_collaborator", { email: newEmail, role: newRole });
     } else {
       toast({
@@ -364,9 +365,19 @@ export default function Collaborators() {
     return password;
   };
 
+  const getRoleBadgeStyle = (role: AppRole) => {
+    switch (role) {
+      case "master": return "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20";
+      case "suporte": return "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20";
+      case "financeiro": return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
+      case "analista": return "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20";
+      default: return "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20";
+    }
+  };
+
   if (rbacLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
@@ -374,7 +385,7 @@ export default function Collaborators() {
 
   return (
     <RequirePermission permission="manage_collaborators" fallback={
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <Card className="max-w-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-destructive">
@@ -394,25 +405,12 @@ export default function Collaborators() {
         </Card>
       </div>
     }>
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-8 px-4">
-          {/* Header */}
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/admin")}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-2xl font-bold flex items-center gap-2">
-                  <Users className="h-6 w-6" />
-                  Gerenciamento de Colaboradores
-                </h1>
-                <p className="text-muted-foreground">
-                  Gerencie os colaboradores da plataforma
-                </p>
-              </div>
-            </div>
-
+      <AdminLayout>
+        <AdminHeader
+          title="Gerenciamento de Colaboradores"
+          subtitle="Gerencie os colaboradores e permissões da plataforma"
+          icon={<UserCog className="h-6 w-6" />}
+          actions={
             <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -420,7 +418,7 @@ export default function Collaborators() {
                   Novo Colaborador
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle>Criar Novo Colaborador</DialogTitle>
                   <DialogDescription>
@@ -463,7 +461,14 @@ export default function Collaborators() {
                       <SelectContent>
                         {assignableRoles.map((role) => (
                           <SelectItem key={role} value={role}>
-                            {roleLabels[role]}
+                            <div className="flex items-center gap-2">
+                              <div className={`h-2 w-2 rounded-full ${
+                                role === "suporte" ? "bg-green-500" :
+                                role === "financeiro" ? "bg-amber-500" :
+                                "bg-cyan-500"
+                              }`} />
+                              {roleLabels[role]}
+                            </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -503,90 +508,110 @@ export default function Collaborators() {
                     Cancelar
                   </Button>
                   <Button onClick={handleCreateCollaborator} disabled={creating}>
-                    {creating ? "Criando..." : "Criar Colaborador"}
+                    {creating ? (
+                      <>
+                        <RefreshCcw className="h-4 w-4 mr-2 animate-spin" />
+                        Criando...
+                      </>
+                    ) : (
+                      "Criar Colaborador"
+                    )}
                   </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
-          </div>
+          }
+        />
 
+        <div className="p-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Collaborators List */}
-            <div className="lg:col-span-1">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Colaboradores</CardTitle>
-                  <CardDescription>
-                    {visibleCollaborators.length} colaborador(es) cadastrado(s)
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {isLoading ? (
-                    <div className="flex justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                    </div>
-                  ) : visibleCollaborators.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Nenhum colaborador cadastrado</p>
-                    </div>
-                  ) : (
-                    <ScrollArea className="h-[500px]">
-                      <div className="space-y-2">
-                        {visibleCollaborators.map((collaborator) => (
-                          <div
-                            key={collaborator.id}
-                            className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                              selectedCollaborator?.id === collaborator.id
-                                ? "border-primary bg-primary/5"
-                                : "hover:bg-muted/50"
-                            }`}
-                            onClick={() => handleSelectCollaborator(collaborator)}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="space-y-1">
-                                <p className="font-medium">{collaborator.name}</p>
-                                <p className="text-sm text-muted-foreground">
-                                  {collaborator.email}
-                                </p>
-                                <Badge className={roleColors[collaborator.role]}>
-                                  {roleLabels[collaborator.role]}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {collaborator.is_active ? (
-                                  <Badge variant="outline" className="text-emerald-600 border-emerald-600 dark:text-emerald-400 dark:border-emerald-400">
-                                    Ativo
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="text-destructive border-destructive">
-                                    Inativo
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+            <Card className="lg:col-span-1">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4 text-primary" />
+                  Colaboradores ({visibleCollaborators.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[600px]">
+                  <div className="space-y-1 p-4">
+                    {isLoading ? (
+                      <div className="flex items-center justify-center py-8">
+                        <RefreshCcw className="h-6 w-6 animate-spin text-muted-foreground" />
                       </div>
-                    </ScrollArea>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+                    ) : visibleCollaborators.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                        <p>Nenhum colaborador cadastrado</p>
+                      </div>
+                    ) : (
+                      visibleCollaborators.map((collaborator) => (
+                        <div
+                          key={collaborator.id}
+                          onClick={() => handleSelectCollaborator(collaborator)}
+                          className={`p-4 rounded-lg border cursor-pointer transition-all ${
+                            selectedCollaborator?.id === collaborator.id
+                              ? "border-primary bg-primary/5"
+                              : "border-transparent hover:border-border hover:bg-muted/50"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
+                              collaborator.is_active
+                                ? "bg-primary/10 text-primary"
+                                : "bg-muted text-muted-foreground"
+                            }`}>
+                              <User className="h-5 w-5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{collaborator.name}</p>
+                              <p className="text-xs text-muted-foreground truncate">{collaborator.email}</p>
+                            </div>
+                            {!collaborator.is_active && (
+                              <Badge variant="outline" className="text-muted-foreground">
+                                Inativo
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-3">
+                            <Badge className={`${getRoleBadgeStyle(collaborator.role)} border`}>
+                              {roleLabels[collaborator.role]}
+                            </Badge>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
 
             {/* Collaborator Details */}
-            <div className="lg:col-span-2">
+            <Card className="lg:col-span-2">
               {selectedCollaborator ? (
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <CardTitle>{selectedCollaborator.name}</CardTitle>
-                        <CardDescription>{selectedCollaborator.email}</CardDescription>
+                <>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
+                          selectedCollaborator.is_active
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        }`}>
+                          <User className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{selectedCollaborator.name}</CardTitle>
+                          <CardDescription>{selectedCollaborator.email}</CardDescription>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Ativo</span>
+                        <Label htmlFor="active" className="text-sm text-muted-foreground">
+                          Ativo
+                        </Label>
                         <Switch
+                          id="active"
                           checked={selectedCollaborator.is_active}
                           onCheckedChange={() => handleToggleActive(selectedCollaborator)}
                         />
@@ -594,244 +619,205 @@ export default function Collaborators() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <Tabs defaultValue="permissions">
-                      <TabsList className="grid w-full grid-cols-3">
-                        <TabsTrigger value="permissions">
-                          <Shield className="h-4 w-4 mr-2" />
+                    <Tabs defaultValue="permissions" className="space-y-4">
+                      <TabsList className="bg-muted/50">
+                        <TabsTrigger value="permissions" className="gap-2">
+                          <Shield className="h-4 w-4" />
                           Permissões
                         </TabsTrigger>
-                        <TabsTrigger value="security">
-                          <KeyRound className="h-4 w-4 mr-2" />
+                        <TabsTrigger value="security" className="gap-2">
+                          <KeyRound className="h-4 w-4" />
                           Segurança
                         </TabsTrigger>
-                        <TabsTrigger value="logs">
-                          <History className="h-4 w-4 mr-2" />
+                        <TabsTrigger value="logs" className="gap-2">
+                          <History className="h-4 w-4" />
                           Histórico
                         </TabsTrigger>
                       </TabsList>
 
-                      <TabsContent value="permissions" className="mt-4 space-y-6">
-                        {/* Role Selection */}
-                        <div className="space-y-2">
-                          <Label>Papel do Colaborador</Label>
-                          <Select
-                            value={selectedCollaborator.role}
-                            onValueChange={(v) => handleRoleChange(selectedCollaborator, v as AppRole)}
-                          >
-                            <SelectTrigger className="w-[200px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {assignableRoles.map((role) => (
-                                <SelectItem key={role} value={role}>
-                                  {roleLabels[role]}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <p className="text-xs text-muted-foreground">
-                            O papel define as permissões básicas do colaborador
-                          </p>
+                      <TabsContent value="permissions" className="space-y-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label>Papel do Colaborador</Label>
+                            <Select
+                              value={selectedCollaborator.role}
+                              onValueChange={(v) => handleRoleChange(selectedCollaborator, v as AppRole)}
+                            >
+                              <SelectTrigger className="w-[180px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {assignableRoles.map((role) => (
+                                  <SelectItem key={role} value={role}>
+                                    {roleLabels[role]}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
 
                         <Separator />
 
-                        {/* Individual Permissions */}
                         <div className="space-y-4">
-                          <div>
-                            <Label>Permissões Individuais</Label>
-                            <p className="text-xs text-muted-foreground">
-                              Adicione ou remova permissões específicas para este colaborador
-                            </p>
-                          </div>
+                          <Label className="text-sm font-medium">Permissões Adicionais</Label>
+                          <p className="text-xs text-muted-foreground">
+                            Conceda permissões extras além das incluídas no papel
+                          </p>
 
-                          {permissionsLoading ? (
-                            <div className="flex justify-center py-4">
-                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                            </div>
-                          ) : (
-                            <div className="space-y-4">
-                              {Object.entries(permissionCategories).map(([key, category]) => (
-                                <div key={key} className="space-y-2">
-                                  <Label className="text-sm font-medium">{category.label}</Label>
-                                  <div className="grid grid-cols-2 gap-2">
+                          <div className="grid gap-4">
+                            {Object.entries(permissionCategories).map(([key, category]) => (
+                              <Card key={key} className="bg-muted/30">
+                                <CardHeader className="pb-2 pt-4 px-4">
+                                  <CardTitle className="text-sm font-medium">{category.label}</CardTitle>
+                                </CardHeader>
+                                <CardContent className="px-4 pb-4">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                     {category.permissions.map((permission) => {
-                                      const hasPermission = userPermissions.some(
-                                        (p) => p.permission === permission
-                                      );
+                                      const hasPermission = userPermissions.some(p => p.permission === permission);
                                       return (
                                         <div
                                           key={permission}
-                                          className="flex items-center space-x-2"
+                                          className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50"
                                         >
                                           <Checkbox
                                             id={permission}
                                             checked={hasPermission}
                                             onCheckedChange={() => handleTogglePermission(permission)}
                                           />
-                                          <label
+                                          <Label
                                             htmlFor={permission}
-                                            className="text-sm cursor-pointer"
+                                            className="text-sm font-normal cursor-pointer"
                                           >
                                             {permissionLabels[permission]}
-                                          </label>
+                                          </Label>
                                         </div>
                                       );
                                     })}
                                   </div>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
                         </div>
                       </TabsContent>
 
-                      <TabsContent value="security" className="mt-4 space-y-4">
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <Lock className="h-4 w-4" />
-                              Senha
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleResetPassword(selectedCollaborator)}
-                            >
-                              <RefreshCcw className="h-4 w-4 mr-2" />
-                              Resetar Senha
-                            </Button>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Uma nova senha temporária será gerada. O colaborador será obrigado a trocá-la no próximo login.
-                            </p>
-                          </CardContent>
-                        </Card>
+                      <TabsContent value="security" className="space-y-4">
+                        <div className="grid gap-4">
+                          <Card className="bg-muted/30">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                <Lock className="h-4 w-4" />
+                                Senha
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-sm text-muted-foreground mb-3">
+                                Gere uma nova senha temporária para o colaborador
+                              </p>
+                              <Button
+                                variant="outline"
+                                onClick={() => handleResetPassword(selectedCollaborator)}
+                              >
+                                <RefreshCcw className="h-4 w-4 mr-2" />
+                                Resetar Senha
+                              </Button>
+                            </CardContent>
+                          </Card>
 
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <Shield className="h-4 w-4" />
-                              Autenticação de 2 Fatores (2FA)
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <Button
-                              variant="outline"
-                              onClick={() => handleReset2FA(selectedCollaborator)}
-                            >
-                              <RefreshCcw className="h-4 w-4 mr-2" />
-                              Resetar 2FA
-                            </Button>
-                            <p className="text-xs text-muted-foreground mt-2">
-                              Isso desativará o 2FA do colaborador. Ele precisará configurar novamente no próximo login.
-                            </p>
-                          </CardContent>
-                        </Card>
-
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base flex items-center gap-2">
-                              <UserCog className="h-4 w-4" />
-                              Informações da Conta
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Criado em:</span>
-                              <span>
-                                {format(new Date(selectedCollaborator.created_at), "dd/MM/yyyy HH:mm", {
-                                  locale: ptBR,
-                                })}
-                              </span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">User ID:</span>
-                              <span className="font-mono text-xs">
-                                {selectedCollaborator.user_id.slice(0, 8)}...
-                              </span>
-                            </div>
-                          </CardContent>
-                        </Card>
+                          <Card className="bg-muted/30">
+                            <CardHeader className="pb-2">
+                              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                                <Shield className="h-4 w-4" />
+                                Autenticação em Dois Fatores
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <p className="text-sm text-muted-foreground mb-3">
+                                Resete o 2FA caso o colaborador perca acesso
+                              </p>
+                              <Button
+                                variant="outline"
+                                onClick={() => handleReset2FA(selectedCollaborator)}
+                              >
+                                <RefreshCcw className="h-4 w-4 mr-2" />
+                                Resetar 2FA
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        </div>
                       </TabsContent>
 
-                      <TabsContent value="logs" className="mt-4">
-                        <Card>
-                          <CardHeader>
-                            <CardTitle className="text-base">Histórico de Acessos</CardTitle>
-                            <CardDescription>
-                              Últimos 50 registros de acesso
-                            </CardDescription>
+                      <TabsContent value="logs">
+                        <Card className="bg-muted/30">
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium">Histórico de Acessos</CardTitle>
                           </CardHeader>
-                          <CardContent>
-                            {logsLoading ? (
-                              <div className="flex justify-center py-8">
-                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-                              </div>
-                            ) : accessLogs.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground">
-                                <History className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                <p>Nenhum registro de acesso encontrado</p>
-                              </div>
-                            ) : (
-                              <ScrollArea className="h-[300px]">
+                          <CardContent className="p-0">
+                            <ScrollArea className="h-[300px]">
+                              {logsLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                  <RefreshCcw className="h-6 w-6 animate-spin text-muted-foreground" />
+                                </div>
+                              ) : accessLogs.length === 0 ? (
+                                <div className="text-center py-8 text-muted-foreground">
+                                  <History className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                                  <p>Nenhum log encontrado</p>
+                                </div>
+                              ) : (
                                 <Table>
                                   <TableHeader>
                                     <TableRow>
                                       <TableHead>Ação</TableHead>
                                       <TableHead>Status</TableHead>
-                                      <TableHead>IP</TableHead>
-                                      <TableHead>Data/Hora</TableHead>
+                                      <TableHead className="text-right">Data</TableHead>
                                     </TableRow>
                                   </TableHeader>
                                   <TableBody>
                                     {accessLogs.map((log) => (
                                       <TableRow key={log.id}>
-                                        <TableCell className="font-medium">
+                                        <TableCell className="font-medium text-sm">
                                           {log.action}
                                         </TableCell>
                                         <TableCell>
                                           {log.success ? (
-                                            <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                                            <Badge className="bg-success/10 text-success border-0">
+                                              <CheckCircle2 className="h-3 w-3 mr-1" />
+                                              OK
+                                            </Badge>
                                           ) : (
-                                            <XCircle className="h-4 w-4 text-destructive" />
+                                            <Badge className="bg-destructive/10 text-destructive border-0">
+                                              <XCircle className="h-3 w-3 mr-1" />
+                                              Falha
+                                            </Badge>
                                           )}
                                         </TableCell>
-                                        <TableCell className="font-mono text-xs">
-                                          {log.ip_address || "-"}
-                                        </TableCell>
-                                        <TableCell className="text-xs">
-                                          {format(new Date(log.created_at), "dd/MM/yyyy HH:mm", {
-                                            locale: ptBR,
-                                          })}
+                                        <TableCell className="text-right text-xs text-muted-foreground">
+                                          {format(new Date(log.created_at), "dd/MM HH:mm", { locale: ptBR })}
                                         </TableCell>
                                       </TableRow>
                                     ))}
                                   </TableBody>
                                 </Table>
-                              </ScrollArea>
-                            )}
+                              )}
+                            </ScrollArea>
                           </CardContent>
                         </Card>
                       </TabsContent>
                     </Tabs>
                   </CardContent>
-                </Card>
+                </>
               ) : (
-                <Card>
-                  <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                    <UserCog className="h-16 w-16 mb-4 opacity-50" />
-                    <p className="text-lg font-medium">Selecione um colaborador</p>
-                    <p className="text-sm">
-                      Clique em um colaborador na lista para ver e editar os detalhes
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="flex flex-col items-center justify-center h-[600px] text-muted-foreground">
+                  <Settings className="h-16 w-16 mb-4 opacity-30" />
+                  <p className="text-lg font-medium">Selecione um colaborador</p>
+                  <p className="text-sm">Clique em um colaborador para ver os detalhes</p>
+                </div>
               )}
-            </div>
+            </Card>
           </div>
         </div>
-      </div>
+      </AdminLayout>
     </RequirePermission>
   );
 }
