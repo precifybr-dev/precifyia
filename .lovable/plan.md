@@ -1,137 +1,130 @@
 
-# Plano: Corrigir Funcionalidade do Modo Suporte (Impersonação)
+# Plano: Corrigir Navegação do Menu Lateral Admin
 
-## Problema Identificado
+## Problema Diagnosticado
+O menu lateral (sidebar) do painel administrativo não funciona porque:
+1. Todos os itens de menu apontam para a mesma rota `/admin`
+2. O `AdminDashboard` usa um sistema de Tabs interno separado
+3. Não há sincronização entre o clique no sidebar e a mudança de aba interna
 
-O botão "Modo Suporte" exibe o toast "Modo Suporte Ativado" mas não redireciona para a área do usuário nem mostra indicação visual do modo ativo.
-
-**Causa raiz:** O componente `UserManagement` é renderizado sem o callback `onImpersonate`, então após a chamada bem-sucedida à edge function, nenhuma ação adicional acontece.
-
-## Solução
-
-Implementar o fluxo completo de impersonação que:
-1. Redirecione o admin para a área do usuário
-2. Mostre um banner indicando que está em modo suporte
-3. Permita sair do modo suporte e voltar ao painel admin
+## Solução Proposta
+Sincronizar o sidebar com o sistema de Tabs interno, passando o controle de navegação via props/callbacks.
 
 ---
 
-## Etapa 1: Criar Componente de Banner do Modo Suporte
+## Etapa 1: Refatorar AdminLayout para controlar navegação interna
 
-Criar um componente que exibe um banner fixo no topo quando o admin está impersonando um usuário.
-
-**Arquivo:** `src/components/admin/ImpersonationBanner.tsx`
+### Mudanças em `AdminLayout.tsx`:
+- Adicionar prop `activeSection` para receber a seção ativa
+- Adicionar prop `onSectionChange` para notificar mudanças de seção
+- Remover navegação via `navigate()` e usar callback interno
+- Atualizar lógica de `isActive` para usar a seção atual
 
 ```text
-- Ler sessionStorage para verificar se há sessão de impersonação ativa
-- Exibir banner com informações do usuário sendo visualizado
-- Botão "Sair do Modo Suporte" que limpa a sessão e redireciona para /admin
-- Estilo visual destacado (cor de alerta) para ficar evidente
+Interface atualizada:
+┌─────────────────────────────────────────────────────────┐
+│  AdminLayout                                             │
+│  ├── activeSection: string                              │
+│  ├── onSectionChange: (section: string) => void         │
+│  └── children: ReactNode                                 │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Etapa 2: Atualizar AdminDashboard com Handler de Impersonação
+## Etapa 2: Atualizar AdminDashboard para gerenciar estado
 
-Passar o callback `onImpersonate` ao `UserManagement` com a lógica de redirecionamento.
+### Mudanças em `AdminDashboard.tsx`:
+- Passar `activeTab` e `setActiveTab` para o `AdminLayout`
+- Remover TabsList duplicada (ou mantê-la como navegação secundária)
+- Garantir que clicar no sidebar mude a tab correta
 
-**Arquivo:** `src/pages/AdminDashboard.tsx`
-
-**Alterações:**
 ```text
-Linha 391 - Adicionar prop onImpersonate:
-  <UserManagement onImpersonate={handleStartImpersonation} />
-
-Adicionar função handleStartImpersonation:
-  - Redirecionar para /app (área do usuário)
-  - A sessão de impersonação já está em sessionStorage (feito pelo hook)
+Fluxo de navegação:
+┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
+│  Sidebar Click   │ ──▶ │  onSectionChange │ ──▶ │  setActiveTab    │
+│  (Usuários)      │     │  ("management")  │     │  ("management")  │
+└──────────────────┘     └──────────────────┘     └──────────────────┘
 ```
 
 ---
 
-## Etapa 3: Adicionar Banner aos Layouts de Usuário
+## Etapa 3: Mapear IDs do Sidebar para Tabs
 
-Incluir o banner de impersonação nos layouts de rotas de usuário.
-
-**Arquivo:** `src/pages/Dashboard.tsx` (e outros layouts de usuário)
-
-**Alterações:**
-```text
-- Importar ImpersonationBanner
-- Renderizar no topo do layout
-- O banner só aparece quando há sessão de impersonação ativa
-```
-
----
-
-## Etapa 4: Criar Hook para Gerenciar Estado de Impersonação
-
-Centralizar a lógica de verificação e gerenciamento do modo suporte.
-
-**Arquivo:** `src/hooks/useImpersonation.ts`
-
-```text
-Funcionalidades:
-- isImpersonating: boolean
-- impersonatedUser: { id, email } | null
-- endImpersonation(): void - limpa sessão e redireciona
-- checkImpersonation(): verificar se sessão é válida
-```
+### Mapeamento:
+| Sidebar ID     | Tab Value     |
+|----------------|---------------|
+| overview       | overview      |
+| users          | management    |
+| collaborators  | (rota separada) |
+| financial      | financial     |
+| support        | support       |
+| metrics        | usage         |
+| logs           | logs          |
 
 ---
 
-## Etapa 5: Atualizar App.tsx com Verificação Global
+## Etapa 4: Tratar rota separada de Colaboradores
 
-Adicionar o banner de impersonação em um nível mais alto para aparecer em todas as rotas de usuário.
-
-**Arquivo:** `src/App.tsx`
-
-**Alterações:**
-```text
-- Importar ImpersonationBanner
-- Adicionar como wrapper ou componente global
-```
+A página de Colaboradores (`/admin/collaborators`) é uma rota separada e deve:
+- Continuar navegando via `navigate()` 
+- Manter o item destacado no sidebar quando estiver nessa rota
 
 ---
 
-## Resumo das Alterações
+## Arquivos a Modificar
 
 | Arquivo | Ação |
 |---------|------|
-| `src/components/admin/ImpersonationBanner.tsx` | Criar (novo) |
-| `src/hooks/useImpersonation.ts` | Criar (novo) |
-| `src/pages/AdminDashboard.tsx` | Editar (passar callback) |
-| `src/pages/Dashboard.tsx` | Editar (adicionar banner) |
-| `src/App.tsx` | Editar (verificação global) |
+| `src/components/admin/AdminLayout.tsx` | Adicionar props de controle e refatorar navegação |
+| `src/pages/AdminDashboard.tsx` | Passar estado de tab para o layout |
 
 ---
 
-## Detalhes Técnicos
+## Seção Técnica
 
-### Fluxo do Modo Suporte:
-```text
-1. Admin clica em "Modo Suporte" no dropdown de um usuário
-2. Edge function valida permissões e retorna dados do usuário
-3. Hook salva dados em sessionStorage
-4. Callback onImpersonate redireciona para /app
-5. Banner de impersonação aparece em todas as páginas
-6. Admin pode navegar e ver o que o usuário vê
-7. Clique em "Sair do Modo Suporte" limpa sessão e volta para /admin
-```
-
-### Estrutura do sessionStorage:
-```json
-{
-  "impersonation": {
-    "token": "imp_1234567890_user-uuid",
-    "targetUser": { "id": "...", "email": "..." },
-    "startedAt": "2026-01-28T..."
-  }
+### AdminLayout.tsx - Mudanças Principais:
+```typescript
+interface AdminLayoutProps {
+  children: React.ReactNode;
+  unreadAlerts?: number;
+  activeSection?: string;  // NOVO
+  onSectionChange?: (section: string) => void;  // NOVO
 }
+
+// No navItems, mapear para seção interna:
+const navItems: NavItem[] = [
+  { id: "overview", label: "Visão Geral", icon: LayoutDashboard, section: "overview" },
+  { id: "users", label: "Usuários", icon: Users, section: "management", permission: "view_users" },
+  { id: "collaborators", label: "Colaboradores", icon: UserCog, path: "/admin/collaborators", permission: "manage_collaborators" },
+  // ...
+];
+
+// No onClick do botão:
+onClick={() => {
+  if (item.path) {
+    navigate(item.path);  // Rota separada
+  } else if (item.section && onSectionChange) {
+    onSectionChange(item.section);  // Seção interna
+  }
+}}
 ```
 
-### Considerações de Segurança:
-- A impersonação NÃO altera a sessão de autenticação real
-- É apenas modo de visualização (leitura)
-- Todas as ações são logadas em `admin_audit_logs`
-- Usuário master não pode ser impersonado (bloqueio na edge function)
+### AdminDashboard.tsx - Mudanças Principais:
+```typescript
+<AdminLayout 
+  unreadAlerts={unreadAlerts.length}
+  activeSection={activeTab}
+  onSectionChange={setActiveTab}
+>
+  {/* Conteúdo... */}
+</AdminLayout>
+```
+
+---
+
+## Resultado Esperado
+- Clicar em "Usuários" no sidebar → muda para tab "management" (Usuários)
+- Clicar em "Financeiro" no sidebar → muda para tab "financial"
+- Clicar em "Colaboradores" → navega para `/admin/collaborators`
+- Item ativo no sidebar sempre reflete a seção/página atual
