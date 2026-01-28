@@ -12,8 +12,13 @@ import {
   Calculator,
   DollarSign,
   AlertTriangle,
-  ChevronRight
+  ChevronRight,
+  Plus,
+  Store,
+  Crown
 } from "lucide-react";
+import { useStore } from "@/contexts/StoreContext";
+import { CreateStoreModal } from "@/components/store/CreateStoreModal";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -34,8 +39,12 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("dashboard");
+  const [showCreateStoreModal, setShowCreateStoreModal] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { activeStore, userPlan, canCreateStore, storeCount, maxStores } = useStore();
+  
+  const isPro = userPlan === "pro";
 
   useEffect(() => {
     const checkAuthAndOnboarding = async () => {
@@ -192,13 +201,82 @@ export default function Dashboard() {
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-border">
+          <div className="p-4 border-b border-border">
             <button 
               onClick={() => navigate("/")}
               className="hover:opacity-80 transition-opacity"
             >
               <Logo size="sm" showText />
             </button>
+          </div>
+
+          {/* Active Store Section */}
+          <div className="p-4 border-b border-border space-y-3">
+            {/* Active Store Display */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                {activeStore?.logo_url ? (
+                  <img 
+                    src={activeStore.logo_url} 
+                    alt={activeStore.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <Store className="w-5 h-5 text-primary" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold truncate text-foreground">
+                  {activeStore?.name || "Minha Loja"}
+                </p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {activeStore?.business_type 
+                    ? activeStore.business_type.charAt(0).toUpperCase() + activeStore.business_type.slice(1).replace(/_/g, ' ')
+                    : "Negócio"}
+                </p>
+              </div>
+            </div>
+
+            {/* New Store Button */}
+            {isPro ? (
+              <button
+                onClick={() => setShowCreateStoreModal(true)}
+                disabled={!canCreateStore}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  canCreateStore
+                    ? "bg-primary/10 text-primary hover:bg-primary/20"
+                    : "bg-muted text-muted-foreground cursor-not-allowed"
+                }`}
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nova Loja</span>
+                {!canCreateStore && (
+                  <span className="ml-auto text-xs">({storeCount}/{maxStores})</span>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  toast({
+                    title: "Recurso exclusivo PRO",
+                    description: "Múltiplas lojas estão disponíveis apenas no Plano Pro.",
+                    action: (
+                      <button
+                        onClick={() => navigate("/pricing")}
+                        className="bg-primary text-primary-foreground px-3 py-1 rounded text-xs font-medium hover:bg-primary/90"
+                      >
+                        Fazer upgrade
+                      </button>
+                    ),
+                  });
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium bg-muted/50 text-muted-foreground hover:bg-muted transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Nova Loja</span>
+                <Crown className="w-3.5 h-3.5 ml-auto text-warning" />
+              </button>
+            )}
           </div>
 
           {/* Navigation */}
@@ -256,6 +334,15 @@ export default function Dashboard() {
           onClick={() => setSidebarOpen(false)}
         />
       )}
+
+      {/* Create Store Modal */}
+      <CreateStoreModal 
+        open={showCreateStoreModal} 
+        onOpenChange={setShowCreateStoreModal}
+        onStoreCreated={(storeId) => {
+          navigate(`/store-onboarding/${storeId}`);
+        }}
+      />
 
       {/* Main Content */}
       <main className="flex-1 lg:ml-64">
