@@ -143,7 +143,7 @@ export function PricingSection() {
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <a 
-              href="https://wa.me/5511999999999?text=Oi!%20Quero%20tirar%20uma%20dúvida%20sobre%20o%20Precify" 
+              href="https://wa.me/5547996887776?text=Oi!%20Quero%20tirar%20uma%20dúvida%20sobre%20o%20Precify" 
               target="_blank" 
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success hover:bg-success/20 transition-colors font-medium text-sm"
@@ -151,7 +151,7 @@ export function PricingSection() {
               💬 Chamar no WhatsApp
             </a>
             <a 
-              href="mailto:suporte@precify.com.br" 
+              href="mailto:precify.br@gmail.com" 
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors font-medium text-sm"
             >
               ✉️ Falar por email
