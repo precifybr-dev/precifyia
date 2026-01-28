@@ -34,6 +34,8 @@ import { Logo } from "@/components/ui/Logo";
 interface AdminLayoutProps {
   children: React.ReactNode;
   unreadAlerts?: number;
+  activeSection?: string;
+  onSectionChange?: (section: string) => void;
 }
 
 interface NavItem {
@@ -41,21 +43,22 @@ interface NavItem {
   label: string;
   icon: React.ElementType;
   path?: string;
+  section?: string;
   permission?: string;
   badge?: number;
 }
 
 const navItems: NavItem[] = [
-  { id: "overview", label: "Visão Geral", icon: LayoutDashboard, path: "/admin" },
-  { id: "users", label: "Usuários", icon: Users, path: "/admin", permission: "view_users" },
+  { id: "overview", label: "Visão Geral", icon: LayoutDashboard, section: "overview" },
+  { id: "users", label: "Usuários", icon: Users, section: "management", permission: "view_users" },
   { id: "collaborators", label: "Colaboradores", icon: UserCog, path: "/admin/collaborators", permission: "manage_collaborators" },
-  { id: "financial", label: "Financeiro", icon: Wallet, path: "/admin", permission: "view_financials" },
-  { id: "support", label: "Suporte", icon: Headphones, path: "/admin", permission: "respond_support" },
-  { id: "metrics", label: "Métricas", icon: BarChart3, path: "/admin", permission: "view_metrics" },
-  { id: "logs", label: "Logs", icon: History, path: "/admin", permission: "view_logs" },
+  { id: "financial", label: "Financeiro", icon: Wallet, section: "financial", permission: "view_financials" },
+  { id: "support", label: "Suporte", icon: Headphones, section: "support", permission: "respond_support" },
+  { id: "metrics", label: "Métricas", icon: BarChart3, section: "usage", permission: "view_metrics" },
+  { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs" },
 ];
 
-export function AdminLayout({ children, unreadAlerts = 0 }: AdminLayoutProps) {
+export function AdminLayout({ children, unreadAlerts = 0, activeSection, onSectionChange }: AdminLayoutProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [userId, setUserId] = useState<string | undefined>();
@@ -98,9 +101,22 @@ export function AdminLayout({ children, unreadAlerts = 0 }: AdminLayoutProps) {
     return hasPermission(item.permission as any);
   };
 
-  const isActive = (itemPath?: string) => {
-    if (!itemPath) return false;
-    return location.pathname === itemPath;
+  const isActive = (item: NavItem) => {
+    if (item.path) {
+      return location.pathname === item.path;
+    }
+    if (item.section && activeSection) {
+      return item.section === activeSection;
+    }
+    return false;
+  };
+
+  const handleNavClick = (item: NavItem) => {
+    if (item.path) {
+      navigate(item.path);
+    } else if (item.section && onSectionChange) {
+      onSectionChange(item.section);
+    }
   };
 
   const getRoleLabel = () => {
@@ -177,7 +193,7 @@ export function AdminLayout({ children, unreadAlerts = 0 }: AdminLayoutProps) {
             <nav className="space-y-1">
               {navItems.filter(canAccessItem).map((item) => {
                 const Icon = item.icon;
-                const active = isActive(item.path);
+                const active = isActive(item);
 
                 const button = (
                   <Button
@@ -188,7 +204,7 @@ export function AdminLayout({ children, unreadAlerts = 0 }: AdminLayoutProps) {
                       collapsed && "justify-center px-2",
                       active && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
                     )}
-                    onClick={() => item.path && navigate(item.path)}
+                    onClick={() => handleNavClick(item)}
                   >
                     <Icon className={cn("h-5 w-5", active && "text-primary")} />
                     {!collapsed && (

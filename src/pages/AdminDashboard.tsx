@@ -161,7 +161,7 @@ export default function AdminDashboard() {
           </div>
         }
       >
-        <AdminLayout unreadAlerts={unreadAlerts.length}>
+        <AdminLayout unreadAlerts={unreadAlerts.length} activeSection={activeTab} onSectionChange={setActiveTab}>
           <AdminHeader
             title="Dashboard Administrativo"
             subtitle="Visão geral da plataforma"
