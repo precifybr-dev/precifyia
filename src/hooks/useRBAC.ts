@@ -30,7 +30,22 @@ interface RBACState {
   role: AppRole | null;
   permissions: AppPermission[];
   isLoading: boolean;
+  isMasterUser: boolean;
 }
+
+// All permissions for master users
+const ALL_PERMISSIONS: AppPermission[] = [
+  "view_users",
+  "edit_users",
+  "impersonate_user",
+  "reset_password",
+  "view_financials",
+  "view_metrics",
+  "manage_plans",
+  "respond_support",
+  "manage_collaborators",
+  "view_logs",
+];
 
 export function useRBAC(userId: string | undefined) {
   const [state, setState] = useState<RBACState>({
@@ -38,6 +53,7 @@ export function useRBAC(userId: string | undefined) {
     role: null,
     permissions: [],
     isLoading: true,
+    isMasterUser: false,
   });
 
   useEffect(() => {
@@ -51,7 +67,26 @@ export function useRBAC(userId: string | undefined) {
 
   const fetchRBACData = async (uid: string) => {
     try {
-      // Verificar se é colaborador
+      // First, check if user is in user_roles table (for MASTER)
+      const { data: userRole } = await supabase
+        .from("user_roles")
+        .select("role, is_protected")
+        .eq("user_id", uid)
+        .maybeSingle();
+
+      // If user is MASTER (in user_roles with master role)
+      if (userRole && userRole.role === "master") {
+        setState({
+          isCollaborator: true,
+          role: "master",
+          permissions: ALL_PERMISSIONS,
+          isLoading: false,
+          isMasterUser: true,
+        });
+        return;
+      }
+
+      // Check if is a collaborator
       const { data: collaborator } = await supabase
         .from("collaborators")
         .select("*")
@@ -65,23 +100,24 @@ export function useRBAC(userId: string | undefined) {
           role: null,
           permissions: [],
           isLoading: false,
+          isMasterUser: false,
         });
         return;
       }
 
-      // Buscar permissões da role
+      // Get role permissions
       const { data: rolePermissions } = await supabase
         .from("role_permissions")
         .select("permission")
         .eq("role", collaborator.role);
 
-      // Buscar permissões específicas do usuário
+      // Get user-specific permissions
       const { data: userPermissions } = await supabase
         .from("user_permissions")
         .select("permission")
         .eq("user_id", uid);
 
-      // Combinar permissões
+      // Combine permissions
       const allPermissions = new Set<AppPermission>();
       rolePermissions?.forEach((rp) => allPermissions.add(rp.permission as AppPermission));
       userPermissions?.forEach((up) => allPermissions.add(up.permission as AppPermission));
@@ -91,6 +127,7 @@ export function useRBAC(userId: string | undefined) {
         role: collaborator.role as AppRole,
         permissions: Array.from(allPermissions),
         isLoading: false,
+        isMasterUser: false,
       });
     } catch (error) {
       console.error("Erro ao buscar dados RBAC:", error);
@@ -100,28 +137,32 @@ export function useRBAC(userId: string | undefined) {
 
   const hasPermission = useCallback(
     (permission: AppPermission): boolean => {
+      // Master has all permissions
+      if (state.isMasterUser) return true;
       return state.permissions.includes(permission);
     },
-    [state.permissions]
+    [state.permissions, state.isMasterUser]
   );
 
   const hasAnyPermission = useCallback(
     (permissions: AppPermission[]): boolean => {
+      if (state.isMasterUser) return true;
       return permissions.some((p) => state.permissions.includes(p));
     },
-    [state.permissions]
+    [state.permissions, state.isMasterUser]
   );
 
   const hasAllPermissions = useCallback(
     (permissions: AppPermission[]): boolean => {
+      if (state.isMasterUser) return true;
       return permissions.every((p) => state.permissions.includes(p));
     },
-    [state.permissions]
+    [state.permissions, state.isMasterUser]
   );
 
   const isMaster = useCallback((): boolean => {
-    return state.role === "master";
-  }, [state.role]);
+    return state.isMasterUser || state.role === "master";
+  }, [state.role, state.isMasterUser]);
 
   const refetch = useCallback(() => {
     if (userId) {
@@ -172,7 +213,7 @@ export function useCollaboratorManagement() {
     password: string
   ): Promise<{ success: boolean; error?: string }> => {
     try {
-      // Chamar edge function para criar usuário e colaborador
+      // Call edge function to create user and collaborator
       const { data, error } = await supabase.functions.invoke("manage-collaborator", {
         body: { action: "create", email, name, role, password },
       });

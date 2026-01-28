@@ -89,7 +89,7 @@ export function AdminLayout({ children, unreadAlerts = 0 }: AdminLayoutProps) {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/login");
+    navigate("/");
   };
 
   const canAccessItem = (item: NavItem) => {
