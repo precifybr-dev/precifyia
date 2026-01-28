@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
+import Forbidden from "./pages/Forbidden";
 
 // Auth/Security pages
 import SecurityCheck from "./pages/SecurityCheck";
@@ -176,6 +177,9 @@ const App = () => (
             <Route path="/sub-recipes" element={<Navigate to="/app/sub-recipes" replace />} />
             <Route path="/collaborators" element={<Navigate to="/admin/collaborators" replace />} />
 
+            {/* ========== ERROR PAGES ========== */}
+            <Route path="/403" element={<Forbidden />} />
+            
             {/* ========== 404 CATCH-ALL ========== */}
             <Route path="*" element={<NotFound />} />
           </Routes>

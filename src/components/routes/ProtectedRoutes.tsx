@@ -1,16 +1,20 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
+import { logAccessAttempt } from "@/hooks/useAccessLogger";
+import Forbidden from "@/pages/Forbidden";
 
 interface AdminRouteProps {
   children: React.ReactNode;
 }
 
 export function AdminRoute({ children }: AdminRouteProps) {
-  const { isLoading, isAdminUser } = useUserRole();
+  const { isLoading, isAdminUser, userId } = useUserRole();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [showForbidden, setShowForbidden] = useState(false);
   const location = useLocation();
+  const hasLoggedRef = useRef(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -29,6 +33,25 @@ export function AdminRoute({ children }: AdminRouteProps) {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Log unauthorized access attempts
+  useEffect(() => {
+    if (!isLoading && isAuthenticated && !isAdminUser && userId && !hasLoggedRef.current) {
+      hasLoggedRef.current = true;
+      
+      // Log the unauthorized access attempt
+      logAccessAttempt({
+        action: "admin_access_denied",
+        success: false,
+        metadata: {
+          attemptedPath: location.pathname,
+          reason: "user_not_admin",
+        },
+      });
+      
+      setShowForbidden(true);
+    }
+  }, [isLoading, isAuthenticated, isAdminUser, userId, location.pathname]);
+
   // Show loading while checking auth status
   if (isLoading || isAuthenticated === null) {
     return (
@@ -46,9 +69,9 @@ export function AdminRoute({ children }: AdminRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // If authenticated but not admin, redirect to app
-  if (!isAdminUser) {
-    return <Navigate to="/app" replace />;
+  // If authenticated but not admin, show 403 Forbidden page
+  if (!isAdminUser || showForbidden) {
+    return <Forbidden />;
   }
 
   // User is admin (master or collaborator)
