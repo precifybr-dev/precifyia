@@ -371,6 +371,51 @@ export type Database = {
           },
         ]
       }
+      payment_links: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          expires_at: string | null
+          external_id: string | null
+          external_url: string | null
+          id: string
+          paid_at: string | null
+          plan_type: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          expires_at?: string | null
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          paid_at?: string | null
+          plan_type: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          expires_at?: string | null
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          paid_at?: string | null
+          plan_type?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           business_name: string | null
@@ -991,6 +1036,28 @@ export type Database = {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_expiring_users_by_plan: {
+        Args: { days_ahead?: number }
+        Returns: {
+          plan_type: string
+          potential_revenue: number
+          user_count: number
+        }[]
+      }
+      get_financial_summary: {
+        Args: never
+        Returns: {
+          average_ticket: number
+          conversion_rate: number
+          failed_links: number
+          mrr: number
+          paid_links: number
+          pending_links: number
+          projected_next_month: number
+          total_payment_links: number
+          total_revenue: number
+        }[]
+      }
       get_mrr_stats: {
         Args: never
         Returns: {
@@ -1014,6 +1081,36 @@ export type Database = {
         Args: { days_back?: number }
         Returns: {
           registration_date: string
+          user_count: number
+        }[]
+      }
+      get_renewal_stats: {
+        Args: never
+        Returns: {
+          expiring_15_days: number
+          expiring_30_days: number
+          expiring_7_days: number
+          expiring_today: number
+          potential_revenue_15_days: number
+          potential_revenue_30_days: number
+          potential_revenue_7_days: number
+          potential_revenue_today: number
+        }[]
+      }
+      get_revenue_by_period: {
+        Args: { days_back?: number }
+        Returns: {
+          payment_count: number
+          period_date: string
+          revenue: number
+        }[]
+      }
+      get_revenue_by_plan: {
+        Args: never
+        Returns: {
+          monthly_revenue: number
+          percentage: number
+          plan_type: string
           user_count: number
         }[]
       }
