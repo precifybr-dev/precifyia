@@ -8,7 +8,7 @@ interface AdminRouteProps {
 }
 
 export function AdminRoute({ children }: AdminRouteProps) {
-  const { isLoading, isAdminUser, isMaster, isCollaborator } = useUserRole();
+  const { isLoading, isAdminUser } = useUserRole();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const location = useLocation();
 
@@ -18,6 +18,15 @@ export function AdminRoute({ children }: AdminRouteProps) {
       setIsAuthenticated(!!session?.user);
     };
     checkAuth();
+
+    // Listen for auth state changes to ensure session validation on all visits
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setIsAuthenticated(!!session?.user);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Show loading while checking auth status
@@ -51,7 +60,7 @@ interface AppRouteProps {
 }
 
 export function AppRoute({ children }: AppRouteProps) {
-  const { isLoading, isMaster, isCollaborator, isAdminUser } = useUserRole();
+  const { isLoading, isAdminUser } = useUserRole();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const location = useLocation();
 
@@ -61,6 +70,15 @@ export function AppRoute({ children }: AppRouteProps) {
       setIsAuthenticated(!!session?.user);
     };
     checkAuth();
+
+    // Listen for auth state changes to ensure session validation on all visits
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setIsAuthenticated(!!session?.user);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   // Show loading while checking auth status
@@ -104,6 +122,15 @@ export function AuthenticatedRoute({ children }: AuthenticatedRouteProps) {
       setIsAuthenticated(!!session?.user);
     };
     checkAuth();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setIsAuthenticated(!!session?.user);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   if (isAuthenticated === null) {
@@ -137,7 +164,20 @@ export function PublicOnlyRoute({ children }: PublicOnlyRouteProps) {
       setIsChecking(false);
     };
     checkAuth();
-  }, []);
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSession(session);
+        if (!isChecking) {
+          // Only update checking state if we already finished initial check
+          setIsChecking(false);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [isChecking]);
 
   if (isChecking || isLoading) {
     return (
