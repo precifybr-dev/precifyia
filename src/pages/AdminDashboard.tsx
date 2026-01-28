@@ -147,9 +147,9 @@ export default function AdminDashboard() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => navigate("/dashboard")} variant="outline">
+                <Button onClick={() => navigate("/")} variant="outline">
                   <ArrowLeft className="h-4 w-4 mr-2" />
-                  Voltar ao Dashboard
+                  Voltar ao Início
                 </Button>
               </CardContent>
             </Card>
@@ -161,7 +161,7 @@ export default function AdminDashboard() {
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>

@@ -316,7 +316,7 @@ export default function BusinessArea() {
               <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
                 <Menu className="w-5 h-5" />
               </button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-2">
                 <ArrowLeft className="w-4 h-4" />
                 Voltar
               </Button>
@@ -576,7 +576,7 @@ export default function BusinessArea() {
                   variant="outline" 
                   size="sm" 
                   className="mt-2"
-                  onClick={() => navigate("/recipes")}
+                  onClick={() => navigate("/app/recipes")}
                 >
                   Criar primeira ficha
                 </Button>
@@ -719,7 +719,7 @@ export default function BusinessArea() {
           {/* Quick Actions */}
           <div className="mt-6 grid sm:grid-cols-3 gap-4">
             <button
-              onClick={() => navigate("/ingredients")}
+              onClick={() => navigate("/app/ingredients")}
               className="p-4 bg-card rounded-xl border border-border shadow-card hover:border-primary/50 hover:shadow-md transition-all text-left group"
             >
               <div className="flex items-center gap-3 mb-2">
@@ -731,7 +731,7 @@ export default function BusinessArea() {
             </button>
 
             <button
-              onClick={() => navigate("/recipes")}
+              onClick={() => navigate("/app/recipes")}
               className="p-4 bg-card rounded-xl border border-border shadow-card hover:border-primary/50 hover:shadow-md transition-all text-left group"
             >
               <div className="flex items-center gap-3 mb-2">

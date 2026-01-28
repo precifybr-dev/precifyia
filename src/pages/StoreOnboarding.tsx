@@ -39,14 +39,14 @@ export default function StoreOnboarding() {
   useEffect(() => {
     const loadStoreData = async () => {
       if (!storeId) {
-        navigate("/dashboard");
+        navigate("/app");
         return;
       }
 
       // Find the store
       const store = stores.find(s => s.id === storeId);
       if (!store) {
-        navigate("/dashboard");
+        navigate("/app");
         return;
       }
 
@@ -125,7 +125,7 @@ export default function StoreOnboarding() {
   };
 
   const handleSkipOnboarding = () => {
-    navigate("/dashboard");
+    navigate("/app");
   };
 
   if (isLoading) {
@@ -145,7 +145,7 @@ export default function StoreOnboarding() {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/dashboard">
+            <Link to="/app">
               <Logo size="lg" showText />
             </Link>
 

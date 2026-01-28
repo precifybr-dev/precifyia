@@ -105,11 +105,11 @@ export default function Dashboard() {
     setSidebarOpen(false);
     
     const routes: Record<string, string> = {
-      dashboard: "/dashboard",
-      business: "/business",
-      ingredients: "/ingredients",
-      beverages: "/beverages",
-      recipes: "/recipes",
+      dashboard: "/app",
+      business: "/app/business",
+      ingredients: "/app/ingredients",
+      beverages: "/app/beverages",
+      recipes: "/app/recipes",
     };
     
     if (routes[path]) {
@@ -128,13 +128,13 @@ export default function Dashboard() {
   const handleQuickAction = (action: string) => {
     switch (action) {
       case "business":
-        navigate("/business");
+        navigate("/app/business");
         break;
       case "ingredients":
-        navigate("/ingredients");
+        navigate("/app/ingredients");
         break;
       case "recipe":
-        navigate("/recipes");
+        navigate("/app/recipes");
         break;
       default:
         toast({

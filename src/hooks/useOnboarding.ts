@@ -106,7 +106,7 @@ export function useOnboarding() {
           title: "Onboarding concluído! 🎉",
           description: "Você completou a configuração inicial.",
         });
-        navigate("/dashboard");
+        navigate("/app");
       }
     }
   }, [profile, updateProfile, navigate, toast]);
@@ -128,9 +128,9 @@ export function useOnboarding() {
         userProfile = await createProfile(session.user.id);
       }
 
-      // If onboarding is completed, redirect to dashboard
+      // If onboarding is completed, redirect to app
       if (userProfile.onboarding_step === "completed") {
-        navigate("/dashboard");
+        navigate("/app");
         return;
       }
 

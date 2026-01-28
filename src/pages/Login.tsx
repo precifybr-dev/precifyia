@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/ui/Logo";
+import { determineLoginRedirect } from "@/hooks/useUserRole";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -64,24 +65,35 @@ export default function Login() {
         return;
       }
 
-      // Fetch profile to check onboarding status
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("onboarding_step")
-        .eq("user_id", data.user.id)
-        .maybeSingle();
+      // Determine redirect based on user role (master/collaborator vs end user)
+      const redirectPath = await determineLoginRedirect(data.user.id);
+      
+      // For end users, also check onboarding status
+      if (redirectPath === "/app") {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_step")
+          .eq("user_id", data.user.id)
+          .maybeSingle();
+
+        if (!profile || profile.onboarding_step !== "completed") {
+          toast({
+            title: "Login realizado!",
+            description: "Complete o cadastro do seu negócio.",
+          });
+          navigate("/onboarding");
+          return;
+        }
+      }
 
       toast({
         title: "Login realizado!",
-        description: "Bem-vindo de volta ao PRECIFY.",
+        description: redirectPath === "/admin" 
+          ? "Bem-vindo ao painel administrativo." 
+          : "Bem-vindo de volta ao PRECIFY.",
       });
 
-      // Redirect based on onboarding status
-      if (profile?.onboarding_step === "completed") {
-        navigate("/dashboard");
-      } else {
-        navigate("/onboarding");
-      }
+      navigate(redirectPath);
     } catch (error) {
       toast({
         title: "Erro inesperado",

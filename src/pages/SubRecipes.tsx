@@ -532,22 +532,22 @@ export default function SubRecipes() {
           </div>
 
           <nav className="flex-1 p-4 space-y-1">
-            <NavLink to="/dashboard" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+            <NavLink to="/app" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
               <LayoutDashboard className="w-5 h-5" />
               <span>Dashboard</span>
               <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
             </NavLink>
-            <NavLink to="/business" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+            <NavLink to="/app/business" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
               <Building2 className="w-5 h-5" />
               <span>Área do Negócio</span>
               <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
             </NavLink>
-            <NavLink to="/ingredients" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+            <NavLink to="/app/ingredients" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
               <Package className="w-5 h-5" />
               <span>Insumos</span>
               <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
             </NavLink>
-            <NavLink to="/beverages" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+            <NavLink to="/app/beverages" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
               <Wine className="w-5 h-5" />
               <span>Bebidas</span>
               <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
@@ -561,12 +561,12 @@ export default function SubRecipes() {
                 <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${fichasSubmenuOpen ? 'rotate-180' : ''}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="pl-4 mt-1 space-y-1">
-                <NavLink to="/recipes" className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
+                <NavLink to="/app/recipes" className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
                   <FileSpreadsheet className="w-4 h-4" />
                   <span className="text-sm">Produtos</span>
                 </NavLink>
                 <button 
-                  onClick={() => navigate("/sub-recipes")}
+                  onClick={() => navigate("/app/sub-recipes")}
                   className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors bg-primary/10 text-primary font-medium"
                 >
                   <ChefHat className="w-4 h-4" />
@@ -603,7 +603,7 @@ export default function SubRecipes() {
               <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
                 <Menu className="w-5 h-5" />
               </button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/recipes")} className="gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/app/recipes")} className="gap-2">
                 <ArrowLeft className="w-4 h-4" />
                 Voltar
               </Button>

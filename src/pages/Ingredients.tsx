@@ -420,7 +420,7 @@ export default function Ingredients() {
               <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
                 <Menu className="w-5 h-5" />
               </button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/dashboard")} className="gap-2">
+              <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-2">
                 <ArrowLeft className="w-4 h-4" />
                 Voltar
               </Button>
