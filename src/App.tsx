@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { AdminRoute, AppRoute, AuthenticatedRoute, PublicOnlyRoute } from "@/components/routes/ProtectedRoutes";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 
 // Public pages
 import Landing from "./pages/Landing";
@@ -42,6 +43,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ImpersonationBanner />
           <Routes>
             {/* ========== PUBLIC ROUTES ========== */}
             <Route path="/" element={<Landing />} />
