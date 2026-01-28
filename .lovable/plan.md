@@ -1,176 +1,137 @@
 
-# Implementacao da Nova Logo Oficial PRECIFY
+# Plano: Corrigir Funcionalidade do Modo Suporte (Impersonação)
 
-## Resumo
+## Problema Identificado
 
-Substituir o logo placeholder atual (quadrado azul com "P") pela nova logo oficial 3D do PRECIFY em todos os locais do sistema, criando um componente reutilizavel.
+O botão "Modo Suporte" exibe o toast "Modo Suporte Ativado" mas não redireciona para a área do usuário nem mostra indicação visual do modo ativo.
+
+**Causa raiz:** O componente `UserManagement` é renderizado sem o callback `onImpersonate`, então após a chamada bem-sucedida à edge function, nenhuma ação adicional acontece.
+
+## Solução
+
+Implementar o fluxo completo de impersonação que:
+1. Redirecione o admin para a área do usuário
+2. Mostre um banner indicando que está em modo suporte
+3. Permita sair do modo suporte e voltar ao painel admin
 
 ---
 
-## Contexto Atual
+## Etapa 1: Criar Componente de Banner do Modo Suporte
 
-O projeto usa um logo improvisado em **11 arquivos diferentes**:
+Criar um componente que exibe um banner fixo no topo quando o admin está impersonando um usuário.
+
+**Arquivo:** `src/components/admin/ImpersonationBanner.tsx`
 
 ```text
-Header.tsx, Footer.tsx, Login.tsx, Register.tsx, Dashboard.tsx,
-Onboarding.tsx, BusinessArea.tsx, Ingredients.tsx, Beverages.tsx,
-Recipes.tsx, SubRecipes.tsx
-```
-
-Cada um repete o mesmo codigo:
-```tsx
-<div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-  <span className="font-logo text-primary-foreground text-sm">P</span>
-</div>
-<span className="font-logo text-xl text-foreground">PRECIFY</span>
+- Ler sessionStorage para verificar se há sessão de impersonação ativa
+- Exibir banner com informações do usuário sendo visualizado
+- Botão "Sair do Modo Suporte" que limpa a sessão e redireciona para /admin
+- Estilo visual destacado (cor de alerta) para ficar evidente
 ```
 
 ---
 
-## Solucao Proposta
+## Etapa 2: Atualizar AdminDashboard com Handler de Impersonação
 
-### 1. Adicionar a Imagem da Logo ao Projeto
+Passar o callback `onImpersonate` ao `UserManagement` com a lógica de redirecionamento.
 
-Copiar a imagem enviada para `src/assets/logo-precify.png` para uso como modulo ES6 com otimizacao de bundling.
+**Arquivo:** `src/pages/AdminDashboard.tsx`
 
-### 2. Criar Componente Logo Reutilizavel
+**Alterações:**
+```text
+Linha 391 - Adicionar prop onImpersonate:
+  <UserManagement onImpersonate={handleStartImpersonation} />
 
-Novo arquivo: `src/components/ui/Logo.tsx`
-
-Props suportadas:
-- `size`: "sm" | "md" | "lg" | "xl" (para diferentes contextos)
-- `showText`: boolean (exibir ou nao o texto "PRECIFY")
-- `textClassName`: string (classes customizadas para o texto)
-
-Tamanhos predefinidos:
-
-| Size | Icone | Uso |
-|------|-------|-----|
-| sm | 32x32px | Header, Sidebar |
-| md | 40x40px | Login/Register inline |
-| lg | 64x64px | Onboarding |
-| xl | 96x96px | Telas decorativas Login/Register |
-
-### 3. Atualizar Arquivos que Usam a Logo
-
-| Arquivo | Contexto | Configuracao |
-|---------|----------|--------------|
-| Header.tsx | Navegacao principal | size="sm", showText=true |
-| Footer.tsx | Rodape | size="sm", showText=true |
-| Login.tsx | Formulario + painel decorativo | size="md" + size="xl" |
-| Register.tsx | Formulario + painel decorativo | size="md" + size="xl" |
-| Dashboard.tsx | Sidebar | size="sm", showText=true |
-| Onboarding.tsx | Topo do formulario | size="lg", showText=true |
-| BusinessArea.tsx | Sidebar | size="sm", showText=true |
-| Ingredients.tsx | Sidebar | size="sm", showText=true |
-| Beverages.tsx | Sidebar | size="sm", showText=true |
-| Recipes.tsx | Sidebar | size="sm", showText=true |
-| SubRecipes.tsx | Sidebar | size="sm", showText=true |
-
-### 4. Atualizar Favicon e Meta Tags (Bonus)
-
-- Atualizar `public/favicon.ico` com versao otimizada do icone
-- Atualizar OG images em `index.html` para usar a marca correta
+Adicionar função handleStartImpersonation:
+  - Redirecionar para /app (área do usuário)
+  - A sessão de impersonação já está em sessionStorage (feito pelo hook)
+```
 
 ---
 
-## Estrutura do Componente
+## Etapa 3: Adicionar Banner aos Layouts de Usuário
+
+Incluir o banner de impersonação nos layouts de rotas de usuário.
+
+**Arquivo:** `src/pages/Dashboard.tsx` (e outros layouts de usuário)
+
+**Alterações:**
+```text
+- Importar ImpersonationBanner
+- Renderizar no topo do layout
+- O banner só aparece quando há sessão de impersonação ativa
+```
+
+---
+
+## Etapa 4: Criar Hook para Gerenciar Estado de Impersonação
+
+Centralizar a lógica de verificação e gerenciamento do modo suporte.
+
+**Arquivo:** `src/hooks/useImpersonation.ts`
 
 ```text
-src/components/ui/Logo.tsx
-          |
-          v
-    [Props: size, showText, textClassName, className]
-          |
-          v
-    <img src={logoImage} /> + <span>PRECIFY</span>
+Funcionalidades:
+- isImpersonating: boolean
+- impersonatedUser: { id, email } | null
+- endImpersonation(): void - limpa sessão e redireciona
+- checkImpersonation(): verificar se sessão é válida
 ```
 
 ---
 
-## Detalhes Tecnicos
+## Etapa 5: Atualizar App.tsx com Verificação Global
 
-### Componente Logo.tsx
+Adicionar o banner de impersonação em um nível mais alto para aparecer em todas as rotas de usuário.
 
-```tsx
-import logoImage from "@/assets/logo-precify.png";
+**Arquivo:** `src/App.tsx`
 
-interface LogoProps {
-  size?: "sm" | "md" | "lg" | "xl";
-  showText?: boolean;
-  className?: string;
-  textClassName?: string;
-}
+**Alterações:**
+```text
+- Importar ImpersonationBanner
+- Adicionar como wrapper ou componente global
+```
 
-const sizeMap = {
-  sm: "w-8 h-8",
-  md: "w-10 h-10",
-  lg: "w-16 h-16",
-  xl: "w-24 h-24",
-};
+---
 
-export function Logo({ 
-  size = "sm", 
-  showText = true, 
-  className = "",
-  textClassName = ""
-}: LogoProps) {
-  return (
-    <div className={`flex items-center gap-2 ${className}`}>
-      <img 
-        src={logoImage} 
-        alt="PRECIFY" 
-        className={`${sizeMap[size]} object-contain`}
-      />
-      {showText && (
-        <span className={`font-logo text-xl text-foreground ${textClassName}`}>
-          PRECIFY
-        </span>
-      )}
-    </div>
-  );
+## Resumo das Alterações
+
+| Arquivo | Ação |
+|---------|------|
+| `src/components/admin/ImpersonationBanner.tsx` | Criar (novo) |
+| `src/hooks/useImpersonation.ts` | Criar (novo) |
+| `src/pages/AdminDashboard.tsx` | Editar (passar callback) |
+| `src/pages/Dashboard.tsx` | Editar (adicionar banner) |
+| `src/App.tsx` | Editar (verificação global) |
+
+---
+
+## Detalhes Técnicos
+
+### Fluxo do Modo Suporte:
+```text
+1. Admin clica em "Modo Suporte" no dropdown de um usuário
+2. Edge function valida permissões e retorna dados do usuário
+3. Hook salva dados em sessionStorage
+4. Callback onImpersonate redireciona para /app
+5. Banner de impersonação aparece em todas as páginas
+6. Admin pode navegar e ver o que o usuário vê
+7. Clique em "Sair do Modo Suporte" limpa sessão e volta para /admin
+```
+
+### Estrutura do sessionStorage:
+```json
+{
+  "impersonation": {
+    "token": "imp_1234567890_user-uuid",
+    "targetUser": { "id": "...", "email": "..." },
+    "startedAt": "2026-01-28T..."
+  }
 }
 ```
 
-### Exemplo de Uso
-
-```tsx
-// Header
-<Logo size="sm" showText />
-
-// Login decorativo (apenas icone grande)
-<Logo size="xl" showText={false} />
-
-// Onboarding
-<Logo size="lg" showText />
-```
-
----
-
-## Arquivos a Criar
-
-1. `src/assets/logo-precify.png` (copia da imagem enviada)
-2. `src/components/ui/Logo.tsx` (componente reutilizavel)
-
-## Arquivos a Modificar
-
-1. `src/components/landing/Header.tsx`
-2. `src/components/landing/Footer.tsx`
-3. `src/pages/Login.tsx`
-4. `src/pages/Register.tsx`
-5. `src/pages/Dashboard.tsx`
-6. `src/pages/Onboarding.tsx`
-7. `src/pages/BusinessArea.tsx`
-8. `src/pages/Ingredients.tsx`
-9. `src/pages/Beverages.tsx`
-10. `src/pages/Recipes.tsx`
-11. `src/pages/SubRecipes.tsx`
-
----
-
-## Beneficios
-
-- **Consistencia**: Logo unica em todo o sistema
-- **Manutencao**: Alterar em um unico componente atualiza tudo
-- **Profissionalismo**: Logo 3D moderna substitui placeholder basico
-- **Performance**: Imagem otimizada via bundler (src/assets)
+### Considerações de Segurança:
+- A impersonação NÃO altera a sessão de autenticação real
+- É apenas modo de visualização (leitura)
+- Todas as ações são logadas em `admin_audit_logs`
+- Usuário master não pode ser impersonado (bloqueio na edge function)
