@@ -1,71 +1,176 @@
 
-# Ajuste Fino da Proposta de Valor - Linha de Qualificacao de Publico
+# Implementacao da Nova Logo Oficial PRECIFY
 
-## Objetivo
+## Resumo
 
-Adicionar uma linha curta de qualificacao de publico logo abaixo da headline existente, sem alterar nenhum texto atual. Isso deixara claro que o sistema atende diferentes tipos de negocios de alimentacao e nao apenas quem vende no iFood.
+Substituir o logo placeholder atual (quadrado azul com "P") pela nova logo oficial 3D do PRECIFY em todos os locais do sistema, criando um componente reutilizavel.
 
-## Estrutura Atual (linhas 25-34)
+---
+
+## Contexto Atual
+
+O projeto usa um logo improvisado em **11 arquivos diferentes**:
 
 ```text
-[Badge de alerta]
-     ↓
-[Headline] "Saiba exatamente quanto lucra em cada venda."
-     ↓
-[Subheadline] "Calcule o preco certo dos seus produtos..."
+Header.tsx, Footer.tsx, Login.tsx, Register.tsx, Dashboard.tsx,
+Onboarding.tsx, BusinessArea.tsx, Ingredients.tsx, Beverages.tsx,
+Recipes.tsx, SubRecipes.tsx
 ```
 
-## Estrutura Proposta
-
-```text
-[Badge de alerta]
-     ↓
-[Headline] "Saiba exatamente quanto lucra em cada venda."
-     ↓
-[NOVA LINHA] "Para restaurantes, lanchonetes, marmitarias e quem vende no balcao ou delivery"
-     ↓
-[Subheadline] "Calcule o preco certo dos seus produtos..."
+Cada um repete o mesmo codigo:
+```tsx
+<div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+  <span className="font-logo text-primary-foreground text-sm">P</span>
+</div>
+<span className="font-logo text-xl text-foreground">PRECIFY</span>
 ```
 
 ---
 
-## Alteracao Tecnica
+## Solucao Proposta
 
-**Arquivo:** `src/components/landing/HeroSection.tsx`
+### 1. Adicionar a Imagem da Logo ao Projeto
 
-**Posicao:** Entre a linha 29 (fim do h1) e linha 31 (inicio da subheadline)
+Copiar a imagem enviada para `src/assets/logo-precify.png` para uso como modulo ES6 com otimizacao de bundling.
 
-**Codigo a adicionar:**
+### 2. Criar Componente Logo Reutilizavel
+
+Novo arquivo: `src/components/ui/Logo.tsx`
+
+Props suportadas:
+- `size`: "sm" | "md" | "lg" | "xl" (para diferentes contextos)
+- `showText`: boolean (exibir ou nao o texto "PRECIFY")
+- `textClassName`: string (classes customizadas para o texto)
+
+Tamanhos predefinidos:
+
+| Size | Icone | Uso |
+|------|-------|-----|
+| sm | 32x32px | Header, Sidebar |
+| md | 40x40px | Login/Register inline |
+| lg | 64x64px | Onboarding |
+| xl | 96x96px | Telas decorativas Login/Register |
+
+### 3. Atualizar Arquivos que Usam a Logo
+
+| Arquivo | Contexto | Configuracao |
+|---------|----------|--------------|
+| Header.tsx | Navegacao principal | size="sm", showText=true |
+| Footer.tsx | Rodape | size="sm", showText=true |
+| Login.tsx | Formulario + painel decorativo | size="md" + size="xl" |
+| Register.tsx | Formulario + painel decorativo | size="md" + size="xl" |
+| Dashboard.tsx | Sidebar | size="sm", showText=true |
+| Onboarding.tsx | Topo do formulario | size="lg", showText=true |
+| BusinessArea.tsx | Sidebar | size="sm", showText=true |
+| Ingredients.tsx | Sidebar | size="sm", showText=true |
+| Beverages.tsx | Sidebar | size="sm", showText=true |
+| Recipes.tsx | Sidebar | size="sm", showText=true |
+| SubRecipes.tsx | Sidebar | size="sm", showText=true |
+
+### 4. Atualizar Favicon e Meta Tags (Bonus)
+
+- Atualizar `public/favicon.ico` com versao otimizada do icone
+- Atualizar OG images em `index.html` para usar a marca correta
+
+---
+
+## Estrutura do Componente
+
+```text
+src/components/ui/Logo.tsx
+          |
+          v
+    [Props: size, showText, textClassName, className]
+          |
+          v
+    <img src={logoImage} /> + <span>PRECIFY</span>
+```
+
+---
+
+## Detalhes Tecnicos
+
+### Componente Logo.tsx
 
 ```tsx
-{/* Audience qualifier */}
-<p className="text-sm sm:text-base text-muted-foreground/80 mb-4">
-  Para restaurantes, lanchonetes, marmitarias e quem vende no balcao ou delivery
-</p>
+import logoImage from "@/assets/logo-precify.png";
+
+interface LogoProps {
+  size?: "sm" | "md" | "lg" | "xl";
+  showText?: boolean;
+  className?: string;
+  textClassName?: string;
+}
+
+const sizeMap = {
+  sm: "w-8 h-8",
+  md: "w-10 h-10",
+  lg: "w-16 h-16",
+  xl: "w-24 h-24",
+};
+
+export function Logo({ 
+  size = "sm", 
+  showText = true, 
+  className = "",
+  textClassName = ""
+}: LogoProps) {
+  return (
+    <div className={`flex items-center gap-2 ${className}`}>
+      <img 
+        src={logoImage} 
+        alt="PRECIFY" 
+        className={`${sizeMap[size]} object-contain`}
+      />
+      {showText && (
+        <span className={`font-logo text-xl text-foreground ${textClassName}`}>
+          PRECIFY
+        </span>
+      )}
+    </div>
+  );
+}
+```
+
+### Exemplo de Uso
+
+```tsx
+// Header
+<Logo size="sm" showText />
+
+// Login decorativo (apenas icone grande)
+<Logo size="xl" showText={false} />
+
+// Onboarding
+<Logo size="lg" showText />
 ```
 
 ---
 
-## Detalhes de Estilo
+## Arquivos a Criar
 
-| Propriedade | Valor | Justificativa |
-|-------------|-------|---------------|
-| Tamanho | `text-sm sm:text-base` | Menor que a subheadline para hierarquia visual |
-| Cor | `text-muted-foreground/80` | Sutil, nao compete com headline |
-| Espacamento | `mb-4` | Separacao adequada antes da subheadline |
-
----
-
-## Resultado Visual
-
-A linha funcionara como um "qualificador" que:
-1. Expande o publico-alvo alem do iFood
-2. Menciona os dois canais de venda (balcao e delivery)
-3. Lista tipos de negocios que se identificarao imediatamente
-
----
+1. `src/assets/logo-precify.png` (copia da imagem enviada)
+2. `src/components/ui/Logo.tsx` (componente reutilizavel)
 
 ## Arquivos a Modificar
 
-1. `src/components/landing/HeroSection.tsx`
-   - Adicionar paragrafo de qualificacao entre a headline e a subheadline (apos linha 29)
+1. `src/components/landing/Header.tsx`
+2. `src/components/landing/Footer.tsx`
+3. `src/pages/Login.tsx`
+4. `src/pages/Register.tsx`
+5. `src/pages/Dashboard.tsx`
+6. `src/pages/Onboarding.tsx`
+7. `src/pages/BusinessArea.tsx`
+8. `src/pages/Ingredients.tsx`
+9. `src/pages/Beverages.tsx`
+10. `src/pages/Recipes.tsx`
+11. `src/pages/SubRecipes.tsx`
+
+---
+
+## Beneficios
+
+- **Consistencia**: Logo unica em todo o sistema
+- **Manutencao**: Alterar em um unico componente atualiza tudo
+- **Profissionalismo**: Logo 3D moderna substitui placeholder basico
+- **Performance**: Imagem otimizada via bundler (src/assets)
