@@ -2,3 +2,15 @@ project_id = "jkqsgscmvqyofyrphbdd"
 
 [functions.parse-ifood-menu]
 verify_jwt = false
+
+[functions.send-mfa-code]
+verify_jwt = false
+
+[functions.verify-mfa-code]
+verify_jwt = false
+
+[functions.log-access]
+verify_jwt = false
+
+[functions.setup-master-user]
+verify_jwt = false

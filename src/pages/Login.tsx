@@ -40,6 +40,30 @@ export default function Login() {
         return;
       }
 
+      // Verificar se precisa de verificação de segurança
+      const { data: securityData } = await supabase
+        .from("user_security")
+        .select("must_change_password, mfa_enabled, mfa_verified")
+        .eq("user_id", data.user.id)
+        .maybeSingle();
+
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role, is_protected")
+        .eq("user_id", data.user.id)
+        .eq("role", "master")
+        .maybeSingle();
+
+      const isMaster = roleData?.role === "master" && roleData?.is_protected;
+      const needsPasswordChange = securityData?.must_change_password;
+      const needsMfaVerification = isMaster && securityData?.mfa_enabled && !securityData?.mfa_verified;
+
+      // Se precisa de verificação de segurança, redirecionar
+      if (needsPasswordChange || needsMfaVerification) {
+        navigate("/security-check");
+        return;
+      }
+
       // Fetch profile to check onboarding status
       const { data: profile } = await supabase
         .from("profiles")
