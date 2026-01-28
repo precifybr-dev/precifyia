@@ -411,6 +411,7 @@ export type Database = {
       }
       stores: {
         Row: {
+          business_type: string | null
           created_at: string
           id: string
           is_default: boolean
@@ -420,6 +421,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          business_type?: string | null
           created_at?: string
           id?: string
           is_default?: boolean
@@ -429,6 +431,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          business_type?: string | null
           created_at?: string
           id?: string
           is_default?: boolean

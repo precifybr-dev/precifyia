@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Store, ChevronDown, Plus, Check, Settings, Crown, Lock } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Store, ChevronDown, Plus, Check, Crown, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,20 +10,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useStore } from "@/contexts/StoreContext";
+import { CreateStoreModal } from "./CreateStoreModal";
 import { cn } from "@/lib/utils";
 
 export function StoreSwitcher() {
+  const navigate = useNavigate();
   const {
     stores,
     activeStore,
@@ -31,26 +24,15 @@ export function StoreSwitcher() {
     storeCount,
     maxStores,
     setActiveStore,
-    createStore,
   } = useStore();
 
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [newStoreName, setNewStoreName] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
 
   const isPro = userPlan === "pro";
 
-  const handleCreateStore = async () => {
-    if (!newStoreName.trim()) return;
-    
-    setIsCreating(true);
-    const result = await createStore(newStoreName.trim());
-    setIsCreating(false);
-    
-    if (result) {
-      setNewStoreName("");
-      setIsCreateDialogOpen(false);
-    }
+  const handleStoreCreated = (storeId: string) => {
+    // Navigate to the store onboarding page
+    navigate(`/store-onboarding/${storeId}`);
   };
 
   const handleStoreSelect = (store: typeof activeStore) => {
@@ -152,57 +134,12 @@ export function StoreSwitcher() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Create Store Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Store className="h-5 w-5 text-primary" />
-              Nova Loja
-            </DialogTitle>
-            <DialogDescription>
-              Crie uma nova loja para gerenciar um negócio separado. 
-              Cada loja tem seus próprios insumos, fichas técnicas e configurações.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="store-name">Nome da Loja</Label>
-              <Input
-                id="store-name"
-                placeholder="Ex: Hamburgueria Centro"
-                value={newStoreName}
-                onChange={(e) => setNewStoreName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && newStoreName.trim()) {
-                    handleCreateStore();
-                  }
-                }}
-              />
-            </div>
-            
-            <p className="text-xs text-muted-foreground">
-              Você está usando {storeCount} de {maxStores} lojas disponíveis no Plano Pro.
-            </p>
-          </div>
-          
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsCreateDialogOpen(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleCreateStore}
-              disabled={!newStoreName.trim() || isCreating}
-            >
-              {isCreating ? "Criando..." : "Criar Loja"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Create Store Modal */}
+      <CreateStoreModal
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onStoreCreated={handleStoreCreated}
+      />
     </>
   );
 }

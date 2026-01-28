@@ -7,6 +7,7 @@ export interface Store {
   user_id: string;
   name: string;
   logo_url: string | null;
+  business_type: string | null;
   is_default: boolean;
   created_at: string;
   updated_at: string;
@@ -22,7 +23,7 @@ interface StoreContextType {
   maxStores: number;
   setActiveStore: (store: Store | null) => void;
   fetchStores: (userId: string) => Promise<void>;
-  createStore: (name: string, logoUrl?: string) => Promise<Store | null>;
+  createStore: (name: string, logoUrl?: string, businessType?: string) => Promise<Store | null>;
   updateStore: (storeId: string, data: Partial<Pick<Store, "name" | "logo_url">>) => Promise<boolean>;
   deleteStore: (storeId: string) => Promise<boolean>;
   refreshStores: () => Promise<void>;
@@ -106,7 +107,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const createStore = useCallback(async (name: string, logoUrl?: string): Promise<Store | null> => {
+  const createStore = useCallback(async (name: string, logoUrl?: string, businessType?: string): Promise<Store | null> => {
     if (!userId) return null;
     
     if (!isPro) {
@@ -135,6 +136,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         user_id: userId,
         name,
         logo_url: logoUrl || null,
+        business_type: businessType || null,
         is_default: isFirstStore,
       })
       .select()
