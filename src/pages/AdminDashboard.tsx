@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
 import { RequirePermission } from "@/components/rbac";
+import { AdminSecurityGate } from "@/components/admin/AdminSecurityGate";
 import { UserManagement } from "@/components/admin/UserManagement";
 import { FinancialDashboard } from "@/components/admin/FinancialDashboard";
 import { SupportDashboard } from "@/components/admin/SupportDashboard";
@@ -130,32 +131,33 @@ export default function AdminDashboard() {
   }
 
   return (
-    <RequirePermission
-      permission="view_metrics"
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <Card className="max-w-md">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-destructive">
-                <Shield className="h-5 w-5" />
-                Acesso Negado
-              </CardTitle>
-              <CardDescription>
-                Você não tem permissão para acessar o dashboard administrativo.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={() => navigate("/dashboard")} variant="outline">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Voltar ao Dashboard
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      }
-    >
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-8 px-4">
+    <AdminSecurityGate>
+      <RequirePermission
+        permission="view_metrics"
+        fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <Card className="max-w-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-destructive">
+                  <Shield className="h-5 w-5" />
+                  Acesso Negado
+                </CardTitle>
+                <CardDescription>
+                  Você não tem permissão para acessar o dashboard administrativo.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => navigate("/dashboard")} variant="outline">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Voltar ao Dashboard
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        }
+      >
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto py-8 px-4">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-4">
@@ -664,5 +666,6 @@ export default function AdminDashboard() {
         </div>
       </div>
     </RequirePermission>
+  </AdminSecurityGate>
   );
 }

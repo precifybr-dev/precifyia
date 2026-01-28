@@ -7,6 +7,7 @@ interface UserSecurity {
   mfaEnabled: boolean;
   mfaVerified: boolean;
   isMaster: boolean;
+  isFinanceiro: boolean;
 }
 
 export function useUserSecurity(userId: string | undefined) {
@@ -30,10 +31,19 @@ export function useUserSecurity(userId: string | undefined) {
         .from("user_roles")
         .select("role, is_protected")
         .eq("user_id", uid)
-        .eq("role", "master")
         .maybeSingle();
 
       const isMaster = roleData?.role === "master" && roleData?.is_protected;
+
+      // Verificar se é colaborador financeiro
+      const { data: collaboratorData } = await supabase
+        .from("collaborators")
+        .select("role, is_active")
+        .eq("user_id", uid)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      const isFinanceiro = collaboratorData?.role === "financeiro" || roleData?.role === "financeiro";
 
       // Buscar configurações de segurança
       const { data: securityData } = await supabase
@@ -47,6 +57,7 @@ export function useUserSecurity(userId: string | undefined) {
         mfaEnabled: securityData?.mfa_enabled ?? false,
         mfaVerified: securityData?.mfa_verified ?? false,
         isMaster: isMaster ?? false,
+        isFinanceiro: isFinanceiro ?? false,
       });
     } catch (error) {
       console.error("Erro ao buscar segurança do usuário:", error);
