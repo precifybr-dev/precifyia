@@ -84,20 +84,38 @@ serve(async (req: Request) => {
       );
     }
 
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    // Cliente com service role para operações admin
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    // Cliente com o token do usuário para validação
+    const supabaseUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } },
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-
-    if (userError || !user) {
+    
+    // Validar o token usando getClaims
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims) {
       console.log('[SECURITY] Invalid token attempt', { ...deviceInfo, timestamp: new Date().toISOString() });
       return new Response(
         JSON.stringify({ error: 'Token inválido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Criar objeto user a partir das claims
+    const user = {
+      id: claimsData.claims.sub as string,
+      email: claimsData.claims.email as string,
+    };
+
+    // Usar supabaseAdmin para o resto das operações
+    const supabase = supabaseAdmin;
 
     // Check rate limit
     const rateLimit = checkRateLimit(user.id);
