@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import OnboardingProgress from "@/components/dashboard/OnboardingProgress";
-
+import { Logo } from "@/components/ui/Logo";
 type NavItem = {
   icon: typeof LayoutDashboard;
   label: string;
@@ -193,12 +193,9 @@ export default function Dashboard() {
           <div className="p-6 border-b border-border">
             <button 
               onClick={() => navigate("/")}
-              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+              className="hover:opacity-80 transition-opacity"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-                <span className="font-logo text-primary-foreground text-sm">P</span>
-              </div>
-              <span className="font-logo text-xl text-foreground">PRECIFY</span>
+              <Logo size="sm" showText />
             </button>
           </div>
 
