@@ -11,6 +11,7 @@ import Landing from "./pages/Landing";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
+import AuthCallback from "./pages/AuthCallback";
 
 // Auth/Security pages
 import SecurityCheck from "./pages/SecurityCheck";
@@ -57,6 +58,9 @@ const App = () => (
                 </PublicOnlyRoute>
               } 
             />
+            
+            {/* OAuth callback - handles role-based redirect */}
+            <Route path="/auth-callback" element={<AuthCallback />} />
             
             {/* ========== AUTH/SECURITY ROUTES ========== */}
             <Route 
