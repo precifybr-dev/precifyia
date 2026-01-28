@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/ui/Logo";
 import { determineLoginRedirect } from "@/hooks/useUserRole";
@@ -108,12 +109,8 @@ export default function Login() {
   const handleGoogleLogin = async () => {
     setIsGoogleLoading(true);
     try {
-      // Redirect to auth-callback which will determine proper path based on role
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/auth-callback`,
-        },
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/auth-callback`,
       });
 
       if (error) {
