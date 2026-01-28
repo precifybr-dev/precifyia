@@ -185,6 +185,16 @@ export default function AdminDashboard() {
                 <RefreshCcw className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
                 Atualizar
               </Button>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate("/login");
+                }}
+              >
+                Sair
+              </Button>
             </div>
           </div>
 

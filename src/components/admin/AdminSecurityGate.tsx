@@ -169,6 +169,16 @@ export function AdminSecurityGate({ children }: AdminSecurityGateProps) {
                 <Button variant="outline" onClick={handleGoBack} className="w-full">
                   Voltar ao Dashboard
                 </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate("/login");
+                  }} 
+                  className="w-full text-destructive hover:text-destructive"
+                >
+                  Sair da conta
+                </Button>
               </div>
             </div>
           )}
@@ -233,6 +243,16 @@ export function AdminSecurityGate({ children }: AdminSecurityGateProps) {
                 </Button>
                 <Button variant="outline" onClick={handleGoBack} className="w-full">
                   Voltar ao Dashboard
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate("/login");
+                  }} 
+                  className="w-full text-destructive hover:text-destructive"
+                >
+                  Sair da conta
                 </Button>
               </div>
             </div>
