@@ -15,7 +15,9 @@ import {
   ChevronRight,
   Plus,
   Store,
-  Crown
+  Crown,
+  Sun,
+  Moon
 } from "lucide-react";
 import { useStore } from "@/contexts/StoreContext";
 import { CreateStoreModal } from "@/components/store/CreateStoreModal";
@@ -40,6 +42,9 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("dashboard");
   const [showCreateStoreModal, setShowCreateStoreModal] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    return document.documentElement.classList.contains("dark") ? "dark" : "light";
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
   const { activeStore, userPlan, canCreateStore, storeCount, maxStores } = useStore();
@@ -115,6 +120,17 @@ export default function Dashboard() {
     if (routes[path]) {
       navigate(routes[path]);
     }
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("theme", newTheme);
   };
 
   const handleStartOnboarding = () => {
@@ -300,9 +316,20 @@ export default function Dashboard() {
             ))}
           </nav>
 
-          {/* User & Logout */}
-          <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 px-4 py-2 mb-2">
+          {/* Theme Toggle & User & Logout */}
+          <div className="p-4 border-t border-border space-y-2">
+            {/* Theme Toggle */}
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+            </Button>
+
+            {/* User Info */}
+            <div className="flex items-center gap-3 px-4 py-2">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="font-semibold text-primary text-sm">
                   {user?.user_metadata?.full_name?.[0] || user?.email?.[0]?.toUpperCase()}
@@ -315,6 +342,8 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
+
+            {/* Logout Button */}
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
