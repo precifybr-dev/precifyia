@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { HowItWorksSection } from "@/components/landing/HowItWorksSection";
@@ -10,6 +11,15 @@ import { PricingSection } from "@/components/landing/PricingSection";
 import { Footer } from "@/components/landing/Footer";
 
 export default function Landing() {
+  // Ensure landing page always starts in light mode
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme");
+    if (!savedTheme) {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, []);
+
   return (
     <div className="min-h-screen">
       <Header />
