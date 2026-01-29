@@ -66,14 +66,14 @@ export default function IngredientsSpreadsheetTable({
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow className="bg-red-900 hover:bg-red-900">
-                <TableHead className="text-white font-semibold w-20">Código</TableHead>
-                <TableHead className="text-white font-semibold min-w-[200px]">INGREDIENTES</TableHead>
-                <TableHead className="text-white font-semibold w-24 text-center">QTD LIQ</TableHead>
-                <TableHead className="text-white font-semibold w-20 text-center">UND</TableHead>
-                <TableHead className="text-white font-semibold w-20 text-center">FAT.C</TableHead>
-                <TableHead className="text-white font-semibold w-28 text-right">CUSTO LIQ</TableHead>
-                <TableHead className="text-white font-semibold w-24 text-right">TOTAL</TableHead>
+              <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
+                <TableHead className="text-primary-foreground font-semibold w-20">Código</TableHead>
+                <TableHead className="text-primary-foreground font-semibold min-w-[200px]">INGREDIENTES</TableHead>
+                <TableHead className="text-primary-foreground font-semibold w-24 text-center">QTD LIQ</TableHead>
+                <TableHead className="text-primary-foreground font-semibold w-20 text-center">UND</TableHead>
+                <TableHead className="text-primary-foreground font-semibold w-20 text-center">FAT.C</TableHead>
+                <TableHead className="text-primary-foreground font-semibold w-28 text-right">CUSTO LIQ</TableHead>
+                <TableHead className="text-primary-foreground font-semibold w-24 text-right">TOTAL</TableHead>
                 <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
@@ -81,7 +81,7 @@ export default function IngredientsSpreadsheetTable({
               {recipeIngredients.map((ing, index) => (
                 <TableRow 
                   key={ing.id}
-                  className={index % 2 === 0 ? "bg-white hover:bg-gray-50" : "bg-gray-50 hover:bg-gray-100"}
+                  className={index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50"}
                 >
                   {/* Código com cor */}
                   <TableCell className="font-mono">

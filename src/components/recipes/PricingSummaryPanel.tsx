@@ -337,15 +337,15 @@ export default function PricingSummaryPanel({
           </Card>
 
           {/* Calculadora iFood */}
-          <Card className="border-red-200 bg-gradient-to-br from-red-50 to-orange-50">
+          <Card className="border-destructive/30 dark:border-destructive/50 bg-card">
             <CardContent className="pt-4 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <Smartphone className="w-5 h-5 text-red-600" />
+                <Smartphone className="w-5 h-5 text-destructive" />
                 <span className="text-sm font-semibold">CALCULADORA PREÇO IFOOD</span>
               </div>
 
               <div className="space-y-2">
-                <div className="flex justify-between items-center py-1 border-b border-red-200">
+                <div className="flex justify-between items-center py-1 border-b border-destructive/20">
                   <span className="text-sm text-muted-foreground">Preço Base</span>
                   <span className="font-mono font-semibold">
                     {formatCurrency(parseFloat(sellingPrice) || suggestedPrice)}
@@ -355,7 +355,7 @@ export default function PricingSummaryPanel({
                 <div className="space-y-1">
                   <Label className="text-xs flex items-center gap-1">
                     Taxa iFood
-                    <Badge variant="outline" className="text-xs bg-red-100 text-red-700 border-red-300">
+                    <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/30">
                       editável
                     </Badge>
                   </Label>
@@ -368,7 +368,7 @@ export default function PricingSummaryPanel({
                       placeholder={ifoodRealPercentage?.toFixed(2) || "0"}
                       value={localIfoodRate}
                       onChange={(e) => setLocalIfoodRate(e.target.value)}
-                      className="pr-8 text-sm h-9 border-red-200"
+                      className="pr-8 text-sm h-9 border-destructive/30"
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">%</span>
                   </div>
@@ -384,10 +384,10 @@ export default function PricingSummaryPanel({
                   )}
                 </div>
 
-                <div className="pt-2 border-t border-red-200">
+                <div className="pt-2 border-t border-destructive/20">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">Valor Final</span>
-                    <span className="font-mono text-xl font-bold text-red-600">
+                    <span className="font-mono text-xl font-bold text-destructive">
                       {formatCurrency(ifoodPrice)}
                     </span>
                   </div>
@@ -395,8 +395,8 @@ export default function PricingSummaryPanel({
               </div>
 
               {effectiveIfoodRate > 0 && (
-                <div className="text-xs text-muted-foreground p-2 bg-white/50 rounded border border-red-100">
-                  <p className="font-medium mb-1">Fórmula:</p>
+                <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded border border-destructive/20">
+                  <p className="font-medium mb-1 text-foreground">Fórmula:</p>
                   <p className="font-mono">
                     {formatCurrency(parseFloat(sellingPrice) || suggestedPrice)} ÷ (1 − {effectiveIfoodRate.toFixed(2)}%) = {formatCurrency(ifoodPrice)}
                   </p>
