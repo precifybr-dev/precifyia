@@ -162,11 +162,19 @@ export function IfoodImportModal({
 
       setStep("result");
       await onRefreshData();
-    } catch (err) {
-      console.error("Save error:", err);
+    } catch (err: any) {
+      // Log detailed error for debugging
+      console.error("Save error details:", {
+        code: err?.code,
+        message: err?.message,
+        details: err?.details,
+        hint: err?.hint,
+        error: err,
+      });
+      
       toast({
         title: "Erro ao salvar",
-        description: "Não foi possível salvar os itens importados",
+        description: "Não foi possível salvar os itens importados. Tente novamente em alguns segundos.",
         variant: "destructive",
       });
     } finally {

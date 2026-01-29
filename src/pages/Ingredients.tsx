@@ -341,28 +341,24 @@ export default function Ingredients() {
     setIngredientToDelete(null);
   };
 
-  // Handle iFood import
+  // Handle iFood import - with global code calculation and retry logic
   const handleIfoodImport = async (items: { name: string; category?: string }[]) => {
     if (!user?.id || items.length === 0) return;
 
-    // Fetch the current max code directly from database to avoid stale state issues
-    let query = supabase
-      .from("ingredients")
-      .select("code")
-      .eq("user_id", user.id)
-      .order("code", { ascending: false })
-      .limit(1);
-    
-    if (activeStore?.id) {
-      query = query.eq("store_id", activeStore.id);
-    } else {
-      query = query.is("store_id", null);
-    }
+    // Helper function to get max code globally for user (across ALL stores)
+    const getGlobalMaxCode = async (): Promise<number> => {
+      const { data: maxCodeData } = await supabase
+        .from("ingredients")
+        .select("code")
+        .eq("user_id", user.id)
+        .order("code", { ascending: false })
+        .limit(1);
+      
+      return maxCodeData && maxCodeData.length > 0 ? maxCodeData[0].code : 0;
+    };
 
-    const { data: maxCodeData } = await query;
-    const startCode = (maxCodeData && maxCodeData.length > 0 ? maxCodeData[0].code : 0) + 1;
-
-    const newIngredients = items.map((item, index) => ({
+    // Helper function to build ingredients with given startCode
+    const buildIngredients = (startCode: number) => items.map((item, index) => ({
       user_id: user.id,
       store_id: activeStore?.id || null,
       code: startCode + index,
@@ -374,10 +370,35 @@ export default function Ingredients() {
       color: null,
     }));
 
+    // First attempt
+    let startCode = (await getGlobalMaxCode()) + 1;
+    let newIngredients = buildIngredients(startCode);
+
     const { error } = await supabase.from("ingredients").insert(newIngredients);
+    
     if (error) {
-      console.error("Import error:", error);
-      throw error;
+      // Check if it's a uniqueness violation (Postgres error code 23505)
+      const isUniquenessError = error.code === "23505" || 
+        error.message?.includes("duplicate key") ||
+        error.message?.includes("unique constraint");
+      
+      if (isUniquenessError) {
+        console.warn("Code collision detected, retrying with fresh max code...");
+        
+        // Retry once with fresh max code
+        startCode = (await getGlobalMaxCode()) + 1;
+        newIngredients = buildIngredients(startCode);
+        
+        const { error: retryError } = await supabase.from("ingredients").insert(newIngredients);
+        
+        if (retryError) {
+          console.error("Import retry failed:", retryError);
+          throw retryError;
+        }
+      } else {
+        console.error("Import error:", error);
+        throw error;
+      }
     }
     
     toast({
