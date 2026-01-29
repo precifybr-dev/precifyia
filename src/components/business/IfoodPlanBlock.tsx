@@ -403,9 +403,45 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
               </div>
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <Info className="h-3 w-3" />
-                Taxa de comissão base cobrada pelo iFood
+                Taxa de comissão base cobrada pelo iFood (ex: 12% Básico, 23% Entrega)
               </p>
             </div>
+
+            {/* Taxa Real Explicada */}
+            {settings.baseRate !== null && settings.baseRate > 0 && (
+              <div className="p-4 bg-destructive/5 border border-destructive/20 rounded-lg space-y-3">
+                <div className="flex items-center gap-2">
+                  <Receipt className="h-4 w-4 text-destructive" />
+                  <span className="text-sm font-semibold text-foreground">Composição Real das Taxas iFood</span>
+                </div>
+                
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center py-1 border-b border-destructive/10">
+                    <span className="text-muted-foreground">Taxa do Plano</span>
+                    <span className="font-mono font-medium">{settings.baseRate.toFixed(1)}%</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-destructive/10">
+                    <span className="text-muted-foreground">Taxa pagamento via iFood</span>
+                    <span className="font-mono font-medium">3,2%</span>
+                  </div>
+                  <div className="flex justify-between items-center py-1 border-b border-destructive/10">
+                    <span className="text-muted-foreground">Taxa antecipação semanal</span>
+                    <span className="font-mono font-medium">1,59%</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="font-semibold text-foreground">Taxa Base Real</span>
+                    <span className="font-mono font-bold text-destructive text-lg">
+                      {(settings.baseRate + 3.2 + 1.59).toFixed(2)}%
+                    </span>
+                  </div>
+                </div>
+
+                <p className="text-xs text-muted-foreground mt-2">
+                  <Info className="h-3 w-3 inline mr-1" />
+                  Além da comissão do plano, o iFood cobra 3,2% sobre pagamentos online e 1,59% de antecipação semanal.
+                </p>
+              </div>
+            )}
 
             <Separator />
 
