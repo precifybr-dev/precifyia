@@ -1,130 +1,74 @@
 
-# Plano: Corrigir Navegação do Menu Lateral Admin
+<context>
+O fluxo “Importar do iFood (IA)” está conseguindo ler o cardápio (chega na etapa de confirmação com “15 insumos encontrados”), mas falha ao salvar e mostra o toast vermelho “Erro ao salvar”.
 
-## Problema Diagnosticado
-O menu lateral (sidebar) do painel administrativo não funciona porque:
-1. Todos os itens de menu apontam para a mesma rota `/admin`
-2. O `AdminDashboard` usa um sistema de Tabs interno separado
-3. Não há sincronização entre o clique no sidebar e a mudança de aba interna
+Pelo backend, a tabela `ingredients` tem a restrição:
+- `UNIQUE (user_id, code)` (nome: `ingredients_user_id_code_key`)
 
-## Solução Proposta
-Sincronizar o sidebar com o sistema de Tabs interno, passando o controle de navegação via props/callbacks.
+Isso significa que o “código” do insumo precisa ser único por usuário, independentemente da loja (store). Hoje a importação está calculando o `startCode` filtrando pela loja ativa (`store_id`). Se o usuário já tem códigos 1..N em outra loja, ao importar em uma nova loja o cálculo volta para 1 e a inserção quebra por duplicidade.
+</context>
 
----
+<goal>
+1) Fazer a importação voltar a salvar sem erro, mesmo em ambiente multi-loja.
+2) Garantir que, após importar, os itens apareçam imediatamente na loja ativa.
+3) Melhorar a mensagem de erro (se acontecer de novo) para facilitar diagnóstico.
+</goal>
 
-## Etapa 1: Refatorar AdminLayout para controlar navegação interna
+<root-cause>
+A lógica atual calcula o próximo código olhando apenas os ingredientes da loja ativa, mas o banco exige unicidade do código por usuário (não por loja). Resultado: colisão de códigos e falha de INSERT.
+</root-cause>
 
-### Mudanças em `AdminLayout.tsx`:
-- Adicionar prop `activeSection` para receber a seção ativa
-- Adicionar prop `onSectionChange` para notificar mudanças de seção
-- Remover navegação via `navigate()` e usar callback interno
-- Atualizar lógica de `isActive` para usar a seção atual
+<implementation-plan>
+<step index="1" title="Ajustar cálculo do próximo código para ser global por usuário (não por loja)">
+- No `src/pages/Ingredients.tsx` dentro de `handleIfoodImport`:
+  - Remover o filtro por `store_id` da consulta do “maior code”.
+  - Buscar o maior `code` do usuário em TODAS as lojas:
+    - `.eq("user_id", user.id).order("code", {ascending:false}).limit(1)`
+  - Definir `startCode = (maxCode || 0) + 1`.
+- Manter `store_id` no INSERT para salvar os itens na loja ativa corretamente, mas com códigos únicos globalmente.
+</step>
 
-```text
-Interface atualizada:
-┌─────────────────────────────────────────────────────────┐
-│  AdminLayout                                             │
-│  ├── activeSection: string                              │
-│  ├── onSectionChange: (section: string) => void         │
-│  └── children: ReactNode                                 │
-└─────────────────────────────────────────────────────────┘
-```
+<step index="2" title="Adicionar retry automático se ocorrer colisão (mais robusto)">
+- Ainda em `handleIfoodImport`:
+  - Se o INSERT retornar erro de violação de unicidade (Postgres error code `23505`), fazer:
+    1) Reconsultar o max code global do usuário.
+    2) Regerar os `code` com um novo `startCode`.
+    3) Tentar inserir novamente (apenas 1 retry para evitar loop).
+- Isso resolve casos de concorrência (ex: duas importações quase ao mesmo tempo) e evita que o usuário fique travado.
+</step>
 
----
+<step index="3" title="Corrigir o refresh pós-importação para respeitar a loja ativa">
+- No `src/pages/Ingredients.tsx`, onde o modal é usado:
+  - Ajustar `onRefreshData` para chamar `fetchIngredients(user.id, activeStore?.id)` (hoje está chamando sem store e pode buscar `store_id = null`, escondendo os itens recém-importados).
+</step>
 
-## Etapa 2: Atualizar AdminDashboard para gerenciar estado
+<step index="4" title="Melhorar feedback de erro para o usuário (sem expor detalhes técnicos demais)">
+- No `src/components/ifood-import/IfoodImportModal.tsx` no catch de `handleConfirmStore`:
+  - Em vez de sempre mostrar “Não foi possível salvar…”, incluir uma mensagem curta e útil quando der erro:
+    - Ex: “Não foi possível salvar. Ajustando códigos e tentando novamente…” (se estivermos fazendo retry e ainda falhar)
+    - Se falhar definitivamente: “Não foi possível salvar os itens importados. Tente novamente em alguns segundos.”
+  - Logar no console (para nós) `err.code`, `err.message`, `err.details` quando existirem.
+</step>
 
-### Mudanças em `AdminDashboard.tsx`:
-- Passar `activeTab` e `setActiveTab` para o `AdminLayout`
-- Remover TabsList duplicada (ou mantê-la como navegação secundária)
-- Garantir que clicar no sidebar mude a tab correta
+<step index="5" title="Teste end-to-end (o mais importante)">
+Cenários de validação:
+1) Importar nessa loja do iFood na loja atual (a que você marcou no print) e confirmar:
+   - Deve salvar sem toast vermelho.
+   - Deve aparecer a lista com os novos insumos na loja ativa imediatamente.
+2) Trocar a loja no seletor e repetir a importação:
+   - Deve continuar salvando.
+   - Os códigos devem continuar em sequência global (não reiniciar em 1 por loja).
+3) Reimportar com a mesma loja e observar:
+   - Mesmo que tenham itens parecidos, não deve quebrar por código (código sempre “anda pra frente”).
+</step>
+</implementation-plan>
 
-```text
-Fluxo de navegação:
-┌──────────────────┐     ┌──────────────────┐     ┌──────────────────┐
-│  Sidebar Click   │ ──▶ │  onSectionChange │ ──▶ │  setActiveTab    │
-│  (Usuários)      │     │  ("management")  │     │  ("management")  │
-└──────────────────┘     └──────────────────┘     └──────────────────┘
-```
+<notes-for-you>
+- Esse ajuste não muda o banco; apenas respeita a regra atual `UNIQUE(user_id, code)`.
+- Se você preferir códigos “reiniciando por loja”, aí sim precisaria mudar a restrição do banco para algo como `UNIQUE(user_id, store_id, code)` (mudança de schema). Como a regra já está em produção no projeto, a correção mais segura é corrigir o cálculo no frontend.
+</notes-for-you>
 
----
-
-## Etapa 3: Mapear IDs do Sidebar para Tabs
-
-### Mapeamento:
-| Sidebar ID     | Tab Value     |
-|----------------|---------------|
-| overview       | overview      |
-| users          | management    |
-| collaborators  | (rota separada) |
-| financial      | financial     |
-| support        | support       |
-| metrics        | usage         |
-| logs           | logs          |
-
----
-
-## Etapa 4: Tratar rota separada de Colaboradores
-
-A página de Colaboradores (`/admin/collaborators`) é uma rota separada e deve:
-- Continuar navegando via `navigate()` 
-- Manter o item destacado no sidebar quando estiver nessa rota
-
----
-
-## Arquivos a Modificar
-
-| Arquivo | Ação |
-|---------|------|
-| `src/components/admin/AdminLayout.tsx` | Adicionar props de controle e refatorar navegação |
-| `src/pages/AdminDashboard.tsx` | Passar estado de tab para o layout |
-
----
-
-## Seção Técnica
-
-### AdminLayout.tsx - Mudanças Principais:
-```typescript
-interface AdminLayoutProps {
-  children: React.ReactNode;
-  unreadAlerts?: number;
-  activeSection?: string;  // NOVO
-  onSectionChange?: (section: string) => void;  // NOVO
-}
-
-// No navItems, mapear para seção interna:
-const navItems: NavItem[] = [
-  { id: "overview", label: "Visão Geral", icon: LayoutDashboard, section: "overview" },
-  { id: "users", label: "Usuários", icon: Users, section: "management", permission: "view_users" },
-  { id: "collaborators", label: "Colaboradores", icon: UserCog, path: "/admin/collaborators", permission: "manage_collaborators" },
-  // ...
-];
-
-// No onClick do botão:
-onClick={() => {
-  if (item.path) {
-    navigate(item.path);  // Rota separada
-  } else if (item.section && onSectionChange) {
-    onSectionChange(item.section);  // Seção interna
-  }
-}}
-```
-
-### AdminDashboard.tsx - Mudanças Principais:
-```typescript
-<AdminLayout 
-  unreadAlerts={unreadAlerts.length}
-  activeSection={activeTab}
-  onSectionChange={setActiveTab}
->
-  {/* Conteúdo... */}
-</AdminLayout>
-```
-
----
-
-## Resultado Esperado
-- Clicar em "Usuários" no sidebar → muda para tab "management" (Usuários)
-- Clicar em "Financeiro" no sidebar → muda para tab "financial"
-- Clicar em "Colaboradores" → navega para `/admin/collaborators`
-- Item ativo no sidebar sempre reflete a seção/página atual
+<files-to-change>
+- `src/pages/Ingredients.tsx`
+- `src/components/ifood-import/IfoodImportModal.tsx`
+</files-to-change>
