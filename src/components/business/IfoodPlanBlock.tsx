@@ -320,10 +320,10 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
 
   if (isLoading) {
     return (
-      <Card className="border-red-200 bg-gradient-to-br from-red-50 to-orange-50">
+      <Card className="border-destructive/30 dark:border-destructive/50 bg-card">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Smartphone className="h-5 w-5 text-red-600" />
+            <Smartphone className="h-5 w-5 text-destructive" />
             Plano iFood
           </CardTitle>
         </CardHeader>
@@ -340,11 +340,11 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
   const hasVolumeData = settings.monthlyOrders !== null && settings.monthlyOrders > 0 && settings.averageTicket !== null && settings.averageTicket > 0;
 
   return (
-    <Card className="border-red-200 bg-gradient-to-br from-red-50 to-orange-50">
+    <Card className="border-destructive/30 dark:border-destructive/50 bg-card">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Smartphone className="h-5 w-5 text-red-600" />
+            <Smartphone className="h-5 w-5 text-destructive" />
             Plano iFood
           </CardTitle>
           {isSaving && (
@@ -363,14 +363,14 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
             onValueChange={handlePlanTypeChange}
             className="grid grid-cols-2 gap-3"
           >
-            <div className={`flex items-center space-x-2 border rounded-lg p-3 cursor-pointer transition-colors ${settings.planType === "own_delivery" ? "border-red-500 bg-red-100" : "border-muted hover:border-red-300"}`}>
+            <div className={`flex items-center space-x-2 border rounded-lg p-3 cursor-pointer transition-colors ${settings.planType === "own_delivery" ? "border-destructive bg-destructive/10" : "border-muted hover:border-destructive/50"}`}>
               <RadioGroupItem value="own_delivery" id="own_delivery" />
               <Label htmlFor="own_delivery" className="cursor-pointer flex items-center gap-2">
                 <Truck className="h-4 w-4" />
                 Entrega Própria
               </Label>
             </div>
-            <div className={`flex items-center space-x-2 border rounded-lg p-3 cursor-pointer transition-colors ${settings.planType === "ifood_delivery" ? "border-red-500 bg-red-100" : "border-muted hover:border-red-300"}`}>
+            <div className={`flex items-center space-x-2 border rounded-lg p-3 cursor-pointer transition-colors ${settings.planType === "ifood_delivery" ? "border-destructive bg-destructive/10" : "border-muted hover:border-destructive/50"}`}>
               <RadioGroupItem value="ifood_delivery" id="ifood_delivery" />
               <Label htmlFor="ifood_delivery" className="cursor-pointer flex items-center gap-2">
                 <Smartphone className="h-4 w-4" />
@@ -412,11 +412,11 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
             {/* Volume de Vendas */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5 text-red-600" />
+                <ShoppingCart className="h-5 w-5 text-destructive" />
                 <h4 className="font-semibold">Volume de Vendas iFood</h4>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 p-4 bg-white/50 rounded-lg border border-red-100">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg border border-destructive/20">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Total de Pedidos Mensais</Label>
                   <Input
@@ -442,12 +442,12 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
 
               {/* Calculated Monthly Revenue */}
               {hasVolumeData && (
-                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between p-3 bg-primary/10 rounded-lg border border-primary/30">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-blue-600" />
+                    <TrendingUp className="h-4 w-4 text-primary" />
                     <span className="text-sm font-medium">Faturamento Mensal iFood</span>
                   </div>
-                  <span className="text-lg font-bold text-blue-700">
+                  <span className="text-lg font-bold text-primary">
                     {formatCurrency(metrics.monthlyRevenue)}
                   </span>
                 </div>
@@ -459,11 +459,11 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
             {/* Política de Cupons */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Gift className="h-5 w-5 text-red-600" />
+                <Gift className="h-5 w-5 text-destructive" />
                 <h4 className="font-semibold">Política de Cupons iFood</h4>
               </div>
 
-              <div className="space-y-4 p-4 bg-white/50 rounded-lg border border-red-100">
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-destructive/20">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="offers_coupon" className="text-sm font-medium">
                     O negócio utiliza cupons?
@@ -523,15 +523,15 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                         onValueChange={handleCouponAbsorberChange}
                         className="grid grid-cols-3 gap-2"
                       >
-                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.couponAbsorber === "business" ? "border-orange-500 bg-orange-50" : "border-muted"}`}>
+                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.couponAbsorber === "business" ? "border-warning bg-warning/10" : "border-muted"}`}>
                           <RadioGroupItem value="business" id="coupon_business" />
                           <Label htmlFor="coupon_business" className="cursor-pointer text-sm">Negócio</Label>
                         </div>
-                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.couponAbsorber === "partial" ? "border-yellow-500 bg-yellow-50" : "border-muted"}`}>
+                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.couponAbsorber === "partial" ? "border-warning bg-warning/10" : "border-muted"}`}>
                           <RadioGroupItem value="partial" id="coupon_partial" />
                           <Label htmlFor="coupon_partial" className="cursor-pointer text-sm">Parcial (50%)</Label>
                         </div>
-                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.couponAbsorber === "ifood" ? "border-green-500 bg-green-50" : "border-muted"}`}>
+                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.couponAbsorber === "ifood" ? "border-success bg-success/10" : "border-muted"}`}>
                           <RadioGroupItem value="ifood" id="coupon_ifood" />
                           <Label htmlFor="coupon_ifood" className="cursor-pointer text-sm">iFood</Label>
                         </div>
@@ -540,14 +540,14 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
 
                     {/* Coupon Impact */}
                     {hasVolumeData && settings.couponAbsorber !== "ifood" && metrics.couponMonthlyCost > 0 && (
-                      <div className="p-3 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="p-3 bg-warning/10 rounded-lg border border-warning/30">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm text-orange-800">Custo Mensal de Cupons</span>
-                          <span className="font-semibold text-orange-900">{formatCurrency(metrics.couponMonthlyCost)}</span>
+                          <span className="text-sm text-foreground">Custo Mensal de Cupons</span>
+                          <span className="font-semibold text-foreground">{formatCurrency(metrics.couponMonthlyCost)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-orange-800">% Impacto Cupom no Faturamento</span>
-                          <Badge className="bg-orange-600 text-white">+{metrics.couponImpactPercent.toFixed(2)}%</Badge>
+                          <span className="text-sm text-foreground">% Impacto Cupom no Faturamento</span>
+                          <Badge className="bg-warning text-warning-foreground">+{metrics.couponImpactPercent.toFixed(2)}%</Badge>
                         </div>
                       </div>
                     )}
@@ -561,11 +561,11 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
             {/* Taxa de Entrega */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Truck className="h-5 w-5 text-red-600" />
+                <Truck className="h-5 w-5 text-destructive" />
                 <h4 className="font-semibold">Taxa de Entrega</h4>
               </div>
 
-              <div className="space-y-4 p-4 bg-white/50 rounded-lg border border-red-100">
+              <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-destructive/20">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="has_delivery_fee" className="text-sm font-medium">
                     Existe taxa de entrega?
@@ -598,11 +598,11 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                         onValueChange={handleDeliveryAbsorberChange}
                         className="grid grid-cols-2 gap-2"
                       >
-                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.deliveryAbsorber === "client" ? "border-green-500 bg-green-50" : "border-muted"}`}>
+                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.deliveryAbsorber === "client" ? "border-success bg-success/10" : "border-muted"}`}>
                           <RadioGroupItem value="client" id="delivery_client" />
                           <Label htmlFor="delivery_client" className="cursor-pointer text-sm">Cliente</Label>
                         </div>
-                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.deliveryAbsorber === "business" ? "border-orange-500 bg-orange-50" : "border-muted"}`}>
+                        <div className={`flex items-center space-x-2 border rounded-md p-2 cursor-pointer text-sm ${settings.deliveryAbsorber === "business" ? "border-warning bg-warning/10" : "border-muted"}`}>
                           <RadioGroupItem value="business" id="delivery_business" />
                           <Label htmlFor="delivery_business" className="cursor-pointer text-sm">Negócio</Label>
                         </div>
@@ -611,14 +611,14 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
 
                     {/* Delivery Impact */}
                     {hasVolumeData && settings.deliveryAbsorber === "business" && metrics.deliveryMonthlyCost > 0 && (
-                      <div className="p-3 bg-purple-50 rounded-lg border border-purple-200">
+                      <div className="p-3 bg-accent rounded-lg border border-accent-foreground/20">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-sm text-purple-800">Custo Mensal de Entrega Absorvida</span>
-                          <span className="font-semibold text-purple-900">{formatCurrency(metrics.deliveryMonthlyCost)}</span>
+                          <span className="text-sm text-foreground">Custo Mensal de Entrega Absorvida</span>
+                          <span className="font-semibold text-foreground">{formatCurrency(metrics.deliveryMonthlyCost)}</span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-sm text-purple-800">% Impacto Entrega no Faturamento</span>
-                          <Badge className="bg-purple-600 text-white">+{metrics.deliveryImpactPercent.toFixed(2)}%</Badge>
+                          <span className="text-sm text-foreground">% Impacto Entrega no Faturamento</span>
+                          <Badge className="bg-primary text-primary-foreground">+{metrics.deliveryImpactPercent.toFixed(2)}%</Badge>
                         </div>
                       </div>
                     )}
@@ -632,16 +632,16 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
             {/* Calculator Result */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Calculator className="h-5 w-5 text-red-600" />
+                <Calculator className="h-5 w-5 text-destructive" />
                 <h4 className="font-semibold">Cálculo da Porcentagem Real</h4>
               </div>
 
               {/* Breakdown Table */}
               {settings.baseRate !== null && (
-                <div className="border rounded-lg overflow-hidden bg-white">
+                <div className="border rounded-lg overflow-hidden bg-card">
                   <Table>
                     <TableHeader>
-                      <TableRow className="bg-red-100/50">
+                      <TableRow className="bg-destructive/10">
                         <TableHead className="font-semibold text-foreground">Componente</TableHead>
                         <TableHead className="font-semibold text-foreground text-right">Percentual</TableHead>
                       </TableRow>
@@ -656,12 +656,12 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               Impacto Cupons
-                              <Badge variant="outline" className="text-xs bg-orange-100 text-orange-700 border-orange-300">
+                              <Badge variant="outline" className="text-xs bg-warning/20 text-warning-foreground border-warning/50">
                                 calculado
                               </Badge>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right font-mono text-orange-600">+{metrics.couponImpactPercent.toFixed(2)}%</TableCell>
+                          <TableCell className="text-right font-mono text-warning">+{metrics.couponImpactPercent.toFixed(2)}%</TableCell>
                         </TableRow>
                       )}
                       {settings.hasDeliveryFee && settings.deliveryAbsorber === "business" && metrics.deliveryImpactPercent > 0 && (
@@ -669,12 +669,12 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
                               Impacto Entrega Absorvida
-                              <Badge variant="outline" className="text-xs bg-purple-100 text-purple-700 border-purple-300">
+                              <Badge variant="outline" className="text-xs bg-accent text-accent-foreground border-accent-foreground/30">
                                 calculado
                               </Badge>
                             </div>
                           </TableCell>
-                          <TableCell className="text-right font-mono text-purple-600">+{metrics.deliveryImpactPercent.toFixed(2)}%</TableCell>
+                          <TableCell className="text-right font-mono text-primary">+{metrics.deliveryImpactPercent.toFixed(2)}%</TableCell>
                         </TableRow>
                       )}
                     </TableBody>
@@ -683,7 +683,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
               )}
 
               {/* Main Result */}
-              <div className="p-4 bg-red-600 text-white rounded-lg">
+              <div className="p-4 bg-destructive text-destructive-foreground rounded-lg">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium opacity-90">Porcentagem Real iFood para Precificação</p>
@@ -699,20 +699,20 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
 
               {/* Warning if no volume data */}
               {settings.baseRate !== null && !hasVolumeData && (
-                <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200 text-sm text-yellow-800">
+                <div className="p-3 bg-warning/10 rounded-lg border border-warning/30 text-sm text-foreground">
                   <div className="flex items-center gap-2">
-                    <Info className="h-4 w-4" />
+                    <Info className="h-4 w-4 text-warning" />
                     <span className="font-medium">Preencha o volume de vendas</span>
                   </div>
-                  <p className="mt-1 text-xs">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Informe o total de pedidos e ticket médio para calcular o impacto real de cupons e entregas sobre o faturamento.
                   </p>
                 </div>
               )}
 
               {/* Formula explanation */}
-              <div className="text-xs text-muted-foreground p-3 bg-white/30 rounded border border-red-100">
-                <p className="font-medium mb-2">Fórmula de cálculo:</p>
+              <div className="text-xs text-muted-foreground p-3 bg-muted/50 rounded border border-destructive/10">
+                <p className="font-medium mb-2 text-foreground">Fórmula de cálculo:</p>
                 <p className="font-mono">% Real = Taxa Base + % Impacto Cupons + % Impacto Entrega</p>
                 <p className="mt-2">
                   <strong>Impacto Cupom:</strong> (Custo Total Cupons ÷ Faturamento iFood) × 100
