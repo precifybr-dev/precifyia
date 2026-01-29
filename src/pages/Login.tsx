@@ -15,8 +15,8 @@ export default function Login() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const saved = localStorage.getItem("theme");
     if (saved === "dark") return "dark";
-    if (saved === "light") return "light";
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    // Default to light mode
+    return "light";
   });
 
   useEffect(() => {
