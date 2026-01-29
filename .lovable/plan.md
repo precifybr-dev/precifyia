@@ -1,74 +1,122 @@
 
-<context>
-O fluxo “Importar do iFood (IA)” está conseguindo ler o cardápio (chega na etapa de confirmação com “15 insumos encontrados”), mas falha ao salvar e mostra o toast vermelho “Erro ao salvar”.
+## Problema Identificado
 
-Pelo backend, a tabela `ingredients` tem a restrição:
-- `UNIQUE (user_id, code)` (nome: `ingredients_user_id_code_key`)
+O componente `IngredientsStep.tsx` (usado no Onboarding) está falhando ao adicionar insumos com o erro:
 
-Isso significa que o “código” do insumo precisa ser único por usuário, independentemente da loja (store). Hoje a importação está calculando o `startCode` filtrando pela loja ativa (`store_id`). Se o usuário já tem códigos 1..N em outra loja, ao importar em uma nova loja o cálculo volta para 1 e a inserção quebra por duplicidade.
-</context>
+```
+duplicate key value violates unique constraint "ingredients_user_id_code_key"
+```
 
-<goal>
-1) Fazer a importação voltar a salvar sem erro, mesmo em ambiente multi-loja.
-2) Garantir que, após importar, os itens apareçam imediatamente na loja ativa.
-3) Melhorar a mensagem de erro (se acontecer de novo) para facilitar diagnóstico.
-</goal>
+### Causa Raiz
 
-<root-cause>
-A lógica atual calcula o próximo código olhando apenas os ingredientes da loja ativa, mas o banco exige unicidade do código por usuário (não por loja). Resultado: colisão de códigos e falha de INSERT.
-</root-cause>
+1. A tabela `ingredients` tem a constraint `UNIQUE (user_id, code)` - ou seja, cada usuário deve ter códigos únicos
+2. O campo `code` tem um default `nextval('ingredients_code_seq')` que é uma **sequência global** (compartilhada entre todos os usuários)
+3. O componente `IngredientsStep.tsx` **não fornece o campo `code`** no INSERT, dependendo da sequence global
+4. Quando o usuário já tem insumos (de outra loja, por exemplo), a sequence pode retornar um número que já existe para aquele `user_id`, causando violação da constraint
 
-<implementation-plan>
-<step index="1" title="Ajustar cálculo do próximo código para ser global por usuário (não por loja)">
-- No `src/pages/Ingredients.tsx` dentro de `handleIfoodImport`:
-  - Remover o filtro por `store_id` da consulta do “maior code”.
-  - Buscar o maior `code` do usuário em TODAS as lojas:
-    - `.eq("user_id", user.id).order("code", {ascending:false}).limit(1)`
-  - Definir `startCode = (maxCode || 0) + 1`.
-- Manter `store_id` no INSERT para salvar os itens na loja ativa corretamente, mas com códigos únicos globalmente.
-</step>
+### Diferença entre os componentes
 
-<step index="2" title="Adicionar retry automático se ocorrer colisão (mais robusto)">
-- Ainda em `handleIfoodImport`:
-  - Se o INSERT retornar erro de violação de unicidade (Postgres error code `23505`), fazer:
-    1) Reconsultar o max code global do usuário.
-    2) Regerar os `code` com um novo `startCode`.
-    3) Tentar inserir novamente (apenas 1 retry para evitar loop).
-- Isso resolve casos de concorrência (ex: duas importações quase ao mesmo tempo) e evita que o usuário fique travado.
-</step>
+| Componente | Calcula código? | Funciona? |
+|------------|-----------------|-----------|
+| `Ingredients.tsx` (página principal) | Sim, calcula globalmente por usuário | Sim |
+| `IngredientsStep.tsx` (onboarding) | Não, usa sequence global | **Não** |
 
-<step index="3" title="Corrigir o refresh pós-importação para respeitar a loja ativa">
-- No `src/pages/Ingredients.tsx`, onde o modal é usado:
-  - Ajustar `onRefreshData` para chamar `fetchIngredients(user.id, activeStore?.id)` (hoje está chamando sem store e pode buscar `store_id = null`, escondendo os itens recém-importados).
-</step>
+---
 
-<step index="4" title="Melhorar feedback de erro para o usuário (sem expor detalhes técnicos demais)">
-- No `src/components/ifood-import/IfoodImportModal.tsx` no catch de `handleConfirmStore`:
-  - Em vez de sempre mostrar “Não foi possível salvar…”, incluir uma mensagem curta e útil quando der erro:
-    - Ex: “Não foi possível salvar. Ajustando códigos e tentando novamente…” (se estivermos fazendo retry e ainda falhar)
-    - Se falhar definitivamente: “Não foi possível salvar os itens importados. Tente novamente em alguns segundos.”
-  - Logar no console (para nós) `err.code`, `err.message`, `err.details` quando existirem.
-</step>
+## Plano de Correção
 
-<step index="5" title="Teste end-to-end (o mais importante)">
-Cenários de validação:
-1) Importar nessa loja do iFood na loja atual (a que você marcou no print) e confirmar:
-   - Deve salvar sem toast vermelho.
-   - Deve aparecer a lista com os novos insumos na loja ativa imediatamente.
-2) Trocar a loja no seletor e repetir a importação:
-   - Deve continuar salvando.
-   - Os códigos devem continuar em sequência global (não reiniciar em 1 por loja).
-3) Reimportar com a mesma loja e observar:
-   - Mesmo que tenham itens parecidos, não deve quebrar por código (código sempre “anda pra frente”).
-</step>
-</implementation-plan>
+### Alterações no arquivo `src/components/onboarding/IngredientsStep.tsx`
 
-<notes-for-you>
-- Esse ajuste não muda o banco; apenas respeita a regra atual `UNIQUE(user_id, code)`.
-- Se você preferir códigos “reiniciando por loja”, aí sim precisaria mudar a restrição do banco para algo como `UNIQUE(user_id, store_id, code)` (mudança de schema). Como a regra já está em produção no projeto, a correção mais segura é corrigir o cálculo no frontend.
-</notes-for-you>
+**1. Adicionar função para obter próximo código**
 
-<files-to-change>
-- `src/pages/Ingredients.tsx`
-- `src/components/ifood-import/IfoodImportModal.tsx`
-</files-to-change>
+Criar uma helper function que busca o maior código do usuário e retorna o próximo disponível:
+
+```typescript
+const getNextCode = async (userId: string): Promise<number> => {
+  const { data } = await supabase
+    .from("ingredients")
+    .select("code")
+    .eq("user_id", userId)
+    .order("code", { ascending: false })
+    .limit(1);
+  
+  return (data && data.length > 0 ? data[0].code : 0) + 1;
+};
+```
+
+**2. Modificar função `handleAddIngredient`**
+
+Atualizar para calcular e incluir o `code` no INSERT:
+
+```typescript
+const handleAddIngredient = async () => {
+  // ... validações existentes ...
+
+  setIsSaving(true);
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Usuário não autenticado");
+
+    // Calcular próximo código disponível para o usuário
+    const nextCode = await getNextCode(user.id);
+
+    const { data, error } = await supabase
+      .from("ingredients")
+      .insert({
+        user_id: user.id,
+        code: nextCode, // <-- NOVO: incluir código calculado
+        name: newIngredient.name.trim(),
+        unit: newIngredient.unit,
+        purchase_quantity: purchaseQty,
+        purchase_price: purchasePrice,
+        correction_factor: parseFloat(newIngredient.correction_factor) || 1,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    // ... resto do código ...
+  }
+};
+```
+
+**3. Adicionar retry para colisões (robustez extra)**
+
+Implementar tratamento de erro 23505 com retry automático, igual foi feito no `Ingredients.tsx`:
+
+```typescript
+if (error) {
+  // Se for erro de unicidade, tentar novamente com código atualizado
+  if (error.code === "23505" || error.message?.includes("duplicate key")) {
+    const freshCode = await getNextCode(user.id);
+    const { data: retryData, error: retryError } = await supabase
+      .from("ingredients")
+      .insert({ ...ingredientData, code: freshCode })
+      .select()
+      .single();
+    
+    if (retryError) throw retryError;
+    // Usar retryData...
+  } else {
+    throw error;
+  }
+}
+```
+
+---
+
+## Resumo das Alterações
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/onboarding/IngredientsStep.tsx` | Adicionar cálculo de código global por usuário + retry em caso de colisão |
+
+---
+
+## Validação
+
+Após a implementação, testar:
+1. Acessar o fluxo de onboarding e adicionar um insumo
+2. Verificar que o insumo é salvo sem erro
+3. Adicionar múltiplos insumos em sequência
+4. Confirmar que os códigos são sequenciais e únicos
