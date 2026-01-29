@@ -18,7 +18,9 @@ import {
   X,
   AlertCircle,
   Pencil,
-  ChevronDown
+  ChevronDown,
+  Sun,
+  Moon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,6 +116,9 @@ export default function SubRecipes() {
   const [yieldUnit, setYieldUnit] = useState("kg");
   const [recipeIngredients, setRecipeIngredients] = useState<SubRecipeIngredient[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    return document.documentElement.classList.contains("dark") ? "dark" : "light";
+  });
   
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -178,6 +183,17 @@ export default function SubRecipes() {
     await supabase.auth.signOut();
     toast({ title: "Logout realizado", description: "Até logo!" });
     navigate("/");
+  };
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    if (newTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    localStorage.setItem("theme", newTheme);
   };
 
   const createEmptyIngredient = (): SubRecipeIngredient => ({
@@ -576,8 +592,19 @@ export default function SubRecipes() {
             </Collapsible>
           </nav>
 
-          <div className="p-4 border-t border-border">
-            <div className="flex items-center gap-3 px-4 py-2 mb-2">
+          <div className="p-4 border-t border-border space-y-2">
+            {/* Theme Toggle */}
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+              onClick={toggleTheme}
+            >
+              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+            </Button>
+
+            {/* User Info */}
+            <div className="flex items-center gap-3 px-4 py-2">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="font-semibold text-primary text-sm">{user?.email?.[0]?.toUpperCase()}</span>
               </div>
@@ -586,6 +613,8 @@ export default function SubRecipes() {
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
             </div>
+
+            {/* Logout Button */}
             <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive" onClick={handleLogout}>
               <LogOut className="w-5 h-5" />
               Sair
