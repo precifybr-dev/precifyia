@@ -345,7 +345,23 @@ export default function Ingredients() {
   const handleIfoodImport = async (items: { name: string; category?: string }[]) => {
     if (!user?.id || items.length === 0) return;
 
-    const startCode = getNextCode();
+    // Fetch the current max code directly from database to avoid stale state issues
+    let query = supabase
+      .from("ingredients")
+      .select("code")
+      .eq("user_id", user.id)
+      .order("code", { ascending: false })
+      .limit(1);
+    
+    if (activeStore?.id) {
+      query = query.eq("store_id", activeStore.id);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data: maxCodeData } = await query;
+    const startCode = (maxCodeData && maxCodeData.length > 0 ? maxCodeData[0].code : 0) + 1;
+
     const newIngredients = items.map((item, index) => ({
       user_id: user.id,
       store_id: activeStore?.id || null,
@@ -360,6 +376,7 @@ export default function Ingredients() {
 
     const { error } = await supabase.from("ingredients").insert(newIngredients);
     if (error) {
+      console.error("Import error:", error);
       throw error;
     }
     
