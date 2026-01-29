@@ -128,8 +128,10 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
     // Calculate monthly revenue
     const monthlyRevenue = (settings.monthlyOrders || 0) * (settings.averageTicket || 0);
 
-    // Start with base rate
-    let realPercentage = settings.baseRate;
+    // Start with REAL base rate (plan rate + iFood payment fee 3.2% + weekly anticipation 1.59%)
+    const IFOOD_PAYMENT_FEE = 3.2;
+    const WEEKLY_ANTICIPATION_FEE = 1.59;
+    let realPercentage = settings.baseRate + IFOOD_PAYMENT_FEE + WEEKLY_ANTICIPATION_FEE;
 
     // Calculate coupon impact
     let couponMonthlyCost = 0;
