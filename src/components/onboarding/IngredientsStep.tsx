@@ -103,6 +103,18 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
     }
   };
 
+  // Helper: buscar próximo código global do usuário (não por loja)
+  const getNextCode = async (userId: string): Promise<number> => {
+    const { data } = await supabase
+      .from("ingredients")
+      .select("code")
+      .eq("user_id", userId)
+      .order("code", { ascending: false })
+      .limit(1);
+    
+    return (data && data.length > 0 ? data[0].code : 0) + 1;
+  };
+
   const handleAddIngredient = async () => {
     if (!newIngredient.name.trim()) {
       toast({
@@ -130,27 +142,48 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuário não autenticado");
 
-      const { data, error } = await supabase
+      // Calcular próximo código global para o usuário
+      const nextCode = await getNextCode(user.id);
+
+      const ingredientData = {
+        user_id: user.id,
+        code: nextCode,
+        name: newIngredient.name.trim(),
+        unit: newIngredient.unit,
+        purchase_quantity: purchaseQty,
+        purchase_price: purchasePrice,
+        correction_factor: parseFloat(newIngredient.correction_factor) || 1,
+      };
+
+      let { data, error } = await supabase
         .from("ingredients")
-        .insert({
-          user_id: user.id,
-          name: newIngredient.name.trim(),
-          unit: newIngredient.unit,
-          purchase_quantity: purchaseQty,
-          purchase_price: purchasePrice,
-          correction_factor: parseFloat(newIngredient.correction_factor) || 1,
-        })
+        .insert(ingredientData)
         .select()
         .single();
 
+      // Retry automático em caso de colisão de código
+      if (error && (error.code === "23505" || error.message?.includes("duplicate key"))) {
+        console.warn("Colisão de código detectada, recalculando...");
+        const freshCode = await getNextCode(user.id);
+        const retryResult = await supabase
+          .from("ingredients")
+          .insert({ ...ingredientData, code: freshCode })
+          .select()
+          .single();
+        
+        if (retryResult.error) throw retryResult.error;
+        data = retryResult.data;
+        error = null;
+      }
+
       if (error) throw error;
 
-      setIngredients([...ingredients, data]);
+      setIngredients([...ingredients, data!]);
       setNewIngredient(emptyIngredient);
       
       toast({
         title: "Insumo adicionado! ✓",
-        description: `${data.name} foi cadastrado com sucesso.`,
+        description: `${data!.name} foi cadastrado com sucesso.`,
       });
     } catch (error: any) {
       console.error("Error adding ingredient:", error);
