@@ -657,6 +657,7 @@ export type Database = {
           id: string
           ifood_selling_price: number | null
           name: string
+          selling_price: number | null
           servings: number
           store_id: string | null
           suggested_price: number
@@ -671,6 +672,7 @@ export type Database = {
           id?: string
           ifood_selling_price?: number | null
           name: string
+          selling_price?: number | null
           servings?: number
           store_id?: string | null
           suggested_price?: number
@@ -685,6 +687,7 @@ export type Database = {
           id?: string
           ifood_selling_price?: number | null
           name?: string
+          selling_price?: number | null
           servings?: number
           store_id?: string | null
           suggested_price?: number

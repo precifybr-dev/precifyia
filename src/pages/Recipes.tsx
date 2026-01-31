@@ -388,8 +388,8 @@ export default function Recipes() {
     setRecipeIngredients(loadedIngredients.length > 0 ? loadedIngredients : [createEmptyIngredient()]);
     setEditingId(recipe.id);
     setShowForm(true);
-    // Reset new states for edit mode - load ifood_selling_price if exists
-    setSellingPrice("");
+    // Load saved prices from database
+    setSellingPrice((recipe as any).selling_price?.toString() || "");
     setLossPercent("0");
     setDiscountPercent("5");
     setLocalIfoodRate("");
@@ -590,6 +590,7 @@ export default function Recipes() {
         total_cost: parseFloat(ingredientsCost.toFixed(2)),
         cost_per_serving: parseFloat(costWithLoss.toFixed(2)),
         suggested_price: parseFloat(suggestedPrice.toFixed(2)),
+        selling_price: sellingPrice.trim() !== "" ? parseFloat(sellingPrice) : null,
         ifood_selling_price: customIfoodPrice > 0 ? customIfoodPrice : null,
       };
 
