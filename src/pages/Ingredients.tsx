@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Package, 
@@ -64,6 +64,7 @@ import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { DeleteIngredientDialog } from "@/components/ingredients/DeleteIngredientDialog";
+import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
 import type { IngredientData } from "@/components/recipes/IngredientSelector";
 
 type Ingredient = {
@@ -114,6 +115,12 @@ export default function Ingredients() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
+  
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("default");
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
@@ -124,6 +131,49 @@ export default function Ingredients() {
     userId: user?.id || null,
     importType: "ingredients",
   });
+
+  // Memoized search change handler
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+  }, []);
+
+  // Filtered and sorted ingredients
+  const filteredIngredients = useMemo(() => {
+    let result = [...ingredients];
+    
+    // Search by name
+    if (searchTerm) {
+      result = result.filter(ing => 
+        ing.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Filter by color
+    if (selectedColor) {
+      result = result.filter(ing => ing.color === selectedColor);
+    }
+    
+    // Sort
+    switch (sortOption) {
+      case "name-asc":
+        result.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "name-desc":
+        result.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "cost-asc":
+        result.sort((a, b) => (a.unit_price || 0) - (b.unit_price || 0));
+        break;
+      case "cost-desc":
+        result.sort((a, b) => (b.unit_price || 0) - (a.unit_price || 0));
+        break;
+      default:
+        // Keep original order (by code)
+        break;
+    }
+    
+    return result;
+  }, [ingredients, searchTerm, selectedColor, sortOption]);
 
   // Calcula o F.C automaticamente quando os valores mudam
   const calculateFC = () => {
@@ -501,6 +551,17 @@ export default function Ingredients() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <SearchAndFilter
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                sortOption={sortOption}
+                onSortChange={setSortOption}
+                selectedColor={selectedColor}
+                onColorChange={setSelectedColor}
+                showCostSort={true}
+                showSellingSort={false}
+                showColorFilter={true}
+              />
               <StoreSwitcher />
               <Button 
                 variant="outline" 
@@ -723,14 +784,16 @@ export default function Ingredients() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {ingredients.length === 0 ? (
+                {filteredIngredients.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      Nenhum insumo cadastrado. Clique em "Novo Insumo" para começar.
+                      {ingredients.length === 0 
+                        ? "Nenhum insumo cadastrado. Clique em \"Novo Insumo\" para começar."
+                        : "Nenhum insumo encontrado com os filtros selecionados."}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  ingredients.map((ing) => (
+                  filteredIngredients.map((ing) => (
                     <TableRow key={ing.id} className={editingId === ing.id ? "bg-primary/10 border-l-2 border-l-primary" : ""}>
                       <TableCell className="font-mono text-primary font-semibold">
                         <div className="flex items-center gap-2">
