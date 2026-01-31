@@ -131,6 +131,7 @@ export default function Recipes() {
   const [lossPercent, setLossPercent] = useState("0");
   const [discountPercent, setDiscountPercent] = useState("5");
   const [localIfoodRate, setLocalIfoodRate] = useState("");
+  const [ifoodSellingPrice, setIfoodSellingPrice] = useState(""); // Preço de venda opcional no iFood
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
@@ -308,6 +309,7 @@ export default function Recipes() {
     setLossPercent("0");
     setDiscountPercent("5");
     setLocalIfoodRate("");
+    setIfoodSellingPrice("");
   };
 
   const handleNewRecipe = () => {
@@ -322,6 +324,7 @@ export default function Recipes() {
     setLossPercent("0");
     setDiscountPercent("5");
     setLocalIfoodRate("");
+    setIfoodSellingPrice("");
   };
 
   const handleEditRecipe = async (recipe: Recipe) => {
@@ -390,6 +393,7 @@ export default function Recipes() {
     setLossPercent("0");
     setDiscountPercent("5");
     setLocalIfoodRate("");
+    setIfoodSellingPrice("");
   };
 
   const handleDeleteClick = (recipe: Recipe) => {
@@ -545,14 +549,20 @@ export default function Recipes() {
 
   // Preço iFood (usa taxa local ou global)
   const effectiveIfoodRate = parseFloat(localIfoodRate) || ifoodRealPercentage || 0;
-  const ifoodPrice = effectiveIfoodRate > 0 && effectiveIfoodRate < 100
-    ? finalSellingPrice / (1 - effectiveIfoodRate / 100)
-    : finalSellingPrice;
-
-  // Preço iFood sugerido (baseado no preço sugerido)
+  
+  // Preço iFood sugerido (baseado no preço sugerido, calculado pela fórmula)
   const suggestedIfoodPrice = effectiveIfoodRate > 0 && effectiveIfoodRate < 100
     ? suggestedPrice / (1 - effectiveIfoodRate / 100)
     : suggestedPrice;
+
+  // Preço iFood calculado (baseado no preço de venda)
+  const calculatedIfoodPrice = effectiveIfoodRate > 0 && effectiveIfoodRate < 100
+    ? finalSellingPrice / (1 - effectiveIfoodRate / 100)
+    : finalSellingPrice;
+
+  // Preço iFood final: usa o preço manual se preenchido, senão usa o calculado
+  const customIfoodPrice = parseFloat(ifoodSellingPrice) || 0;
+  const ifoodPrice = customIfoodPrice > 0 ? customIfoodPrice : calculatedIfoodPrice;
   
   // Para compatibilidade com salvamento (total_cost usa custo de ingredientes)
   const totalCost = ingredientsCost;
@@ -911,7 +921,7 @@ export default function Recipes() {
 
               {/* Pricing Summary Panel */}
               <div className="mb-6">
-                <PricingSummaryPanel
+              <PricingSummaryPanel
                   ingredientsCost={ingredientsCostPerServing}
                   costWithLoss={costWithLoss}
                   productionCostsPerItem={productionCostsPerItem}
@@ -928,6 +938,7 @@ export default function Recipes() {
                   grossMarginPercent={grossMarginPercent}
                   ifoodPrice={ifoodPrice}
                   suggestedIfoodPrice={suggestedIfoodPrice}
+                  calculatedIfoodPrice={calculatedIfoodPrice}
                   localIfoodRate={localIfoodRate}
                   setLocalIfoodRate={setLocalIfoodRate}
                   ifoodRealPercentage={ifoodRealPercentage}
@@ -935,6 +946,8 @@ export default function Recipes() {
                   setDiscountPercent={setDiscountPercent}
                   discountedPrice={discountedPrice}
                   totalBusinessCostPercent={totalBusinessCostPercent}
+                  ifoodSellingPrice={ifoodSellingPrice}
+                  setIfoodSellingPrice={setIfoodSellingPrice}
                 />
               </div>
 
