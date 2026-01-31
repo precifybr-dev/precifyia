@@ -47,6 +47,11 @@ export function IngredientSelector({
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Encontra o ingrediente selecionado para exibir o nome
+  const selectedIngredient = selectedId 
+    ? ingredients.find(ing => ing.id === selectedId) 
+    : null;
+
   // Filtra ingredientes por código ou nome
   const filteredIngredients = ingredients.filter((ing) => {
     if (!search.trim()) return true;
@@ -175,16 +180,27 @@ export function IngredientSelector({
         <Input
           ref={inputRef}
           type="text"
-          placeholder={placeholder}
+          placeholder={selectedIngredient ? `${selectedIngredient.code} - ${selectedIngredient.name}` : placeholder}
           value={search}
           onChange={(e) => {
             setSearch(e.target.value);
             setIsOpen(true);
           }}
-          onFocus={() => setIsOpen(true)}
+          onFocus={() => {
+            setIsOpen(true);
+            // Limpa o search ao focar para permitir nova busca
+            setSearch("");
+          }}
+          onBlur={() => {
+            // Limpa o search ao perder foco para mostrar o placeholder com o nome
+            setTimeout(() => setSearch(""), 150);
+          }}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          className="pl-9"
+          className={cn(
+            "pl-9",
+            selectedIngredient && !search && "placeholder:text-foreground placeholder:font-medium"
+          )}
         />
       </div>
 
