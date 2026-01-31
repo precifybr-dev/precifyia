@@ -126,6 +126,7 @@ export type Database = {
           color: string | null
           created_at: string
           id: string
+          ifood_selling_price: number | null
           name: string
           purchase_price: number
           purchase_quantity: number
@@ -142,6 +143,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          ifood_selling_price?: number | null
           name: string
           purchase_price?: number
           purchase_quantity?: number
@@ -158,6 +160,7 @@ export type Database = {
           color?: string | null
           created_at?: string
           id?: string
+          ifood_selling_price?: number | null
           name?: string
           purchase_price?: number
           purchase_quantity?: number
