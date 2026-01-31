@@ -1009,19 +1009,25 @@ export default function Recipes() {
                       const suggestedPrice = recipe.suggested_price || 0;
                       const cmvTarget = recipe.cmv_target || 30;
                       
+                      // Use custom selling_price if exists, otherwise suggested_price
+                      const lojaPrice = recipe.selling_price && recipe.selling_price > 0 
+                        ? recipe.selling_price 
+                        : suggestedPrice;
+                      const isCustomLojaPrice = recipe.selling_price && recipe.selling_price > 0;
+                      
                       // Use custom iFood price or calculate suggested
-                      const suggestedIfoodPrice = ifoodRealPercentage && ifoodRealPercentage > 0 && suggestedPrice > 0
-                        ? suggestedPrice / (1 - ifoodRealPercentage / 100)
+                      const suggestedIfoodPrice = ifoodRealPercentage && ifoodRealPercentage > 0 && lojaPrice > 0
+                        ? lojaPrice / (1 - ifoodRealPercentage / 100)
                         : 0;
                       const ifoodPrice = recipe.ifood_selling_price && recipe.ifood_selling_price > 0 
                         ? recipe.ifood_selling_price 
                         : suggestedIfoodPrice;
                       const isCustomIfoodPrice = recipe.ifood_selling_price && recipe.ifood_selling_price > 0;
                       
-                      // Loja metrics
-                      const cmvLoja = suggestedPrice > 0 ? (costPerServing / suggestedPrice) * 100 : 0;
-                      const netProfitLoja = suggestedPrice - costPerServing;
-                      const netProfitPercentLoja = suggestedPrice > 0 ? (netProfitLoja / suggestedPrice) * 100 : 0;
+                      // Loja metrics - now using lojaPrice
+                      const cmvLoja = lojaPrice > 0 ? (costPerServing / lojaPrice) * 100 : 0;
+                      const netProfitLoja = lojaPrice - costPerServing;
+                      const netProfitPercentLoja = lojaPrice > 0 ? (netProfitLoja / lojaPrice) * 100 : 0;
                       const cmvLojaOk = cmvLoja <= cmvTarget;
                       
                       // iFood metrics
@@ -1047,10 +1053,19 @@ export default function Recipes() {
                           </TableCell>
                           {/* LOJA */}
                           <TableCell className="text-right font-mono font-semibold text-foreground">
-                            {suggestedPrice > 0 ? formatCurrency(suggestedPrice) : '—'}
+                            {lojaPrice > 0 ? (
+                              <div className="flex flex-col items-end">
+                                <span className={isCustomLojaPrice ? 'text-foreground' : 'text-muted-foreground'}>
+                                  {formatCurrency(lojaPrice)}
+                                </span>
+                                {!isCustomLojaPrice && (
+                                  <span className="text-[10px] text-muted-foreground/70">sugerido</span>
+                                )}
+                              </div>
+                            ) : '—'}
                           </TableCell>
                           <TableCell className="text-center">
-                            {suggestedPrice > 0 ? (
+                            {lojaPrice > 0 ? (
                               <span className={`font-mono font-semibold ${cmvLojaOk ? 'text-success' : 'text-warning'}`}>
                                 {cmvLoja.toFixed(1)}%
                               </span>
@@ -1059,7 +1074,7 @@ export default function Recipes() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            {suggestedPrice > 0 ? (
+                            {lojaPrice > 0 ? (
                               <div className="flex flex-col items-end">
                                 <span className={`font-mono font-semibold ${netProfitLoja >= 0 ? 'text-success' : 'text-destructive'}`}>
                                   {formatCurrency(netProfitLoja)}
