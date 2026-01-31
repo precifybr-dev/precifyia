@@ -1,122 +1,178 @@
 
-## Problema Identificado
 
-O componente `IngredientsStep.tsx` (usado no Onboarding) está falhando ao adicionar insumos com o erro:
+# Plano: Ajustar CMV e Adicionar Lucro Liquido Real (Loja + iFood)
 
+## Entendimento do Problema
+
+Apos analisar a imagem de referencia e o codigo atual, identifiquei as seguintes correcoes necessarias:
+
+### CMV - Correcao de Nomenclatura e Logica
+
+| Atual (incorreto) | Correto |
+|------------------|---------|
+| CMV (calculado) - editavel pelo usuario | CMV (resultado do preco praticado) - NAO editavel |
+| CMV Desejado - editavel | CMV DESEJADO - editavel (meta do usuario) |
+
+**CMV Praticado** (ou simplesmente "CMV") e o resultado automatico de:
 ```
-duplicate key value violates unique constraint "ingredients_user_id_code_key"
+CMV = Custo da Receita / Preco de Venda * 100
 ```
 
-### Causa Raiz
+Este valor serve para comparar com o CMV Desejado e ver se o preco praticado esta dentro da meta.
 
-1. A tabela `ingredients` tem a constraint `UNIQUE (user_id, code)` - ou seja, cada usuário deve ter códigos únicos
-2. O campo `code` tem um default `nextval('ingredients_code_seq')` que é uma **sequência global** (compartilhada entre todos os usuários)
-3. O componente `IngredientsStep.tsx` **não fornece o campo `code`** no INSERT, dependendo da sequence global
-4. Quando o usuário já tem insumos (de outra loja, por exemplo), a sequence pode retornar um número que já existe para aquele `user_id`, causando violação da constraint
+### Lucro Liquido Real - Dois Cenarios
 
-### Diferença entre os componentes
-
-| Componente | Calcula código? | Funciona? |
-|------------|-----------------|-----------|
-| `Ingredients.tsx` (página principal) | Sim, calcula globalmente por usuário | Sim |
-| `IngredientsStep.tsx` (onboarding) | Não, usa sequence global | **Não** |
+O usuario quer ver o lucro liquido real para:
+1. **Venda Direta (Loja)** - Preco de venda menos custos
+2. **Venda iFood** - Preco iFood menos custos (considerando a taxa do iFood)
 
 ---
 
-## Plano de Correção
+## Alteracoes Planejadas
 
-### Alterações no arquivo `src/components/onboarding/IngredientsStep.tsx`
+### Arquivo: `src/components/recipes/PricingSummaryPanel.tsx`
 
-**1. Adicionar função para obter próximo código**
+#### 1. Reorganizar Bloco CMV
 
-Criar uma helper function que busca o maior código do usuário e retorna o próximo disponível:
-
-```typescript
-const getNextCode = async (userId: string): Promise<number> => {
-  const { data } = await supabase
-    .from("ingredients")
-    .select("code")
-    .eq("user_id", userId)
-    .order("code", { ascending: false })
-    .limit(1);
-  
-  return (data && data.length > 0 ? data[0].code : 0) + 1;
-};
+**Layout atual:**
+```
+[CMV calculado - 38%]  ← bloco separado
+[CMV Desejado - input editavel]  ← outro bloco
 ```
 
-**2. Modificar função `handleAddIngredient`**
-
-Atualizar para calcular e incluir o `code` no INSERT:
-
-```typescript
-const handleAddIngredient = async () => {
-  // ... validações existentes ...
-
-  setIsSaving(true);
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Usuário não autenticado");
-
-    // Calcular próximo código disponível para o usuário
-    const nextCode = await getNextCode(user.id);
-
-    const { data, error } = await supabase
-      .from("ingredients")
-      .insert({
-        user_id: user.id,
-        code: nextCode, // <-- NOVO: incluir código calculado
-        name: newIngredient.name.trim(),
-        unit: newIngredient.unit,
-        purchase_quantity: purchaseQty,
-        purchase_price: purchasePrice,
-        correction_factor: parseFloat(newIngredient.correction_factor) || 1,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    // ... resto do código ...
-  }
-};
+**Novo layout (igual a imagem de referencia):**
+```
++----------------------------------+
+|  CMV                    38%      |  ← calculado automatico, NAO editavel
+|                                  |
+|  CMV DESEJADO           35%      |  ← input editavel
++----------------------------------+
 ```
 
-**3. Adicionar retry para colisões (robustez extra)**
+- Juntar em um unico card
+- CMV praticado em cima (resultado automatico, sem input)
+- CMV Desejado embaixo (com input editavel)
+- Destacar visualmente se CMV praticado esta acima ou abaixo do desejado
 
-Implementar tratamento de erro 23505 com retry automático, igual foi feito no `Ingredients.tsx`:
+#### 2. Adicionar Bloco "Lucro Liquido Real - Loja"
 
+Novo card mostrando:
+```
++------------------------------------------+
+|  LUCRO LIQUIDO REAL - LOJA               |
+|                                          |
+|  Preco de Venda           R$ 31,00       |
+|  (-) Custo c/ Perda       R$ 11,79  38%  |
+|  (-) Custos Fix+Var       R$  8,99  29%  |
+|  ----------------------------------------|
+|  = LUCRO LIQUIDO          R$ 10,22  33%  |
++------------------------------------------+
+```
+
+**Formula:**
 ```typescript
-if (error) {
-  // Se for erro de unicidade, tentar novamente com código atualizado
-  if (error.code === "23505" || error.message?.includes("duplicate key")) {
-    const freshCode = await getNextCode(user.id);
-    const { data: retryData, error: retryError } = await supabase
-      .from("ingredients")
-      .insert({ ...ingredientData, code: freshCode })
-      .select()
-      .single();
-    
-    if (retryError) throw retryError;
-    // Usar retryData...
-  } else {
-    throw error;
-  }
-}
+const effectivePrice = parseFloat(sellingPrice) || suggestedPrice;
+const businessCostValue = effectivePrice * (totalBusinessCostPercent || 0) / 100;
+const netProfit = effectivePrice - costWithLoss - businessCostValue;
+const netProfitPercent = effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0;
+```
+
+#### 3. Adicionar Bloco "Lucro Liquido Real - iFood"
+
+Novo card mostrando:
+```
++------------------------------------------+
+|  LUCRO LIQUIDO REAL - IFOOD              |
+|                                          |
+|  Preco iFood              R$ 43,06       |
+|  (-) Taxa iFood           R$ 12,06  28%  |
+|  (-) Custo c/ Perda       R$ 11,79       |
+|  (-) Custos Fix+Var       R$ 12,49  29%  |
+|  ----------------------------------------|
+|  = LUCRO LIQUIDO          R$  6,72  16%  |
++------------------------------------------+
+```
+
+**Formula iFood:**
+```typescript
+const ifoodFeeValue = ifoodPrice * (effectiveIfoodRate / 100);
+const ifoodNetRevenue = ifoodPrice - ifoodFeeValue; // O que voce recebe do iFood
+const ifoodBusinessCost = ifoodNetRevenue * (totalBusinessCostPercent || 0) / 100;
+const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodBusinessCost;
+const ifoodNetProfitPercent = ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0;
 ```
 
 ---
 
-## Resumo das Alterações
+## Layout Final do Painel
 
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/components/onboarding/IngredientsStep.tsx` | Adicionar cálculo de código global por usuário + retry em caso de colisão |
+```
++------------------+------------------+
+| PRECO DE VENDA   | CMV        38%   |
+| R$ 31,00         | CMV DESEJ  35%   |
++------------------+------------------+
+| CUSTO RECEITA    | CALC. IFOOD      |
+| R$ 11,79         | Preco Base       |
+| CUSTO C/ PERDA   | Taxa: 28%        |
+| R$ 11,79         | Valor: R$ 43,06  |
++------------------+------------------+
+| MARGENS          |                  |
+| 26,96% / R$ 8,36 |                  |
++------------------+------------------+
+| PRECO SUGERIDO   |                  |
+| R$ 33,70         |                  |
+| PRECO IFOOD      |                  |
+| R$ 46,80         |                  |
++------------------+------------------+
+| PROMOCAO   5%    | CUSTO FIX+VAR    |
+| R$ 29,45         | 29%              |
++------------------+------------------+
+
+=== FULL WIDTH ===
+
++------------------------------------------+
+|  LUCRO LIQUIDO REAL - LOJA               |
+|  Preco Venda      R$ 31,00               |
+|  (-) Custo        R$ 11,79    38%        |
+|  (-) Fix+Var      R$  8,99    29%        |
+|  = LUCRO          R$ 10,22    33%        |
++------------------------------------------+
+
++------------------------------------------+
+|  LUCRO LIQUIDO REAL - IFOOD              |
+|  Preco iFood      R$ 43,06               |
+|  (-) Taxa iFood   R$ 12,06    28%        |
+|  (-) Custo        R$ 11,79               |
+|  (-) Fix+Var      R$ 12,49    29%        |
+|  = LUCRO          R$  6,72    16%        |
++------------------------------------------+
+```
 
 ---
 
-## Validação
+## Detalhes Tecnicos
 
-Após a implementação, testar:
-1. Acessar o fluxo de onboarding e adicionar um insumo
-2. Verificar que o insumo é salvo sem erro
-3. Adicionar múltiplos insumos em sequência
-4. Confirmar que os códigos são sequenciais e únicos
+### Cores e Indicadores Visuais
+
+- **CMV Praticado vs Desejado:**
+  - Verde se CMV praticado <= CMV desejado (dentro da meta)
+  - Amarelo/Vermelho se CMV praticado > CMV desejado (acima da meta)
+
+- **Lucro Liquido:**
+  - Verde se positivo
+  - Vermelho se negativo
+
+### Importar Icone Adicional
+
+Adicionar `Wallet` do lucide-react para o bloco de lucro liquido.
+
+---
+
+## Resumo das Alteracoes
+
+| Componente | Alteracao |
+|------------|-----------|
+| Bloco CMV | Juntar CMV calculado + CMV Desejado em um unico card. CMV calculado NAO e editavel |
+| Novo Bloco | Lucro Liquido Real - Loja (full width) |
+| Novo Bloco | Lucro Liquido Real - iFood (full width) |
+
