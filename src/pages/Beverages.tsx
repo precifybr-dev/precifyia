@@ -479,7 +479,7 @@ export default function Beverages() {
           {showForm && (
             <div ref={formRef} className="bg-card rounded-xl border border-border p-6 shadow-card">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-display font-semibold text-foreground">
+                <h3 className="text-base font-medium text-foreground">
                   {editingId ? "Editar Bebida" : "Nova Bebida"}
                 </h3>
                 <Button variant="ghost" size="icon" onClick={resetForm}>
@@ -561,7 +561,7 @@ export default function Beverages() {
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
                 <div className="space-y-2">
-                  <Label>Preço Venda Loja</Label>
+                  <Label className="text-sm font-normal text-muted-foreground">Preço de Venda Loja</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -573,34 +573,28 @@ export default function Beverages() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    Preço Venda iFood
+                  <Label className="text-sm font-normal text-muted-foreground flex items-center gap-1">
+                    Preço de Venda iFood
                     {ifoodRealPercentage > 0 && (
-                      <span className="text-xs text-muted-foreground">(taxa: {ifoodRealPercentage.toFixed(1)}%)</span>
+                      <span className="text-xs opacity-60">(taxa {ifoodRealPercentage.toFixed(1)}%)</span>
                     )}
                   </Label>
-                  <div className="relative">
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={formData.ifood_selling_price}
-                      onChange={(e) => setFormData({ ...formData, ifood_selling_price: e.target.value })}
-                      placeholder={
-                        formData.selling_price && ifoodRealPercentage > 0
-                          ? `Sugerido: ${formatCurrency(calculateSuggestedIfoodPrice(parseFloat(formData.selling_price) || 0))}`
-                          : "R$ 0,00"
-                      }
-                      className={!formData.ifood_selling_price && formData.selling_price ? "text-muted-foreground/70" : ""}
-                    />
-                    {!formData.ifood_selling_price && formData.selling_price && ifoodRealPercentage > 0 && (
-                      <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                        <span className="text-muted-foreground/50 text-sm font-mono">
-                          {formatCurrency(calculateSuggestedIfoodPrice(parseFloat(formData.selling_price) || 0))}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.ifood_selling_price || (formData.selling_price && ifoodRealPercentage > 0 
+                      ? calculateSuggestedIfoodPrice(parseFloat(formData.selling_price) || 0).toFixed(2) 
+                      : "")}
+                    onChange={(e) => setFormData({ ...formData, ifood_selling_price: e.target.value })}
+                    placeholder="R$ 0,00"
+                    className={!formData.ifood_selling_price && formData.selling_price && ifoodRealPercentage > 0 ? "text-muted-foreground" : ""}
+                  />
+                  {!formData.ifood_selling_price && formData.selling_price && ifoodRealPercentage > 0 && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Sugerido com base no CMV desejado
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -657,16 +651,16 @@ export default function Beverages() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
-                      <TableHead className="text-primary-foreground font-semibold w-16">#</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold min-w-[180px]">PRODUTO</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-24 text-right">CUSTO UN</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-20 text-center">CMV DES</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-24 text-right">P. LOJA</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-20 text-center">CMV LOJA</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-28 text-right">LUCRO LOJA</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-24 text-right">P. IFOOD</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-20 text-center">CMV IFOOD</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-28 text-right">LUCRO IFOOD</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-16">#</TableHead>
+                      <TableHead className="text-primary-foreground font-medium min-w-[180px]">Produto</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Custo Un.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Des.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço iFood</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV iFood</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro iFood</TableHead>
                       <TableHead className="w-20"></TableHead>
                     </TableRow>
                   </TableHeader>
