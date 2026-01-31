@@ -119,6 +119,65 @@ export type Database = {
         }
         Relationships: []
       }
+      beverages: {
+        Row: {
+          cmv_target: number | null
+          code: number
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          purchase_price: number
+          purchase_quantity: number
+          selling_price: number
+          store_id: string | null
+          unit: string
+          unit_price: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cmv_target?: number | null
+          code?: number
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          purchase_price?: number
+          purchase_quantity?: number
+          selling_price?: number
+          store_id?: string | null
+          unit?: string
+          unit_price?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cmv_target?: number | null
+          code?: number
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          purchase_price?: number
+          purchase_quantity?: number
+          selling_price?: number
+          store_id?: string | null
+          unit?: string
+          unit_price?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beverages_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collaborators: {
         Row: {
           created_at: string
