@@ -2,6 +2,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { 
   DollarSign, 
   Percent, 
@@ -12,7 +18,8 @@ import {
   Building2,
   AlertCircle,
   Wallet,
-  Store
+  Store,
+  HelpCircle
 } from "lucide-react";
 
 interface PricingSummaryPanelProps {
@@ -293,7 +300,20 @@ export default function PricingSummaryPanel({
               {/* CMV Praticado (calculado automaticamente - NÃO editável) */}
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-xs text-muted-foreground font-medium">CMV PRATICADO</p>
+                  <div className="flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground font-medium">CMV PRATICADO</p>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-3 h-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[200px] text-xs">
+                          <p><strong>CMV</strong> = Custo da Mercadoria Vendida</p>
+                          <p className="mt-1">Indica quanto do preço de venda é consumido pelo custo do produto.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground border-muted">
                     automático
                   </Badge>
