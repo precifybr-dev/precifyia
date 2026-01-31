@@ -655,6 +655,7 @@ export type Database = {
           cost_per_serving: number
           created_at: string
           id: string
+          ifood_selling_price: number | null
           name: string
           servings: number
           store_id: string | null
@@ -668,6 +669,7 @@ export type Database = {
           cost_per_serving?: number
           created_at?: string
           id?: string
+          ifood_selling_price?: number | null
           name: string
           servings?: number
           store_id?: string | null
@@ -681,6 +683,7 @@ export type Database = {
           cost_per_serving?: number
           created_at?: string
           id?: string
+          ifood_selling_price?: number | null
           name?: string
           servings?: number
           store_id?: string | null
