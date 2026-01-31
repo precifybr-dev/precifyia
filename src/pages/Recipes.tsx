@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   FileSpreadsheet, 
@@ -55,6 +55,7 @@ import type { Tables } from "@/integrations/supabase/types";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
+import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
 
 type Recipe = Tables<"recipes">;
 
@@ -134,6 +135,11 @@ export default function Recipes() {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
   
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("default");
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -142,6 +148,48 @@ export default function Recipes() {
     userId: user?.id || null,
     importType: "recipes",
   });
+
+  // Memoized search change handler
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+  }, []);
+
+  // Filtered and sorted recipes
+  const filteredRecipes = useMemo(() => {
+    let result = [...recipes];
+    
+    // Search by name
+    if (searchTerm) {
+      result = result.filter(recipe => 
+        recipe.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Filter by color - recipes don't have individual colors, 
+    // but we can filter by CMV status (green = good, red = bad)
+    // For now, we skip color filtering for recipes since they don't have a color property
+    
+    // Sort
+    switch (sortOption) {
+      case "name-asc":
+        result.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "name-desc":
+        result.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "cost-asc":
+        result.sort((a, b) => (a.cost_per_serving || 0) - (b.cost_per_serving || 0));
+        break;
+      case "cost-desc":
+        result.sort((a, b) => (b.cost_per_serving || 0) - (a.cost_per_serving || 0));
+        break;
+      default:
+        // Keep original order (by created_at)
+        break;
+    }
+    
+    return result;
+  }, [recipes, searchTerm, sortOption]);
 
   const fetchBusinessCosts = async (userId: string, monthlyRevenue: number | null) => {
     // Fetch production costs (per item)
@@ -742,6 +790,17 @@ export default function Recipes() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <SearchAndFilter
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                sortOption={sortOption}
+                onSortChange={setSortOption}
+                selectedColor={selectedColor}
+                onColorChange={setSelectedColor}
+                showCostSort={true}
+                showSellingSort={false}
+                showColorFilter={false}
+              />
               <StoreSwitcher />
               <Button 
                 variant="outline" 
@@ -902,7 +961,15 @@ export default function Recipes() {
                 Criar Primeira Ficha Técnica
               </Button>
             </div>
-          ) : (
+          ) : filteredRecipes.length === 0 && recipes.length > 0 ? (
+            <div className="bg-card rounded-xl border border-border p-12 shadow-card text-center">
+              <FileSpreadsheet className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="font-display text-xl font-semibold mb-2 text-foreground">Nenhuma ficha encontrada</h3>
+              <p className="text-muted-foreground mb-6">
+                Nenhuma ficha técnica corresponde aos filtros selecionados.
+              </p>
+            </div>
+          ) : filteredRecipes.length > 0 ? (
             <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
               <Table>
                 <TableHeader>
@@ -917,7 +984,7 @@ export default function Recipes() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recipes.map((recipe) => (
+                  {filteredRecipes.map((recipe) => (
                     <TableRow key={recipe.id}>
                       <TableCell className="font-medium">{recipe.name}</TableCell>
                       <TableCell className="text-center">{recipe.servings}</TableCell>
@@ -956,7 +1023,7 @@ export default function Recipes() {
                 </TableBody>
               </Table>
             </div>
-          )}
+          ) : null}
         </div>
       </main>
 

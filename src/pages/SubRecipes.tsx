@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   ChefHat, 
@@ -57,6 +57,7 @@ import IngredientsSpreadsheetTable from "@/components/recipes/IngredientsSpreads
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
+import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
 // Sub-recipe red color constant
 const SUB_RECIPE_COLOR = "#ef4444";
 
@@ -120,8 +121,51 @@ export default function SubRecipes() {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
   
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("default");
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Memoized search change handler
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+  }, []);
+
+  // Filtered and sorted sub-recipes
+  const filteredSubRecipes = useMemo(() => {
+    let result = [...subRecipes];
+    
+    // Search by name
+    if (searchTerm) {
+      result = result.filter(sr => 
+        sr.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Sort
+    switch (sortOption) {
+      case "name-asc":
+        result.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "name-desc":
+        result.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "cost-asc":
+        result.sort((a, b) => (a.unit_cost || 0) - (b.unit_cost || 0));
+        break;
+      case "cost-desc":
+        result.sort((a, b) => (b.unit_cost || 0) - (a.unit_cost || 0));
+        break;
+      default:
+        // Keep original order (by code)
+        break;
+    }
+    
+    return result;
+  }, [subRecipes, searchTerm, sortOption]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -645,6 +689,17 @@ export default function SubRecipes() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <SearchAndFilter
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                sortOption={sortOption}
+                onSortChange={setSortOption}
+                selectedColor={selectedColor}
+                onColorChange={setSelectedColor}
+                showCostSort={true}
+                showSellingSort={false}
+                showColorFilter={false}
+              />
               <StoreSwitcher />
               <Button className="gap-2" onClick={handleNewSubRecipe}>
                 <Plus className="w-4 h-4" />
@@ -773,7 +828,19 @@ export default function SubRecipes() {
             </div>
           ) : (
             <>
-              {subRecipes.length === 0 ? (
+              {filteredSubRecipes.length === 0 && subRecipes.length > 0 ? (
+                <div className="bg-card rounded-xl border border-border p-12 text-center shadow-card">
+                  <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: `${SUB_RECIPE_COLOR}20` }}>
+                    <ChefHat className="w-8 h-8" style={{ color: SUB_RECIPE_COLOR }} />
+                  </div>
+                  <h3 className="font-display text-lg font-bold text-foreground mb-2">
+                    Nenhuma receita encontrada
+                  </h3>
+                  <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                    Nenhuma receita corresponde aos filtros selecionados.
+                  </p>
+                </div>
+              ) : subRecipes.length === 0 ? (
                 <div className="bg-card rounded-xl border border-border p-12 text-center shadow-card">
                   <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: `${SUB_RECIPE_COLOR}20` }}>
                     <ChefHat className="w-8 h-8" style={{ color: SUB_RECIPE_COLOR }} />
@@ -803,7 +870,7 @@ export default function SubRecipes() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {subRecipes.map((sr) => (
+                      {filteredSubRecipes.map((sr) => (
                         <TableRow key={sr.id}>
                           <TableCell>
                             <span className="flex items-center gap-2 font-mono font-semibold" style={{ color: SUB_RECIPE_COLOR }}>

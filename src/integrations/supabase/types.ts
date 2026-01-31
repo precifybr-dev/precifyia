@@ -121,6 +121,7 @@ export type Database = {
       }
       beverages: {
         Row: {
+          category: string | null
           cmv_target: number | null
           code: number
           color: string | null
@@ -138,6 +139,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          category?: string | null
           cmv_target?: number | null
           code?: number
           color?: string | null
@@ -155,6 +157,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          category?: string | null
           cmv_target?: number | null
           code?: number
           color?: string | null

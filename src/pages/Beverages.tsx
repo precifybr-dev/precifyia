@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Wine, 
@@ -45,6 +45,7 @@ import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
+import { SearchAndFilter, BEVERAGE_CATEGORIES } from "@/components/ui/SearchAndFilter";
 
 type Beverage = {
   id: string;
@@ -58,6 +59,7 @@ type Beverage = {
   ifood_selling_price: number;
   cmv_target: number | null;
   color: string | null;
+  category: string | null;
 };
 
 const units = [
@@ -94,16 +96,78 @@ export default function Beverages() {
     ifood_selling_price: "",
     cmv_target: "35",
     color: null as string | null,
+    category: "" as string,
   });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [beverageToDelete, setBeverageToDelete] = useState<Beverage | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
+  
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortOption, setSortOption] = useState("default");
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  
   const navigate = useNavigate();
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
   const { activeStore } = useStore();
+
+  // Memoized search change handler
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchTerm(value);
+  }, []);
+
+  // Filtered and sorted beverages
+  const filteredBeverages = useMemo(() => {
+    let result = [...beverages];
+    
+    // Search by name
+    if (searchTerm) {
+      result = result.filter(bev => 
+        bev.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    // Filter by color
+    if (selectedColor) {
+      result = result.filter(bev => bev.color === selectedColor);
+    }
+    
+    // Filter by category
+    if (selectedCategory) {
+      result = result.filter(bev => bev.category === selectedCategory);
+    }
+    
+    // Sort
+    switch (sortOption) {
+      case "name-asc":
+        result.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "name-desc":
+        result.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "cost-asc":
+        result.sort((a, b) => (a.unit_price || 0) - (b.unit_price || 0));
+        break;
+      case "cost-desc":
+        result.sort((a, b) => (b.unit_price || 0) - (a.unit_price || 0));
+        break;
+      case "selling-asc":
+        result.sort((a, b) => (a.selling_price || 0) - (b.selling_price || 0));
+        break;
+      case "selling-desc":
+        result.sort((a, b) => (b.selling_price || 0) - (a.selling_price || 0));
+        break;
+      default:
+        // Keep original order (by code)
+        break;
+    }
+    
+    return result;
+  }, [beverages, searchTerm, selectedColor, selectedCategory, sortOption]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -196,7 +260,8 @@ export default function Beverages() {
       selling_price: "",
       ifood_selling_price: "",
       cmv_target: "35",
-      color: null 
+      color: null,
+      category: ""
     });
     setShowForm(false);
     setEditingId(null);
@@ -247,6 +312,7 @@ export default function Beverages() {
       ifood_selling_price: parseFloat(formData.ifood_selling_price) || 0,
       cmv_target: formData.cmv_target ? parseFloat(formData.cmv_target) : null,
       color: formData.color,
+      category: formData.category || null,
     };
 
     if (editingId) {
@@ -281,6 +347,7 @@ export default function Beverages() {
       ifood_selling_price: beverage.ifood_selling_price?.toString() || "",
       cmv_target: beverage.cmv_target?.toString() || "35",
       color: beverage.color || null,
+      category: beverage.category || "",
     });
     setEditingId(beverage.id);
     setShowForm(true);
@@ -465,6 +532,20 @@ export default function Beverages() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <SearchAndFilter
+                searchTerm={searchTerm}
+                onSearchChange={handleSearchChange}
+                sortOption={sortOption}
+                onSortChange={setSortOption}
+                selectedColor={selectedColor}
+                onColorChange={setSelectedColor}
+                showCostSort={true}
+                showSellingSort={true}
+                showColorFilter={true}
+                selectedCategory={selectedCategory}
+                onCategoryChange={setSelectedCategory}
+                showCategoryFilter={true}
+              />
               <StoreSwitcher />
               <Button className="gap-2" onClick={handleAddNew}>
                 <Plus className="w-4 h-4" />
@@ -606,13 +687,31 @@ export default function Beverages() {
                 </div>
               )}
 
-              <div className="flex items-center gap-4 mt-4">
+              <div className="flex items-center gap-4 mt-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Label className="text-sm text-muted-foreground">Cor:</Label>
                   <ColorPicker
                     value={formData.color}
                     onChange={(color) => setFormData({ ...formData, color })}
                   />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Categoria:</Label>
+                  <Select 
+                    value={formData.category} 
+                    onValueChange={(val) => setFormData({ ...formData, category: val })}
+                  >
+                    <SelectTrigger className="w-[140px] h-8">
+                      <SelectValue placeholder="Opcional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Nenhuma</SelectItem>
+                      {BEVERAGE_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="flex items-center gap-2 ml-auto">
@@ -645,7 +744,15 @@ export default function Beverages() {
                 Adicionar Primeira Bebida
               </Button>
             </div>
-          ) : beverages.length > 0 && (
+          ) : filteredBeverages.length === 0 && beverages.length > 0 && !showForm ? (
+            <div className="bg-card rounded-xl border border-border p-12 shadow-card text-center">
+              <Wine className="w-16 h-16 mx-auto text-muted-foreground/50 mb-4" />
+              <h3 className="font-display text-xl font-semibold mb-2 text-foreground">Nenhuma bebida encontrada</h3>
+              <p className="text-muted-foreground mb-6">
+                Nenhuma bebida corresponde aos filtros selecionados.
+              </p>
+            </div>
+          ) : filteredBeverages.length > 0 && (
             <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
               <div className="overflow-x-auto">
                 <Table>
@@ -665,7 +772,7 @@ export default function Beverages() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {beverages.map((bev, index) => {
+                    {filteredBeverages.map((bev, index) => {
                       const metrics = calculateMetrics(bev);
                       const cmvLojaOk = metrics.cmvLoja <= metrics.cmvTarget;
                       const cmvIfoodOk = metrics.cmvIfood <= metrics.cmvTarget;
