@@ -55,6 +55,7 @@ type Beverage = {
   purchase_price: number;
   unit_price: number | null;
   selling_price: number;
+  ifood_selling_price: number;
   cmv_target: number | null;
   color: string | null;
 };
@@ -90,6 +91,7 @@ export default function Beverages() {
     purchase_quantity: "",
     purchase_price: "",
     selling_price: "",
+    ifood_selling_price: "",
     cmv_target: "35",
     color: null as string | null,
   });
@@ -192,6 +194,7 @@ export default function Beverages() {
       purchase_quantity: "", 
       purchase_price: "", 
       selling_price: "",
+      ifood_selling_price: "",
       cmv_target: "35",
       color: null 
     });
@@ -241,6 +244,7 @@ export default function Beverages() {
       purchase_quantity: parseFloat(formData.purchase_quantity),
       purchase_price: parseFloat(formData.purchase_price),
       selling_price: parseFloat(formData.selling_price) || 0,
+      ifood_selling_price: parseFloat(formData.ifood_selling_price) || 0,
       cmv_target: formData.cmv_target ? parseFloat(formData.cmv_target) : null,
       color: formData.color,
     };
@@ -274,6 +278,7 @@ export default function Beverages() {
       purchase_quantity: beverage.purchase_quantity.toString(),
       purchase_price: beverage.purchase_price.toString(),
       selling_price: beverage.selling_price?.toString() || "",
+      ifood_selling_price: beverage.ifood_selling_price?.toString() || "",
       cmv_target: beverage.cmv_target?.toString() || "35",
       color: beverage.color || null,
     });
@@ -325,14 +330,34 @@ export default function Beverages() {
     }, 100);
   };
 
-  // Calculate CMV and Net Profit for a beverage
+  // Calculate CMV and Net Profit for a beverage (Loja and iFood)
   const calculateMetrics = (beverage: Beverage) => {
     const unitPrice = beverage.unit_price || (beverage.purchase_price / beverage.purchase_quantity);
     const sellingPrice = beverage.selling_price || 0;
-    const cmv = sellingPrice > 0 ? (unitPrice / sellingPrice) * 100 : 0;
-    const netProfit = sellingPrice - unitPrice;
-    const netProfitPercent = sellingPrice > 0 ? (netProfit / sellingPrice) * 100 : 0;
-    return { unitPrice, cmv, netProfit, netProfitPercent };
+    const ifoodPrice = beverage.ifood_selling_price || 0;
+    const cmvTarget = beverage.cmv_target || 35;
+    
+    // Loja metrics
+    const cmvLoja = sellingPrice > 0 ? (unitPrice / sellingPrice) * 100 : 0;
+    const netProfitLoja = sellingPrice - unitPrice;
+    const netProfitPercentLoja = sellingPrice > 0 ? (netProfitLoja / sellingPrice) * 100 : 0;
+    
+    // iFood metrics
+    const cmvIfood = ifoodPrice > 0 ? (unitPrice / ifoodPrice) * 100 : 0;
+    const netProfitIfood = ifoodPrice - unitPrice;
+    const netProfitPercentIfood = ifoodPrice > 0 ? (netProfitIfood / ifoodPrice) * 100 : 0;
+    
+    return { 
+      unitPrice, 
+      cmvTarget,
+      cmvLoja, 
+      netProfitLoja, 
+      netProfitPercentLoja,
+      cmvIfood,
+      netProfitIfood,
+      netProfitPercentIfood,
+      ifoodPrice
+    };
   };
 
   const navItems = [
@@ -503,13 +528,40 @@ export default function Beverages() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Preço Venda</Label>
+                  <Label>CMV Desejado %</Label>
+                  <Input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="100"
+                    value={formData.cmv_target}
+                    onChange={(e) => setFormData({ ...formData, cmv_target: e.target.value })}
+                    placeholder="35"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                <div className="space-y-2">
+                  <Label>Preço Venda Loja</Label>
                   <Input
                     type="number"
                     step="0.01"
                     min="0"
                     value={formData.selling_price}
                     onChange={(e) => setFormData({ ...formData, selling_price: e.target.value })}
+                    placeholder="R$ 0,00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Preço Venda iFood</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.ifood_selling_price}
+                    onChange={(e) => setFormData({ ...formData, ifood_selling_price: e.target.value })}
                     placeholder="R$ 0,00"
                   />
                 </div>
@@ -561,20 +613,23 @@ export default function Beverages() {
                   <TableHeader>
                     <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
                       <TableHead className="text-primary-foreground font-semibold w-16">#</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold min-w-[200px]">PRODUTO</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-24 text-center">QTD</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-20 text-center">UND</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-28 text-right">VALOR UN</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-24 text-center">CMV</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-28 text-right">PREÇO VENDA</TableHead>
-                      <TableHead className="text-primary-foreground font-semibold w-28 text-right">LUCRO LÍQ</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold min-w-[180px]">PRODUTO</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold w-24 text-right">CUSTO UN</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold w-20 text-center">CMV DES</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold w-24 text-right">P. LOJA</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold w-20 text-center">CMV LOJA</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold w-28 text-right">LUCRO LOJA</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold w-24 text-right">P. IFOOD</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold w-20 text-center">CMV IFOOD</TableHead>
+                      <TableHead className="text-primary-foreground font-semibold w-28 text-right">LUCRO IFOOD</TableHead>
                       <TableHead className="w-20"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {beverages.map((bev, index) => {
                       const metrics = calculateMetrics(bev);
-                      const cmvOk = bev.cmv_target ? metrics.cmv <= bev.cmv_target : metrics.cmv <= 35;
+                      const cmvLojaOk = metrics.cmvLoja <= metrics.cmvTarget;
+                      const cmvIfoodOk = metrics.cmvIfood <= metrics.cmvTarget;
                       
                       return (
                         <TableRow 
@@ -588,27 +643,60 @@ export default function Beverages() {
                             </div>
                           </TableCell>
                           <TableCell className="font-medium text-foreground">{bev.name}</TableCell>
-                          <TableCell className="text-center font-mono">{bev.purchase_quantity}</TableCell>
-                          <TableCell className="text-center">{bev.unit}</TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {formatCurrency(metrics.unitPrice)}
                           </TableCell>
-                          <TableCell className="text-center">
-                            <span className={`font-mono font-semibold ${cmvOk ? 'text-success' : 'text-warning'}`}>
-                              {metrics.cmv.toFixed(1)}%
-                            </span>
+                          <TableCell className="text-center font-mono text-muted-foreground">
+                            {metrics.cmvTarget.toFixed(0)}%
                           </TableCell>
+                          {/* LOJA */}
                           <TableCell className="text-right font-mono font-semibold text-foreground">
                             {bev.selling_price > 0 ? formatCurrency(bev.selling_price) : '—'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {bev.selling_price > 0 ? (
+                              <span className={`font-mono font-semibold ${cmvLojaOk ? 'text-success' : 'text-warning'}`}>
+                                {metrics.cmvLoja.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             {bev.selling_price > 0 ? (
                               <div className="flex flex-col items-end">
-                                <span className={`font-mono font-semibold ${metrics.netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                  {formatCurrency(metrics.netProfit)}
+                                <span className={`font-mono font-semibold ${metrics.netProfitLoja >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {formatCurrency(metrics.netProfitLoja)}
                                 </span>
-                                <span className={`text-xs ${metrics.netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                  {metrics.netProfitPercent.toFixed(0)}%
+                                <span className={`text-xs ${metrics.netProfitLoja >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {metrics.netProfitPercentLoja.toFixed(0)}%
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          {/* IFOOD */}
+                          <TableCell className="text-right font-mono font-semibold text-foreground">
+                            {metrics.ifoodPrice > 0 ? formatCurrency(metrics.ifoodPrice) : '—'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {metrics.ifoodPrice > 0 ? (
+                              <span className={`font-mono font-semibold ${cmvIfoodOk ? 'text-success' : 'text-warning'}`}>
+                                {metrics.cmvIfood.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {metrics.ifoodPrice > 0 ? (
+                              <div className="flex flex-col items-end">
+                                <span className={`font-mono font-semibold ${metrics.netProfitIfood >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {formatCurrency(metrics.netProfitIfood)}
+                                </span>
+                                <span className={`text-xs ${metrics.netProfitIfood >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {metrics.netProfitPercentIfood.toFixed(0)}%
                                 </span>
                               </div>
                             ) : (
