@@ -1,211 +1,80 @@
 
+# Plano: Adicionar Campo de Preco de Venda (Loja) na Ficha Tecnica
 
-# Plano Atualizado: Pesquisa, Filtros e Cor em Todas as Telas
+## Problema Identificado
 
-## Resumo
-Adicionar funcionalidade de busca e filtros em **4 telas** (Insumos, Bebidas, Fichas Tecnicas e Sub-receitas), campo de categoria para bebidas, e **filtro por cor** em Fichas Tecnicas e Sub-receitas tambem.
+O campo "Preco de Venda" (Loja) que aparece no formulario de edicao da Ficha Tecnica **nao esta sendo salvo no banco de dados**. Atualmente:
 
----
+- O campo `sellingPrice` e usado apenas para calculos em tempo real
+- Ao salvar, apenas o `suggested_price` (calculado) e persistido
+- Ao reabrir a ficha, o campo `sellingPrice` e resetado para vazio
 
-## O Que Sera Implementado
-
-### 1. Componente Reutilizavel de Busca e Filtros
-Criar um componente `SearchAndFilter` que sera usado em todas as 4 telas:
-- Campo de busca sutil com icone de lupa
-- Botao de filtro que abre um Popover com opcoes
-- Design minimalista e discreto
-
-### 2. Funcionalidades por Tela
-
-| Tela | Pesquisa | Ordenacao | Filtro Cor | Filtro Categoria |
-|------|----------|-----------|------------|------------------|
-| Insumos | Por nome | A-Z, Z-A, Custo | Sim | - |
-| Bebidas | Por nome | A-Z, Z-A, Custo, Venda | Sim | Sim (novo campo) |
-| Fichas Tecnicas | Por nome | A-Z, Z-A, Custo | **Sim (novo)** | - |
-| Sub-receitas | Por nome | A-Z, Z-A, Custo | **Sim (novo)** | - |
-
-### 3. Campo de Categoria para Bebidas
-- Novo campo opcional no formulario
-- Opcoes: Alcoolica, Refrigerante, Sucos, Agua, Outros
-- Filtro dedicado na area de bebidas
+A tabela `recipes` nao possui uma coluna `selling_price` para armazenar o preco de venda manual da loja.
 
 ---
 
-## Alteracoes Planejadas
+## Solucao Proposta
 
-### Novo Arquivo: `src/components/ui/SearchAndFilter.tsx`
+### 1. Migracao do Banco de Dados
 
-Componente reutilizavel com:
-- Input de busca com debounce para performance
-- Popover com opcoes de filtro e ordenacao
-- Props flexiveis para adaptar a cada tela
-
-```typescript
-interface SearchAndFilterProps {
-  searchTerm: string;
-  onSearchChange: (value: string) => void;
-  sortOption: string;
-  onSortChange: (value: string) => void;
-  selectedColor: string | null;
-  onColorChange: (color: string | null) => void;
-  // Opcoes especificas por tela
-  showCostSort?: boolean;
-  showSellingSort?: boolean;
-  // Para bebidas
-  selectedCategory?: string | null;
-  onCategoryChange?: (category: string | null) => void;
-  showCategoryFilter?: boolean;
-}
-```
-
-### Migracao do Banco de Dados
+Adicionar uma nova coluna `selling_price` na tabela `recipes`:
 
 ```sql
--- Adicionar coluna de categoria na tabela beverages
-ALTER TABLE public.beverages 
-ADD COLUMN IF NOT EXISTS category TEXT DEFAULT NULL;
+ALTER TABLE public.recipes 
+ADD COLUMN IF NOT EXISTS selling_price NUMERIC DEFAULT NULL;
 ```
 
-### Arquivos a Modificar
+### 2. Atualizar o Salvamento (`handleSaveRecipe`)
 
-1. **`src/pages/Beverages.tsx`**
-   - Adicionar estados de busca, filtro e ordenacao
-   - Adicionar campo de categoria no formulario
-   - Integrar componente SearchAndFilter
-   - Implementar logica de filtragem com useMemo
-
-2. **`src/pages/Ingredients.tsx`**
-   - Adicionar estados de busca, filtro e ordenacao
-   - Integrar componente SearchAndFilter
-   - Implementar logica de filtragem
-
-3. **`src/pages/Recipes.tsx`**
-   - Adicionar estados de busca, filtro e ordenacao
-   - **Adicionar filtro por cor (novo)**
-   - Integrar componente SearchAndFilter
-   - Implementar logica de filtragem
-
-4. **`src/pages/SubRecipes.tsx`**
-   - Adicionar estados de busca, filtro e ordenacao
-   - **Adicionar filtro por cor (novo)**
-   - Integrar componente SearchAndFilter
-   - Implementar logica de filtragem
-
----
-
-## Detalhes Tecnicos
-
-### Logica de Filtragem (exemplo)
+Modificar `src/pages/Recipes.tsx` para incluir o `selling_price` no objeto de dados:
 
 ```typescript
-const filteredItems = useMemo(() => {
-  let result = [...items];
-  
-  // Busca por nome
-  if (searchTerm) {
-    result = result.filter(item => 
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }
-  
-  // Filtro por cor
-  if (selectedColor) {
-    result = result.filter(item => item.color === selectedColor);
-  }
-  
-  // Filtro por categoria (apenas bebidas)
-  if (selectedCategory) {
-    result = result.filter(item => item.category === selectedCategory);
-  }
-  
-  // Ordenacao
-  switch (sortOption) {
-    case 'name-asc':
-      result.sort((a, b) => a.name.localeCompare(b.name));
-      break;
-    case 'name-desc':
-      result.sort((a, b) => b.name.localeCompare(a.name));
-      break;
-    case 'cost-asc':
-      result.sort((a, b) => (a.unit_price || 0) - (b.unit_price || 0));
-      break;
-    case 'cost-desc':
-      result.sort((a, b) => (b.unit_price || 0) - (a.unit_price || 0));
-      break;
-    case 'selling-asc':
-      result.sort((a, b) => (a.selling_price || 0) - (b.selling_price || 0));
-      break;
-    case 'selling-desc':
-      result.sort((a, b) => (b.selling_price || 0) - (a.selling_price || 0));
-      break;
-  }
-  
-  return result;
-}, [items, searchTerm, selectedColor, selectedCategory, sortOption]);
+const recipeData = {
+  user_id: user.id,
+  name: recipeName,
+  servings: parseInt(servings) || 1,
+  cmv_target: parseFloat(cmvTarget) || 30,
+  total_cost: parseFloat(ingredientsCost.toFixed(2)),
+  cost_per_serving: parseFloat(costWithLoss.toFixed(2)),
+  suggested_price: parseFloat(suggestedPrice.toFixed(2)),
+  selling_price: sellingPrice.trim() !== "" ? parseFloat(sellingPrice) : null, // NOVO
+  ifood_selling_price: customIfoodPrice > 0 ? customIfoodPrice : null,
+};
 ```
 
-### Categorias de Bebidas
+### 3. Atualizar o Carregamento (`handleEditRecipe`)
+
+Modificar para carregar o `selling_price` salvo ao editar uma ficha:
 
 ```typescript
-const beverageCategories = [
-  { value: "alcoolica", label: "Alcoolica" },
-  { value: "refrigerante", label: "Refrigerante" },
-  { value: "sucos", label: "Sucos" },
-  { value: "agua", label: "Agua" },
-  { value: "outros", label: "Outros" },
-];
+setSellingPrice(recipe.selling_price?.toString() || "");
 ```
 
-### Cores Disponiveis para Filtro
+### 4. Atualizar a Tabela de Listagem
 
-Usar as cores ja definidas em `color-picker.tsx`:
-- Laranja, Amarelo, Verde, Ciano, Azul, Roxo, Rosa, Cinza
-- Vermelho (reservado para sub-receitas)
+Na tabela de visualizacao, usar o `selling_price` salvo (se existir) em vez do `suggested_price` para os calculos de Preco Loja, CMV Loja e Lucro Loja:
 
----
-
-## Design da Interface
-
-### Barra de Busca e Filtros (posicao no header)
-
-```text
-+--------------------------------------------------------------+
-| [Lupa] Buscar...                    [Filtro] | [+ Novo Item] |
-+--------------------------------------------------------------+
-```
-
-### Popover de Filtros
-
-```text
-+---------------------------+
-|  Ordenar por              |
-|  [A-Z] [Z-A]              |
-|                           |
-|  Por Custo                |
-|  [Menor->Maior]           |
-|  [Maior->Menor]           |
-|                           |
-|  Filtrar por Cor          |
-|  [o] [o] [o] [o] [o] [o]  |
-|                           |
-|  [Limpar Filtros]         |
-+---------------------------+
-```
-
-Para bebidas, adiciona:
-```text
-|  Categoria                |
-|  [Select: Todas, Alcool...] |
+```typescript
+const lojaPrice = recipe.selling_price && recipe.selling_price > 0 
+  ? recipe.selling_price 
+  : recipe.suggested_price;
 ```
 
 ---
 
-## Comportamento Esperado
+## Arquivos a Modificar
 
-1. **Preenchimento Opcional**: Nenhum filtro ou categoria e obrigatorio
-2. **Combinacao de Filtros**: Usuario pode combinar busca + cor + ordenacao
-3. **Sem Persistencia**: Filtros resetam ao sair da pagina
-4. **Performance**: Filtragem em memoria (client-side) para resposta instantanea
-5. **Feedback Visual**: Badge indicando quantidade de filtros ativos
-6. **Responsivo**: Funciona bem em mobile e desktop
+| Arquivo | Alteracao |
+|---------|-----------|
+| Nova migracao SQL | Adicionar coluna `selling_price` |
+| `src/pages/Recipes.tsx` | Salvar e carregar `selling_price` |
 
+---
+
+## Comportamento Esperado Apos Implementacao
+
+1. Usuario abre uma Ficha Tecnica existente
+2. Campo "Preco de Venda" mostra o valor salvo anteriormente
+3. Usuario altera o preco e clica em "Salvar"
+4. Ao voltar para a lista e reabrir a ficha, o preco permanece
+5. Na tabela de listagem, os calculos de Loja usam o preco manual (se definido)
