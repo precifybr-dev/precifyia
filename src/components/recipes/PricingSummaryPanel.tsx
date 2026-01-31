@@ -10,7 +10,9 @@ import {
   Tag, 
   Smartphone,
   Building2,
-  AlertCircle
+  AlertCircle,
+  Wallet,
+  Store
 } from "lucide-react";
 
 interface PricingSummaryPanelProps {
@@ -285,54 +287,68 @@ export default function PricingSummaryPanel({
 
         {/* Coluna Direita */}
         <div className="space-y-4">
-          {/* Bloco CMV */}
-          <Card>
-            <CardContent className="pt-4 space-y-3">
+          {/* Bloco CMV Unificado */}
+          <Card className="border-primary/30">
+            <CardContent className="pt-4 space-y-4">
+              {/* CMV Praticado (calculado automaticamente - NÃO editável) */}
               <div>
-                <p className="text-xs text-muted-foreground mb-1">CMV (calculado)</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs text-muted-foreground font-medium">CMV PRATICADO</p>
+                  <Badge variant="outline" className="text-xs bg-muted/50 text-muted-foreground border-muted">
+                    automático
+                  </Badge>
+                </div>
                 <p className={`font-mono text-2xl font-bold ${actualCMV <= (parseFloat(cmvTarget) || 30) ? 'text-success' : 'text-warning'}`}>
                   {actualCMV.toFixed(2)}%
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Custo ÷ Preço de Venda
                 </p>
+                {parseFloat(cmvTarget) > 0 && (
+                  <p className={`text-xs mt-1 ${actualCMV <= parseFloat(cmvTarget) ? 'text-success' : 'text-warning'}`}>
+                    {actualCMV <= parseFloat(cmvTarget) 
+                      ? '✓ Dentro da meta' 
+                      : `⚠ ${(actualCMV - parseFloat(cmvTarget)).toFixed(1)}% acima da meta`}
+                  </p>
+                )}
               </div>
-            </CardContent>
-          </Card>
 
-          {/* CMV Desejado */}
-          <Card className="border-primary/30">
-            <CardContent className="pt-4 space-y-2">
-              <Label className="flex items-center gap-2">
-                <Percent className="w-4 h-4 text-primary" />
-                CMV DESEJADO
-                <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
-                  editável
-                </Badge>
-              </Label>
-              <div className="relative">
-                <Input
-                  type="number"
-                  step="1"
-                  min="1"
-                  max="99"
-                  value={cmvTarget}
-                  onChange={(e) => setCmvTarget(e.target.value)}
-                  className="pr-8 text-lg font-bold border-2 border-primary/30"
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+              {/* Separador */}
+              <div className="border-t border-primary/20" />
+
+              {/* CMV Desejado (editável) */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Percent className="w-4 h-4 text-primary" />
+                  CMV DESEJADO
+                  <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30">
+                    editável
+                  </Badge>
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="number"
+                    step="1"
+                    min="1"
+                    max="99"
+                    value={cmvTarget}
+                    onChange={(e) => setCmvTarget(e.target.value)}
+                    className="pr-8 text-lg font-bold border-2 border-primary/30"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
+                </div>
+                {!hasCmvTarget && (
+                  <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Defina o CMV desejado
+                  </p>
+                )}
+                {defaultCmv && (
+                  <p className="text-xs text-muted-foreground">
+                    Padrão do negócio: {defaultCmv}%
+                  </p>
+                )}
               </div>
-              {!hasCmvTarget && (
-                <p className="text-xs text-muted-foreground animate-pulse flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  Defina o CMV desejado
-                </p>
-              )}
-              {defaultCmv && (
-                <p className="text-xs text-muted-foreground">
-                  Padrão do negócio: {defaultCmv}%
-                </p>
-              )}
             </CardContent>
           </Card>
 
@@ -406,6 +422,141 @@ export default function PricingSummaryPanel({
           </Card>
         </div>
       </div>
+
+      {/* ==================== LUCRO LÍQUIDO REAL ==================== */}
+      {(() => {
+        // Cálculos para Lucro Líquido
+        const effectivePrice = parseFloat(sellingPrice) || suggestedPrice;
+        const businessCostValue = effectivePrice * (totalBusinessCostPercent || 0) / 100;
+        const netProfit = effectivePrice - costWithLoss - businessCostValue;
+        const netProfitPercent = effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0;
+        const costPercent = effectivePrice > 0 ? (costWithLoss / effectivePrice) * 100 : 0;
+
+        // Cálculos para iFood
+        const ifoodFeeValue = ifoodPrice * (effectiveIfoodRate / 100);
+        const ifoodNetRevenue = ifoodPrice - ifoodFeeValue;
+        const ifoodBusinessCost = ifoodNetRevenue * (totalBusinessCostPercent || 0) / 100;
+        const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodBusinessCost;
+        const ifoodNetProfitPercent = ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0;
+        const ifoodCostPercent = ifoodPrice > 0 ? (costWithLoss / ifoodPrice) * 100 : 0;
+        const ifoodBusinessCostPercent = ifoodPrice > 0 ? (ifoodBusinessCost / ifoodPrice) * 100 : 0;
+
+        return (
+          <div className="grid md:grid-cols-2 gap-4 mt-4">
+            {/* Lucro Líquido Real - LOJA */}
+            <Card className="border-success/30 bg-success/5">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Store className="w-5 h-5 text-success" />
+                  <span className="text-sm font-semibold">LUCRO LÍQUIDO REAL - LOJA</span>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-muted-foreground">Preço de Venda</span>
+                    <span className="font-mono font-semibold">{formatCurrency(effectivePrice)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-1 text-destructive/80">
+                    <span>(-) Custo c/ Perda</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono">{formatCurrency(costWithLoss)}</span>
+                      <span className="text-xs text-muted-foreground">{costPercent.toFixed(0)}%</span>
+                    </div>
+                  </div>
+                  
+                  {totalBusinessCostPercent !== null && totalBusinessCostPercent > 0 && (
+                    <div className="flex justify-between items-center py-1 text-destructive/80">
+                      <span>(-) Custos Fix+Var</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{formatCurrency(businessCostValue)}</span>
+                        <span className="text-xs text-muted-foreground">{totalBusinessCostPercent.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="border-t border-success/30 pt-2 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold flex items-center gap-1">
+                        <Wallet className="w-4 h-4" />
+                        = LUCRO LÍQUIDO
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-mono text-lg font-bold ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          {formatCurrency(netProfit)}
+                        </span>
+                        <span className={`text-sm font-semibold ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          {netProfitPercent.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Lucro Líquido Real - IFOOD */}
+            <Card className="border-destructive/30 bg-destructive/5">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <Smartphone className="w-5 h-5 text-destructive" />
+                  <span className="text-sm font-semibold">LUCRO LÍQUIDO REAL - IFOOD</span>
+                </div>
+
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-muted-foreground">Preço iFood</span>
+                    <span className="font-mono font-semibold">{formatCurrency(ifoodPrice)}</span>
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-1 text-destructive/80">
+                    <span>(-) Taxa iFood</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono">{formatCurrency(ifoodFeeValue)}</span>
+                      <span className="text-xs text-muted-foreground">{effectiveIfoodRate.toFixed(0)}%</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center py-1 text-destructive/80">
+                    <span>(-) Custo c/ Perda</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono">{formatCurrency(costWithLoss)}</span>
+                      <span className="text-xs text-muted-foreground">{ifoodCostPercent.toFixed(0)}%</span>
+                    </div>
+                  </div>
+                  
+                  {totalBusinessCostPercent !== null && totalBusinessCostPercent > 0 && (
+                    <div className="flex justify-between items-center py-1 text-destructive/80">
+                      <span>(-) Custos Fix+Var</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{formatCurrency(ifoodBusinessCost)}</span>
+                        <span className="text-xs text-muted-foreground">{ifoodBusinessCostPercent.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div className="border-t border-destructive/30 pt-2 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold flex items-center gap-1">
+                        <Wallet className="w-4 h-4" />
+                        = LUCRO LÍQUIDO
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`font-mono text-lg font-bold ${ifoodNetProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          {formatCurrency(ifoodNetProfit)}
+                        </span>
+                        <span className={`text-sm font-semibold ${ifoodNetProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                          {ifoodNetProfitPercent.toFixed(0)}%
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
     </div>
   );
 }
