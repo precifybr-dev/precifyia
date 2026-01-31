@@ -1,178 +1,211 @@
 
 
-# Plano: Ajustar CMV e Adicionar Lucro Liquido Real (Loja + iFood)
+# Plano Atualizado: Pesquisa, Filtros e Cor em Todas as Telas
 
-## Entendimento do Problema
+## Resumo
+Adicionar funcionalidade de busca e filtros em **4 telas** (Insumos, Bebidas, Fichas Tecnicas e Sub-receitas), campo de categoria para bebidas, e **filtro por cor** em Fichas Tecnicas e Sub-receitas tambem.
 
-Apos analisar a imagem de referencia e o codigo atual, identifiquei as seguintes correcoes necessarias:
+---
 
-### CMV - Correcao de Nomenclatura e Logica
+## O Que Sera Implementado
 
-| Atual (incorreto) | Correto |
-|------------------|---------|
-| CMV (calculado) - editavel pelo usuario | CMV (resultado do preco praticado) - NAO editavel |
-| CMV Desejado - editavel | CMV DESEJADO - editavel (meta do usuario) |
+### 1. Componente Reutilizavel de Busca e Filtros
+Criar um componente `SearchAndFilter` que sera usado em todas as 4 telas:
+- Campo de busca sutil com icone de lupa
+- Botao de filtro que abre um Popover com opcoes
+- Design minimalista e discreto
 
-**CMV Praticado** (ou simplesmente "CMV") e o resultado automatico de:
-```
-CMV = Custo da Receita / Preco de Venda * 100
-```
+### 2. Funcionalidades por Tela
 
-Este valor serve para comparar com o CMV Desejado e ver se o preco praticado esta dentro da meta.
+| Tela | Pesquisa | Ordenacao | Filtro Cor | Filtro Categoria |
+|------|----------|-----------|------------|------------------|
+| Insumos | Por nome | A-Z, Z-A, Custo | Sim | - |
+| Bebidas | Por nome | A-Z, Z-A, Custo, Venda | Sim | Sim (novo campo) |
+| Fichas Tecnicas | Por nome | A-Z, Z-A, Custo | **Sim (novo)** | - |
+| Sub-receitas | Por nome | A-Z, Z-A, Custo | **Sim (novo)** | - |
 
-### Lucro Liquido Real - Dois Cenarios
-
-O usuario quer ver o lucro liquido real para:
-1. **Venda Direta (Loja)** - Preco de venda menos custos
-2. **Venda iFood** - Preco iFood menos custos (considerando a taxa do iFood)
+### 3. Campo de Categoria para Bebidas
+- Novo campo opcional no formulario
+- Opcoes: Alcoolica, Refrigerante, Sucos, Agua, Outros
+- Filtro dedicado na area de bebidas
 
 ---
 
 ## Alteracoes Planejadas
 
-### Arquivo: `src/components/recipes/PricingSummaryPanel.tsx`
+### Novo Arquivo: `src/components/ui/SearchAndFilter.tsx`
 
-#### 1. Reorganizar Bloco CMV
+Componente reutilizavel com:
+- Input de busca com debounce para performance
+- Popover com opcoes de filtro e ordenacao
+- Props flexiveis para adaptar a cada tela
 
-**Layout atual:**
-```
-[CMV calculado - 38%]  ← bloco separado
-[CMV Desejado - input editavel]  ← outro bloco
-```
-
-**Novo layout (igual a imagem de referencia):**
-```
-+----------------------------------+
-|  CMV                    38%      |  ← calculado automatico, NAO editavel
-|                                  |
-|  CMV DESEJADO           35%      |  ← input editavel
-+----------------------------------+
-```
-
-- Juntar em um unico card
-- CMV praticado em cima (resultado automatico, sem input)
-- CMV Desejado embaixo (com input editavel)
-- Destacar visualmente se CMV praticado esta acima ou abaixo do desejado
-
-#### 2. Adicionar Bloco "Lucro Liquido Real - Loja"
-
-Novo card mostrando:
-```
-+------------------------------------------+
-|  LUCRO LIQUIDO REAL - LOJA               |
-|                                          |
-|  Preco de Venda           R$ 31,00       |
-|  (-) Custo c/ Perda       R$ 11,79  38%  |
-|  (-) Custos Fix+Var       R$  8,99  29%  |
-|  ----------------------------------------|
-|  = LUCRO LIQUIDO          R$ 10,22  33%  |
-+------------------------------------------+
-```
-
-**Formula:**
 ```typescript
-const effectivePrice = parseFloat(sellingPrice) || suggestedPrice;
-const businessCostValue = effectivePrice * (totalBusinessCostPercent || 0) / 100;
-const netProfit = effectivePrice - costWithLoss - businessCostValue;
-const netProfitPercent = effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0;
+interface SearchAndFilterProps {
+  searchTerm: string;
+  onSearchChange: (value: string) => void;
+  sortOption: string;
+  onSortChange: (value: string) => void;
+  selectedColor: string | null;
+  onColorChange: (color: string | null) => void;
+  // Opcoes especificas por tela
+  showCostSort?: boolean;
+  showSellingSort?: boolean;
+  // Para bebidas
+  selectedCategory?: string | null;
+  onCategoryChange?: (category: string | null) => void;
+  showCategoryFilter?: boolean;
+}
 ```
 
-#### 3. Adicionar Bloco "Lucro Liquido Real - iFood"
+### Migracao do Banco de Dados
 
-Novo card mostrando:
-```
-+------------------------------------------+
-|  LUCRO LIQUIDO REAL - IFOOD              |
-|                                          |
-|  Preco iFood              R$ 43,06       |
-|  (-) Taxa iFood           R$ 12,06  28%  |
-|  (-) Custo c/ Perda       R$ 11,79       |
-|  (-) Custos Fix+Var       R$ 12,49  29%  |
-|  ----------------------------------------|
-|  = LUCRO LIQUIDO          R$  6,72  16%  |
-+------------------------------------------+
+```sql
+-- Adicionar coluna de categoria na tabela beverages
+ALTER TABLE public.beverages 
+ADD COLUMN IF NOT EXISTS category TEXT DEFAULT NULL;
 ```
 
-**Formula iFood:**
-```typescript
-const ifoodFeeValue = ifoodPrice * (effectiveIfoodRate / 100);
-const ifoodNetRevenue = ifoodPrice - ifoodFeeValue; // O que voce recebe do iFood
-const ifoodBusinessCost = ifoodNetRevenue * (totalBusinessCostPercent || 0) / 100;
-const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodBusinessCost;
-const ifoodNetProfitPercent = ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0;
-```
+### Arquivos a Modificar
 
----
+1. **`src/pages/Beverages.tsx`**
+   - Adicionar estados de busca, filtro e ordenacao
+   - Adicionar campo de categoria no formulario
+   - Integrar componente SearchAndFilter
+   - Implementar logica de filtragem com useMemo
 
-## Layout Final do Painel
+2. **`src/pages/Ingredients.tsx`**
+   - Adicionar estados de busca, filtro e ordenacao
+   - Integrar componente SearchAndFilter
+   - Implementar logica de filtragem
 
-```
-+------------------+------------------+
-| PRECO DE VENDA   | CMV        38%   |
-| R$ 31,00         | CMV DESEJ  35%   |
-+------------------+------------------+
-| CUSTO RECEITA    | CALC. IFOOD      |
-| R$ 11,79         | Preco Base       |
-| CUSTO C/ PERDA   | Taxa: 28%        |
-| R$ 11,79         | Valor: R$ 43,06  |
-+------------------+------------------+
-| MARGENS          |                  |
-| 26,96% / R$ 8,36 |                  |
-+------------------+------------------+
-| PRECO SUGERIDO   |                  |
-| R$ 33,70         |                  |
-| PRECO IFOOD      |                  |
-| R$ 46,80         |                  |
-+------------------+------------------+
-| PROMOCAO   5%    | CUSTO FIX+VAR    |
-| R$ 29,45         | 29%              |
-+------------------+------------------+
+3. **`src/pages/Recipes.tsx`**
+   - Adicionar estados de busca, filtro e ordenacao
+   - **Adicionar filtro por cor (novo)**
+   - Integrar componente SearchAndFilter
+   - Implementar logica de filtragem
 
-=== FULL WIDTH ===
-
-+------------------------------------------+
-|  LUCRO LIQUIDO REAL - LOJA               |
-|  Preco Venda      R$ 31,00               |
-|  (-) Custo        R$ 11,79    38%        |
-|  (-) Fix+Var      R$  8,99    29%        |
-|  = LUCRO          R$ 10,22    33%        |
-+------------------------------------------+
-
-+------------------------------------------+
-|  LUCRO LIQUIDO REAL - IFOOD              |
-|  Preco iFood      R$ 43,06               |
-|  (-) Taxa iFood   R$ 12,06    28%        |
-|  (-) Custo        R$ 11,79               |
-|  (-) Fix+Var      R$ 12,49    29%        |
-|  = LUCRO          R$  6,72    16%        |
-+------------------------------------------+
-```
+4. **`src/pages/SubRecipes.tsx`**
+   - Adicionar estados de busca, filtro e ordenacao
+   - **Adicionar filtro por cor (novo)**
+   - Integrar componente SearchAndFilter
+   - Implementar logica de filtragem
 
 ---
 
 ## Detalhes Tecnicos
 
-### Cores e Indicadores Visuais
+### Logica de Filtragem (exemplo)
 
-- **CMV Praticado vs Desejado:**
-  - Verde se CMV praticado <= CMV desejado (dentro da meta)
-  - Amarelo/Vermelho se CMV praticado > CMV desejado (acima da meta)
+```typescript
+const filteredItems = useMemo(() => {
+  let result = [...items];
+  
+  // Busca por nome
+  if (searchTerm) {
+    result = result.filter(item => 
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }
+  
+  // Filtro por cor
+  if (selectedColor) {
+    result = result.filter(item => item.color === selectedColor);
+  }
+  
+  // Filtro por categoria (apenas bebidas)
+  if (selectedCategory) {
+    result = result.filter(item => item.category === selectedCategory);
+  }
+  
+  // Ordenacao
+  switch (sortOption) {
+    case 'name-asc':
+      result.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case 'name-desc':
+      result.sort((a, b) => b.name.localeCompare(a.name));
+      break;
+    case 'cost-asc':
+      result.sort((a, b) => (a.unit_price || 0) - (b.unit_price || 0));
+      break;
+    case 'cost-desc':
+      result.sort((a, b) => (b.unit_price || 0) - (a.unit_price || 0));
+      break;
+    case 'selling-asc':
+      result.sort((a, b) => (a.selling_price || 0) - (b.selling_price || 0));
+      break;
+    case 'selling-desc':
+      result.sort((a, b) => (b.selling_price || 0) - (a.selling_price || 0));
+      break;
+  }
+  
+  return result;
+}, [items, searchTerm, selectedColor, selectedCategory, sortOption]);
+```
 
-- **Lucro Liquido:**
-  - Verde se positivo
-  - Vermelho se negativo
+### Categorias de Bebidas
 
-### Importar Icone Adicional
+```typescript
+const beverageCategories = [
+  { value: "alcoolica", label: "Alcoolica" },
+  { value: "refrigerante", label: "Refrigerante" },
+  { value: "sucos", label: "Sucos" },
+  { value: "agua", label: "Agua" },
+  { value: "outros", label: "Outros" },
+];
+```
 
-Adicionar `Wallet` do lucide-react para o bloco de lucro liquido.
+### Cores Disponiveis para Filtro
+
+Usar as cores ja definidas em `color-picker.tsx`:
+- Laranja, Amarelo, Verde, Ciano, Azul, Roxo, Rosa, Cinza
+- Vermelho (reservado para sub-receitas)
 
 ---
 
-## Resumo das Alteracoes
+## Design da Interface
 
-| Componente | Alteracao |
-|------------|-----------|
-| Bloco CMV | Juntar CMV calculado + CMV Desejado em um unico card. CMV calculado NAO e editavel |
-| Novo Bloco | Lucro Liquido Real - Loja (full width) |
-| Novo Bloco | Lucro Liquido Real - iFood (full width) |
+### Barra de Busca e Filtros (posicao no header)
+
+```text
++--------------------------------------------------------------+
+| [Lupa] Buscar...                    [Filtro] | [+ Novo Item] |
++--------------------------------------------------------------+
+```
+
+### Popover de Filtros
+
+```text
++---------------------------+
+|  Ordenar por              |
+|  [A-Z] [Z-A]              |
+|                           |
+|  Por Custo                |
+|  [Menor->Maior]           |
+|  [Maior->Menor]           |
+|                           |
+|  Filtrar por Cor          |
+|  [o] [o] [o] [o] [o] [o]  |
+|                           |
+|  [Limpar Filtros]         |
++---------------------------+
+```
+
+Para bebidas, adiciona:
+```text
+|  Categoria                |
+|  [Select: Todas, Alcool...] |
+```
+
+---
+
+## Comportamento Esperado
+
+1. **Preenchimento Opcional**: Nenhum filtro ou categoria e obrigatorio
+2. **Combinacao de Filtros**: Usuario pode combinar busca + cor + ordenacao
+3. **Sem Persistencia**: Filtros resetam ao sair da pagina
+4. **Performance**: Filtragem em memoria (client-side) para resposta instantanea
+5. **Feedback Visual**: Badge indicando quantidade de filtros ativos
+6. **Responsivo**: Funciona bem em mobile e desktop
 
