@@ -63,6 +63,8 @@ import { useIfoodImport } from "@/hooks/useIfoodImport";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
+import { DeleteIngredientDialog } from "@/components/ingredients/DeleteIngredientDialog";
+import type { IngredientData } from "@/components/recipes/IngredientSelector";
 
 type Ingredient = {
   id: string;
@@ -326,20 +328,22 @@ export default function Ingredients() {
     setDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
-    if (!ingredientToDelete) return;
-    
-    const { error } = await supabase.from("ingredients").delete().eq("id", ingredientToDelete.id);
-    if (error) {
-      toast({ title: "Erro", description: "Não foi possível excluir", variant: "destructive" });
-    } else {
-      toast({ title: "Sucesso", description: "Insumo removido!" });
-      await fetchIngredients(user.id, activeStore?.id);
-    }
-    
-    setDeleteDialogOpen(false);
+  const handleDeleteComplete = async () => {
+    await fetchIngredients(user.id, activeStore?.id);
     setIngredientToDelete(null);
   };
+
+  // Convert ingredients to IngredientData format for the selector
+  const ingredientsForSelector: IngredientData[] = ingredients.map((ing) => ({
+    id: ing.id,
+    code: ing.code,
+    name: ing.name,
+    unit: ing.unit,
+    unit_price: ing.unit_price,
+    purchase_price: ing.purchase_price,
+    purchase_quantity: ing.purchase_quantity,
+    color: ing.color,
+  }));
 
   // Handle iFood import - with global code calculation and retry logic
   const handleIfoodImport = async (items: { name: string; category?: string }[]) => {
@@ -779,33 +783,14 @@ export default function Ingredients() {
         </div>
       </main>
 
-      {/* AlertDialog de confirmação de exclusão */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              Confirmar exclusão
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja excluir o insumo{" "}
-              <span className="font-semibold text-foreground">
-                "{ingredientToDelete?.name}"
-              </span>
-              ? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Excluir
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Dialog de confirmação de exclusão com contagem e substituição */}
+      <DeleteIngredientDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        ingredient={ingredientToDelete}
+        allIngredients={ingredientsForSelector}
+        onDeleted={handleDeleteComplete}
+      />
 
       {/* iFood Import Modal */}
       <IfoodImportModal
