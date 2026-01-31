@@ -330,11 +330,24 @@ export default function Beverages() {
     }, 100);
   };
 
+  // Get iFood real percentage from profile
+  const ifoodRealPercentage = profile?.ifood_real_percentage || 0;
+
+  // Calculate suggested iFood price based on store price + iFood rate
+  const calculateSuggestedIfoodPrice = (storePrice: number) => {
+    if (storePrice <= 0 || ifoodRealPercentage <= 0) return 0;
+    // Price that covers the iFood fee: storePrice / (1 - taxRate)
+    return storePrice / (1 - ifoodRealPercentage / 100);
+  };
+
   // Calculate CMV and Net Profit for a beverage (Loja and iFood)
   const calculateMetrics = (beverage: Beverage) => {
     const unitPrice = beverage.unit_price || (beverage.purchase_price / beverage.purchase_quantity);
     const sellingPrice = beverage.selling_price || 0;
-    const ifoodPrice = beverage.ifood_selling_price || 0;
+    
+    // Use custom iFood price or calculate suggested
+    const suggestedIfoodPrice = calculateSuggestedIfoodPrice(sellingPrice);
+    const ifoodPrice = beverage.ifood_selling_price > 0 ? beverage.ifood_selling_price : suggestedIfoodPrice;
     const cmvTarget = beverage.cmv_target || 35;
     
     // Loja metrics
@@ -342,9 +355,11 @@ export default function Beverages() {
     const netProfitLoja = sellingPrice - unitPrice;
     const netProfitPercentLoja = sellingPrice > 0 ? (netProfitLoja / sellingPrice) * 100 : 0;
     
-    // iFood metrics
-    const cmvIfood = ifoodPrice > 0 ? (unitPrice / ifoodPrice) * 100 : 0;
-    const netProfitIfood = ifoodPrice - unitPrice;
+    // iFood metrics - deduct iFood fee from revenue
+    const ifoodFee = ifoodPrice * (ifoodRealPercentage / 100);
+    const ifoodNetRevenue = ifoodPrice - ifoodFee; // What we actually receive
+    const cmvIfood = ifoodNetRevenue > 0 ? (unitPrice / ifoodNetRevenue) * 100 : 0;
+    const netProfitIfood = ifoodNetRevenue - unitPrice;
     const netProfitPercentIfood = ifoodPrice > 0 ? (netProfitIfood / ifoodPrice) * 100 : 0;
     
     return { 
@@ -356,7 +371,10 @@ export default function Beverages() {
       cmvIfood,
       netProfitIfood,
       netProfitPercentIfood,
-      ifoodPrice
+      ifoodPrice,
+      suggestedIfoodPrice,
+      ifoodFee,
+      isCustomIfoodPrice: beverage.ifood_selling_price > 0
     };
   };
 
@@ -555,17 +573,44 @@ export default function Beverages() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Preço Venda iFood</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.ifood_selling_price}
-                    onChange={(e) => setFormData({ ...formData, ifood_selling_price: e.target.value })}
-                    placeholder="R$ 0,00"
-                  />
+                  <Label className="flex items-center gap-1">
+                    Preço Venda iFood
+                    {ifoodRealPercentage > 0 && (
+                      <span className="text-xs text-muted-foreground">(taxa: {ifoodRealPercentage.toFixed(1)}%)</span>
+                    )}
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.ifood_selling_price}
+                      onChange={(e) => setFormData({ ...formData, ifood_selling_price: e.target.value })}
+                      placeholder={
+                        formData.selling_price && ifoodRealPercentage > 0
+                          ? `Sugerido: ${formatCurrency(calculateSuggestedIfoodPrice(parseFloat(formData.selling_price) || 0))}`
+                          : "R$ 0,00"
+                      }
+                      className={!formData.ifood_selling_price && formData.selling_price ? "text-muted-foreground/70" : ""}
+                    />
+                    {!formData.ifood_selling_price && formData.selling_price && ifoodRealPercentage > 0 && (
+                      <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                        <span className="text-muted-foreground/50 text-sm font-mono">
+                          {formatCurrency(calculateSuggestedIfoodPrice(parseFloat(formData.selling_price) || 0))}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+
+              {ifoodRealPercentage > 0 && (
+                <div className="mt-3 p-3 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">
+                    💡 O lucro líquido do iFood já considera a taxa real de <strong>{ifoodRealPercentage.toFixed(1)}%</strong> configurada na Área do Negócio.
+                  </p>
+                </div>
+              )}
 
               <div className="flex items-center gap-4 mt-4">
                 <div className="flex items-center gap-2">
@@ -677,8 +722,19 @@ export default function Beverages() {
                             )}
                           </TableCell>
                           {/* IFOOD */}
-                          <TableCell className="text-right font-mono font-semibold text-foreground">
-                            {metrics.ifoodPrice > 0 ? formatCurrency(metrics.ifoodPrice) : '—'}
+                          <TableCell className="text-right">
+                            {metrics.ifoodPrice > 0 ? (
+                              <div className="flex flex-col items-end">
+                                <span className={`font-mono font-semibold ${metrics.isCustomIfoodPrice ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                  {formatCurrency(metrics.ifoodPrice)}
+                                </span>
+                                {!metrics.isCustomIfoodPrice && (
+                                  <span className="text-[10px] text-muted-foreground/70">sugerido</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell className="text-center">
                             {metrics.ifoodPrice > 0 ? (
@@ -698,6 +754,11 @@ export default function Beverages() {
                                 <span className={`text-xs ${metrics.netProfitIfood >= 0 ? 'text-success' : 'text-destructive'}`}>
                                   {metrics.netProfitPercentIfood.toFixed(0)}%
                                 </span>
+                                {ifoodRealPercentage > 0 && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    -{formatCurrency(metrics.ifoodFee)} taxa
+                                  </span>
+                                )}
                               </div>
                             ) : (
                               <span className="text-muted-foreground">—</span>
