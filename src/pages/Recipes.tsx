@@ -984,57 +984,163 @@ export default function Recipes() {
             </div>
           ) : filteredRecipes.length > 0 ? (
             <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead className="text-center">Porções</TableHead>
-                    <TableHead className="text-right">Custo Total</TableHead>
-                    <TableHead className="text-right">CMV/Porção</TableHead>
-                    <TableHead className="text-right">CMV</TableHead>
-                    <TableHead className="text-right">Preço Sugerido</TableHead>
-                    <TableHead className="w-24">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRecipes.map((recipe) => (
-                    <TableRow key={recipe.id}>
-                      <TableCell className="font-medium">{recipe.name}</TableCell>
-                      <TableCell className="text-center">{recipe.servings}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(recipe.total_cost)}</TableCell>
-                      <TableCell className="text-right font-semibold text-primary">
-                        {formatCurrency(recipe.cost_per_serving)}
-                      </TableCell>
-                      <TableCell className="text-right">{recipe.cmv_target}%</TableCell>
-                      <TableCell className="text-right font-semibold text-success">
-                        {formatCurrency(recipe.suggested_price)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => handleEditRecipe(recipe)}
-                            title="Editar ficha"
-                            className="hover:bg-primary/10 hover:text-primary h-9 w-9 p-0"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 h-9 w-9 p-0" 
-                            onClick={() => handleDeleteClick(recipe)}
-                            title="Excluir ficha"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
+                      <TableHead className="text-primary-foreground font-medium min-w-[180px]">Produto</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-20 text-center">Rend.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Custo Un.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Des.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço iFood</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV iFood</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro iFood</TableHead>
+                      <TableHead className="w-20"></TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredRecipes.map((recipe, index) => {
+                      const costPerServing = recipe.cost_per_serving || 0;
+                      const suggestedPrice = recipe.suggested_price || 0;
+                      const cmvTarget = recipe.cmv_target || 30;
+                      
+                      // Use custom iFood price or calculate suggested
+                      const suggestedIfoodPrice = ifoodRealPercentage && ifoodRealPercentage > 0 && suggestedPrice > 0
+                        ? suggestedPrice / (1 - ifoodRealPercentage / 100)
+                        : 0;
+                      const ifoodPrice = recipe.ifood_selling_price && recipe.ifood_selling_price > 0 
+                        ? recipe.ifood_selling_price 
+                        : suggestedIfoodPrice;
+                      const isCustomIfoodPrice = recipe.ifood_selling_price && recipe.ifood_selling_price > 0;
+                      
+                      // Loja metrics
+                      const cmvLoja = suggestedPrice > 0 ? (costPerServing / suggestedPrice) * 100 : 0;
+                      const netProfitLoja = suggestedPrice - costPerServing;
+                      const netProfitPercentLoja = suggestedPrice > 0 ? (netProfitLoja / suggestedPrice) * 100 : 0;
+                      const cmvLojaOk = cmvLoja <= cmvTarget;
+                      
+                      // iFood metrics
+                      const ifoodFee = ifoodPrice * ((ifoodRealPercentage || 0) / 100);
+                      const ifoodNetRevenue = ifoodPrice - ifoodFee;
+                      const cmvIfood = ifoodNetRevenue > 0 ? (costPerServing / ifoodNetRevenue) * 100 : 0;
+                      const netProfitIfood = ifoodNetRevenue - costPerServing;
+                      const netProfitPercentIfood = ifoodPrice > 0 ? (netProfitIfood / ifoodPrice) * 100 : 0;
+                      const cmvIfoodOk = cmvIfood <= cmvTarget;
+                      
+                      return (
+                        <TableRow 
+                          key={recipe.id}
+                          className={index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50"}
+                        >
+                          <TableCell className="font-medium text-foreground">{recipe.name}</TableCell>
+                          <TableCell className="text-center font-mono text-muted-foreground">{recipe.servings}</TableCell>
+                          <TableCell className="text-right font-mono text-muted-foreground">
+                            {formatCurrency(costPerServing)}
+                          </TableCell>
+                          <TableCell className="text-center font-mono text-muted-foreground">
+                            {cmvTarget.toFixed(0)}%
+                          </TableCell>
+                          {/* LOJA */}
+                          <TableCell className="text-right font-mono font-semibold text-foreground">
+                            {suggestedPrice > 0 ? formatCurrency(suggestedPrice) : '—'}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {suggestedPrice > 0 ? (
+                              <span className={`font-mono font-semibold ${cmvLojaOk ? 'text-success' : 'text-warning'}`}>
+                                {cmvLoja.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {suggestedPrice > 0 ? (
+                              <div className="flex flex-col items-end">
+                                <span className={`font-mono font-semibold ${netProfitLoja >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {formatCurrency(netProfitLoja)}
+                                </span>
+                                <span className={`text-xs ${netProfitLoja >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {netProfitPercentLoja.toFixed(0)}%
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          {/* IFOOD */}
+                          <TableCell className="text-right">
+                            {ifoodPrice > 0 ? (
+                              <div className="flex flex-col items-end">
+                                <span className={`font-mono font-semibold ${isCustomIfoodPrice ? 'text-foreground' : 'text-muted-foreground'}`}>
+                                  {formatCurrency(ifoodPrice)}
+                                </span>
+                                {!isCustomIfoodPrice && (
+                                  <span className="text-[10px] text-muted-foreground/70">sugerido</span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {ifoodPrice > 0 ? (
+                              <span className={`font-mono font-semibold ${cmvIfoodOk ? 'text-success' : 'text-warning'}`}>
+                                {cmvIfood.toFixed(1)}%
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {ifoodPrice > 0 ? (
+                              <div className="flex flex-col items-end">
+                                <span className={`font-mono font-semibold ${netProfitIfood >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {formatCurrency(netProfitIfood)}
+                                </span>
+                                <span className={`text-xs ${netProfitIfood >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {netProfitPercentIfood.toFixed(0)}%
+                                </span>
+                                {ifoodRealPercentage && ifoodRealPercentage > 0 && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    -{formatCurrency(ifoodFee)} taxa
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1">
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleEditRecipe(recipe)}
+                                title="Editar ficha"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive" 
+                                onClick={() => handleDeleteClick(recipe)}
+                                title="Excluir ficha"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           ) : null}
         </div>
