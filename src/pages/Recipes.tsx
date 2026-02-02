@@ -121,6 +121,7 @@ export default function Recipes() {
   // Duplicate dialog state
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [recipeToDuplicate, setRecipeToDuplicate] = useState<Recipe | null>(null);
+  const [duplicateName, setDuplicateName] = useState("");
   const [isDuplicating, setIsDuplicating] = useState(false);
   
   // iFood import modal state
@@ -411,6 +412,7 @@ export default function Recipes() {
 
   const handleDuplicateClick = (recipe: Recipe) => {
     setRecipeToDuplicate(recipe);
+    setDuplicateName(`${recipe.name} (cópia)`);
     setDuplicateDialogOpen(true);
   };
 
@@ -427,9 +429,9 @@ export default function Recipes() {
 
       if (ingredientsError) throw ingredientsError;
 
-      const newName = `${recipeToDuplicate.name} (cópia)`;
+      const newName = duplicateName.trim() || `${recipeToDuplicate.name} (cópia)`;
 
-      // Create new recipe with "(cópia)" suffix
+      // Create new recipe with custom name
       const { data: newRecipe, error: recipeError } = await supabase
         .from("recipes")
         .insert({
@@ -1296,23 +1298,29 @@ export default function Recipes() {
               <Copy className="w-5 h-5 text-primary" />
               Duplicar ficha técnica
             </AlertDialogTitle>
-            <AlertDialogDescription className="space-y-3">
-              <p>Será criada uma cópia da ficha técnica com o seguinte nome:</p>
-              <div className="bg-muted rounded-lg p-3 text-center">
-                <span className="font-semibold text-foreground text-base">
-                  {recipeToDuplicate?.name} (cópia)
-                </span>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Defina o nome para a nova ficha técnica:
+                </p>
+                <Input
+                  value={duplicateName}
+                  onChange={(e) => setDuplicateName(e.target.value)}
+                  placeholder="Nome da nova ficha"
+                  className="text-foreground"
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">
+                  Todos os insumos e configurações serão copiados.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Todos os insumos e configurações serão copiados. Você poderá editar o nome depois.
-              </p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDuplicating}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmDuplicate}
-              disabled={isDuplicating}
+              disabled={isDuplicating || !duplicateName.trim()}
             >
               {isDuplicating ? "Duplicando..." : "Duplicar"}
             </AlertDialogAction>
