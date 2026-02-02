@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, Mail, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,17 @@ import { z } from "zod";
 const emailSchema = z.string().email("Email inválido").max(255, "Email muito longo");
 
 export default function ForgotPassword() {
+  // Force light mode on public pages - dark mode only for authenticated users
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    
+    return () => {
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    };
+  }, []);
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);

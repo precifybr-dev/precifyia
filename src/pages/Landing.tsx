@@ -11,13 +11,17 @@ import { PricingSection } from "@/components/landing/PricingSection";
 import { Footer } from "@/components/landing/Footer";
 
 export default function Landing() {
-  // Ensure landing page always starts in light mode
+  // Force light mode on landing page - dark mode only for authenticated users
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (!savedTheme) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
+    document.documentElement.classList.remove("dark");
+    
+    // Restore theme when leaving landing page
+    return () => {
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    };
   }, []);
 
   return (

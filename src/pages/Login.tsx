@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Mail, Lock, ArrowLeft, Sun, Moon } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,25 +12,17 @@ import { Logo } from "@/components/ui/Logo";
 import { determineLoginRedirect } from "@/hooks/useUserRole";
 
 export default function Login() {
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const saved = localStorage.getItem("theme");
-    if (saved === "dark") return "dark";
-    // Default to light mode
-    return "light";
-  });
-
+  // Force light mode on public pages - dark mode only for authenticated users
   useEffect(() => {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-    localStorage.setItem("theme", theme);
-  }, [theme]);
-
-  const toggleTheme = () => {
-    setTheme(prev => prev === "dark" ? "light" : "dark");
-  };
+    document.documentElement.classList.remove("dark");
+    
+    return () => {
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    };
+  }, []);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -152,20 +144,6 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      {/* Theme Toggle - Fixed Position */}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleTheme}
-        className="fixed top-4 right-4 z-50"
-        aria-label="Alternar tema"
-      >
-        {theme === "dark" ? (
-          <Sun className="h-5 w-5" />
-        ) : (
-          <Moon className="h-5 w-5" />
-        )}
-      </Button>
 
       {/* Left Side - Form */}
       <div className="flex-1 flex items-center justify-center p-8">
