@@ -58,8 +58,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatIngredientCode } from "@/lib/ingredient-utils";
 import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
-import { IfoodImportModal } from "@/components/ifood-import/IfoodImportModal";
-import { useIfoodImport } from "@/hooks/useIfoodImport";
+import { SpreadsheetImportModal } from "@/components/spreadsheet-import/SpreadsheetImportModal";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
@@ -126,11 +125,6 @@ export default function Ingredients() {
   const formRef = useRef<HTMLDivElement>(null);
   const { activeStore } = useStore();
   
-  // Hook for iFood import functionality
-  const { userPlan, canImport, remainingUsage, checkUsage } = useIfoodImport({
-    userId: user?.id || null,
-    importType: "ingredients",
-  });
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
@@ -570,8 +564,8 @@ export default function Ingredients() {
                 className="gap-2 text-muted-foreground"
               >
                 <Sparkles className="w-4 h-4" />
-                <span className="hidden sm:inline">Importar do iFood (IA)</span>
-                <span className="sm:hidden">iFood</span>
+                <span className="hidden sm:inline">Importar da Planilha (IA)</span>
+                <span className="sm:hidden">Planilha</span>
               </Button>
               <Button onClick={() => {
                 setFormData({ ...formData, code: getNextCode().toString() });
@@ -582,13 +576,6 @@ export default function Ingredients() {
               </Button>
             </div>
           </div>
-          
-          {/* AI Import microcopy */}
-          {canImport && userPlan !== "pro" && (
-            <p className="text-xs text-muted-foreground mt-2 text-right">
-              {remainingUsage} importação{remainingUsage !== 1 ? "ções" : ""} restante{remainingUsage !== 1 ? "s" : ""} este mês
-            </p>
-          )}
         </header>
 
         <div className="p-6">
@@ -855,17 +842,15 @@ export default function Ingredients() {
         onDeleted={handleDeleteComplete}
       />
 
-      {/* iFood Import Modal */}
-      <IfoodImportModal
+      {/* Spreadsheet Import Modal */}
+      <SpreadsheetImportModal
         open={importModalOpen}
         onOpenChange={setImportModalOpen}
-        importType="ingredients"
         userId={user?.id || ""}
-        userPlan={userPlan}
-        onImportComplete={handleIfoodImport}
-        onRefreshData={async () => {
-          await fetchIngredients(user.id);
-          await checkUsage();
+        storeId={activeStore?.id || null}
+        existingIngredients={ingredients}
+        onImportComplete={async () => {
+          await fetchIngredients(user.id, activeStore?.id);
         }}
       />
     </div>
