@@ -21,7 +21,8 @@ import {
   ChefHat,
   Sparkles,
   Sun,
-  Moon
+  Moon,
+  Copy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -401,6 +402,67 @@ export default function Recipes() {
   const handleDeleteClick = (recipe: Recipe) => {
     setRecipeToDelete(recipe);
     setDeleteDialogOpen(true);
+  };
+
+  const handleDuplicateRecipe = async (recipe: Recipe) => {
+    if (!user) return;
+
+    try {
+      // Fetch the recipe's ingredients
+      const { data: ingredientsData, error: ingredientsError } = await supabase
+        .from("recipe_ingredients")
+        .select("ingredient_id, quantity, unit, cost")
+        .eq("recipe_id", recipe.id);
+
+      if (ingredientsError) throw ingredientsError;
+
+      // Create new recipe with "(cópia)" suffix
+      const { data: newRecipe, error: recipeError } = await supabase
+        .from("recipes")
+        .insert({
+          user_id: user.id,
+          name: `${recipe.name} (cópia)`,
+          servings: recipe.servings,
+          total_cost: recipe.total_cost,
+          cost_per_serving: recipe.cost_per_serving,
+          suggested_price: recipe.suggested_price,
+          cmv_target: recipe.cmv_target,
+          selling_price: recipe.selling_price,
+          ifood_selling_price: recipe.ifood_selling_price,
+          store_id: recipe.store_id,
+        })
+        .select()
+        .single();
+
+      if (recipeError) throw recipeError;
+
+      // Duplicate ingredients for the new recipe
+      if (ingredientsData && ingredientsData.length > 0) {
+        const newIngredients = ingredientsData.map((ing) => ({
+          recipe_id: newRecipe.id,
+          ingredient_id: ing.ingredient_id,
+          quantity: ing.quantity,
+          unit: ing.unit,
+          cost: ing.cost,
+        }));
+
+        const { error: insertError } = await supabase
+          .from("recipe_ingredients")
+          .insert(newIngredients);
+
+        if (insertError) throw insertError;
+      }
+
+      toast({ title: "Sucesso", description: `"${recipe.name}" foi duplicada!` });
+      await fetchRecipes(user.id);
+    } catch (error: any) {
+      console.error("Error duplicating recipe:", error);
+      toast({
+        title: "Erro ao duplicar",
+        description: error.message || "Não foi possível duplicar a ficha técnica",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleConfirmDelete = async () => {
@@ -799,7 +861,12 @@ export default function Recipes() {
                 Voltar
               </Button>
               <div>
-                <h1 className="font-display text-xl font-bold text-foreground">Fichas Técnicas</h1>
+                <div className="flex items-center gap-3">
+                  <h1 className="font-display text-xl font-bold text-foreground">Fichas Técnicas</h1>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                    {recipes.length} cadastrada{recipes.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
                 <p className="text-sm text-muted-foreground">Crie e gerencie receitas com cálculo de CMV</p>
               </div>
             </div>
@@ -992,6 +1059,7 @@ export default function Recipes() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
+                      <TableHead className="text-primary-foreground font-medium w-14 text-center">#</TableHead>
                       <TableHead className="text-primary-foreground font-medium min-w-[180px]">Produto</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-20 text-center">Rend.</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-24 text-right">Custo Un.</TableHead>
@@ -1002,7 +1070,7 @@ export default function Recipes() {
                       <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço iFood</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV iFood</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro iFood</TableHead>
-                      <TableHead className="w-20"></TableHead>
+                      <TableHead className="w-28"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1045,6 +1113,7 @@ export default function Recipes() {
                           key={recipe.id}
                           className={index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50"}
                         >
+                          <TableCell className="text-center font-mono text-muted-foreground text-sm">{index + 1}</TableCell>
                           <TableCell className="font-medium text-foreground">{recipe.name}</TableCell>
                           <TableCell className="text-center font-mono text-muted-foreground">{recipe.servings}</TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">
@@ -1142,6 +1211,15 @@ export default function Recipes() {
                                 title="Editar ficha"
                               >
                                 <Pencil className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                onClick={() => handleDuplicateRecipe(recipe)}
+                                title="Duplicar ficha"
+                              >
+                                <Copy className="w-4 h-4" />
                               </Button>
                               <Button 
                                 variant="ghost" 
