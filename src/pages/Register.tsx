@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, User, ArrowLeft, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/ui/Logo";
+
 export default function Register() {
+  // Force light mode on public pages - dark mode only for authenticated users
+  useEffect(() => {
+    document.documentElement.classList.remove("dark");
+    
+    return () => {
+      const savedTheme = localStorage.getItem("theme");
+      if (savedTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    };
+  }, []);
   const [name, setName] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [email, setEmail] = useState("");
