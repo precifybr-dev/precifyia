@@ -57,6 +57,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { formatIngredientCode } from "@/lib/ingredient-utils";
+import { normalizeText } from "@/lib/utils";
 import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
 import { SpreadsheetImportModal } from "@/components/spreadsheet-import/SpreadsheetImportModal";
 import { Logo } from "@/components/ui/Logo";
@@ -131,14 +132,15 @@ export default function Ingredients() {
     setSearchTerm(value);
   }, []);
 
-  // Filtered and sorted ingredients
+  // Filtered and sorted ingredients (busca sem acentos)
   const filteredIngredients = useMemo(() => {
     let result = [...ingredients];
     
-    // Search by name
+    // Search by name (normalizada - ignora acentos)
     if (searchTerm) {
+      const searchNormalized = normalizeText(searchTerm);
       result = result.filter(ing => 
-        ing.name.toLowerCase().includes(searchTerm.toLowerCase())
+        normalizeText(ing.name).includes(searchNormalized)
       );
     }
     

@@ -52,6 +52,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { type IngredientData } from "@/components/recipes/IngredientSelector";
 import { calculateIngredientCost } from "@/lib/ingredient-utils";
+import { normalizeText } from "@/lib/utils";
 import { NavLink } from "@/components/NavLink";
 import IngredientsSpreadsheetTable from "@/components/recipes/IngredientsSpreadsheetTable";
 import { Logo } from "@/components/ui/Logo";
@@ -134,14 +135,15 @@ export default function SubRecipes() {
     setSearchTerm(value);
   }, []);
 
-  // Filtered and sorted sub-recipes
+  // Filtered and sorted sub-recipes (busca sem acentos)
   const filteredSubRecipes = useMemo(() => {
     let result = [...subRecipes];
     
-    // Search by name
+    // Search by name (normalizada - ignora acentos)
     if (searchTerm) {
+      const searchNormalized = normalizeText(searchTerm);
       result = result.filter(sr => 
-        sr.name.toLowerCase().includes(searchTerm.toLowerCase())
+        normalizeText(sr.name).includes(searchNormalized)
       );
     }
     

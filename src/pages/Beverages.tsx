@@ -46,6 +46,7 @@ import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
 import { SearchAndFilter, BEVERAGE_CATEGORIES } from "@/components/ui/SearchAndFilter";
+import { normalizeText } from "@/lib/utils";
 
 type Beverage = {
   id: string;
@@ -120,14 +121,15 @@ export default function Beverages() {
     setSearchTerm(value);
   }, []);
 
-  // Filtered and sorted beverages
+  // Filtered and sorted beverages (busca sem acentos)
   const filteredBeverages = useMemo(() => {
     let result = [...beverages];
     
-    // Search by name
+    // Search by name (normalizada - ignora acentos)
     if (searchTerm) {
+      const searchNormalized = normalizeText(searchTerm);
       result = result.filter(bev => 
-        bev.name.toLowerCase().includes(searchTerm.toLowerCase())
+        normalizeText(bev.name).includes(searchNormalized)
       );
     }
     

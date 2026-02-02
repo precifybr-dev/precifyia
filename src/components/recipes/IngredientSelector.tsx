@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Search, Package, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { parseIngredientCode } from "@/lib/ingredient-utils";
-import { cn } from "@/lib/utils";
+import { cn, normalizeText } from "@/lib/utils";
 import { ColorDot } from "@/components/ui/color-picker";
 
 export interface IngredientData {
@@ -52,11 +52,11 @@ export function IngredientSelector({
     ? ingredients.find(ing => ing.id === selectedId) 
     : null;
 
-  // Filtra ingredientes por código ou nome
+  // Filtra ingredientes por código ou nome (sem sensibilidade a acentos)
   const filteredIngredients = ingredients.filter((ing) => {
     if (!search.trim()) return true;
     
-    const searchLower = search.toLowerCase().trim();
+    const searchNormalized = normalizeText(search.trim());
     const codeSearch = parseIngredientCode(search);
     
     // Busca por código
@@ -68,8 +68,8 @@ export function IngredientSelector({
       }
     }
     
-    // Busca por nome
-    return ing.name.toLowerCase().includes(searchLower);
+    // Busca por nome (normalizada - ignora acentos)
+    return normalizeText(ing.name).includes(searchNormalized);
   });
 
   // Calcula a posição do dropdown
