@@ -7,11 +7,23 @@ import {
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { 
   Select,
   SelectContent,
@@ -123,6 +135,8 @@ export function SpreadsheetImportModal({
   });
   const [parsedIngredients, setParsedIngredients] = useState<ParsedIngredient[]>([]);
   const [importResult, setImportResult] = useState({ success: 0, errors: 0 });
+  const [deleteExisting, setDeleteExisting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -146,6 +160,8 @@ export function SpreadsheetImportModal({
     });
     setParsedIngredients([]);
     setImportResult({ success: 0, errors: 0 });
+    setDeleteExisting(false);
+    setShowDeleteConfirm(false);
   };
 
   const parseSpreadsheetData = (data: string) => {
@@ -399,12 +415,27 @@ export function SpreadsheetImportModal({
     });
   };
 
-  const handleImport = async () => {
+  const handleImportClick = () => {
+    if (deleteExisting && existingIngredients.length > 0) {
+      setShowDeleteConfirm(true);
+    } else {
+      handleImport();
+    }
+  };
+
+  const handleConfirmDeleteAndImport = async () => {
+    setShowDeleteConfirm(false);
+    await handleImport(true);
+  };
+
+  const handleImport = async (shouldDeleteExisting = false) => {
     setStep("importing");
     setProgress(0);
 
     const toImport = parsedIngredients.filter(
-      ing => (ing.status === "valid") && ing.duplicateAction !== "skip" && (ing.newName || ing.name)
+      ing => (ing.status === "valid" || (shouldDeleteExisting && ing.status === "duplicate")) 
+        && ing.duplicateAction !== "skip" 
+        && (ing.newName || ing.name)
     );
 
     if (toImport.length === 0) {
@@ -418,17 +449,56 @@ export function SpreadsheetImportModal({
     }
 
     try {
-      // Get max code globally
-      const { data: maxCodeData } = await supabase
-        .from("ingredients")
-        .select("code")
-        .eq("user_id", userId)
-        .order("code", { ascending: false })
-        .limit(1);
+      // If delete existing is checked, delete all current ingredients first
+      if (shouldDeleteExisting) {
+        setProgress(5);
+        
+        // Delete all recipe_ingredients linked to the user's ingredients
+        const { data: userIngredients } = await supabase
+          .from("ingredients")
+          .select("id")
+          .eq("user_id", userId);
+        
+        if (userIngredients && userIngredients.length > 0) {
+          const ingredientIds = userIngredients.map(i => i.id);
+          
+          // Delete from recipe_ingredients
+          await supabase
+            .from("recipe_ingredients")
+            .delete()
+            .in("ingredient_id", ingredientIds);
+          
+          // Delete from sub_recipe_ingredients
+          await supabase
+            .from("sub_recipe_ingredients")
+            .delete()
+            .in("ingredient_id", ingredientIds);
+          
+          // Delete all ingredients
+          await supabase
+            .from("ingredients")
+            .delete()
+            .eq("user_id", userId);
+        }
+        
+        setProgress(15);
+      }
 
-      let startCode = maxCodeData && maxCodeData.length > 0 ? maxCodeData[0].code + 1 : 1;
+      // Start code from 1 if deleting all, otherwise get max
+      let startCode = 1;
+      if (!shouldDeleteExisting) {
+        const { data: maxCodeData } = await supabase
+          .from("ingredients")
+          .select("code")
+          .eq("user_id", userId)
+          .order("code", { ascending: false })
+          .limit(1);
+        
+        startCode = maxCodeData && maxCodeData.length > 0 ? maxCodeData[0].code + 1 : 1;
+      }
 
-      const progressIncrement = 90 / toImport.length;
+      const baseProgress = shouldDeleteExisting ? 15 : 0;
+      const progressIncrement = (90 - baseProgress) / toImport.length;
       let successCount = 0;
       let errorCount = 0;
 
@@ -454,7 +524,7 @@ export function SpreadsheetImportModal({
           successCount++;
         }
 
-        setProgress(Math.min((i + 1) * progressIncrement, 95));
+        setProgress(Math.min(baseProgress + (i + 1) * progressIncrement, 95));
       }
 
       // Record usage
@@ -684,6 +754,28 @@ export function SpreadsheetImportModal({
               )}
             </div>
 
+            {/* Delete existing checkbox */}
+            {existingIngredients.length > 0 && (
+              <div className="flex items-start space-x-2 py-2 bg-destructive/5 border border-destructive/20 rounded-lg p-3">
+                <Checkbox
+                  id="delete-existing"
+                  checked={deleteExisting}
+                  onCheckedChange={(checked) => setDeleteExisting(checked === true)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label
+                    htmlFor="delete-existing"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    Apagar todos os {existingIngredients.length} insumos já cadastrados
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Todos os seus insumos atuais serão excluídos e substituídos pelos da planilha
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="flex-1 min-h-0 overflow-hidden">
               <ScrollArea className="h-[350px]">
                 <div className="space-y-2 pr-4">
@@ -819,13 +911,55 @@ export function SpreadsheetImportModal({
               <Button variant="outline" onClick={() => setStep("mapping")}>
                 Voltar
               </Button>
-              <Button onClick={handleImport} disabled={validCount === 0} className="gap-2">
+              <Button 
+                onClick={handleImportClick} 
+                disabled={validCount === 0 && !deleteExisting} 
+                className="gap-2"
+              >
                 <Sparkles className="w-4 h-4" />
-                Importar {validCount} insumos
+                Importar {deleteExisting ? parsedIngredients.filter(i => i.status !== "removed" && i.status !== "error").length : validCount} insumos
               </Button>
             </DialogFooter>
           </>
         )}
+
+        {/* Alert Dialog for delete confirmation */}
+        <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                Atenção: Exclusão de Dados
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-3">
+                <p>
+                  Você está prestes a <strong>excluir permanentemente todos os {existingIngredients.length} insumos</strong> já cadastrados no seu sistema.
+                </p>
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                  <p className="text-sm font-medium text-destructive">
+                    Esta ação não pode ser desfeita!
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Todos os insumos existentes e seus vínculos com fichas técnicas serão removidos.
+                  </p>
+                </div>
+                <p>
+                  Após a exclusão, os novos insumos da planilha serão importados.
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={handleConfirmDeleteAndImport}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Excluir e Importar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* STEP: Importing */}
         {step === "importing" && (
