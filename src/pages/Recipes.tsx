@@ -163,6 +163,27 @@ export default function Recipes() {
     setSearchTerm(value);
   }, []);
 
+  // Plan limits for recipes
+  const getRecipeLimit = useCallback((plan: string | null): number | null => {
+    switch (plan?.toLowerCase()) {
+      case "free":
+        return 3;
+      case "basic":
+      case "básico":
+        return 8;
+      case "pro":
+        return null; // Unlimited
+      default:
+        return 3; // Default to free plan limits
+    }
+  }, []);
+
+  const recipeLimit = useMemo(() => getRecipeLimit(profile?.user_plan), [profile?.user_plan, getRecipeLimit]);
+  const canCreateRecipe = useMemo(() => {
+    if (recipeLimit === null) return true; // Unlimited
+    return recipes.length < recipeLimit;
+  }, [recipes.length, recipeLimit]);
+
   // Filtered and sorted recipes (busca sem acentos)
   const filteredRecipes = useMemo(() => {
     let result = [...recipes];
@@ -322,6 +343,15 @@ export default function Recipes() {
   };
 
   const handleNewRecipe = () => {
+    if (!canCreateRecipe) {
+      toast({
+        title: "Limite atingido",
+        description: `Seu plano ${profile?.user_plan || 'Free'} permite apenas ${recipeLimit} ficha${recipeLimit !== 1 ? 's' : ''} técnica${recipeLimit !== 1 ? 's' : ''}. Faça upgrade para cadastrar mais.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setRecipeName("");
     setServings("1");
     setRecipeIngredients([createEmptyIngredient()]);
@@ -882,8 +912,15 @@ export default function Recipes() {
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="font-display text-xl font-bold text-foreground">Fichas Técnicas</h1>
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                    {recipes.length} cadastrada{recipes.length !== 1 ? "s" : ""}
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                    recipeLimit !== null && recipes.length >= recipeLimit 
+                      ? "bg-destructive/10 text-destructive" 
+                      : "bg-muted text-muted-foreground"
+                  }`}>
+                    {recipeLimit !== null 
+                      ? `${recipes.length}/${recipeLimit}`
+                      : `${recipes.length} cadastrada${recipes.length !== 1 ? "s" : ""}`
+                    }
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">Crie e gerencie receitas com cálculo de CMV</p>
@@ -912,7 +949,12 @@ export default function Recipes() {
                 <span className="hidden sm:inline">Importar do iFood (IA)</span>
                 <span className="sm:hidden">iFood</span>
               </Button>
-              <Button className="gap-2" onClick={handleNewRecipe}>
+              <Button 
+                className="gap-2" 
+                onClick={handleNewRecipe}
+                disabled={!canCreateRecipe}
+                title={!canCreateRecipe ? `Limite de ${recipeLimit} fichas atingido` : undefined}
+              >
                 <Plus className="w-4 h-4" />
                 Nova Ficha
               </Button>
