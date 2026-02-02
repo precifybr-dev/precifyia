@@ -699,14 +699,14 @@ export default function Beverages() {
                 <div className="flex items-center gap-2">
                   <Label className="text-sm text-muted-foreground">Categoria:</Label>
                   <Select 
-                    value={formData.category} 
-                    onValueChange={(val) => setFormData({ ...formData, category: val })}
+                    value={formData.category || "none"} 
+                    onValueChange={(val) => setFormData({ ...formData, category: val === "none" ? "" : val })}
                   >
                     <SelectTrigger className="w-[140px] h-8">
                       <SelectValue placeholder="Opcional" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Nenhuma</SelectItem>
+                      <SelectItem value="none">Nenhuma</SelectItem>
                       {BEVERAGE_CATEGORIES.map((cat) => (
                         <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
                       ))}
