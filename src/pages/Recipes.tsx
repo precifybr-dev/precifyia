@@ -461,7 +461,7 @@ export default function Recipes() {
 
       const newName = duplicateName.trim() || `${recipeToDuplicate.name} (cópia)`;
 
-      // Create new recipe with custom name
+      // Create new recipe with custom name - selling prices come as null (suggested price is kept)
       const { data: newRecipe, error: recipeError } = await supabase
         .from("recipes")
         .insert({
@@ -472,8 +472,8 @@ export default function Recipes() {
           cost_per_serving: recipeToDuplicate.cost_per_serving,
           suggested_price: recipeToDuplicate.suggested_price,
           cmv_target: recipeToDuplicate.cmv_target,
-          selling_price: recipeToDuplicate.selling_price,
-          ifood_selling_price: recipeToDuplicate.ifood_selling_price,
+          selling_price: null, // Reset selling price on duplicate
+          ifood_selling_price: null, // Reset iFood price on duplicate
           store_id: recipeToDuplicate.store_id,
         })
         .select()
