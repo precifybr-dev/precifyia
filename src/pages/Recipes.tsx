@@ -118,6 +118,11 @@ export default function Recipes() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [recipeToDelete, setRecipeToDelete] = useState<Recipe | null>(null);
   
+  // Duplicate dialog state
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [recipeToDuplicate, setRecipeToDuplicate] = useState<Recipe | null>(null);
+  const [isDuplicating, setIsDuplicating] = useState(false);
+  
   // iFood import modal state
   const [importModalOpen, setImportModalOpen] = useState(false);
   
@@ -404,32 +409,40 @@ export default function Recipes() {
     setDeleteDialogOpen(true);
   };
 
-  const handleDuplicateRecipe = async (recipe: Recipe) => {
-    if (!user) return;
+  const handleDuplicateClick = (recipe: Recipe) => {
+    setRecipeToDuplicate(recipe);
+    setDuplicateDialogOpen(true);
+  };
 
+  const handleConfirmDuplicate = async () => {
+    if (!recipeToDuplicate || !user) return;
+
+    setIsDuplicating(true);
     try {
       // Fetch the recipe's ingredients
       const { data: ingredientsData, error: ingredientsError } = await supabase
         .from("recipe_ingredients")
         .select("ingredient_id, quantity, unit, cost")
-        .eq("recipe_id", recipe.id);
+        .eq("recipe_id", recipeToDuplicate.id);
 
       if (ingredientsError) throw ingredientsError;
+
+      const newName = `${recipeToDuplicate.name} (cópia)`;
 
       // Create new recipe with "(cópia)" suffix
       const { data: newRecipe, error: recipeError } = await supabase
         .from("recipes")
         .insert({
           user_id: user.id,
-          name: `${recipe.name} (cópia)`,
-          servings: recipe.servings,
-          total_cost: recipe.total_cost,
-          cost_per_serving: recipe.cost_per_serving,
-          suggested_price: recipe.suggested_price,
-          cmv_target: recipe.cmv_target,
-          selling_price: recipe.selling_price,
-          ifood_selling_price: recipe.ifood_selling_price,
-          store_id: recipe.store_id,
+          name: newName,
+          servings: recipeToDuplicate.servings,
+          total_cost: recipeToDuplicate.total_cost,
+          cost_per_serving: recipeToDuplicate.cost_per_serving,
+          suggested_price: recipeToDuplicate.suggested_price,
+          cmv_target: recipeToDuplicate.cmv_target,
+          selling_price: recipeToDuplicate.selling_price,
+          ifood_selling_price: recipeToDuplicate.ifood_selling_price,
+          store_id: recipeToDuplicate.store_id,
         })
         .select()
         .single();
@@ -453,7 +466,7 @@ export default function Recipes() {
         if (insertError) throw insertError;
       }
 
-      toast({ title: "Sucesso", description: `"${recipe.name}" foi duplicada!` });
+      toast({ title: "Sucesso", description: `"${newName}" foi criada!` });
       await fetchRecipes(user.id);
     } catch (error: any) {
       console.error("Error duplicating recipe:", error);
@@ -462,6 +475,10 @@ export default function Recipes() {
         description: error.message || "Não foi possível duplicar a ficha técnica",
         variant: "destructive",
       });
+    } finally {
+      setIsDuplicating(false);
+      setDuplicateDialogOpen(false);
+      setRecipeToDuplicate(null);
     }
   };
 
@@ -1216,7 +1233,7 @@ export default function Recipes() {
                                 variant="ghost" 
                                 size="icon"
                                 className="h-8 w-8 text-muted-foreground hover:text-primary"
-                                onClick={() => handleDuplicateRecipe(recipe)}
+                                onClick={() => handleDuplicateClick(recipe)}
                                 title="Duplicar ficha"
                               >
                                 <Copy className="w-4 h-4" />
@@ -1266,6 +1283,38 @@ export default function Recipes() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog de confirmação de duplicação */}
+      <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <Copy className="w-5 h-5 text-primary" />
+              Duplicar ficha técnica
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>Será criada uma cópia da ficha técnica com o seguinte nome:</p>
+              <div className="bg-muted rounded-lg p-3 text-center">
+                <span className="font-semibold text-foreground text-base">
+                  {recipeToDuplicate?.name} (cópia)
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Todos os insumos e configurações serão copiados. Você poderá editar o nome depois.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDuplicating}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDuplicate}
+              disabled={isDuplicating}
+            >
+              {isDuplicating ? "Duplicando..." : "Duplicar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
