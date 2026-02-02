@@ -1,81 +1,70 @@
 
-# Plano: Corrigir Exibicao do Preco de Venda Loja na Tabela
 
-## Problema
+## Plano: Busca Sem Sensibilidade a Acentos
 
-Apesar do campo `selling_price` agora ser salvo corretamente no banco de dados, a tabela de listagem das Fichas Tecnicas **ainda usa apenas o `suggested_price`** para exibir o preco e calcular o CMV/Lucro da Loja.
-
-O preço que o usuario define manualmente não aparece na coluna "Preço Loja" porque o código da tabela ignora o campo `selling_price`.
+### Objetivo
+Tornar todas as buscas do sistema insensíveis a acentos, permitindo que o usuário encontre "Açúcar" digitando "acucar", "Macarrão" digitando "macarrao", etc.
 
 ---
 
-## Localizacao do Problema
+### O que será feito
 
-Em `src/pages/Recipes.tsx`, linhas 1007-1050:
+**1. Criar função utilitária de normalização**
+
+Adicionar uma função `normalizeText()` no arquivo `src/lib/utils.ts` que remove todos os acentos e diacríticos de uma string:
+
+```text
+Exemplo:
+"Açúcar" → "acucar"
+"Macarrão" → "macarrao"  
+"Café" → "cafe"
+```
+
+**2. Atualizar todas as buscas do sistema**
+
+Aplicar a normalização em todos os componentes que fazem busca por texto:
+
+| Arquivo | Local |
+|---------|-------|
+| `IngredientSelector.tsx` | Seletor de insumos nas fichas técnicas |
+| `Ingredients.tsx` | Lista de insumos |
+| `Beverages.tsx` | Lista de bebidas |
+| `Recipes.tsx` | Lista de fichas técnicas |
+| `SubRecipes.tsx` | Lista de sub-receitas |
+
+---
+
+### Detalhes Técnicos
+
+A função usará `String.normalize("NFD")` com regex para remover caracteres diacríticos Unicode:
 
 ```typescript
-// Atualmente (ERRADO):
-const suggestedPrice = recipe.suggested_price || 0;
+export function normalizeText(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+}
+```
 
-// Todos os calculos usam suggestedPrice:
-const cmvLoja = suggestedPrice > 0 ? (costPerServing / suggestedPrice) * 100 : 0;
-const netProfitLoja = suggestedPrice - costPerServing;
+**Antes** (busca exata):
+```typescript
+ing.name.toLowerCase().includes(searchTerm.toLowerCase())
+```
+
+**Depois** (busca sem acentos):
+```typescript
+normalizeText(ing.name).includes(normalizeText(searchTerm))
 ```
 
 ---
 
-## Solucao
+### Arquivos a serem modificados
 
-Modificar a logica da tabela para **priorizar o `selling_price` salvo** quando ele existir, usando o `suggested_price` apenas como fallback:
+1. `src/lib/utils.ts` - Adicionar função `normalizeText`
+2. `src/components/recipes/IngredientSelector.tsx` - Importar e usar na busca
+3. `src/pages/Ingredients.tsx` - Importar e usar na busca
+4. `src/pages/Beverages.tsx` - Importar e usar na busca
+5. `src/pages/Recipes.tsx` - Importar e usar na busca
+6. `src/pages/SubRecipes.tsx` - Importar e usar na busca
 
-```typescript
-// CORRIGIDO - usar selling_price se existir, senao suggested_price
-const lojaPrice = recipe.selling_price && recipe.selling_price > 0 
-  ? recipe.selling_price 
-  : recipe.suggested_price || 0;
-
-const isCustomLojaPrice = recipe.selling_price && recipe.selling_price > 0;
-
-// CMV e Lucro agora usam lojaPrice
-const cmvLoja = lojaPrice > 0 ? (costPerServing / lojaPrice) * 100 : 0;
-const netProfitLoja = lojaPrice - costPerServing;
-const netProfitPercentLoja = lojaPrice > 0 ? (netProfitLoja / lojaPrice) * 100 : 0;
-```
-
----
-
-## Alteracoes Visuais
-
-Na coluna "Preco Loja", adicionar indicador visual para diferenciar preco manual vs sugerido:
-
-```typescript
-<TableCell className="text-right font-mono font-semibold text-foreground">
-  {lojaPrice > 0 ? (
-    <div className="flex flex-col items-end">
-      <span>{formatCurrency(lojaPrice)}</span>
-      {!isCustomLojaPrice && (
-        <span className="text-[10px] text-muted-foreground/70">sugerido</span>
-      )}
-    </div>
-  ) : '—'}
-</TableCell>
-```
-
-Isso fica consistente com o comportamento do Preco iFood que ja mostra "sugerido" quando nao ha preco manual.
-
----
-
-## Arquivo a Modificar
-
-| Arquivo | Linhas | Alteracao |
-|---------|--------|-----------|
-| `src/pages/Recipes.tsx` | 1007-1055 | Usar `selling_price` nos calculos e exibicao da Loja |
-
----
-
-## Resultado Esperado
-
-1. Usuario salva ficha tecnica com preco de venda manual de R$ 15,00
-2. Na tabela de listagem, coluna "Preco Loja" mostra R$ 15,00
-3. CMV Loja e Lucro Loja sao calculados com base em R$ 15,00
-4. Se o usuario nao definir preco manual, a tabela usa o sugerido e mostra "sugerido" abaixo do valor
