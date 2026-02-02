@@ -30,7 +30,8 @@ import {
   FileSpreadsheet,
   Clipboard,
   ArrowRight,
-  Edit2
+  Edit2,
+  Trash2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -41,10 +42,11 @@ interface ParsedIngredient {
   purchase_quantity: number;
   purchase_price: number;
   correction_factor: number;
-  status: "valid" | "duplicate" | "error";
+  status: "valid" | "duplicate" | "error" | "removed";
   errorMessage?: string;
   duplicateAction?: "rename" | "skip";
   newName?: string;
+  isEditing?: boolean;
 }
 
 interface ColumnMapping {
@@ -366,9 +368,32 @@ export function SpreadsheetImportModal({
       updated[index] = {
         ...updated[index],
         newName,
-        name: newName,
         status: "valid",
         errorMessage: undefined,
+        duplicateAction: "rename",
+      };
+      return updated;
+    });
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setParsedIngredients(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        status: "removed",
+      };
+      return updated;
+    });
+  };
+
+  const handleToggleEdit = (index: number) => {
+    setParsedIngredients(prev => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        isEditing: !updated[index].isEditing,
+        newName: updated[index].newName || updated[index].name,
       };
       return updated;
     });
@@ -379,7 +404,7 @@ export function SpreadsheetImportModal({
     setProgress(0);
 
     const toImport = parsedIngredients.filter(
-      ing => ing.status === "valid" && ing.duplicateAction !== "skip" && ing.name
+      ing => (ing.status === "valid") && ing.duplicateAction !== "skip" && (ing.newName || ing.name)
     );
 
     if (toImport.length === 0) {
@@ -461,8 +486,10 @@ export function SpreadsheetImportModal({
   };
 
   const validCount = parsedIngredients.filter(i => i.status === "valid" && i.duplicateAction !== "skip").length;
-  const duplicateCount = parsedIngredients.filter(i => i.status === "duplicate").length;
+  const duplicateCount = parsedIngredients.filter(i => i.status === "duplicate" && i.duplicateAction !== "skip").length;
   const errorCount = parsedIngredients.filter(i => i.status === "error").length;
+  const removedCount = parsedIngredients.filter(i => i.status === "removed" || i.duplicateAction === "skip").length;
+  const activeIngredients = parsedIngredients.filter(i => i.status !== "removed");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -628,11 +655,11 @@ export function SpreadsheetImportModal({
             <DialogHeader>
               <DialogTitle>Confirmar Importação</DialogTitle>
               <DialogDescription>
-                Revise os itens antes de importar. Itens duplicados ou com erro estão destacados.
+                Revise os itens antes de importar. Use os botões para editar ou excluir.
               </DialogDescription>
             </DialogHeader>
             
-            <div className="flex gap-2 py-2">
+            <div className="flex flex-wrap gap-2 py-2">
               <Badge variant="outline" className="gap-1">
                 <CheckCircle2 className="w-3 h-3 text-success" />
                 {validCount} válidos
@@ -649,86 +676,144 @@ export function SpreadsheetImportModal({
                   {errorCount} com erro
                 </Badge>
               )}
+              {removedCount > 0 && (
+                <Badge variant="outline" className="gap-1 text-muted-foreground">
+                  <Trash2 className="w-3 h-3" />
+                  {removedCount} excluídos
+                </Badge>
+              )}
             </div>
 
-            <ScrollArea className="max-h-[350px] pr-4">
-              <div className="space-y-2">
-                {parsedIngredients.map((ing, index) => (
-                  <div 
-                    key={index} 
-                    className={`rounded-lg border p-3 space-y-2 ${
-                      ing.status === "duplicate" ? "border-warning/50 bg-warning/5" :
-                      ing.status === "error" ? "border-destructive/50 bg-destructive/5" :
-                      "border-border"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{ing.newName || ing.name || "—"}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {ing.purchase_quantity} {ing.unit} • R$ {ing.purchase_price.toFixed(2)}
-                          {ing.correction_factor !== 1 && ` • FC: ${ing.correction_factor}`}
-                        </p>
-                      </div>
-                      {ing.status === "valid" && ing.duplicateAction !== "skip" && (
-                        <CheckCircle2 className="w-5 h-5 text-success shrink-0" />
-                      )}
-                      {ing.status === "duplicate" && (
-                        <AlertTriangle className="w-5 h-5 text-warning shrink-0" />
-                      )}
-                      {ing.status === "error" && (
-                        <XCircle className="w-5 h-5 text-destructive shrink-0" />
-                      )}
-                    </div>
-
-                    {ing.status === "duplicate" && ing.duplicateAction !== "skip" && !ing.newName && (
-                      <div className="space-y-2 pt-2 border-t border-border">
-                        <p className="text-sm text-warning">{ing.errorMessage}</p>
-                        <div className="flex gap-2">
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => handleDuplicateAction(index, "skip")}
-                          >
-                            Ignorar
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            className="gap-1"
-                            onClick={() => {
-                              const newName = `${ing.name} (2)`;
-                              handleRename(index, newName);
-                            }}
-                          >
-                            <Edit2 className="w-3 h-3" />
-                            Renomear
-                          </Button>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <ScrollArea className="h-[350px]">
+                <div className="space-y-2 pr-4">
+                  {activeIngredients.map((ing, originalIndex) => {
+                    const index = parsedIngredients.indexOf(ing);
+                    const isSkipped = ing.duplicateAction === "skip";
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`rounded-lg border p-3 ${
+                          isSkipped ? "opacity-50 border-muted" :
+                          ing.status === "duplicate" ? "border-warning/50 bg-warning/5" :
+                          ing.status === "error" ? "border-destructive/50 bg-destructive/5" :
+                          "border-border"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          {/* Status icon */}
+                          <div className="shrink-0">
+                            {ing.status === "valid" && !isSkipped && (
+                              <CheckCircle2 className="w-5 h-5 text-success" />
+                            )}
+                            {ing.status === "duplicate" && !isSkipped && (
+                              <AlertTriangle className="w-5 h-5 text-warning" />
+                            )}
+                            {ing.status === "error" && (
+                              <XCircle className="w-5 h-5 text-destructive" />
+                            )}
+                            {isSkipped && (
+                              <XCircle className="w-5 h-5 text-muted-foreground" />
+                            )}
+                          </div>
+                          
+                          {/* Content - editable or display */}
+                          <div className="flex-1 min-w-0">
+                            {ing.isEditing ? (
+                              <Input
+                                value={ing.newName || ing.name}
+                                onChange={(e) => handleRename(index, e.target.value)}
+                                className="h-8 text-sm"
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    handleToggleEdit(index);
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <>
+                                <p className={`font-medium truncate ${isSkipped ? "line-through" : ""}`}>
+                                  {ing.newName || ing.name || "—"}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {ing.purchase_quantity} {ing.unit} • R$ {ing.purchase_price.toFixed(2)}
+                                  {ing.correction_factor !== 1 && ` • FC: ${ing.correction_factor}`}
+                                </p>
+                              </>
+                            )}
+                          </div>
+                          
+                          {/* Action buttons */}
+                          {!isSkipped && (
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={() => handleToggleEdit(index)}
+                                title={ing.isEditing ? "Salvar" : "Editar nome"}
+                              >
+                                {ing.isEditing ? (
+                                  <CheckCircle2 className="w-4 h-4 text-success" />
+                                ) : (
+                                  <Edit2 className="w-4 h-4" />
+                                )}
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                onClick={() => handleRemoveItem(index)}
+                                title="Excluir"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
+                        
+                        {/* Error message */}
+                        {ing.status === "error" && ing.errorMessage && (
+                          <p className="text-sm text-destructive mt-2">{ing.errorMessage}</p>
+                        )}
+                        
+                        {/* Duplicate warning with actions */}
+                        {ing.status === "duplicate" && !isSkipped && !ing.isEditing && (
+                          <div className="mt-2 pt-2 border-t border-border space-y-2">
+                            <p className="text-sm text-warning">{ing.errorMessage}</p>
+                            <div className="flex gap-2">
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => handleDuplicateAction(index, "skip")}
+                              >
+                                Ignorar
+                              </Button>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                className="gap-1"
+                                onClick={() => handleToggleEdit(index)}
+                              >
+                                <Edit2 className="w-3 h-3" />
+                                Renomear
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Skipped indicator */}
+                        {isSkipped && (
+                          <p className="text-sm text-muted-foreground italic mt-1">Este item será ignorado</p>
+                        )}
                       </div>
-                    )}
-
-                    {ing.newName && (
-                      <div className="flex items-center gap-2 pt-2 border-t border-border">
-                        <Input
-                          value={ing.newName}
-                          onChange={(e) => handleRename(index, e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                    )}
-
-                    {ing.duplicateAction === "skip" && (
-                      <p className="text-sm text-muted-foreground italic">Este item será ignorado</p>
-                    )}
-
-                    {ing.status === "error" && (
-                      <p className="text-sm text-destructive">{ing.errorMessage}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </div>
 
             <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="outline" onClick={() => setStep("mapping")}>
