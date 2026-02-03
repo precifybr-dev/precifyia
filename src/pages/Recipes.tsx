@@ -113,6 +113,8 @@ export default function Recipes() {
   const [productionCostsPerItem, setProductionCostsPerItem] = useState<number>(0);
   // iFood real percentage from profile
   const [ifoodRealPercentage, setIfoodRealPercentage] = useState<number | null>(null);
+  // Tax percentage from business area configuration
+  const [taxPercentage, setTaxPercentage] = useState<number | null>(null);
   
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -224,14 +226,18 @@ export default function Recipes() {
 
   const fetchBusinessCosts = async (userId: string, monthlyRevenue: number | null) => {
     // Fetch production costs (per item)
-    const [{ data: fixedCostsData }, { data: variableCostsData }] = await Promise.all([
+    const [{ data: fixedCostsData }, { data: variableCostsData }, { data: taxData }] = await Promise.all([
       supabase.from("fixed_costs").select("value_per_item").eq("user_id", userId),
       supabase.from("variable_costs").select("value_per_item").eq("user_id", userId),
+      supabase.from("business_taxes").select("tax_percentage").eq("user_id", userId).maybeSingle(),
     ]);
 
     const fixedCostsTotal = fixedCostsData?.reduce((sum, c) => sum + Number(c.value_per_item), 0) || 0;
     const variableCostsTotal = variableCostsData?.reduce((sum, c) => sum + Number(c.value_per_item), 0) || 0;
     setProductionCostsPerItem(fixedCostsTotal + variableCostsTotal);
+    
+    // Set tax percentage from business configuration
+    setTaxPercentage(taxData?.tax_percentage ? Number(taxData.tax_percentage) : null);
 
     // Fetch business expenses (% of revenue)
     if (!monthlyRevenue || monthlyRevenue <= 0) {
@@ -1080,6 +1086,7 @@ export default function Recipes() {
                   totalBusinessCostPercent={totalBusinessCostPercent}
                   ifoodSellingPrice={ifoodSellingPrice}
                   setIfoodSellingPrice={setIfoodSellingPrice}
+                  taxPercentage={taxPercentage}
                 />
               </div>
 

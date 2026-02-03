@@ -66,6 +66,9 @@ interface PricingSummaryPanelProps {
   
   // Business costs
   totalBusinessCostPercent: number | null;
+  
+  // Taxes (NEW - from business area configuration)
+  taxPercentage?: number | null;
 }
 
 const formatCurrency = (value: number) => {
@@ -102,6 +105,7 @@ export default function PricingSummaryPanel({
   setDiscountPercent,
   discountedPrice,
   totalBusinessCostPercent,
+  taxPercentage,
 }: PricingSummaryPanelProps) {
   const hasSellingPrice = sellingPrice.trim() !== "" && parseFloat(sellingPrice) > 0;
   const hasCmvTarget = cmvTarget.trim() !== "" && parseFloat(cmvTarget) > 0;
@@ -494,21 +498,25 @@ export default function PricingSummaryPanel({
 
       {/* ==================== LUCRO LÍQUIDO REAL ==================== */}
       {(() => {
-        // Cálculos para Lucro Líquido
+        // Cálculos para Lucro Líquido - LOJA
         const effectivePrice = parseFloat(sellingPrice) || suggestedPrice;
         const businessCostValue = effectivePrice * (totalBusinessCostPercent || 0) / 100;
-        const netProfit = effectivePrice - costWithLoss - businessCostValue;
+        const taxValue = effectivePrice * (taxPercentage || 0) / 100; // NEW: Tax calculation
+        const netProfit = effectivePrice - costWithLoss - businessCostValue - taxValue; // Include taxes
         const netProfitPercent = effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0;
         const costPercent = effectivePrice > 0 ? (costWithLoss / effectivePrice) * 100 : 0;
+        const taxPercent = taxPercentage || 0;
 
         // Cálculos para iFood
         const ifoodFeeValue = ifoodPrice * (effectiveIfoodRate / 100);
         const ifoodNetRevenue = ifoodPrice - ifoodFeeValue;
         const ifoodBusinessCost = ifoodNetRevenue * (totalBusinessCostPercent || 0) / 100;
-        const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodBusinessCost;
+        const ifoodTaxValue = ifoodNetRevenue * (taxPercentage || 0) / 100; // NEW: Tax for iFood
+        const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodBusinessCost - ifoodTaxValue; // Include taxes
         const ifoodNetProfitPercent = ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0;
         const ifoodCostPercent = ifoodPrice > 0 ? (costWithLoss / ifoodPrice) * 100 : 0;
         const ifoodBusinessCostPercent = ifoodPrice > 0 ? (ifoodBusinessCost / ifoodPrice) * 100 : 0;
+        const ifoodTaxPercent = ifoodPrice > 0 ? (ifoodTaxValue / ifoodPrice) * 100 : 0;
 
         return (
           <div className="grid md:grid-cols-2 gap-4 mt-4">
@@ -544,6 +552,17 @@ export default function PricingSummaryPanel({
                     </div>
                   )}
                   
+                  {/* NEW: Taxes Line */}
+                  {taxPercentage !== null && taxPercentage !== undefined && taxPercentage > 0 && (
+                    <div className="flex justify-between items-center py-1 text-amber-600">
+                      <span>(-) Impostos</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{formatCurrency(taxValue)}</span>
+                        <span className="text-xs text-muted-foreground">{taxPercent.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="border-t border-success/30 pt-2 mt-2">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold flex items-center gap-1">
@@ -559,6 +578,9 @@ export default function PricingSummaryPanel({
                         </span>
                       </div>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      Este é o valor real que sobra após todos os custos, despesas e impostos.
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -611,6 +633,17 @@ export default function PricingSummaryPanel({
                     </div>
                   )}
                   
+                  {/* NEW: Taxes Line for iFood */}
+                  {taxPercentage !== null && taxPercentage !== undefined && taxPercentage > 0 && (
+                    <div className="flex justify-between items-center py-1 text-amber-600">
+                      <span>(-) Impostos</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{formatCurrency(ifoodTaxValue)}</span>
+                        <span className="text-xs text-muted-foreground">{ifoodTaxPercent.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="border-t border-destructive/30 pt-2 mt-2">
                     <div className="flex justify-between items-center">
                       <span className="font-semibold flex items-center gap-1">
@@ -626,6 +659,9 @@ export default function PricingSummaryPanel({
                         </span>
                       </div>
                     </div>
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      Este é o valor real que sobra após todos os custos, despesas e impostos.
+                    </p>
                   </div>
                 </div>
               </CardContent>

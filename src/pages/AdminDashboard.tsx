@@ -12,6 +12,8 @@ import { UserManagement } from "@/components/admin/UserManagement";
 import { FinancialDashboard } from "@/components/admin/FinancialDashboard";
 import { SupportDashboard } from "@/components/admin/SupportDashboard";
 import { UsageMetricsDashboard } from "@/components/admin/UsageMetricsDashboard";
+import { ConversionMetricsBlock } from "@/components/admin/ConversionMetricsBlock";
+import { PlanLimitsTable } from "@/components/admin/PlanLimitsTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -429,6 +431,24 @@ export default function AdminDashboard() {
                       </div>
                     </CardContent>
                   </Card>
+                </div>
+
+                {/* Conversion Metrics & Plan Limits */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <ConversionMetricsBlock
+                    totalUsers={metrics?.total_users || 0}
+                    freeUsers={metrics?.free_plan_users || 0}
+                    basicUsers={metrics?.basic_plan_users || 0}
+                    proUsers={metrics?.pro_plan_users || 0}
+                    churnRate={churnRate}
+                    mrr={totalMRR}
+                    arpu={arpu}
+                  />
+                  <PlanLimitsTable
+                    freeUsers={metrics?.free_plan_users || 0}
+                    basicUsers={metrics?.basic_plan_users || 0}
+                    proUsers={metrics?.pro_plan_users || 0}
+                  />
                 </div>
 
                 {/* Recent Users & Alerts */}
