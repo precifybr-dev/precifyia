@@ -45,6 +45,7 @@ import TotalProductCostBlock from "@/components/business/TotalProductCostBlock";
 import SimplifiedDREBlock from "@/components/business/SimplifiedDREBlock";
 import MonthlyRevenueBlock from "@/components/business/MonthlyRevenueBlock";
 import IfoodPlanBlock from "@/components/business/IfoodPlanBlock";
+import TaxesAndFeesBlock from "@/components/business/TaxesAndFeesBlock";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
@@ -623,6 +624,11 @@ export default function BusinessArea() {
                 setProfile((prev: any) => prev ? { ...prev, monthly_revenue: avg } : prev);
               }}
             />
+          </div>
+
+          {/* ========== SECTION: Taxes and Fees ========== */}
+          <div className="mt-8">
+            <TaxesAndFeesBlock userId={user?.id} />
           </div>
 
           {/* ========== SECTION: Production Costs (per item) ========== */}
