@@ -1,10 +1,12 @@
-import logoImage from "@/assets/logo-precify.png";
+import logoBlue from "@/assets/logo-precify.png";
+import logoWhite from "@/assets/logo-precify-white.png";
 
 interface LogoProps {
   size?: "sm" | "md" | "lg" | "xl";
   showText?: boolean;
   className?: string;
   textClassName?: string;
+  variant?: "blue" | "white";
 }
 
 const sizeMap = {
@@ -18,8 +20,12 @@ export function Logo({
   size = "sm", 
   showText = true, 
   className = "",
-  textClassName = ""
+  textClassName = "",
+  variant = "blue"
 }: LogoProps) {
+  const logoImage = variant === "white" ? logoWhite : logoBlue;
+  const textColor = variant === "white" ? "text-white" : "text-primary";
+  
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <img 
@@ -29,7 +35,7 @@ export function Logo({
       />
       {showText && (
         <span 
-          className={`font-logo text-xl text-foreground ${textClassName}`}
+          className={`font-logo text-xl ${textColor} ${textClassName}`}
           translate="no"
         >
           PRECIFY
