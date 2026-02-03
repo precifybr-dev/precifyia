@@ -4,12 +4,15 @@ import { Link } from "react-router-dom";
 
 export function HeroSection() {
   return (
-    <section className="relative pt-24 lg:pt-32 pb-16 lg:pb-24 bg-gradient-hero overflow-hidden">
+    <section className="relative pt-24 lg:pt-32 pb-16 lg:pb-24 overflow-hidden">
+      {/* Blue gradient background at top */}
+      <div className="absolute inset-x-0 top-0 h-[500px] lg:h-[600px] bg-gradient-to-b from-primary via-primary/80 to-transparent" />
+      
       {/* Background decorations */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-success/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/3 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/3 rounded-full blur-3xl" />
       </div>
 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
@@ -17,62 +20,62 @@ export function HeroSection() {
           {/* Content */}
           <div className="text-center lg:text-left animate-slide-up">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-destructive/10 text-destructive text-xs font-medium mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/20 text-white text-xs font-medium mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-destructive animate-pulse" />
               Você pode estar vendendo no prejuízo
             </div>
 
             {/* Headline */}
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight mb-6">
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-white leading-tight mb-6">
               Saiba exatamente quanto{" "}
-              <span className="text-gradient">lucra em cada venda.</span>
+              <span className="text-white/90 underline decoration-success decoration-4 underline-offset-8">lucra em cada venda.</span>
             </h1>
 
             {/* Audience qualifier */}
-            <p className="text-sm sm:text-base text-muted-foreground/80 mb-4">
+            <p className="text-sm sm:text-base text-white/70 mb-4">
               Para restaurantes, lanchonetes, marmitarias e quem vende no balcão ou delivery
             </p>
 
             {/* Subheadline */}
-            <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
+            <p className="text-lg sm:text-xl text-white/80 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
               Calcule o preço certo dos seus produtos considerando custos, despesas e taxas de cada canal de venda. Pare de adivinhar e comece a lucrar de verdade.
             </p>
 
             {/* Benefits */}
             <div className="flex flex-col gap-3 mb-8 max-w-xl mx-auto lg:mx-0">
-              <div className="flex items-center gap-3 text-foreground">
-                <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-6 h-6 rounded-full bg-success/30 flex items-center justify-center flex-shrink-0">
                   <CheckCircle className="w-4 h-4 text-success" />
                 </div>
                 <span className="text-base">Descubra quanto realmente sobra no seu bolso</span>
               </div>
-              <div className="flex items-center gap-3 text-foreground">
-                <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-6 h-6 rounded-full bg-success/30 flex items-center justify-center flex-shrink-0">
                   <CheckCircle className="w-4 h-4 text-success" />
                 </div>
                 <span className="text-base">Veja o impacto real das taxas de cada canal (iFood, Rappi, etc.)</span>
               </div>
-              <div className="flex items-center gap-3 text-foreground">
-                <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0">
+              <div className="flex items-center gap-3 text-white">
+                <div className="w-6 h-6 rounded-full bg-success/30 flex items-center justify-center flex-shrink-0">
                   <CheckCircle className="w-4 h-4 text-success" />
                 </div>
                 <span className="text-base">Precifique com segurança e durma tranquilo</span>
               </div>
-              <div className="flex items-start gap-3 text-foreground">
-                <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="flex items-start gap-3 text-white">
+                <div className="w-6 h-6 rounded-full bg-success/30 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <CheckCircle className="w-4 h-4 text-success" />
                 </div>
                 <div>
                   <span className="text-base">Tenha um preço para cada canal — balcão, delivery próprio ou marketplace</span>
-                  <p className="text-sm text-muted-foreground mt-0.5">O custo é o mesmo. O sistema ajusta o preço conforme as taxas de cada canal.</p>
+                  <p className="text-sm text-white/60 mt-0.5">O custo é o mesmo. O sistema ajusta o preço conforme as taxas de cada canal.</p>
                 </div>
               </div>
             </div>
 
             {/* Impact statement */}
-            <div className="flex items-center gap-2 mb-8 p-3 rounded-lg bg-warning/10 border border-warning/20 max-w-xl mx-auto lg:mx-0">
+            <div className="flex items-center gap-2 mb-8 p-3 rounded-lg bg-warning/20 border border-warning/30 max-w-xl mx-auto lg:mx-0">
               <span className="text-warning text-lg">⚠️</span>
-              <p className="text-sm text-foreground">
+              <p className="text-sm text-white">
                 <span className="font-semibold">Dado real:</span> A maioria dos negócios descobre que estava perdendo dinheiro em pelo menos 3 produtos.
               </p>
             </div>
@@ -89,7 +92,7 @@ export function HeroSection() {
               </div>
               <a 
                 href="#como-funciona" 
-                className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors group justify-center lg:justify-start"
+                className="inline-flex items-center gap-1 text-sm text-white/70 hover:text-white transition-colors group justify-center lg:justify-start"
               >
                 Veja como calcular dois preços automaticamente
                 <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
@@ -97,16 +100,16 @@ export function HeroSection() {
             </div>
 
             {/* Trust indicators */}
-            <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-8 pt-8 border-t border-border justify-center lg:justify-start">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 mt-8 pt-8 border-t border-white/20 justify-center lg:justify-start">
+              <div className="flex items-center gap-2 text-sm text-white/70">
                 <CheckCircle className="w-4 h-4 text-success" />
                 <span>Grátis por 7 dias</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-white/70">
                 <CheckCircle className="w-4 h-4 text-success" />
                 <span>Sem cartão</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 text-sm text-white/70">
                 <CheckCircle className="w-4 h-4 text-success" />
                 <span>Cancele quando quiser</span>
               </div>
