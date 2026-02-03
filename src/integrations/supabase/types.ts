@@ -184,6 +184,88 @@ export type Database = {
           },
         ]
       }
+      business_taxes: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          store_id: string | null
+          tax_percentage: number
+          tax_regime: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          store_id?: string | null
+          tax_percentage?: number
+          tax_regime?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          store_id?: string | null
+          tax_percentage?: number
+          tax_regime?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_taxes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_fees: {
+        Row: {
+          created_at: string
+          fee_percentage: number
+          id: string
+          notes: string | null
+          payment_type: string
+          store_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          fee_percentage?: number
+          id?: string
+          notes?: string | null
+          payment_type?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          fee_percentage?: number
+          id?: string
+          notes?: string | null
+          payment_type?: string
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_fees_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collaborators: {
         Row: {
           created_at: string
