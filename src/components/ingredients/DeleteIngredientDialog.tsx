@@ -12,6 +12,8 @@ import {
 import { IngredientSelector, type IngredientData } from "@/components/recipes/IngredientSelector";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useDataProtection } from "@/hooks/useDataProtection";
+import { ConfirmationInput } from "@/components/security/ConfirmationInput";
 
 interface Ingredient {
   id: string;
@@ -19,6 +21,12 @@ interface Ingredient {
   name: string;
   unit: string;
   color?: string | null;
+  purchase_price?: number;
+  purchase_quantity?: number;
+  unit_price?: number | null;
+  correction_factor?: number | null;
+  store_id?: string | null;
+  user_id?: string;
 }
 
 interface RecipeUsage {
@@ -47,14 +55,19 @@ export function DeleteIngredientDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSubstitute, setShowSubstitute] = useState(false);
+  const [showFinalConfirmation, setShowFinalConfirmation] = useState(false);
+  const [confirmationValid, setConfirmationValid] = useState(false);
   const [substituteIngredientId, setSubstituteIngredientId] = useState<string | null>(null);
   const { toast } = useToast();
+  const { softDelete, logAction } = useDataProtection();
 
-  // Fetch recipe usages when dialog opens
+  // Fetch recipe usages and reset state when dialog opens
   useEffect(() => {
     if (open && ingredient) {
       fetchRecipeUsages(ingredient.id);
       setShowSubstitute(false);
+      setShowFinalConfirmation(false);
+      setConfirmationValid(false);
       setSubstituteIngredientId(null);
     }
   }, [open, ingredient]);
@@ -140,21 +153,33 @@ export function DeleteIngredientDialog({
         .delete()
         .eq("ingredient_id", ingredient.id);
 
-      // Finally delete the ingredient
-      const { error } = await supabase
-        .from("ingredients")
-        .delete()
-        .eq("id", ingredient.id);
+      // Use soft delete instead of permanent deletion
+      const ingredientData = {
+        id: ingredient.id,
+        code: ingredient.code,
+        name: ingredient.name,
+        unit: ingredient.unit,
+        color: ingredient.color,
+        purchase_price: ingredient.purchase_price || 0,
+        purchase_quantity: ingredient.purchase_quantity || 1,
+        unit_price: ingredient.unit_price,
+        correction_factor: ingredient.correction_factor,
+        store_id: ingredient.store_id,
+        user_id: ingredient.user_id,
+      };
 
-      if (error) throw error;
-
-      toast({
-        title: "Insumo excluído",
-        description: `"${ingredient.name}" foi removido com sucesso.`,
+      const success = await softDelete({
+        table: "ingredients",
+        id: ingredient.id,
+        data: ingredientData,
+        storeId: ingredient.store_id,
+        confirmationSteps: showFinalConfirmation ? 3 : 2,
       });
 
-      onOpenChange(false);
-      onDeleted();
+      if (success) {
+        onOpenChange(false);
+        onDeleted();
+      }
     } catch (error) {
       console.error("Error deleting ingredient:", error);
       toast({
@@ -270,6 +295,27 @@ export function DeleteIngredientDialog({
                     />
                   </div>
                 </div>
+              ) : showFinalConfirmation ? (
+                <div className="space-y-4">
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                    <p className="text-destructive font-medium text-sm">
+                      ⚠️ Confirmação final necessária
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      O insumo "{ingredient?.name}" será removido de {recipeUsages.length} ficha(s) e movido para a lixeira.
+                    </p>
+                  </div>
+                  <ConfirmationInput
+                    expectedValue="EXCLUIR"
+                    label='Digite "EXCLUIR" para confirmar'
+                    onMatch={setConfirmationValid}
+                  />
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <p className="text-sm text-muted-foreground">
+                      ✓ Você poderá recuperar este insumo em até 30 dias através da Lixeira
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <>
                   {hasUsages ? (
@@ -304,13 +350,20 @@ export function DeleteIngredientDialog({
                       </p>
                     </div>
                   ) : (
-                    <p>
-                      Tem certeza que deseja excluir o insumo{" "}
-                      <span className="font-semibold text-foreground">
-                        "{ingredient?.name}"
-                      </span>
-                      ? Esta ação não pode ser desfeita.
-                    </p>
+                    <div className="space-y-3">
+                      <p>
+                        Tem certeza que deseja excluir o insumo{" "}
+                        <span className="font-semibold text-foreground">
+                          "{ingredient?.name}"
+                        </span>
+                        ?
+                      </p>
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-sm text-muted-foreground">
+                          ✓ Este item será movido para a lixeira e pode ser recuperado em até 30 dias
+                        </p>
+                      </div>
+                    </div>
                   )}
                 </>
               )}
@@ -341,6 +394,29 @@ export function DeleteIngredientDialog({
                 Confirmar Substituição
               </Button>
             </>
+          ) : showFinalConfirmation ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setShowFinalConfirmation(false)}
+                disabled={isProcessing}
+              >
+                Voltar
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={!confirmationValid || isProcessing}
+                className="gap-2"
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+                Confirmar Exclusão
+              </Button>
+            </>
           ) : (
             <>
               <Button
@@ -363,7 +439,13 @@ export function DeleteIngredientDialog({
               )}
               <Button
                 variant="destructive"
-                onClick={handleDelete}
+                onClick={() => {
+                  if (hasUsages) {
+                    setShowFinalConfirmation(true);
+                  } else {
+                    handleDelete();
+                  }
+                }}
                 disabled={isProcessing}
                 className="gap-2"
               >

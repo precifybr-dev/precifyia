@@ -30,6 +30,7 @@ import Ingredients from "./pages/Ingredients";
 import Beverages from "./pages/Beverages";
 import Recipes from "./pages/Recipes";
 import SubRecipes from "./pages/SubRecipes";
+import RecycleBin from "./pages/RecycleBin";
 
 // Admin pages (master/collaborators)
 import AdminDashboard from "./pages/AdminDashboard";
@@ -159,6 +160,14 @@ const App = () => (
               element={
                 <AppRoute>
                   <SubRecipes />
+                </AppRoute>
+              } 
+            />
+            <Route 
+              path="/app/recycle-bin" 
+              element={
+                <AppRoute>
+                  <RecycleBin />
                 </AppRoute>
               } 
             />
