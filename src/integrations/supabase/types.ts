@@ -302,6 +302,90 @@ export type Database = {
         }
         Relationships: []
       }
+      data_audit_log: {
+        Row: {
+          action: string
+          confirmation_steps: number | null
+          created_at: string
+          id: string
+          ip_address: string | null
+          new_data: Json | null
+          old_data: Json | null
+          record_id: string
+          table_name: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          confirmation_steps?: number | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id: string
+          table_name: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          confirmation_steps?: number | null
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          new_data?: Json | null
+          old_data?: Json | null
+          record_id?: string
+          table_name?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      deleted_records: {
+        Row: {
+          data: Json
+          deleted_at: string
+          deleted_by: string | null
+          expires_at: string
+          id: string
+          is_restored: boolean
+          original_id: string
+          original_table: string
+          restored_at: string | null
+          store_id: string | null
+          user_id: string
+        }
+        Insert: {
+          data: Json
+          deleted_at?: string
+          deleted_by?: string | null
+          expires_at?: string
+          id?: string
+          is_restored?: boolean
+          original_id: string
+          original_table: string
+          restored_at?: string | null
+          store_id?: string | null
+          user_id: string
+        }
+        Update: {
+          data?: Json
+          deleted_at?: string
+          deleted_by?: string | null
+          expires_at?: string
+          id?: string
+          is_restored?: boolean
+          original_id?: string
+          original_table?: string
+          restored_at?: string | null
+          store_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       fixed_costs: {
         Row: {
           created_at: string
