@@ -5,6 +5,7 @@ interface TotalProductCostBlockProps {
   variableCostsTotal: number;
   businessExpensesPercent: number | null;
   averagePrice: number | null;
+  monthlyRevenue?: number | null;
 }
 
 export default function TotalProductCostBlock({
@@ -12,13 +13,14 @@ export default function TotalProductCostBlock({
   variableCostsTotal,
   businessExpensesPercent,
   averagePrice,
+  monthlyRevenue,
 }: TotalProductCostBlockProps) {
   const totalProductionCosts = fixedCostsTotal + variableCostsTotal;
-  const hasPrice = averagePrice && averagePrice > 0;
+  const hasRevenue = monthlyRevenue && monthlyRevenue > 0;
   
-  // Calculate production costs as % of average price
-  const productionCostsPercent = hasPrice 
-    ? (totalProductionCosts / averagePrice) * 100 
+  // Calculate production costs as % of monthly revenue (NOT average price)
+  const productionCostsPercent = hasRevenue 
+    ? (totalProductionCosts / monthlyRevenue) * 100 
     : null;
   
   // Total cost percentage = Production Costs % + Business Expenses %
@@ -80,7 +82,7 @@ export default function TotalProductCostBlock({
             {formatPercent(productionCostsPercent)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            R$ {formatCurrency(totalProductionCosts)} / item
+            R$ {formatCurrency(totalProductionCosts)} / mês
           </p>
         </div>
 
@@ -162,15 +164,15 @@ export default function TotalProductCostBlock({
       )}
 
       {/* Info messages */}
-      {!hasPrice && (
+      {!hasRevenue && (
         <p className="text-xs text-muted-foreground mt-4 text-center p-3 bg-muted/50 rounded-lg">
-          Cadastre fichas técnicas com preços para calcular o percentual de custos de produção
+          Informe o faturamento mensal para calcular o percentual de custos de produção
         </p>
       )}
       
-      {hasPrice && (
+      {hasRevenue && (
         <p className="text-xs text-muted-foreground mt-4 text-center">
-          Baseado no preço médio de venda de R$ {formatCurrency(averagePrice)}
+          Baseado no faturamento mensal de R$ {formatCurrency(monthlyRevenue)}
         </p>
       )}
     </div>

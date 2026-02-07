@@ -26,7 +26,7 @@ interface PricingSummaryPanelProps {
   // Costs
   ingredientsCost: number;
   costWithLoss: number;
-  productionCostsPerItem: number;
+  productionCostsPercent: number | null;
   
   // CMV
   cmvTarget: string;
@@ -81,7 +81,7 @@ const formatCurrency = (value: number) => {
 export default function PricingSummaryPanel({
   ingredientsCost,
   costWithLoss,
-  productionCostsPerItem,
+  productionCostsPercent,
   cmvTarget,
   setCmvTarget,
   actualCMV,
@@ -178,9 +178,9 @@ export default function PricingSummaryPanel({
                   </p>
                 </div>
               </div>
-              {productionCostsPerItem > 0 && (
+              {productionCostsPercent !== null && productionCostsPercent > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Inclui custos de produção: {formatCurrency(productionCostsPerItem)}
+                  Custos de produção: {productionCostsPercent.toFixed(2)}% do faturamento
                 </p>
               )}
               
@@ -500,21 +500,25 @@ export default function PricingSummaryPanel({
       {(() => {
         // Cálculos para Lucro Líquido - LOJA
         const effectivePrice = parseFloat(sellingPrice) || suggestedPrice;
+        const productionCostValue = effectivePrice * (productionCostsPercent || 0) / 100;
         const businessCostValue = effectivePrice * (totalBusinessCostPercent || 0) / 100;
-        const taxValue = effectivePrice * (taxPercentage || 0) / 100; // NEW: Tax calculation
-        const netProfit = effectivePrice - costWithLoss - businessCostValue - taxValue; // Include taxes
+        const taxValue = effectivePrice * (taxPercentage || 0) / 100;
+        const netProfit = effectivePrice - costWithLoss - productionCostValue - businessCostValue - taxValue;
         const netProfitPercent = effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0;
         const costPercent = effectivePrice > 0 ? (costWithLoss / effectivePrice) * 100 : 0;
         const taxPercent = taxPercentage || 0;
+        const productionPercent = productionCostsPercent || 0;
 
         // Cálculos para iFood
         const ifoodFeeValue = ifoodPrice * (effectiveIfoodRate / 100);
         const ifoodNetRevenue = ifoodPrice - ifoodFeeValue;
+        const ifoodProductionCost = ifoodNetRevenue * (productionCostsPercent || 0) / 100;
         const ifoodBusinessCost = ifoodNetRevenue * (totalBusinessCostPercent || 0) / 100;
-        const ifoodTaxValue = ifoodNetRevenue * (taxPercentage || 0) / 100; // NEW: Tax for iFood
-        const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodBusinessCost - ifoodTaxValue; // Include taxes
+        const ifoodTaxValue = ifoodNetRevenue * (taxPercentage || 0) / 100;
+        const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodProductionCost - ifoodBusinessCost - ifoodTaxValue;
         const ifoodNetProfitPercent = ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0;
         const ifoodCostPercent = ifoodPrice > 0 ? (costWithLoss / ifoodPrice) * 100 : 0;
+        const ifoodProductionCostPercent = ifoodPrice > 0 ? (ifoodProductionCost / ifoodPrice) * 100 : 0;
         const ifoodBusinessCostPercent = ifoodPrice > 0 ? (ifoodBusinessCost / ifoodPrice) * 100 : 0;
         const ifoodTaxPercent = ifoodPrice > 0 ? (ifoodTaxValue / ifoodPrice) * 100 : 0;
 
@@ -542,9 +546,19 @@ export default function PricingSummaryPanel({
                     </div>
                   </div>
                   
+                  {productionCostsPercent !== null && productionCostsPercent > 0 && (
+                    <div className="flex justify-between items-center py-1 text-blue-600">
+                      <span>(-) Custos Produção</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{formatCurrency(productionCostValue)}</span>
+                        <span className="text-xs text-muted-foreground">{productionPercent.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  )}
+                  
                   {totalBusinessCostPercent !== null && totalBusinessCostPercent > 0 && (
                     <div className="flex justify-between items-center py-1 text-destructive/80">
-                      <span>(-) Custos Fix+Var</span>
+                      <span>(-) Despesas Negócio</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono">{formatCurrency(businessCostValue)}</span>
                         <span className="text-xs text-muted-foreground">{totalBusinessCostPercent.toFixed(0)}%</span>
@@ -623,9 +637,19 @@ export default function PricingSummaryPanel({
                     </div>
                   </div>
                   
+                  {productionCostsPercent !== null && productionCostsPercent > 0 && (
+                    <div className="flex justify-between items-center py-1 text-blue-600">
+                      <span>(-) Custos Produção</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{formatCurrency(ifoodProductionCost)}</span>
+                        <span className="text-xs text-muted-foreground">{ifoodProductionCostPercent.toFixed(1)}%</span>
+                      </div>
+                    </div>
+                  )}
+                  
                   {totalBusinessCostPercent !== null && totalBusinessCostPercent > 0 && (
                     <div className="flex justify-between items-center py-1 text-destructive/80">
-                      <span>(-) Custos Fix+Var</span>
+                      <span>(-) Despesas Negócio</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono">{formatCurrency(ifoodBusinessCost)}</span>
                         <span className="text-xs text-muted-foreground">{ifoodBusinessCostPercent.toFixed(0)}%</span>
