@@ -109,8 +109,8 @@ export default function Recipes() {
   
   // Business cost state (expenses as % of revenue)
   const [totalBusinessCostPercent, setTotalBusinessCostPercent] = useState<number | null>(null);
-  // Production costs per item (fixed + variable)
-  const [productionCostsPerItem, setProductionCostsPerItem] = useState<number>(0);
+  // Production costs as % of monthly revenue (fixed + variable)
+  const [productionCostsPercent, setProductionCostsPercent] = useState<number | null>(null);
   // iFood real percentage from profile
   const [ifoodRealPercentage, setIfoodRealPercentage] = useState<number | null>(null);
   // Tax percentage from business area configuration
@@ -225,7 +225,7 @@ export default function Recipes() {
   }, [recipes, searchTerm, sortOption]);
 
   const fetchBusinessCosts = async (userId: string, monthlyRevenue: number | null) => {
-    // Fetch production costs (per item)
+    // Fetch production costs and tax data
     const [{ data: fixedCostsData }, { data: variableCostsData }, { data: taxData }] = await Promise.all([
       supabase.from("fixed_costs").select("value_per_item").eq("user_id", userId),
       supabase.from("variable_costs").select("value_per_item").eq("user_id", userId),
@@ -234,7 +234,14 @@ export default function Recipes() {
 
     const fixedCostsTotal = fixedCostsData?.reduce((sum, c) => sum + Number(c.value_per_item), 0) || 0;
     const variableCostsTotal = variableCostsData?.reduce((sum, c) => sum + Number(c.value_per_item), 0) || 0;
-    setProductionCostsPerItem(fixedCostsTotal + variableCostsTotal);
+    const totalProductionCosts = fixedCostsTotal + variableCostsTotal;
+    
+    // Convert production costs to % of monthly revenue (NOT absolute R$)
+    if (monthlyRevenue && monthlyRevenue > 0 && totalProductionCosts > 0) {
+      setProductionCostsPercent((totalProductionCosts / monthlyRevenue) * 100);
+    } else {
+      setProductionCostsPercent(totalProductionCosts > 0 ? null : 0);
+    }
     
     // Set tax percentage from business configuration
     setTaxPercentage(taxData?.tax_percentage ? Number(taxData.tax_percentage) : null);
@@ -634,10 +641,10 @@ export default function Recipes() {
   const ingredientsCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
   const ingredientsCostPerServing = ingredientsCost / (parseInt(servings) || 1);
   
-  // Custo Total por Porção = Insumos + Custos de Produção (por item)
-  const totalCostPerServing = ingredientsCostPerServing + productionCostsPerItem;
+  // Custo Total por Porção = apenas insumos (custos de produção agora são % do faturamento)
+  const totalCostPerServing = ingredientsCostPerServing;
 
-  // Custo com perda
+  // Custo com perda (apenas insumos + perda, sem custos de produção)
   const lossMultiplier = 1 + (parseFloat(lossPercent) || 0) / 100;
   const costWithLoss = totalCostPerServing * lossMultiplier;
 
@@ -1062,7 +1069,7 @@ export default function Recipes() {
               <PricingSummaryPanel
                   ingredientsCost={ingredientsCostPerServing}
                   costWithLoss={costWithLoss}
-                  productionCostsPerItem={productionCostsPerItem}
+                  productionCostsPercent={productionCostsPercent}
                   cmvTarget={cmvTarget}
                   setCmvTarget={setCmvTarget}
                   actualCMV={actualCMV}

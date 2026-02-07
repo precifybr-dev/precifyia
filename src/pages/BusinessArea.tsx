@@ -652,19 +652,31 @@ export default function BusinessArea() {
                 onTotalChange={setVariableCostsTotal}
               />
             </div>
-            {(fixedCostsTotal > 0 || variableCostsTotal > 0) && (
-              <div className="mt-4 p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg border border-blue-500/20">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Total de Custos por Item:</span>
-                  <span className="font-display text-xl font-bold text-foreground">
-                    R$ {(fixedCostsTotal + variableCostsTotal).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
+            {(fixedCostsTotal > 0 || variableCostsTotal > 0) && (() => {
+              const effectiveRevenue = calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null);
+              const totalCosts = fixedCostsTotal + variableCostsTotal;
+              const costPercent = effectiveRevenue && effectiveRevenue > 0 ? (totalCosts / effectiveRevenue) * 100 : null;
+              return (
+                <div className="mt-4 p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg border border-blue-500/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Total Custos de Produção:</span>
+                    <div className="text-right">
+                      <span className="font-display text-xl font-bold text-foreground">
+                        {costPercent !== null ? `${costPercent.toFixed(2)}%` : '—'}
+                      </span>
+                      <span className="text-sm text-muted-foreground ml-2">
+                        (R$ {totalCosts.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mês)
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {costPercent !== null
+                      ? 'Percentual rateado sobre o faturamento mensal — aplicado sobre o preço de venda nas fichas técnicas'
+                      : 'Informe o faturamento mensal para calcular o percentual de rateio'}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Este valor será adicionado ao custo de cada item nas fichas técnicas
-                </p>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* ========== SECTION: Business Expenses (monthly) ========== */}
@@ -734,6 +746,7 @@ export default function BusinessArea() {
                   : null
               }
               averagePrice={metrics.averagePrice}
+              monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
             />
           </div>
 
