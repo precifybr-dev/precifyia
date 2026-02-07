@@ -1171,7 +1171,10 @@ export default function Recipes() {
                       
                       // Loja metrics - now using lojaPrice
                       const cmvLoja = lojaPrice > 0 ? (costPerServing / lojaPrice) * 100 : 0;
-                      const netProfitLoja = lojaPrice - costPerServing;
+                      const prodCostLoja = lojaPrice * (productionCostsPercent || 0) / 100;
+                      const bizCostLoja = lojaPrice * (totalBusinessCostPercent || 0) / 100;
+                      const taxCostLoja = lojaPrice * (taxPercentage || 0) / 100;
+                      const netProfitLoja = lojaPrice - costPerServing - prodCostLoja - bizCostLoja - taxCostLoja;
                       const netProfitPercentLoja = lojaPrice > 0 ? (netProfitLoja / lojaPrice) * 100 : 0;
                       const cmvLojaOk = cmvLoja <= cmvTarget;
                       
@@ -1179,7 +1182,10 @@ export default function Recipes() {
                       const ifoodFee = ifoodPrice * ((ifoodRealPercentage || 0) / 100);
                       const ifoodNetRevenue = ifoodPrice - ifoodFee;
                       const cmvIfood = ifoodNetRevenue > 0 ? (costPerServing / ifoodNetRevenue) * 100 : 0;
-                      const netProfitIfood = ifoodNetRevenue - costPerServing;
+                      const prodCostIfood = ifoodNetRevenue * (productionCostsPercent || 0) / 100;
+                      const bizCostIfood = ifoodNetRevenue * (totalBusinessCostPercent || 0) / 100;
+                      const taxCostIfood = ifoodNetRevenue * (taxPercentage || 0) / 100;
+                      const netProfitIfood = ifoodNetRevenue - costPerServing - prodCostIfood - bizCostIfood - taxCostIfood;
                       const netProfitPercentIfood = ifoodPrice > 0 ? (netProfitIfood / ifoodPrice) * 100 : 0;
                       const cmvIfoodOk = cmvIfood <= cmvTarget;
                       

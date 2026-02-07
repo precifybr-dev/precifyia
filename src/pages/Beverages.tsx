@@ -399,8 +399,55 @@ export default function Beverages() {
     }, 100);
   };
 
+  // Business cost percentages for net profit calculation
+  const [productionCostsPercent, setProductionCostsPercent] = useState<number | null>(null);
+  const [totalBusinessCostPercent, setTotalBusinessCostPercent] = useState<number | null>(null);
+  const [taxPercentage, setTaxPercentage] = useState<number | null>(null);
+
   // Get iFood real percentage from profile
   const ifoodRealPercentage = profile?.ifood_real_percentage || 0;
+
+  // Fetch business costs for net profit deductions
+  useEffect(() => {
+    if (!user?.id || !profile) return;
+    const monthlyRevenue = profile.monthly_revenue;
+
+    const fetchCosts = async () => {
+      const [{ data: fixedCostsData }, { data: variableCostsData }, { data: taxData }] = await Promise.all([
+        supabase.from("fixed_costs").select("value_per_item").eq("user_id", user.id),
+        supabase.from("variable_costs").select("value_per_item").eq("user_id", user.id),
+        supabase.from("business_taxes").select("tax_percentage").eq("user_id", user.id).maybeSingle(),
+      ]);
+
+      const fixedTotal = fixedCostsData?.reduce((s, c) => s + Number(c.value_per_item), 0) || 0;
+      const variableTotal = variableCostsData?.reduce((s, c) => s + Number(c.value_per_item), 0) || 0;
+      const totalProd = fixedTotal + variableTotal;
+
+      if (monthlyRevenue && monthlyRevenue > 0 && totalProd > 0) {
+        setProductionCostsPercent((totalProd / monthlyRevenue) * 100);
+      } else {
+        setProductionCostsPercent(totalProd > 0 ? null : 0);
+      }
+
+      setTaxPercentage(taxData?.tax_percentage ? Number(taxData.tax_percentage) : null);
+
+      if (!monthlyRevenue || monthlyRevenue <= 0) {
+        setTotalBusinessCostPercent(null);
+        return;
+      }
+
+      const [{ data: fixedExpData }, { data: varExpData }] = await Promise.all([
+        supabase.from("fixed_expenses").select("monthly_value").eq("user_id", user.id),
+        supabase.from("variable_expenses").select("monthly_value").eq("user_id", user.id),
+      ]);
+
+      const fixedExpTotal = fixedExpData?.reduce((s, e) => s + Number(e.monthly_value), 0) || 0;
+      const varExpTotal = varExpData?.reduce((s, e) => s + Number(e.monthly_value), 0) || 0;
+      setTotalBusinessCostPercent(((fixedExpTotal + varExpTotal) / monthlyRevenue) * 100);
+    };
+
+    fetchCosts();
+  }, [user?.id, profile]);
 
   // Calculate suggested iFood price based on store price + iFood rate
   const calculateSuggestedIfoodPrice = (storePrice: number) => {
@@ -419,16 +466,22 @@ export default function Beverages() {
     const ifoodPrice = beverage.ifood_selling_price > 0 ? beverage.ifood_selling_price : suggestedIfoodPrice;
     const cmvTarget = beverage.cmv_target || 35;
     
-    // Loja metrics
+    // Loja metrics - deduct production costs, business expenses, and taxes as %
     const cmvLoja = sellingPrice > 0 ? (unitPrice / sellingPrice) * 100 : 0;
-    const netProfitLoja = sellingPrice - unitPrice;
+    const prodCostLoja = sellingPrice * (productionCostsPercent || 0) / 100;
+    const bizCostLoja = sellingPrice * (totalBusinessCostPercent || 0) / 100;
+    const taxCostLoja = sellingPrice * (taxPercentage || 0) / 100;
+    const netProfitLoja = sellingPrice - unitPrice - prodCostLoja - bizCostLoja - taxCostLoja;
     const netProfitPercentLoja = sellingPrice > 0 ? (netProfitLoja / sellingPrice) * 100 : 0;
     
-    // iFood metrics - deduct iFood fee from revenue
+    // iFood metrics - deduct iFood fee, then production costs, business expenses, and taxes
     const ifoodFee = ifoodPrice * (ifoodRealPercentage / 100);
-    const ifoodNetRevenue = ifoodPrice - ifoodFee; // What we actually receive
+    const ifoodNetRevenue = ifoodPrice - ifoodFee;
     const cmvIfood = ifoodNetRevenue > 0 ? (unitPrice / ifoodNetRevenue) * 100 : 0;
-    const netProfitIfood = ifoodNetRevenue - unitPrice;
+    const prodCostIfood = ifoodNetRevenue * (productionCostsPercent || 0) / 100;
+    const bizCostIfood = ifoodNetRevenue * (totalBusinessCostPercent || 0) / 100;
+    const taxCostIfood = ifoodNetRevenue * (taxPercentage || 0) / 100;
+    const netProfitIfood = ifoodNetRevenue - unitPrice - prodCostIfood - bizCostIfood - taxCostIfood;
     const netProfitPercentIfood = ifoodPrice > 0 ? (netProfitIfood / ifoodPrice) * 100 : 0;
     
     return { 
