@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Package, DollarSign } from "lucide-react";
+import CategoryMismatchAlert from "@/components/business/CategoryMismatchAlert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -248,35 +249,38 @@ export default function FixedCostsBlock({ userId, onTotalChange }: FixedCostsBlo
       </div>
 
       {/* Add new cost */}
-      <div className="flex items-center gap-2 pt-4 border-t border-border">
-        <Input
-          placeholder="Ex: Depreciação de equipamentos, Custo fixo unitário"
-          value={newCost.name}
-          onChange={(e) => setNewCost({ ...newCost, name: e.target.value })}
-          className="flex-1"
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-        />
-        <div className="relative w-32">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+      <div className="pt-4 border-t border-border">
+        <div className="flex items-center gap-2">
           <Input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="0,00"
-            value={newCost.value}
-            onChange={(e) => setNewCost({ ...newCost, value: e.target.value })}
-            className="pl-8 text-right"
+            placeholder="Ex: Depreciação de equipamentos, Custo fixo unitário"
+            value={newCost.name}
+            onChange={(e) => setNewCost({ ...newCost, name: e.target.value })}
+            className="flex-1"
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
+          <div className="relative w-32">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+            <Input
+              type="number"
+              min="0"
+              step="0.01"
+              placeholder="0,00"
+              value={newCost.value}
+              onChange={(e) => setNewCost({ ...newCost, value: e.target.value })}
+              className="pl-8 text-right"
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            />
+          </div>
+          <Button onClick={handleAdd} disabled={isAdding} className="gap-1">
+            {isAdding ? (
+              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            Adicionar
+          </Button>
         </div>
-        <Button onClick={handleAdd} disabled={isAdding} className="gap-1">
-          {isAdding ? (
-            <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Plus className="w-4 h-4" />
-          )}
-          Adicionar
-        </Button>
+        <CategoryMismatchAlert inputText={newCost.name} currentCategory="custos_fixos_producao" />
       </div>
     </div>
   );
