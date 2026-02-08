@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Receipt, Percent, DollarSign } from "lucide-react";
+import CategoryMismatchAlert from "@/components/business/CategoryMismatchAlert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
@@ -274,14 +275,15 @@ export default function FixedExpensesBlock({ userId, monthlyRevenue, onTotalChan
       </div>
 
       {/* Add new expense */}
-      <div className="flex items-center gap-2 pt-4 border-t border-border">
-        <Input
-          placeholder="Ex: Aluguel, Água, Luz, Funcionários, Sistemas, Parcelas"
-          value={newExpense.name}
-          onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
-          className="flex-1"
-          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-        />
+      <div className="pt-4 border-t border-border">
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="Ex: Aluguel, Água, Luz, Funcionários, Sistemas, Parcelas"
+            value={newExpense.name}
+            onChange={(e) => setNewExpense({ ...newExpense, name: e.target.value })}
+            className="flex-1"
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+          />
         <div className="relative w-32">
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
           <Input
@@ -295,14 +297,16 @@ export default function FixedExpensesBlock({ userId, monthlyRevenue, onTotalChan
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
           />
         </div>
-        <Button onClick={handleAdd} disabled={isAdding} className="gap-1">
-          {isAdding ? (
-            <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <Plus className="w-4 h-4" />
-          )}
-          Adicionar
-        </Button>
+          <Button onClick={handleAdd} disabled={isAdding} className="gap-1">
+            {isAdding ? (
+              <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            Adicionar
+          </Button>
+        </div>
+        <CategoryMismatchAlert inputText={newExpense.name} currentCategory="despesas_fixas" />
       </div>
     </div>
   );
