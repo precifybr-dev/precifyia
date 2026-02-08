@@ -1,69 +1,83 @@
 
 
-# Correção: Lucro Líquido na Tabela com Custos Rateados
+# Alerta Inteligente de Categorização de Custos e Despesas
 
-## Problema Atual
+## Visao Geral
 
-O **Painel de Precificação** (PricingSummaryPanel) já calcula o Lucro Líquido Real corretamente, deduzindo custos de produção, despesas do negócio e impostos como percentuais do faturamento.
+Criar um sistema de alerta educativo que orienta o usuario quando ele cadastra um custo ou despesa em uma categoria potencialmente incorreta. O alerta e apenas informativo -- nunca bloqueia ou corrige automaticamente.
 
-Porém, a **tabela de listagem** das Fichas Técnicas e das Bebidas ainda usa uma fórmula simplificada:
+## Arquitetura
 
-```text
-ERRADO (tabela):
-netProfitLoja = preçoVenda - custoUnitário
-netProfitIfood = receitaLíquidaIfood - custoUnitário
-```
+A solucao e 100% client-side, sem banco de dados, sem API. Os grupos semanticos ficam em um arquivo utilitario e a verificacao e feita via normalizacao de texto (funcao `normalizeText` ja existente).
 
-Falta deduzir os custos de produção (%), despesas do negócio (%) e impostos (%) -- exatamente como o PricingSummaryPanel já faz.
+## Arquivos
 
-## Solução
+### 1. Novo: `src/lib/cost-category-hints.ts`
 
-Aplicar a mesma fórmula do Lucro Líquido Real nas tabelas de listagem.
+Arquivo utilitario contendo:
 
-### Fórmula Correta (Loja):
-```text
-productionCost = preçoVenda * productionCostsPercent / 100
-businessCost   = preçoVenda * totalBusinessCostPercent / 100
-taxCost        = preçoVenda * taxPercentage / 100
-netProfitLoja  = preçoVenda - custoUnitário - productionCost - businessCost - taxCost
-```
+- **4 mapas de grupos semanticos** (A, B, C, D) com arrays de palavras-chave
+- **Funcao `detectCategoryMismatch`** que recebe o texto digitado e a categoria atual, retorna o alerta (ou null)
 
-### Fórmula Correta (iFood):
-```text
-ifoodFee         = preçoIfood * taxaIfood / 100
-receitaLíquida   = preçoIfood - ifoodFee
-productionCost   = receitaLíquida * productionCostsPercent / 100
-businessCost     = receitaLíquida * totalBusinessCostPercent / 100
-taxCost          = receitaLíquida * taxPercentage / 100
-netProfitIfood   = receitaLíquida - custoUnitário - productionCost - businessCost - taxCost
-```
+Cada grupo:
+- **A (despesas_fixas)**: aluguel, condominio, iptu, funcionario, salario, folha, pro-labore, beneficios, vale transporte, vale refeicao, encargos, fgts, inss, sindicato, agua, luz, energia, gas fixo, internet, telefone, celular, limpeza, seguranca, vigilancia, contador, contabilidade, juridico, advogado, consultoria, despachante, sistema, software, erp, mensalidade sistema, parcela maquina, financiamento, emprestimo, leasing, juros fixos, tarifa bancaria
+- **B (despesas_variaveis)**: marketing, anuncios, trafego, facebook ads, google ads, promocao, publicidade, comissao vendedor, comissoes, taxa cartao, taxa maquininha, taxa banco, taxas financeiras, antecipacao, imposto sobre venda, icms, iss, pis, cofins, simples nacional, taxas variaveis, taxas operacionais
+- **C (custos_fixos_producao)**: depreciacao, desgaste equipamento, maquina producao, equipamento producao, manutencao equipamento, contrato minimo producao, licenca producao, custo fixo por item, taxa fixa producao, estrutura producao, custo base producao
+- **D (custos_variaveis_producao)**: embalagem, caixa, papel, saco, etiqueta, perda, desperdicio, quebra, insumo, ingrediente, materia-prima, taxa ifood, comissao ifood, taxa por pedido, taxa entrega, motoboy, cupom, desconto, taxa variavel por item
 
-## Arquivos a Modificar
+Logica da funcao:
+1. Normaliza o texto com `normalizeText` (ja existe)
+2. Verifica correspondencia por palavra-chave/radical em cada grupo
+3. Se o grupo detectado != categoria atual, retorna objeto com: `detectedGroup`, `suggestedCategoryName`, `message`
+4. Se nao ha conflito ou nao ha match, retorna `null`
 
-### 1. `src/pages/Recipes.tsx` (tabela de listagem, linhas ~1172-1183)
+### 2. Novo: `src/components/business/CategoryMismatchAlert.tsx`
 
-Atualizar o cálculo de `netProfitLoja` e `netProfitIfood` dentro do `.map()` da tabela para incluir as deduções de `productionCostsPercent`, `totalBusinessCostPercent` e `taxPercentage` (estados que já existem no componente).
+Componente visual leve que exibe o alerta amarelo com icone de atencao. Recebe as props:
+- `inputText: string`
+- `currentCategory: string` (ex: "custos_fixos_producao")
 
-### 2. `src/pages/Beverages.tsx` (função `calculateMetrics`, linhas ~412-448)
+Internamente chama `detectCategoryMismatch` e renderiza o alerta apenas quando ha conflito. Usa `Alert` do shadcn/ui com variante amarela.
 
-- Buscar do banco os mesmos dados de custos de produção, despesas do negócio e impostos (como já é feito em Recipes.tsx)
-- Criar estados para `productionCostsPercent`, `totalBusinessCostPercent` e `taxPercentage`
-- Atualizar `calculateMetrics` para deduzir essas porcentagens do lucro líquido
+### 3. Modificar: `src/components/business/FixedCostsBlock.tsx`
 
-## Detalhes Técnicos
+- Importar `CategoryMismatchAlert`
+- Adicionar o componente logo abaixo do input de nome no formulario de adicao (linha ~253)
+- Prop: `currentCategory="custos_fixos_producao"`, `inputText={newCost.name}`
 
-| Local | Antes | Depois |
-|-------|-------|--------|
-| Recipes.tsx tabela L.1174 | `netProfitLoja = lojaPrice - costPerServing` | `netProfitLoja = lojaPrice - costPerServing - (lojaPrice * prodPercent/100) - (lojaPrice * bizPercent/100) - (lojaPrice * taxPercent/100)` |
-| Recipes.tsx tabela L.1182 | `netProfitIfood = ifoodNetRevenue - costPerServing` | Mesma lógica com deduções sobre `ifoodNetRevenue` |
-| Beverages.tsx L.424 | `netProfitLoja = sellingPrice - unitPrice` | Mesma lógica com deduções |
-| Beverages.tsx L.431 | `netProfitIfood = ifoodNetRevenue - unitPrice` | Mesma lógica com deduções |
+### 4. Modificar: `src/components/business/VariableCostsBlock.tsx`
 
-## O Que Nao Muda
+- Mesmo padrao: adicionar `CategoryMismatchAlert` abaixo do input de nome (linha ~253)
+- Prop: `currentCategory="custos_variaveis_producao"`
 
-- PricingSummaryPanel (já está correto)
-- Cálculos de CMV (baseados apenas no custo dos insumos)
-- Preços sugeridos
-- Área do Negócio
-- TotalProductCostBlock
+### 5. Modificar: `src/components/business/FixedExpensesBlock.tsx`
+
+- Mesmo padrao (linha ~226)
+- Prop: `currentCategory="despesas_fixas"`
+
+### 6. Modificar: `src/components/business/VariableExpensesBlock.tsx`
+
+- Mesmo padrao (linha ~272)
+- Prop: `currentCategory="despesas_variaveis"`
+
+## Comportamento do Alerta
+
+- Aparece em tempo real enquanto o usuario digita (sem debounce necessario, pois e apenas uma comparacao de string local)
+- Texto do alerta segue o formato:
+
+> **Atencao:** "Aluguel" e normalmente uma **Despesa Fixa do Negocio**, nao um Custo de Producao. Custos de producao sao gastos diretamente ligados a fabricacao do produto. Voce pode continuar se desejar.
+
+- Cor amarela/amber com icone `AlertTriangle`
+- Desaparece quando o campo fica vazio ou quando nao ha conflito
+- Nunca bloqueia a acao de "Adicionar"
+
+## Detalhes Tecnicos
+
+| Item | Detalhe |
+|------|---------|
+| Peso no bundle | Minimo -- apenas um arquivo de constantes + componente leve |
+| Chamadas ao banco | Zero |
+| Performance | Comparacao de string normalizada, O(n) no numero de keywords (~80 termos) |
+| Escalabilidade | Adicionar novos termos = adicionar string no array |
+| Normalizacao | Usa `normalizeText` existente em `src/lib/utils.ts` |
 
