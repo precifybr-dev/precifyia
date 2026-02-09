@@ -299,6 +299,31 @@ export default function Recipes() {
     checkAuth();
   }, [navigate]);
 
+  // Realtime subscription for production costs (CF + CV)
+  useEffect(() => {
+    if (!user?.id || !profile?.monthly_revenue) return;
+
+    const monthlyRevenue = Number(profile.monthly_revenue);
+
+    const channel = supabase
+      .channel('production-costs-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'fixed_costs', filter: `user_id=eq.${user.id}` },
+        () => { fetchBusinessCosts(user.id, monthlyRevenue); }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'variable_costs', filter: `user_id=eq.${user.id}` },
+        () => { fetchBusinessCosts(user.id, monthlyRevenue); }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, profile?.monthly_revenue]);
+
   const fetchIngredients = async (userId: string) => {
     const { data, error } = await supabase
       .from("ingredients")
