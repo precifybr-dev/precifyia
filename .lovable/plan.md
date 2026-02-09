@@ -1,87 +1,44 @@
 
-# Ajuste de Apresentacao e Nomenclatura da Precificacao
+# Corrigir Inconsistencia de Porcentagem nos Custos de Producao
 
-## Contexto
+## Problema
 
-A matematica do sistema esta correta. O problema e que a apresentacao visual confunde o usuario leigo, dando sensacao de duplicidade entre "Custos de Producao (%)" e "Despesas do Negocio (ref.)". Este plano corrige apenas a camada visual, semantica e pedagogica.
+Na ficha tecnica, o bloco "Custos Producao" mostra porcentagens diferentes entre Loja e iFood, mesmo tendo o mesmo valor absoluto (R$ 7,39):
 
-## Mudancas
+- **Loja**: mostra 20.5% (a taxa global aplicada)
+- **iFood**: mostra 14.6% (o valor R$ 7,39 dividido pelo preco iFood R$ 50,65)
 
-### 1. PricingSummaryPanel.tsx -- Ficha Tecnica
+Isso confunde o usuario. A porcentagem exibida ao lado do valor deve ser consistente.
 
-**Remover completamente o bloco "DESPESAS NEGOCIO (ref.)"** (linhas 320-336). Esse card de borda tracejada nao deveria aparecer na ficha tecnica -- despesas do negocio sao informacao gerencial da Area do Negocio, nao do produto.
+## Causa Raiz
 
-**Renomear labels:**
-- "LUCRO LIQUIDO REAL - LOJA" -> "LUCRO POR PRODUTO - LOJA"
-- "LUCRO LIQUIDO REAL - IFOOD" -> "LUCRO POR PRODUTO - IFOOD"
-- "= LUCRO LIQUIDO" -> "= LUCRO POR PRODUTO"
-- Texto explicativo da Loja: "Lucro real apos custo direto, custos de producao (%) e impostos." -> "Lucro unitario apos custo direto, rateio de producao e impostos."
-- Texto explicativo do iFood: "Este e o valor real que sobra apos todos os custos, despesas e impostos." -> "Lucro unitario apos taxa iFood, custo direto, rateio de producao e impostos."
+No codigo (PricingSummaryPanel.tsx):
 
-**Atualizar tooltip do bloco "CUSTOS DE PRODUCAO (%)"** (linhas 301-306):
-- Remover a frase sobre "despesas do negocio ja estao consideradas aqui" que causa confusao
-- Usar texto educativo do briefing: "Esse valor representa quanto cada produto ajuda a pagar as contas mensais do seu negocio. Aluguel, internet, energia, sistema e outras despesas nao sao descontadas diretamente do produto -- elas sao diluidas em percentual para que cada venda pague apenas a sua parte justa."
+- Loja (linha 560): exibe `productionPercent` = `productionCostsPercent` (taxa global)
+- iFood (linha 528): calcula `ifoodProductionCostPercent = ifoodProductionCost / ifoodPrice * 100`, que e a proporcao sobre o preco total do iFood, nao a taxa aplicada
 
-**Remover prop `totalBusinessCostPercent`** da interface -- a ficha tecnica nao precisa mais receber esse dado.
+## Solucao
 
-### 2. Recipes.tsx -- Passar menos dados ao Painel
+Alterar a porcentagem exibida no bloco iFood para mostrar a **mesma taxa aplicada** (20.5%) em vez da proporcao sobre o preco iFood. Isso garante consistencia visual e semantica: o usuario entende que a mesma taxa de producao (20.5%) foi aplicada nos dois canais.
 
-Remover a passagem da prop `totalBusinessCostPercent` ao `PricingSummaryPanel` (o calculo ja nao usa, e agora o card visual tambem sera removido).
+### Arquivo: `src/components/recipes/PricingSummaryPanel.tsx`
 
-**Renomear header da coluna na tabela:**
-- Coluna "Lucro Liq. Loja" -> "Lucro/Produto"
-- Coluna "Lucro Liq. iFood" -> "Lucro/Produto"
+**Linha 643** -- Trocar `ifoodProductionCostPercent` por `productionPercent` (que ja esta definido como `productionCostsPercent || 0`):
 
-### 3. Beverages.tsx -- Mesma renomeacao
+Antes:
+```
+<span className="text-xs text-muted-foreground">{ifoodProductionCostPercent.toFixed(1)}%</span>
+```
 
-Renomear coluna "Lucro Liquido" para "Lucro/Produto" na tabela de listagem de bebidas.
+Depois:
+```
+<span className="text-xs text-muted-foreground">{productionPercent.toFixed(1)}%</span>
+```
 
-### 4. BusinessArea.tsx -- Ajustes no Dashboard Gerencial
-
-**Renomear secao "Custo Total Consolidado"** (linha 735-737):
-- Titulo: "Custo Total Consolidado" -> "Custos de Producao (Rateio)"
-- Subtitulo: "Impacto total dos custos e despesas sobre o preco do produto" -> "Percentual rateado sobre o faturamento, aplicado nas fichas tecnicas"
-
-**Renomear secao "Despesas do Negocio"** (linha 689-690):
-- Titulo ja esta "Despesas do Negocio" -> "Despesas Mensais do Negocio"
-- Subtitulo: manter o atual + adicionar texto fixo: "Despesas do negocio sao pagas com o lucro total do mes, nao por produto individual."
-
-**Renomear DRE:**
-- "Resultado Liquido" -> "Lucro Mensal do Negocio"
-
-### 5. SimplifiedDREBlock.tsx -- Renomear resultado
-
-- "Resultado Liquido" -> "Lucro Mensal do Negocio"
-- Adicionar texto explicativo fixo abaixo do resultado: "Despesas do negocio sao pagas com o faturamento total do mes, nao por produto individual."
-
-### 6. TotalProductCostBlock.tsx -- Limpar confusao
-
-**Remover referencia a "Despesas Negocio" no grid de metricas.** Esse bloco so deve mostrar custos de producao (fixos + variaveis) e o percentual resultante. As despesas do negocio vivem apenas na secao de Despesas e no DRE.
-
-Concretamente:
-- Remover a coluna "Despesas Negocio" do grid de 3 colunas (converter para grid de 2 colunas: Custos Producao + Total)
-- Remover a barra de progresso com duas cores (azul + rosa) que mistura producao com despesas
-- Manter apenas a barra de progresso simples mostrando o percentual de custos de producao
-- Atualizar titulo: "Custo Total a Abater do Produto" -> "Custos de Producao (Rateio)"
-- Atualizar subtitulo: "Percentual do preco consumido para manter o negocio" -> "Percentual do faturamento aplicado sobre cada produto"
-- Remover props `businessExpensesPercent` e `averagePrice` que nao serao mais necessarias
+Isso faz com que ambos os canais mostrem "20.5%" ao lado do valor R$ 7,39, mantendo a consistencia.
 
 ## O que NAO muda
 
-- Nenhum calculo matematico
-- Nenhuma logica de banco de dados
-- Nenhuma funcionalidade removida
-- Area de Despesas continua existindo na Area do Negocio
-- DRE continua funcionando
-- TotalBusinessCostBlock continua existindo para gerenciar despesas
-
-## Detalhes Tecnicos
-
-| Arquivo | Mudanca |
-|---------|---------|
-| PricingSummaryPanel.tsx | Remover bloco "DESPESAS NEGOCIO (ref.)", remover prop `totalBusinessCostPercent`, renomear labels |
-| Recipes.tsx | Remover prop `totalBusinessCostPercent` do PricingSummaryPanel, renomear colunas tabela |
-| Beverages.tsx | Renomear coluna tabela |
-| BusinessArea.tsx | Renomear secoes, adicionar texto educativo, remover props desnecessarias do TotalProductCostBlock |
-| SimplifiedDREBlock.tsx | Renomear "Resultado Liquido" -> "Lucro Mensal do Negocio", adicionar texto pedagogico |
-| TotalProductCostBlock.tsx | Remover coluna despesas, simplificar para 2 colunas, remover props, atualizar titulos |
+- Nenhum calculo matematico (o valor R$ 7,39 continua sendo calculado sobre a receita liquida)
+- Nenhuma outra parte do sistema
+- Apenas a porcentagem exibida no texto ao lado do valor no bloco iFood
