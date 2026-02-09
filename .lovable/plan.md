@@ -1,44 +1,74 @@
 
-# Corrigir Inconsistencia de Porcentagem nos Custos de Producao
 
-## Problema
+# Reverter Porcentagem iFood + Tooltip Educativo + Icone Amarelo
 
-Na ficha tecnica, o bloco "Custos Producao" mostra porcentagens diferentes entre Loja e iFood, mesmo tendo o mesmo valor absoluto (R$ 7,39):
+Todas as mudancas sao no arquivo `src/components/recipes/PricingSummaryPanel.tsx`.
 
-- **Loja**: mostra 20.5% (a taxa global aplicada)
-- **iFood**: mostra 14.6% (o valor R$ 7,39 dividido pelo preco iFood R$ 50,65)
+## 1. Reverter porcentagem iFood (linha 643)
 
-Isso confunde o usuario. A porcentagem exibida ao lado do valor deve ser consistente.
+Desfazer a ultima alteracao, trocando `productionPercent` de volta para `ifoodProductionCostPercent`:
 
-## Causa Raiz
-
-No codigo (PricingSummaryPanel.tsx):
-
-- Loja (linha 560): exibe `productionPercent` = `productionCostsPercent` (taxa global)
-- iFood (linha 528): calcula `ifoodProductionCostPercent = ifoodProductionCost / ifoodPrice * 100`, que e a proporcao sobre o preco total do iFood, nao a taxa aplicada
-
-## Solucao
-
-Alterar a porcentagem exibida no bloco iFood para mostrar a **mesma taxa aplicada** (20.5%) em vez da proporcao sobre o preco iFood. Isso garante consistencia visual e semantica: o usuario entende que a mesma taxa de producao (20.5%) foi aplicada nos dois canais.
-
-### Arquivo: `src/components/recipes/PricingSummaryPanel.tsx`
-
-**Linha 643** -- Trocar `ifoodProductionCostPercent` por `productionPercent` (que ja esta definido como `productionCostsPercent || 0`):
-
-Antes:
 ```
-<span className="text-xs text-muted-foreground">{ifoodProductionCostPercent.toFixed(1)}%</span>
+productionPercent.toFixed(1)  -->  ifoodProductionCostPercent.toFixed(1)
 ```
 
-Depois:
+## 2. Icone de ajuda amarelo sutil (linha 295)
+
+Alterar a cor do HelpCircle do bloco "CUSTOS DE PRODUCAO (%)":
+
 ```
-<span className="text-xs text-muted-foreground">{productionPercent.toFixed(1)}%</span>
+text-muted-foreground  -->  text-yellow-500/70
 ```
 
-Isso faz com que ambos os canais mostrem "20.5%" ao lado do valor R$ 7,39, mantendo a consistencia.
+## 3. Tooltip na porcentagem da Loja (linha 560)
+
+Envolver o span da porcentagem com Tooltip explicativo:
+
+```tsx
+<TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <span className="text-xs text-muted-foreground cursor-help">
+        {productionPercent.toFixed(1)}%
+      </span>
+    </TooltipTrigger>
+    <TooltipContent side="top" className="max-w-[280px] text-xs">
+      Percentual rateado do preco para pagar os custos de producao do negocio. Este e o valor que esse item vai pagar os custos de producao.
+    </TooltipContent>
+  </Tooltip>
+</TooltipProvider>
+```
+
+## 4. Tooltip na porcentagem do iFood (linha 643)
+
+Mesmo Tooltip, agora com a porcentagem revertida:
+
+```tsx
+<TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <span className="text-xs text-muted-foreground cursor-help">
+        {ifoodProductionCostPercent.toFixed(1)}%
+      </span>
+    </TooltipTrigger>
+    <TooltipContent side="top" className="max-w-[280px] text-xs">
+      Percentual rateado do preco para pagar os custos de producao do negocio. Este e o valor que esse item vai pagar os custos de producao.
+    </TooltipContent>
+  </Tooltip>
+</TooltipProvider>
+```
 
 ## O que NAO muda
 
-- Nenhum calculo matematico (o valor R$ 7,39 continua sendo calculado sobre a receita liquida)
-- Nenhuma outra parte do sistema
-- Apenas a porcentagem exibida no texto ao lado do valor no bloco iFood
+- Nenhum calculo matematico
+- Valores em R$ permanecem identicos
+- Demais blocos da ficha tecnica inalterados
+
+## Resumo das edicoes
+
+| Linha | Mudanca |
+|-------|---------|
+| 295 | HelpCircle: `text-muted-foreground` para `text-yellow-500/70` |
+| 560 | Envolver porcentagem Loja com Tooltip educativo |
+| 643 | Reverter para `ifoodProductionCostPercent` + envolver com Tooltip educativo |
+
