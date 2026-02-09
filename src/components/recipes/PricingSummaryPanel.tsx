@@ -292,7 +292,7 @@ export default function PricingSummaryPanel({
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                        <HelpCircle className="w-3.5 h-3.5 text-yellow-500/70 cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-[280px] text-xs">
                         <p className="font-semibold mb-1">Como funciona esse percentual?</p>
@@ -557,7 +557,16 @@ export default function PricingSummaryPanel({
                       <span>(-) Custos Produção</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono">{formatCurrency(productionCostValue)}</span>
-                        <span className="text-xs text-muted-foreground">{productionPercent.toFixed(1)}%</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs text-muted-foreground cursor-help">{productionPercent.toFixed(1)}%</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[280px] text-xs">
+                              Percentual rateado do preço para pagar os custos de produção do negócio. Este é o valor que esse item vai pagar os custos de produção.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </div>
                   )}
@@ -640,7 +649,16 @@ export default function PricingSummaryPanel({
                       <span>(-) Custos Produção</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono">{formatCurrency(ifoodProductionCost)}</span>
-                        <span className="text-xs text-muted-foreground">{productionPercent.toFixed(1)}%</span>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs text-muted-foreground cursor-help">{ifoodProductionCostPercent.toFixed(1)}%</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[280px] text-xs">
+                              Percentual rateado do preço para pagar os custos de produção do negócio. Este é o valor que esse item vai pagar os custos de produção.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       </div>
                     </div>
                   )}
