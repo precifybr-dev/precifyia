@@ -1,83 +1,87 @@
 
+# Ajuste de Apresentacao e Nomenclatura da Precificacao
 
-# Alerta Inteligente de Categorização de Custos e Despesas
+## Contexto
 
-## Visao Geral
+A matematica do sistema esta correta. O problema e que a apresentacao visual confunde o usuario leigo, dando sensacao de duplicidade entre "Custos de Producao (%)" e "Despesas do Negocio (ref.)". Este plano corrige apenas a camada visual, semantica e pedagogica.
 
-Criar um sistema de alerta educativo que orienta o usuario quando ele cadastra um custo ou despesa em uma categoria potencialmente incorreta. O alerta e apenas informativo -- nunca bloqueia ou corrige automaticamente.
+## Mudancas
 
-## Arquitetura
+### 1. PricingSummaryPanel.tsx -- Ficha Tecnica
 
-A solucao e 100% client-side, sem banco de dados, sem API. Os grupos semanticos ficam em um arquivo utilitario e a verificacao e feita via normalizacao de texto (funcao `normalizeText` ja existente).
+**Remover completamente o bloco "DESPESAS NEGOCIO (ref.)"** (linhas 320-336). Esse card de borda tracejada nao deveria aparecer na ficha tecnica -- despesas do negocio sao informacao gerencial da Area do Negocio, nao do produto.
 
-## Arquivos
+**Renomear labels:**
+- "LUCRO LIQUIDO REAL - LOJA" -> "LUCRO POR PRODUTO - LOJA"
+- "LUCRO LIQUIDO REAL - IFOOD" -> "LUCRO POR PRODUTO - IFOOD"
+- "= LUCRO LIQUIDO" -> "= LUCRO POR PRODUTO"
+- Texto explicativo da Loja: "Lucro real apos custo direto, custos de producao (%) e impostos." -> "Lucro unitario apos custo direto, rateio de producao e impostos."
+- Texto explicativo do iFood: "Este e o valor real que sobra apos todos os custos, despesas e impostos." -> "Lucro unitario apos taxa iFood, custo direto, rateio de producao e impostos."
 
-### 1. Novo: `src/lib/cost-category-hints.ts`
+**Atualizar tooltip do bloco "CUSTOS DE PRODUCAO (%)"** (linhas 301-306):
+- Remover a frase sobre "despesas do negocio ja estao consideradas aqui" que causa confusao
+- Usar texto educativo do briefing: "Esse valor representa quanto cada produto ajuda a pagar as contas mensais do seu negocio. Aluguel, internet, energia, sistema e outras despesas nao sao descontadas diretamente do produto -- elas sao diluidas em percentual para que cada venda pague apenas a sua parte justa."
 
-Arquivo utilitario contendo:
+**Remover prop `totalBusinessCostPercent`** da interface -- a ficha tecnica nao precisa mais receber esse dado.
 
-- **4 mapas de grupos semanticos** (A, B, C, D) com arrays de palavras-chave
-- **Funcao `detectCategoryMismatch`** que recebe o texto digitado e a categoria atual, retorna o alerta (ou null)
+### 2. Recipes.tsx -- Passar menos dados ao Painel
 
-Cada grupo:
-- **A (despesas_fixas)**: aluguel, condominio, iptu, funcionario, salario, folha, pro-labore, beneficios, vale transporte, vale refeicao, encargos, fgts, inss, sindicato, agua, luz, energia, gas fixo, internet, telefone, celular, limpeza, seguranca, vigilancia, contador, contabilidade, juridico, advogado, consultoria, despachante, sistema, software, erp, mensalidade sistema, parcela maquina, financiamento, emprestimo, leasing, juros fixos, tarifa bancaria
-- **B (despesas_variaveis)**: marketing, anuncios, trafego, facebook ads, google ads, promocao, publicidade, comissao vendedor, comissoes, taxa cartao, taxa maquininha, taxa banco, taxas financeiras, antecipacao, imposto sobre venda, icms, iss, pis, cofins, simples nacional, taxas variaveis, taxas operacionais
-- **C (custos_fixos_producao)**: depreciacao, desgaste equipamento, maquina producao, equipamento producao, manutencao equipamento, contrato minimo producao, licenca producao, custo fixo por item, taxa fixa producao, estrutura producao, custo base producao
-- **D (custos_variaveis_producao)**: embalagem, caixa, papel, saco, etiqueta, perda, desperdicio, quebra, insumo, ingrediente, materia-prima, taxa ifood, comissao ifood, taxa por pedido, taxa entrega, motoboy, cupom, desconto, taxa variavel por item
+Remover a passagem da prop `totalBusinessCostPercent` ao `PricingSummaryPanel` (o calculo ja nao usa, e agora o card visual tambem sera removido).
 
-Logica da funcao:
-1. Normaliza o texto com `normalizeText` (ja existe)
-2. Verifica correspondencia por palavra-chave/radical em cada grupo
-3. Se o grupo detectado != categoria atual, retorna objeto com: `detectedGroup`, `suggestedCategoryName`, `message`
-4. Se nao ha conflito ou nao ha match, retorna `null`
+**Renomear header da coluna na tabela:**
+- Coluna "Lucro Liq. Loja" -> "Lucro/Produto"
+- Coluna "Lucro Liq. iFood" -> "Lucro/Produto"
 
-### 2. Novo: `src/components/business/CategoryMismatchAlert.tsx`
+### 3. Beverages.tsx -- Mesma renomeacao
 
-Componente visual leve que exibe o alerta amarelo com icone de atencao. Recebe as props:
-- `inputText: string`
-- `currentCategory: string` (ex: "custos_fixos_producao")
+Renomear coluna "Lucro Liquido" para "Lucro/Produto" na tabela de listagem de bebidas.
 
-Internamente chama `detectCategoryMismatch` e renderiza o alerta apenas quando ha conflito. Usa `Alert` do shadcn/ui com variante amarela.
+### 4. BusinessArea.tsx -- Ajustes no Dashboard Gerencial
 
-### 3. Modificar: `src/components/business/FixedCostsBlock.tsx`
+**Renomear secao "Custo Total Consolidado"** (linha 735-737):
+- Titulo: "Custo Total Consolidado" -> "Custos de Producao (Rateio)"
+- Subtitulo: "Impacto total dos custos e despesas sobre o preco do produto" -> "Percentual rateado sobre o faturamento, aplicado nas fichas tecnicas"
 
-- Importar `CategoryMismatchAlert`
-- Adicionar o componente logo abaixo do input de nome no formulario de adicao (linha ~253)
-- Prop: `currentCategory="custos_fixos_producao"`, `inputText={newCost.name}`
+**Renomear secao "Despesas do Negocio"** (linha 689-690):
+- Titulo ja esta "Despesas do Negocio" -> "Despesas Mensais do Negocio"
+- Subtitulo: manter o atual + adicionar texto fixo: "Despesas do negocio sao pagas com o lucro total do mes, nao por produto individual."
 
-### 4. Modificar: `src/components/business/VariableCostsBlock.tsx`
+**Renomear DRE:**
+- "Resultado Liquido" -> "Lucro Mensal do Negocio"
 
-- Mesmo padrao: adicionar `CategoryMismatchAlert` abaixo do input de nome (linha ~253)
-- Prop: `currentCategory="custos_variaveis_producao"`
+### 5. SimplifiedDREBlock.tsx -- Renomear resultado
 
-### 5. Modificar: `src/components/business/FixedExpensesBlock.tsx`
+- "Resultado Liquido" -> "Lucro Mensal do Negocio"
+- Adicionar texto explicativo fixo abaixo do resultado: "Despesas do negocio sao pagas com o faturamento total do mes, nao por produto individual."
 
-- Mesmo padrao (linha ~226)
-- Prop: `currentCategory="despesas_fixas"`
+### 6. TotalProductCostBlock.tsx -- Limpar confusao
 
-### 6. Modificar: `src/components/business/VariableExpensesBlock.tsx`
+**Remover referencia a "Despesas Negocio" no grid de metricas.** Esse bloco so deve mostrar custos de producao (fixos + variaveis) e o percentual resultante. As despesas do negocio vivem apenas na secao de Despesas e no DRE.
 
-- Mesmo padrao (linha ~272)
-- Prop: `currentCategory="despesas_variaveis"`
+Concretamente:
+- Remover a coluna "Despesas Negocio" do grid de 3 colunas (converter para grid de 2 colunas: Custos Producao + Total)
+- Remover a barra de progresso com duas cores (azul + rosa) que mistura producao com despesas
+- Manter apenas a barra de progresso simples mostrando o percentual de custos de producao
+- Atualizar titulo: "Custo Total a Abater do Produto" -> "Custos de Producao (Rateio)"
+- Atualizar subtitulo: "Percentual do preco consumido para manter o negocio" -> "Percentual do faturamento aplicado sobre cada produto"
+- Remover props `businessExpensesPercent` e `averagePrice` que nao serao mais necessarias
 
-## Comportamento do Alerta
+## O que NAO muda
 
-- Aparece em tempo real enquanto o usuario digita (sem debounce necessario, pois e apenas uma comparacao de string local)
-- Texto do alerta segue o formato:
-
-> **Atencao:** "Aluguel" e normalmente uma **Despesa Fixa do Negocio**, nao um Custo de Producao. Custos de producao sao gastos diretamente ligados a fabricacao do produto. Voce pode continuar se desejar.
-
-- Cor amarela/amber com icone `AlertTriangle`
-- Desaparece quando o campo fica vazio ou quando nao ha conflito
-- Nunca bloqueia a acao de "Adicionar"
+- Nenhum calculo matematico
+- Nenhuma logica de banco de dados
+- Nenhuma funcionalidade removida
+- Area de Despesas continua existindo na Area do Negocio
+- DRE continua funcionando
+- TotalBusinessCostBlock continua existindo para gerenciar despesas
 
 ## Detalhes Tecnicos
 
-| Item | Detalhe |
-|------|---------|
-| Peso no bundle | Minimo -- apenas um arquivo de constantes + componente leve |
-| Chamadas ao banco | Zero |
-| Performance | Comparacao de string normalizada, O(n) no numero de keywords (~80 termos) |
-| Escalabilidade | Adicionar novos termos = adicionar string no array |
-| Normalizacao | Usa `normalizeText` existente em `src/lib/utils.ts` |
-
+| Arquivo | Mudanca |
+|---------|---------|
+| PricingSummaryPanel.tsx | Remover bloco "DESPESAS NEGOCIO (ref.)", remover prop `totalBusinessCostPercent`, renomear labels |
+| Recipes.tsx | Remover prop `totalBusinessCostPercent` do PricingSummaryPanel, renomear colunas tabela |
+| Beverages.tsx | Renomear coluna tabela |
+| BusinessArea.tsx | Renomear secoes, adicionar texto educativo, remover props desnecessarias do TotalProductCostBlock |
+| SimplifiedDREBlock.tsx | Renomear "Resultado Liquido" -> "Lucro Mensal do Negocio", adicionar texto pedagogico |
+| TotalProductCostBlock.tsx | Remover coluna despesas, simplificar para 2 colunas, remover props, atualizar titulos |
