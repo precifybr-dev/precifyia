@@ -686,8 +686,8 @@ export default function BusinessArea() {
                 <Receipt className="w-4 h-4 text-rose-500" />
               </div>
               <div>
-                <h2 className="font-display font-semibold text-lg text-foreground">Despesas do Negócio</h2>
-                <p className="text-sm text-muted-foreground">Gastos mensais do negócio (aluguel, luz, funcionários) - abatidos do faturamento</p>
+                <h2 className="font-display font-semibold text-lg text-foreground">Despesas Mensais do Negócio</h2>
+                <p className="text-sm text-muted-foreground">Gastos mensais do negócio (aluguel, luz, funcionários) — abatidos do faturamento total. Despesas do negócio são pagas com o lucro total do mês, não por produto individual.</p>
               </div>
             </div>
 
@@ -732,20 +732,14 @@ export default function BusinessArea() {
                 <Calculator className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <h2 className="font-display font-semibold text-lg text-foreground">Custo Total Consolidado</h2>
-                <p className="text-sm text-muted-foreground">Impacto total dos custos e despesas sobre o preço do produto</p>
+                <h2 className="font-display font-semibold text-lg text-foreground">Custos de Produção (Rateio)</h2>
+                <p className="text-sm text-muted-foreground">Percentual rateado sobre o faturamento, aplicado nas fichas técnicas</p>
               </div>
             </div>
 
             <TotalProductCostBlock
               fixedCostsTotal={fixedCostsTotal}
               variableCostsTotal={variableCostsTotal}
-              businessExpensesPercent={
-                (calculatedMonthlyRevenue ?? profile?.monthly_revenue) && (calculatedMonthlyRevenue ?? profile?.monthly_revenue) > 0
-                  ? ((fixedExpensesTotal + variableExpensesTotal) / (calculatedMonthlyRevenue ?? profile?.monthly_revenue)) * 100
-                  : null
-              }
-              averagePrice={metrics.averagePrice}
               monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
             />
           </div>

@@ -127,7 +127,7 @@ export default function SimplifiedDREBlock({
             ) : (
               <DollarSign className="w-5 h-5 text-success" />
             )}
-            <span className="font-semibold text-foreground">Resultado Líquido</span>
+            <span className="font-semibold text-foreground">Lucro Mensal do Negócio</span>
           </div>
           <span className={`font-display text-2xl font-bold ${
             isProfit ? 'text-success' : isLoss ? 'text-destructive' : 'text-muted-foreground'
@@ -167,6 +167,13 @@ export default function SimplifiedDREBlock({
             Suas despesas estão maiores que o faturamento. Revise os gastos para equilibrar as contas.
           </p>
         </div>
+      )}
+
+      {/* Texto educativo */}
+      {hasRevenue && netResult !== null && (
+        <p className="text-xs text-muted-foreground mt-4 text-center p-3 bg-muted/30 rounded-lg">
+          Despesas do negócio são pagas com o faturamento total do mês, não por produto individual.
+        </p>
       )}
 
       {!hasRevenue && (

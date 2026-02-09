@@ -64,9 +64,6 @@ interface PricingSummaryPanelProps {
   setDiscountPercent: (value: string) => void;
   discountedPrice: number;
   
-  // Business costs
-  totalBusinessCostPercent: number | null;
-  
   // Taxes (NEW - from business area configuration)
   taxPercentage?: number | null;
 }
@@ -104,7 +101,6 @@ export default function PricingSummaryPanel({
   discountPercent,
   setDiscountPercent,
   discountedPrice,
-  totalBusinessCostPercent,
   taxPercentage,
 }: PricingSummaryPanelProps) {
   const hasSellingPrice = sellingPrice.trim() !== "" && parseFloat(sellingPrice) > 0;
@@ -301,8 +297,7 @@ export default function PricingSummaryPanel({
                       <TooltipContent side="top" className="max-w-[280px] text-xs">
                         <p className="font-semibold mb-1">Como funciona esse percentual?</p>
                         <p>Esse valor representa quanto cada produto ajuda a pagar as contas mensais do seu negócio.</p>
-                        <p className="mt-1">Aluguel, internet, energia, sistema e outras despesas são diluídas neste percentual para que cada venda pague apenas a sua parte justa.</p>
-                        <p className="mt-1 text-amber-500 font-medium">⚠️ As despesas do negócio já estão consideradas aqui e não são abatidas novamente.</p>
+                        <p className="mt-1">Aluguel, internet, energia, sistema e outras despesas não são descontadas diretamente do produto — elas são diluídas em percentual para que cada venda pague apenas a sua parte justa.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -317,23 +312,6 @@ export default function PricingSummaryPanel({
             </Card>
           )}
 
-          {/* Bloco informativo: Despesas do Negócio (somente referência) */}
-          {totalBusinessCostPercent !== null && totalBusinessCostPercent > 0 && (
-            <Card className="bg-muted/30 border-dashed">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Building2 className="w-4 h-4 text-muted-foreground/60" />
-                  <span className="text-sm font-medium text-muted-foreground/80">DESPESAS NEGÓCIO (ref.)</span>
-                </div>
-                <p className="font-mono text-lg font-bold text-muted-foreground">
-                  {totalBusinessCostPercent.toFixed(2)}%
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Informação gerencial — já incluída nos custos de produção acima
-                </p>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Coluna Direita */}
@@ -557,7 +535,7 @@ export default function PricingSummaryPanel({
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Store className="w-5 h-5 text-success" />
-                  <span className="text-sm font-semibold">LUCRO LÍQUIDO REAL - LOJA</span>
+                  <span className="text-sm font-semibold">LUCRO POR PRODUTO - LOJA</span>
                 </div>
 
                 <div className="space-y-2 text-sm">
@@ -601,7 +579,7 @@ export default function PricingSummaryPanel({
                     <div className="flex justify-between items-center">
                       <span className="font-semibold flex items-center gap-1">
                         <Wallet className="w-4 h-4" />
-                        = LUCRO LÍQUIDO
+                        = LUCRO POR PRODUTO
                       </span>
                       <div className="flex items-center gap-2">
                         <span className={`font-mono text-lg font-bold ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
@@ -613,7 +591,7 @@ export default function PricingSummaryPanel({
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 italic">
-                      Lucro real após custo direto, custos de produção (%) e impostos.
+                      Lucro unitário após custo direto, rateio de produção e impostos.
                     </p>
                   </div>
                 </div>
@@ -625,7 +603,7 @@ export default function PricingSummaryPanel({
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 mb-4">
                   <Smartphone className="w-5 h-5 text-destructive" />
-                  <span className="text-sm font-semibold">LUCRO LÍQUIDO REAL - IFOOD</span>
+                  <span className="text-sm font-semibold">LUCRO POR PRODUTO - IFOOD</span>
                   {hasCustomIfoodPrice && (
                     <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
                       preço personalizado
@@ -684,7 +662,7 @@ export default function PricingSummaryPanel({
                     <div className="flex justify-between items-center">
                       <span className="font-semibold flex items-center gap-1">
                         <Wallet className="w-4 h-4" />
-                        = LUCRO LÍQUIDO
+                        = LUCRO POR PRODUTO
                       </span>
                       <div className="flex items-center gap-2">
                         <span className={`font-mono text-lg font-bold ${ifoodNetProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
@@ -696,7 +674,7 @@ export default function PricingSummaryPanel({
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 italic">
-                      Este é o valor real que sobra após todos os custos, despesas e impostos.
+                      Lucro unitário após taxa iFood, custo direto, rateio de produção e impostos.
                     </p>
                   </div>
                 </div>

@@ -817,10 +817,10 @@ export default function Beverages() {
                       <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Des.</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço Loja</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Loja</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro Loja</TableHead>
+                       <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro/Produto</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço iFood</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV iFood</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro iFood</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro/Produto</TableHead>
                       <TableHead className="w-20"></TableHead>
                     </TableRow>
                   </TableHeader>
