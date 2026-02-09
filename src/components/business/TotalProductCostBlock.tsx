@@ -1,4 +1,5 @@
-import { PieChart, Calculator, Package, Receipt, AlertTriangle, TrendingUp } from "lucide-react";
+import { PieChart, Calculator, Package, Receipt, AlertTriangle, TrendingUp, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TotalProductCostBlockProps {
   fixedCostsTotal: number;
@@ -56,6 +57,18 @@ export default function TotalProductCostBlock({
           <h3 className="font-display font-semibold text-lg text-foreground">Custo Total a Abater do Produto</h3>
           <p className="text-sm text-muted-foreground">Percentual do preço consumido para manter o negócio</p>
         </div>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <HelpCircle className="w-5 h-5 text-muted-foreground cursor-help flex-shrink-0" />
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-[300px] text-xs">
+              <p className="font-semibold mb-1">Como funciona esse percentual?</p>
+              <p>Esse valor representa quanto cada produto ajuda a pagar as contas mensais do seu negócio.</p>
+              <p className="mt-1">Aluguel, internet, energia, sistema e outras despesas não são descontadas diretamente do produto — elas são diluídas em percentual para que cada venda pague apenas a sua parte justa.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {/* Formula Explanation */}
