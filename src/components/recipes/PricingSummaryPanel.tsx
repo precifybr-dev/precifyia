@@ -640,7 +640,7 @@ export default function PricingSummaryPanel({
                       <span>(-) Custos Produção</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono">{formatCurrency(ifoodProductionCost)}</span>
-                        <span className="text-xs text-muted-foreground">{ifoodProductionCostPercent.toFixed(1)}%</span>
+                        <span className="text-xs text-muted-foreground">{productionPercent.toFixed(1)}%</span>
                       </div>
                     </div>
                   )}
