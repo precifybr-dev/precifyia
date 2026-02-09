@@ -469,9 +469,8 @@ export default function Beverages() {
     // Loja metrics - deduct production costs, business expenses, and taxes as %
     const cmvLoja = sellingPrice > 0 ? (unitPrice / sellingPrice) * 100 : 0;
     const prodCostLoja = sellingPrice * (productionCostsPercent || 0) / 100;
-    const bizCostLoja = sellingPrice * (totalBusinessCostPercent || 0) / 100;
     const taxCostLoja = sellingPrice * (taxPercentage || 0) / 100;
-    const netProfitLoja = sellingPrice - unitPrice - prodCostLoja - bizCostLoja - taxCostLoja;
+    const netProfitLoja = sellingPrice - unitPrice - prodCostLoja - taxCostLoja;
     const netProfitPercentLoja = sellingPrice > 0 ? (netProfitLoja / sellingPrice) * 100 : 0;
     
     // iFood metrics - deduct iFood fee, then production costs, business expenses, and taxes
@@ -479,9 +478,8 @@ export default function Beverages() {
     const ifoodNetRevenue = ifoodPrice - ifoodFee;
     const cmvIfood = ifoodNetRevenue > 0 ? (unitPrice / ifoodNetRevenue) * 100 : 0;
     const prodCostIfood = ifoodNetRevenue * (productionCostsPercent || 0) / 100;
-    const bizCostIfood = ifoodNetRevenue * (totalBusinessCostPercent || 0) / 100;
     const taxCostIfood = ifoodNetRevenue * (taxPercentage || 0) / 100;
-    const netProfitIfood = ifoodNetRevenue - unitPrice - prodCostIfood - bizCostIfood - taxCostIfood;
+    const netProfitIfood = ifoodNetRevenue - unitPrice - prodCostIfood - taxCostIfood;
     const netProfitPercentIfood = ifoodPrice > 0 ? (netProfitIfood / ifoodPrice) * 100 : 0;
     
     return { 

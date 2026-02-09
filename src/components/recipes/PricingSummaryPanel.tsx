@@ -286,19 +286,50 @@ export default function PricingSummaryPanel({
             </CardContent>
           </Card>
 
-          {/* Bloco 6: Custo Fixo + Variável */}
-          {totalBusinessCostPercent !== null && (
+          {/* Bloco 6: Custos de Produção (%) */}
+          {productionCostsPercent !== null && productionCostsPercent > 0 && (
             <Card className="bg-muted/50">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Building2 className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-muted-foreground">CUSTO FIXO + VAR</span>
+                  <span className="text-sm font-medium text-muted-foreground">CUSTOS DE PRODUÇÃO (%)</span>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <HelpCircle className="w-3.5 h-3.5 text-muted-foreground cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[280px] text-xs">
+                        <p className="font-semibold mb-1">Como funciona esse percentual?</p>
+                        <p>Esse valor representa quanto cada produto ajuda a pagar as contas mensais do seu negócio.</p>
+                        <p className="mt-1">Aluguel, internet, energia, sistema e outras despesas são diluídas neste percentual para que cada venda pague apenas a sua parte justa.</p>
+                        <p className="mt-1 text-amber-500 font-medium">⚠️ As despesas do negócio já estão consideradas aqui e não são abatidas novamente.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
                 <p className="font-mono text-xl font-bold text-foreground">
+                  {productionCostsPercent.toFixed(2)}%
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Custos de produção rateados sobre o faturamento
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Bloco informativo: Despesas do Negócio (somente referência) */}
+          {totalBusinessCostPercent !== null && totalBusinessCostPercent > 0 && (
+            <Card className="bg-muted/30 border-dashed">
+              <CardContent className="pt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Building2 className="w-4 h-4 text-muted-foreground/60" />
+                  <span className="text-sm font-medium text-muted-foreground/80">DESPESAS NEGÓCIO (ref.)</span>
+                </div>
+                <p className="font-mono text-lg font-bold text-muted-foreground">
                   {totalBusinessCostPercent.toFixed(2)}%
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Despesas do negócio sobre faturamento
+                  Informação gerencial — já incluída nos custos de produção acima
                 </p>
               </CardContent>
             </Card>
@@ -501,9 +532,8 @@ export default function PricingSummaryPanel({
         // Cálculos para Lucro Líquido - LOJA
         const effectivePrice = parseFloat(sellingPrice) || suggestedPrice;
         const productionCostValue = effectivePrice * (productionCostsPercent || 0) / 100;
-        const businessCostValue = effectivePrice * (totalBusinessCostPercent || 0) / 100;
         const taxValue = effectivePrice * (taxPercentage || 0) / 100;
-        const netProfit = effectivePrice - costWithLoss - productionCostValue - businessCostValue - taxValue;
+        const netProfit = effectivePrice - costWithLoss - productionCostValue - taxValue;
         const netProfitPercent = effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0;
         const costPercent = effectivePrice > 0 ? (costWithLoss / effectivePrice) * 100 : 0;
         const taxPercent = taxPercentage || 0;
@@ -513,13 +543,11 @@ export default function PricingSummaryPanel({
         const ifoodFeeValue = ifoodPrice * (effectiveIfoodRate / 100);
         const ifoodNetRevenue = ifoodPrice - ifoodFeeValue;
         const ifoodProductionCost = ifoodNetRevenue * (productionCostsPercent || 0) / 100;
-        const ifoodBusinessCost = ifoodNetRevenue * (totalBusinessCostPercent || 0) / 100;
         const ifoodTaxValue = ifoodNetRevenue * (taxPercentage || 0) / 100;
-        const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodProductionCost - ifoodBusinessCost - ifoodTaxValue;
+        const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodProductionCost - ifoodTaxValue;
         const ifoodNetProfitPercent = ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0;
         const ifoodCostPercent = ifoodPrice > 0 ? (costWithLoss / ifoodPrice) * 100 : 0;
         const ifoodProductionCostPercent = ifoodPrice > 0 ? (ifoodProductionCost / ifoodPrice) * 100 : 0;
-        const ifoodBusinessCostPercent = ifoodPrice > 0 ? (ifoodBusinessCost / ifoodPrice) * 100 : 0;
         const ifoodTaxPercent = ifoodPrice > 0 ? (ifoodTaxValue / ifoodPrice) * 100 : 0;
 
         return (
@@ -556,15 +584,7 @@ export default function PricingSummaryPanel({
                     </div>
                   )}
                   
-                  {totalBusinessCostPercent !== null && totalBusinessCostPercent > 0 && (
-                    <div className="flex justify-between items-center py-1 text-destructive/80">
-                      <span>(-) Despesas Negócio</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono">{formatCurrency(businessCostValue)}</span>
-                        <span className="text-xs text-muted-foreground">{totalBusinessCostPercent.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                  )}
+                  
                   
                   {/* NEW: Taxes Line */}
                   {taxPercentage !== null && taxPercentage !== undefined && taxPercentage > 0 && (
@@ -593,7 +613,7 @@ export default function PricingSummaryPanel({
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2 italic">
-                      Este é o valor real que sobra após todos os custos, despesas e impostos.
+                      Lucro real após custo direto, custos de produção (%) e impostos.
                     </p>
                   </div>
                 </div>
@@ -647,15 +667,7 @@ export default function PricingSummaryPanel({
                     </div>
                   )}
                   
-                  {totalBusinessCostPercent !== null && totalBusinessCostPercent > 0 && (
-                    <div className="flex justify-between items-center py-1 text-destructive/80">
-                      <span>(-) Despesas Negócio</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono">{formatCurrency(ifoodBusinessCost)}</span>
-                        <span className="text-xs text-muted-foreground">{ifoodBusinessCostPercent.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                  )}
+                  
                   
                   {/* NEW: Taxes Line for iFood */}
                   {taxPercentage !== null && taxPercentage !== undefined && taxPercentage > 0 && (
