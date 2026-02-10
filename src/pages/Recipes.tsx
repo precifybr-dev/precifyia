@@ -53,6 +53,7 @@ import IngredientsSpreadsheetTable from "@/components/recipes/IngredientsSpreads
 import PricingSummaryPanel from "@/components/recipes/PricingSummaryPanel";
 import { IfoodImportModal } from "@/components/ifood-import/IfoodImportModal";
 import { useIfoodImport } from "@/hooks/useIfoodImport";
+import { useRecipePricing } from "@/hooks/useRecipePricing";
 import type { Tables } from "@/integrations/supabase/types";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
@@ -153,6 +154,9 @@ export default function Recipes() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Backend pricing hook
+  const { result: pricingResult, isCalculating, error: pricingError, calculate: calculatePricing, reset: resetPricing } = useRecipePricing();
   
   // Hook for iFood import functionality
   const { userPlan, canImport, remainingUsage, checkUsage } = useIfoodImport({
@@ -378,6 +382,8 @@ export default function Recipes() {
     setDiscountPercent("5");
     setLocalIfoodRate("");
     setIfoodSellingPrice("");
+    // Reset backend pricing
+    resetPricing();
   };
 
   const handleNewRecipe = () => {
@@ -660,63 +666,58 @@ export default function Recipes() {
     setRecipeIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
-  // ============ CALCULATIONS ============
+  // ============ BACKEND CALCULATION TRIGGER ============
+  // Trigger backend calculation whenever inputs change
+  useEffect(() => {
+    if (!showForm) return;
+    
+    const validIngredients = recipeIngredients
+      .filter((i) => i.ingredientId && parseFloat(i.quantity) > 0)
+      .map((i) => ({
+        ingredient_id: i.ingredientId!,
+        quantity: parseFloat(i.quantity),
+        unit: i.unit,
+      }));
 
-  // Custo dos insumos da receita (por porção)
+    if (validIngredients.length === 0) return;
+
+    calculatePricing({
+      recipe_name: recipeName || "Nova Receita",
+      ingredients: validIngredients,
+      servings: parseInt(servings) || 1,
+      cmv_target: parseFloat(cmvTarget) || 30,
+      selling_price: sellingPrice.trim() ? parseFloat(sellingPrice) : null,
+      ifood_selling_price: ifoodSellingPrice.trim() ? parseFloat(ifoodSellingPrice) : null,
+      loss_percent: parseFloat(lossPercent) || 0,
+      discount_percent: parseFloat(discountPercent) || 0,
+      local_ifood_rate: localIfoodRate.trim() ? parseFloat(localIfoodRate) : null,
+    });
+  }, [
+    showForm, recipeIngredients, recipeName, servings, cmvTarget,
+    sellingPrice, ifoodSellingPrice, lossPercent, discountPercent, localIfoodRate,
+    calculatePricing,
+  ]);
+
+  // ============ VALUES FROM BACKEND (or fallback while loading) ============
+  // Local fallback for instant preview (ingredient costs only - simple sum)
   const ingredientsCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
   const ingredientsCostPerServing = ingredientsCost / (parseInt(servings) || 1);
+
+  // Use backend results when available, local fallback while calculating
+  const costWithLoss = pricingResult?.cost_with_loss ?? ingredientsCostPerServing;
+  const suggestedPrice = pricingResult?.suggested_price ?? 0;
+  const finalSellingPrice = pricingResult?.final_selling_price ?? (parseFloat(sellingPrice) || suggestedPrice);
+  const actualCMV = pricingResult?.actual_cmv ?? 0;
+  const grossMargin = pricingResult?.gross_margin ?? 0;
+  const grossMarginPercent = pricingResult?.gross_margin_percent ?? 0;
+  const discountedPrice = pricingResult?.discounted_price ?? 0;
+  const effectiveIfoodRate = pricingResult?.effective_ifood_rate ?? (parseFloat(localIfoodRate) || ifoodRealPercentage || 0);
+  const suggestedIfoodPrice = pricingResult?.suggested_ifood_price ?? 0;
+  const calculatedIfoodPrice = pricingResult?.calculated_ifood_price ?? 0;
+  const ifoodPrice = pricingResult?.ifood_price ?? 0;
   
-  // Custo Total por Porção = apenas insumos (custos de produção agora são % do faturamento)
-  const totalCostPerServing = ingredientsCostPerServing;
-
-  // Custo com perda (apenas insumos + perda, sem custos de produção)
-  const lossMultiplier = 1 + (parseFloat(lossPercent) || 0) / 100;
-  const costWithLoss = totalCostPerServing * lossMultiplier;
-
-  // CMV Desejado
-  const cmvDesired = parseFloat(cmvTarget) || 30;
-  
-  // Preço sugerido (baseado no CMV desejado)
-  const suggestedPrice = cmvDesired > 0 && cmvDesired < 100 
-    ? costWithLoss / (cmvDesired / 100) 
-    : costWithLoss;
-
-  // Preço de venda final (manual ou sugerido se vazio)
-  const finalSellingPrice = parseFloat(sellingPrice) || suggestedPrice;
-
-  // CMV Atual (calculado do preço real)
-  const actualCMV = finalSellingPrice > 0 
-    ? (costWithLoss / finalSellingPrice) * 100 
-    : 0;
-
-  // Margens brutas
-  const grossMargin = finalSellingPrice - costWithLoss;
-  const grossMarginPercent = finalSellingPrice > 0 
-    ? (grossMargin / finalSellingPrice) * 100 
-    : 0;
-
-  // Preço com desconto (promoção)
-  const discountedPrice = finalSellingPrice * (1 - (parseFloat(discountPercent) || 0) / 100);
-
-  // Preço iFood (usa taxa local ou global)
-  const effectiveIfoodRate = parseFloat(localIfoodRate) || ifoodRealPercentage || 0;
-  
-  // Preço iFood sugerido (baseado no preço sugerido, calculado pela fórmula)
-  const suggestedIfoodPrice = effectiveIfoodRate > 0 && effectiveIfoodRate < 100
-    ? suggestedPrice / (1 - effectiveIfoodRate / 100)
-    : suggestedPrice;
-
-  // Preço iFood calculado (baseado no preço de venda)
-  const calculatedIfoodPrice = effectiveIfoodRate > 0 && effectiveIfoodRate < 100
-    ? finalSellingPrice / (1 - effectiveIfoodRate / 100)
-    : finalSellingPrice;
-
-  // Preço iFood final: usa o preço manual se preenchido, senão usa o calculado
-  const customIfoodPrice = parseFloat(ifoodSellingPrice) || 0;
-  const ifoodPrice = customIfoodPrice > 0 ? customIfoodPrice : calculatedIfoodPrice;
-  
-  // Para compatibilidade com salvamento (total_cost usa custo de ingredientes)
-  const totalCost = ingredientsCost;
+  // For save: use total ingredient cost
+  const totalCost = pricingResult?.ingredients_cost_total ?? ingredientsCost;
 
   const handleSaveRecipe = async () => {
     if (!recipeName.trim()) {
@@ -733,16 +734,22 @@ export default function Recipes() {
     setIsSaving(true);
 
     try {
+      // Use backend-calculated values when available
+      const backendCostPerServing = pricingResult?.cost_with_loss ?? parseFloat(costWithLoss.toFixed(2));
+      const backendSuggestedPrice = pricingResult?.suggested_price ?? parseFloat(suggestedPrice.toFixed(2));
+      const backendTotalCost = pricingResult?.ingredients_cost_total ?? parseFloat(ingredientsCost.toFixed(2));
+      const parsedIfoodPrice = ifoodSellingPrice.trim() ? parseFloat(ifoodSellingPrice) : null;
+
       const recipeData = {
         user_id: user.id,
         name: recipeName,
         servings: parseInt(servings) || 1,
         cmv_target: parseFloat(cmvTarget) || 30,
-        total_cost: parseFloat(ingredientsCost.toFixed(2)),
-        cost_per_serving: parseFloat(costWithLoss.toFixed(2)),
-        suggested_price: parseFloat(suggestedPrice.toFixed(2)),
+        total_cost: backendTotalCost,
+        cost_per_serving: backendCostPerServing,
+        suggested_price: backendSuggestedPrice,
         selling_price: sellingPrice.trim() !== "" ? parseFloat(sellingPrice) : null,
-        ifood_selling_price: customIfoodPrice > 0 ? customIfoodPrice : null,
+        ifood_selling_price: parsedIfoodPrice && parsedIfoodPrice > 0 ? parsedIfoodPrice : null,
       };
 
       let recipeId = editingId;
@@ -1092,9 +1099,9 @@ export default function Recipes() {
               {/* Pricing Summary Panel */}
               <div className="mb-6">
               <PricingSummaryPanel
-                  ingredientsCost={ingredientsCostPerServing}
+                  ingredientsCost={pricingResult?.ingredients_cost_per_serving ?? ingredientsCostPerServing}
                   costWithLoss={costWithLoss}
-                  productionCostsPercent={productionCostsPercent}
+                  productionCostsPercent={pricingResult?.production_costs_percent ?? productionCostsPercent}
                   cmvTarget={cmvTarget}
                   setCmvTarget={setCmvTarget}
                   actualCMV={actualCMV}
@@ -1118,7 +1125,11 @@ export default function Recipes() {
                   
                   ifoodSellingPrice={ifoodSellingPrice}
                   setIfoodSellingPrice={setIfoodSellingPrice}
-                  taxPercentage={taxPercentage}
+                  taxPercentage={pricingResult?.tax_percentage ?? taxPercentage}
+                  
+                  isCalculating={isCalculating}
+                  calculationError={pricingError}
+                  pricingResult={pricingResult}
                 />
               </div>
 
