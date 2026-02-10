@@ -770,6 +770,36 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_entries: {
+        Row: {
+          blocked_until: string | null
+          created_at: string
+          endpoint: string
+          id: string
+          key: string
+          request_count: number
+          window_start: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          created_at?: string
+          endpoint: string
+          id?: string
+          key: string
+          request_count?: number
+          window_start?: string
+        }
+        Update: {
+          blocked_until?: string | null
+          created_at?: string
+          endpoint?: string
+          id?: string
+          key?: string
+          request_count?: number
+          window_start?: string
+        }
+        Relationships: []
+      }
       recipe_ingredients: {
         Row: {
           cost: number
@@ -1574,6 +1604,21 @@ export type Database = {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
       }
+      check_rate_limit: {
+        Args: {
+          _block_seconds?: number
+          _endpoint: string
+          _key: string
+          _max_requests: number
+          _window_seconds?: number
+        }
+        Returns: {
+          allowed: boolean
+          remaining: number
+          retry_after_seconds: number
+        }[]
+      }
+      cleanup_rate_limit_entries: { Args: never; Returns: undefined }
       count_admin_sessions_today: {
         Args: { _admin_id: string }
         Returns: number

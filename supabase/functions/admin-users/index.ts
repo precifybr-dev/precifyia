@@ -15,42 +15,7 @@ interface AdminAction {
   data?: Record<string, any>;
 }
 
-// Rate limiting configuration
-const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 30; // Max requests per window
-
-// Support session limits
-const MAX_SESSION_DURATION_MINUTES = 30;
-const MAX_SESSIONS_PER_ADMIN_PER_DAY = 10;
-
-// In-memory rate limit store (resets on function cold start)
-const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-function checkRateLimit(userId: string): { allowed: boolean; remaining: number; resetIn: number } {
-  const now = Date.now();
-  const userLimit = rateLimitStore.get(userId);
-
-  if (!userLimit || now > userLimit.resetTime) {
-    // New window
-    rateLimitStore.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
-    return { allowed: true, remaining: RATE_LIMIT_MAX_REQUESTS - 1, resetIn: RATE_LIMIT_WINDOW_MS };
-  }
-
-  if (userLimit.count >= RATE_LIMIT_MAX_REQUESTS) {
-    return { 
-      allowed: false, 
-      remaining: 0, 
-      resetIn: userLimit.resetTime - now 
-    };
-  }
-
-  userLimit.count++;
-  return { 
-    allowed: true, 
-    remaining: RATE_LIMIT_MAX_REQUESTS - userLimit.count, 
-    resetIn: userLimit.resetTime - now 
-  };
-}
+// Rate limit config removed - now using DB-based check_rate_limit
 
 // Enhanced device fingerprint
 function getDeviceFingerprint(req: Request): Record<string, string | null> {
@@ -122,22 +87,15 @@ serve(async (req: Request) => {
     // Usar supabaseAdmin para o resto das operações
     const supabase = supabaseAdmin;
 
-    // Check rate limit
-    const rateLimit = checkRateLimit(user.id);
+    // ─── Rate Limiting: 30 req/min via DB ───
+    const { data: rlData } = await supabase.rpc("check_rate_limit", {
+      _key: user.id, _endpoint: "admin-users", _max_requests: 30, _window_seconds: 60, _block_seconds: 120,
+    });
+    const rl = rlData?.[0];
     const rateLimitHeaders = {
-      'X-RateLimit-Limit': RATE_LIMIT_MAX_REQUESTS.toString(),
-      'X-RateLimit-Remaining': rateLimit.remaining.toString(),
-      'X-RateLimit-Reset': Math.ceil(rateLimit.resetIn / 1000).toString(),
+      'X-RateLimit-Remaining': String(rl?.remaining ?? 0),
     };
-
-    if (!rateLimit.allowed) {
-      console.log('[SECURITY] Rate limit exceeded', { 
-        userId: user.id, 
-        ...deviceInfo, 
-        timestamp: new Date().toISOString() 
-      });
-
-      // Log rate limit violation
+    if (rl && !rl.allowed) {
       await supabase.from('access_logs').insert({
         user_id: user.id,
         action: 'rate_limit_exceeded',
@@ -146,18 +104,9 @@ serve(async (req: Request) => {
         user_agent: deviceInfo.userAgent,
         metadata: { deviceInfo, reason: 'rate_limit' },
       });
-
       return new Response(
         JSON.stringify({ error: 'Muitas requisições. Tente novamente em breve.' }),
-        { 
-          status: 429, 
-          headers: { 
-            ...corsHeaders, 
-            ...rateLimitHeaders,
-            'Content-Type': 'application/json',
-            'Retry-After': Math.ceil(rateLimit.resetIn / 1000).toString(),
-          } 
-        }
+        { status: 429, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json', 'Retry-After': String(rl.retry_after_seconds) } }
       );
     }
 

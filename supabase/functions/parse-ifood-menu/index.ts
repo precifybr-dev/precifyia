@@ -25,6 +25,24 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+    // ─── Rate Limiting by IP: 5 req/min (importações são pesadas) ───
+    const { createClient: createSB } = await import("https://esm.sh/@supabase/supabase-js@2");
+    const supabase = createSB(supabaseUrl, supabaseServiceKey);
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { data: rlData } = await supabase.rpc("check_rate_limit", {
+      _key: `ip:${clientIp}`, _endpoint: "parse-ifood", _max_requests: 5, _window_seconds: 60, _block_seconds: 180,
+    });
+    const rl = rlData?.[0];
+    if (rl && !rl.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Muitas importações. Aguarde alguns minutos." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(rl.retry_after_seconds) } }
+      );
+    }
+
     const { ifoodUrl, importType } = await req.json();
     
     if (!ifoodUrl) {

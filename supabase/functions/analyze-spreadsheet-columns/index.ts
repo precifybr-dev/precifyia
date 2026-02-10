@@ -19,6 +19,21 @@ serve(async (req) => {
   }
 
   try {
+    // ─── Rate Limiting by IP: 10 req/min ───
+    const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { data: rlData } = await supabase.rpc("check_rate_limit", {
+      _key: `ip:${clientIp}`, _endpoint: "analyze-spreadsheet", _max_requests: 10, _window_seconds: 60, _block_seconds: 120,
+    });
+    const rl = rlData?.[0];
+    if (rl && !rl.allowed) {
+      return new Response(
+        JSON.stringify({ error: "Muitas requisições. Aguarde." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { headers } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 

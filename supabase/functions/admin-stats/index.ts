@@ -52,6 +52,18 @@ serve(async (req: Request) => {
       );
     }
 
+    // ─── Rate Limiting: 15 req/min ───
+    const { data: rlData } = await supabase.rpc("check_rate_limit", {
+      _key: user.id, _endpoint: "admin-stats", _max_requests: 15, _window_seconds: 60, _block_seconds: 120,
+    });
+    const rl = rlData?.[0];
+    if (rl && !rl.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Muitas requisições. Tente novamente em breve.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(rl.retry_after_seconds) } }
+      );
+    }
+
     // Buscar dados de auth.users usando service role
     const { data: users, error: usersError } = await supabase.auth.admin.listUsers({
       perPage: 1000

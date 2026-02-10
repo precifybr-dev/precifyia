@@ -46,6 +46,19 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── Rate Limiting: 15 req/min por usuário ───
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const { data: rlData } = await supabase.rpc("check_rate_limit", {
+      _key: user.id, _endpoint: "business-metrics", _max_requests: 15, _window_seconds: 60, _block_seconds: 120,
+    });
+    const rl = rlData?.[0];
+    if (rl && !rl.allowed) {
+      return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em breve." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(rl.retry_after_seconds) },
+      });
+    }
+
     // Optional store_id from body
     let storeId: string | null = null;
     try {

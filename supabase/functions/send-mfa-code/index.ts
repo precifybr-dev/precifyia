@@ -23,7 +23,6 @@ serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
@@ -35,6 +34,22 @@ serve(async (req: Request) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // ─── Rate Limiting: 5 req/min por usuário, 10 req/min por IP (anti-brute-force) ───
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const [{ data: userRL }, { data: ipRL }] = await Promise.all([
+      supabase.rpc("check_rate_limit", { _key: userId, _endpoint: "send-mfa", _max_requests: 5, _window_seconds: 60, _block_seconds: 300 }),
+      supabase.rpc("check_rate_limit", { _key: `ip:${clientIp}`, _endpoint: "send-mfa", _max_requests: 10, _window_seconds: 60, _block_seconds: 300 }),
+    ]);
+    const rl = userRL?.[0] || ipRL?.[0];
+    if (rl && !rl.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Muitas tentativas. Aguarde alguns minutos.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(rl.retry_after_seconds) } }
+      );
+    }
+
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
 
     // Gerar código de 6 dígitos
     const code = generateCode();
