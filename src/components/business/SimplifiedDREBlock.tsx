@@ -1,4 +1,12 @@
-import { FileText, TrendingUp, TrendingDown, DollarSign, Percent, AlertTriangle } from "lucide-react";
+import { FileText, TrendingUp, DollarSign, Percent, AlertTriangle } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+type ProfitHealthStatus = "critico" | "apertado" | "saudavel" | "acima_media" | null;
 
 interface SimplifiedDREBlockProps {
   monthlyRevenue: number | null;
@@ -10,8 +18,43 @@ interface SimplifiedDREBlockProps {
   isProfit: boolean;
   fixedExpensesPercent: number | null;
   variableExpensesPercent: number | null;
+  profitHealthStatus?: ProfitHealthStatus;
   isCalculating?: boolean;
 }
+
+const HEALTH_CONFIG: Record<
+  Exclude<ProfitHealthStatus, null>,
+  { color: string; bgColor: string; label: string; tooltip: string }
+> = {
+  critico: {
+    color: "bg-destructive",
+    bgColor: "bg-destructive/10 text-destructive",
+    label: "Atenção ao lucro",
+    tooltip:
+      "Margens abaixo de 10% aumentam o risco do negócio.\nAvalie custos, preços ou estratégia de venda.",
+  },
+  apertado: {
+    color: "bg-yellow-500",
+    bgColor: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400",
+    label: "Lucro apertado",
+    tooltip:
+      "A margem média no food service costuma variar entre 10% e 20%.\nNo início do negócio, nem sempre é possível operar acima disso.",
+  },
+  saudavel: {
+    color: "bg-success",
+    bgColor: "bg-success/10 text-success",
+    label: "Lucro saudável",
+    tooltip:
+      "A maioria dos estabelecimentos opera com margens entre 10% e 20%.\nEsta margem indica uma operação equilibrada.",
+  },
+  acima_media: {
+    color: "bg-blue-500",
+    bgColor: "bg-blue-500/10 text-blue-700 dark:text-blue-400",
+    label: "Acima da média",
+    tooltip:
+      "Margens acima de 30% não são comuns no food service.\nVerifique se o preço está competitivo no mercado.",
+  },
+};
 
 export default function SimplifiedDREBlock({
   monthlyRevenue,
@@ -23,6 +66,7 @@ export default function SimplifiedDREBlock({
   isProfit,
   fixedExpensesPercent,
   variableExpensesPercent,
+  profitHealthStatus,
   isCalculating,
 }: SimplifiedDREBlockProps) {
   const hasRevenue = monthlyRevenue !== null && monthlyRevenue > 0;
@@ -36,6 +80,8 @@ export default function SimplifiedDREBlock({
     if (value === null) return "—";
     return `${value.toFixed(2)}%`;
   };
+
+  const healthConfig = profitHealthStatus ? HEALTH_CONFIG[profitHealthStatus] : null;
 
   if (isCalculating) {
     return (
@@ -149,6 +195,7 @@ export default function SimplifiedDREBlock({
           </span>
         </div>
 
+        {/* Margem Líquida + Indicador de Saúde do Lucro */}
         <div className={`flex items-center justify-between p-4 rounded-lg ${
           isProfit 
             ? 'bg-success/5 border border-success/20' 
@@ -160,11 +207,29 @@ export default function SimplifiedDREBlock({
             <Percent className={`w-5 h-5 ${isProfit ? 'text-success' : isLoss ? 'text-destructive' : 'text-muted-foreground'}`} />
             <span className="font-medium text-foreground">Margem Líquida</span>
           </div>
-          <span className={`font-display text-xl font-bold ${
-            isProfit ? 'text-success' : isLoss ? 'text-destructive' : 'text-muted-foreground'
-          }`}>
-            {formatPercent(netMarginPercent)}
-          </span>
+          <div className="flex items-center gap-3">
+            {/* Health Indicator */}
+            {healthConfig && (
+              <TooltipProvider delayDuration={200}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium cursor-help ${healthConfig.bgColor}`}>
+                      <span className={`w-2 h-2 rounded-full ${healthConfig.color} flex-shrink-0`} />
+                      {healthConfig.label}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs whitespace-pre-line text-sm">
+                    {healthConfig.tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <span className={`font-display text-xl font-bold ${
+              isProfit ? 'text-success' : isLoss ? 'text-destructive' : 'text-muted-foreground'
+            }`}>
+              {formatPercent(netMarginPercent)}
+            </span>
+          </div>
         </div>
       </div>
 

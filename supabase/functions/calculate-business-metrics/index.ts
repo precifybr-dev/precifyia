@@ -163,6 +163,15 @@ Deno.serve(async (req) => {
     const netMarginPercent = hasRevenue && netResult !== null ? (netResult / monthlyRevenue) * 100 : null;
     const isProfit = netResult !== null && netResult >= 0;
 
+    // ─── Indicador de Saúde do Lucro ───
+    let profit_health_status: string | null = null;
+    if (netMarginPercent !== null) {
+      if (netMarginPercent < 10) profit_health_status = "critico";
+      else if (netMarginPercent < 20) profit_health_status = "apertado";
+      else if (netMarginPercent <= 30) profit_health_status = "saudavel";
+      else profit_health_status = "acima_media";
+    }
+
     // ─── Production cost remaining margin ───
     const productionRemainingMargin = productionCostsPercent !== null ? 100 - productionCostsPercent : null;
 
@@ -224,6 +233,7 @@ Deno.serve(async (req) => {
       net_result: round2(netResult),
       net_margin_percent: round2(netMarginPercent),
       is_profit: isProfit,
+      profit_health_status,
 
       // Warnings
       warnings,
