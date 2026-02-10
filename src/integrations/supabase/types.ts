@@ -1892,6 +1892,18 @@ export type Database = {
           ticket_id: string
         }[]
       }
+      get_admin_metrics: {
+        Args: never
+        Returns: {
+          basic_plan_users: number
+          free_plan_users: number
+          pro_plan_users: number
+          total_users: number
+          users_month: number
+          users_today: number
+          users_week: number
+        }[]
+      }
       get_all_users_admin: {
         Args: never
         Returns: {
