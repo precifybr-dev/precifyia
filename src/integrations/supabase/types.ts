@@ -1530,6 +1530,7 @@ export type Database = {
       support_tickets: {
         Row: {
           assigned_to: string | null
+          consent_granted: boolean | null
           created_at: string
           id: string
           message: string
@@ -1543,6 +1544,7 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          consent_granted?: boolean | null
           created_at?: string
           id?: string
           message: string
@@ -1556,6 +1558,7 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          consent_granted?: boolean | null
           created_at?: string
           id?: string
           message?: string

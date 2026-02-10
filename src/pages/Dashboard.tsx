@@ -17,9 +17,10 @@ import {
   Store,
   Crown,
   Sun,
-  Moon,
-  Sparkles
-} from "lucide-react";
+    Moon,
+    Sparkles,
+    Headphones
+  } from "lucide-react";
 import { useStore } from "@/contexts/StoreContext";
 import { CreateStoreModal } from "@/components/store/CreateStoreModal";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,7 @@ export default function Dashboard() {
       beverages: "/app/beverages",
       recipes: "/app/recipes",
       combos: "/app/combos",
+      support: "/app/support",
     };
     
     if (routes[path]) {
@@ -177,6 +179,7 @@ export default function Dashboard() {
     { icon: Wine, label: "Bebidas", path: "beverages" },
     { icon: FileSpreadsheet, label: "Fichas Técnicas", path: "recipes" },
     { icon: Sparkles, label: "Combos (BETA)", path: "combos" },
+    { icon: Headphones, label: "Suporte", path: "support" },
   ];
 
   const stats = [

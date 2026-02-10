@@ -34,6 +34,7 @@ import Recipes from "./pages/Recipes";
 import SubRecipes from "./pages/SubRecipes";
 import Combos from "./pages/Combos";
 import RecycleBin from "./pages/RecycleBin";
+import UserSupport from "./pages/UserSupport";
 
 // Admin pages (master/collaborators)
 import AdminDashboard from "./pages/AdminDashboard";
@@ -228,6 +229,14 @@ const App = () => (
               element={
                 <AppRoute>
                   <HelpCenter />
+                </AppRoute>
+              }
+            />
+            <Route
+              path="/app/support"
+              element={
+                <AppRoute>
+                  <UserSupport />
                 </AppRoute>
               }
             />
