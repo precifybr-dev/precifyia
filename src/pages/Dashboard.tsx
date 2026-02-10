@@ -20,7 +20,8 @@ import {
     Moon,
     Sparkles,
     Headphones,
-    HardDrive
+    HardDrive,
+    Trash2
   } from "lucide-react";
 import { useStore } from "@/contexts/StoreContext";
 import { CreateStoreModal } from "@/components/store/CreateStoreModal";
@@ -121,6 +122,7 @@ export default function Dashboard() {
       combos: "/app/combos",
       backup: "/app/backup",
       support: "/app/support",
+      "recycle-bin": "/app/recycle-bin",
     };
     
     if (routes[path]) {
@@ -181,7 +183,6 @@ export default function Dashboard() {
     { icon: Wine, label: "Bebidas", path: "beverages" },
     { icon: FileSpreadsheet, label: "Fichas Técnicas", path: "recipes" },
     { icon: Sparkles, label: "Combos (BETA)", path: "combos" },
-    { icon: HardDrive, label: "Backup", path: "backup" },
     { icon: Headphones, label: "Suporte", path: "support" },
   ];
 
@@ -335,6 +336,29 @@ export default function Dashboard() {
             >
               {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
+            </Button>
+
+            {/* Lixeira */}
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground h-auto py-2"
+              onClick={() => handleNavClick("recycle-bin")}
+            >
+              <Trash2 className="w-5 h-5 flex-shrink-0" />
+              <div className="flex flex-col items-start">
+                <span>Lixeira</span>
+                <span className="text-xs text-muted-foreground font-normal">Itens mantidos por 30 dias</span>
+              </div>
+            </Button>
+
+            {/* Backup */}
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+              onClick={() => handleNavClick("backup")}
+            >
+              <HardDrive className="w-5 h-5" />
+              Backup dos meus dados
             </Button>
 
             {/* User Info */}
