@@ -81,6 +81,15 @@ export function useAdminSecurity() {
           sessionStorage.removeItem("admin_mfa_pending");
           isVerified = true;
 
+          // Sincronizar mfa_verified no banco para que edge functions reconheçam
+          await supabase
+            .from("user_security")
+            .upsert({
+              user_id: session.user.id,
+              mfa_verified: true,
+              mfa_enabled: true,
+            }, { onConflict: "user_id" });
+
           // Registrar acesso no log
           await logAdminAccess("google_reauth_verified", true, { role: effectiveRole });
 
