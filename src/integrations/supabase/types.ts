@@ -1624,6 +1624,16 @@ export type Database = {
         Returns: number
       }
       count_user_stores: { Args: { _user_id: string }; Returns: number }
+      create_collaborator_atomic: {
+        Args: {
+          _created_by: string
+          _email: string
+          _name: string
+          _role: string
+          _user_id: string
+        }
+        Returns: Json
+      }
       current_user_is_master: { Args: never; Returns: boolean }
       get_active_consent: {
         Args: { _user_id: string }
@@ -1827,6 +1837,15 @@ export type Database = {
       }
       is_collaborator: { Args: { _user_id: string }; Returns: boolean }
       is_master: { Args: { _user_id: string }; Returns: boolean }
+      update_collaborator_atomic: {
+        Args: {
+          _collaborator_id: string
+          _is_active?: boolean
+          _name?: string
+          _role?: string
+        }
+        Returns: Json
+      }
       user_owns_recipe: { Args: { _recipe_id: string }; Returns: boolean }
       user_owns_store: { Args: { _store_id: string }; Returns: boolean }
       user_owns_sub_recipe: {
