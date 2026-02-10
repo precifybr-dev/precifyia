@@ -29,8 +29,10 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import OnboardingProgress from "@/components/dashboard/OnboardingProgress";
+import WelcomeImportPrompt from "@/components/dashboard/WelcomeImportPrompt";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
+import { SpreadsheetImportModal } from "@/components/spreadsheet-import/SpreadsheetImportModal";
 
 type NavItem = {
   icon: typeof LayoutDashboard;
@@ -46,6 +48,8 @@ export default function Dashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("dashboard");
   const [showCreateStoreModal, setShowCreateStoreModal] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [existingIngredients, setExistingIngredients] = useState<{ name: string }[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
@@ -79,6 +83,14 @@ export default function Dashboard() {
       }
 
       setProfile(profileData);
+      
+      // Fetch existing ingredients for import modal
+      const { data: ingData } = await supabase
+        .from("ingredients")
+        .select("name")
+        .eq("user_id", session.user.id);
+      if (ingData) setExistingIngredients(ingData);
+      
       setIsLoading(false);
     };
 
@@ -427,20 +439,20 @@ export default function Dashboard() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <StoreSwitcher />
+              <div className="hidden sm:block"><StoreSwitcher /></div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 text-warning-foreground border border-warning/20 text-sm font-medium">
                 <AlertTriangle className="w-4 h-4 text-warning" />
-                Trial: 7 dias restantes
+                <span className="hidden sm:inline">Trial: 7 dias restantes</span>
               </div>
             </div>
           </div>
         </header>
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Welcome Card */}
-          <div className="bg-primary rounded-2xl p-6 md:p-8 mb-8 text-primary-foreground">
-            <h2 className="font-display text-2xl md:text-3xl font-bold mb-2">
+          <div className="bg-primary rounded-2xl p-5 sm:p-6 md:p-8 mb-6 text-primary-foreground">
+            <h2 className="font-display text-xl sm:text-2xl md:text-3xl font-bold mb-2">
               Bem-vindo ao PRECIFY! 👋
             </h2>
             <p className="opacity-90 mb-4 max-w-xl leading-relaxed">
@@ -458,13 +470,22 @@ export default function Dashboard() {
             </Button>
           </div>
 
+          {/* Welcome Import Prompt */}
+          <div className="mb-6">
+            <WelcomeImportPrompt
+              userId={user?.id}
+              storeId={activeStore?.id || null}
+              onOpenSpreadsheetImport={() => setImportModalOpen(true)}
+            />
+          </div>
+
           {/* Onboarding Progress */}
-          <div className="mb-8">
+          <div className="mb-6">
             <OnboardingProgress profile={profile} userId={user?.id} />
           </div>
 
           {/* Stats Grid */}
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
             {stats.map((stat) => (
               <div
                 key={stat.label}
@@ -486,7 +507,7 @@ export default function Dashboard() {
           {/* Quick Actions */}
           <div className="bg-card rounded-xl border border-border p-6 shadow-card">
             <h3 className="font-display font-semibold text-lg mb-4 text-foreground">Próximos Passos</h3>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
               <button 
                 onClick={() => handleQuickAction("business")}
                 className="p-4 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
@@ -521,6 +542,19 @@ export default function Dashboard() {
           </div>
         </div>
       </main>
+
+      {/* Spreadsheet Import Modal */}
+      <SpreadsheetImportModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        userId={user?.id || ""}
+        storeId={activeStore?.id || null}
+        existingIngredients={existingIngredients}
+        onImportComplete={async () => {
+          const { data } = await supabase.from("ingredients").select("name").eq("user_id", user?.id);
+          if (data) setExistingIngredients(data);
+        }}
+      />
     </div>
   );
 }

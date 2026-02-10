@@ -344,7 +344,7 @@ export default function BusinessArea() {
       {sidebarOpen && <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <main className="flex-1 lg:ml-64">
-        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
+        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
@@ -371,8 +371,8 @@ export default function BusinessArea() {
           </div>
         </header>
 
-        <div className="p-6">
-          <div className="bg-card rounded-xl border border-border p-6 shadow-card">
+        <div className="p-4 sm:p-6">
+          <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-card">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">

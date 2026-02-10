@@ -759,6 +759,7 @@ export default function Ingredients() {
           )}
 
           <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -831,6 +832,7 @@ export default function Ingredients() {
                 )}
               </TableBody>
             </Table>
+            </div>
           </div>
         </div>
       </main>

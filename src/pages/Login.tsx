@@ -146,7 +146,7 @@ export default function Login() {
     <div className="min-h-screen bg-background flex">
 
       {/* Left Side - Form */}
-      <div className="flex-1 flex items-center justify-center p-8">
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-8">
         <div className="w-full max-w-md">
           <Link
             to="/"
