@@ -88,6 +88,7 @@ export function useAdminSecurity() {
               user_id: session.user.id,
               mfa_verified: true,
               mfa_enabled: true,
+              mfa_verified_at: new Date().toISOString(),
             }, { onConflict: "user_id" });
 
           // Registrar acesso no log

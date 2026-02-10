@@ -172,17 +172,32 @@ serve(async (req: Request) => {
 
     // Para roles sensíveis, verificar se MFA foi realizado recentemente
     if (sensitiveRoles.includes(effectiveRole)) {
+      const MFA_SESSION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutos
+
       const { data: securityData } = await supabase
         .from('user_security')
-        .select('mfa_verified, mfa_code_expires_at')
+        .select('mfa_verified, mfa_verified_at')
         .eq('user_id', user.id)
         .single();
 
-      // Verificar se MFA está habilitado e verificado
-      if (!securityData?.mfa_verified) {
-        console.log('[SECURITY] MFA not verified for sensitive role', { 
+      // Verificar se MFA está verificado E não expirou
+      const mfaExpired = securityData?.mfa_verified_at
+        ? (Date.now() - new Date(securityData.mfa_verified_at).getTime()) > MFA_SESSION_EXPIRY_MS
+        : true;
+
+      if (!securityData?.mfa_verified || mfaExpired) {
+        // Se expirou, resetar mfa_verified no banco
+        if (mfaExpired && securityData?.mfa_verified) {
+          await supabase
+            .from('user_security')
+            .update({ mfa_verified: false })
+            .eq('user_id', user.id);
+        }
+
+        console.log('[SECURITY] MFA not verified or expired for sensitive role', { 
           userId: user.id, 
           role: effectiveRole,
+          mfaExpired,
           ...deviceInfo 
         });
         
