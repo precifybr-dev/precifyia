@@ -17,6 +17,8 @@ import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import AuthCallback from "./pages/AuthCallback";
 import Forbidden from "./pages/Forbidden";
+import HelpCenter from "./pages/HelpCenter";
+import { ContextualHelp } from "@/components/help/ContextualHelp";
 
 // Auth/Security pages
 import SecurityCheck from "./pages/SecurityCheck";
@@ -49,6 +51,7 @@ const App = () => (
         <BrowserRouter>
           <ImpersonationBanner />
           <ReadOnlyModeInterceptor />
+          <ContextualHelp />
           <Routes>
             {/* ========== PUBLIC ROUTES ========== */}
             <Route path="/" element={<Landing />} />
@@ -218,6 +221,16 @@ const App = () => (
             <Route path="/recipes" element={<Navigate to="/app/recipes" replace />} />
             <Route path="/sub-recipes" element={<Navigate to="/app/sub-recipes" replace />} />
             <Route path="/collaborators" element={<Navigate to="/admin/collaborators" replace />} />
+
+            {/* ========== HELP CENTER ========== */}
+            <Route
+              path="/app/help"
+              element={
+                <AppRoute>
+                  <HelpCenter />
+                </AppRoute>
+              }
+            />
 
             {/* ========== ERROR PAGES ========== */}
             <Route path="/403" element={<Forbidden />} />
