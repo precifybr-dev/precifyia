@@ -1515,6 +1515,7 @@ export type Database = {
           mfa_enabled: boolean
           mfa_secret: string | null
           mfa_verified: boolean
+          mfa_verified_at: string | null
           must_change_password: boolean
           password_changed_at: string | null
           updated_at: string
@@ -1528,6 +1529,7 @@ export type Database = {
           mfa_enabled?: boolean
           mfa_secret?: string | null
           mfa_verified?: boolean
+          mfa_verified_at?: string | null
           must_change_password?: boolean
           password_changed_at?: string | null
           updated_at?: string
@@ -1541,6 +1543,7 @@ export type Database = {
           mfa_enabled?: boolean
           mfa_secret?: string | null
           mfa_verified?: boolean
+          mfa_verified_at?: string | null
           must_change_password?: boolean
           password_changed_at?: string | null
           updated_at?: string
