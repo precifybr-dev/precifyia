@@ -766,6 +766,7 @@ export default function BusinessArea() {
               isProfit={businessMetrics?.is_profit ?? false}
               fixedExpensesPercent={businessMetrics?.fixed_expenses_percent ?? null}
               variableExpensesPercent={businessMetrics?.variable_expenses_percent ?? null}
+              profitHealthStatus={businessMetrics?.profit_health_status ?? null}
               isCalculating={isMetricsCalculating}
             />
           </div>

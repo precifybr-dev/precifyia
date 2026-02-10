@@ -32,6 +32,7 @@ export interface BusinessMetricsResult {
   net_result: number | null;
   net_margin_percent: number | null;
   is_profit: boolean;
+  profit_health_status: "critico" | "apertado" | "saudavel" | "acima_media" | null;
 
   // Warnings
   warnings: string[];
