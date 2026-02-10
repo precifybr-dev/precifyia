@@ -214,17 +214,38 @@ export function useDataProtection() {
         const record = deletedRecord as DeletedRecord;
 
         // 2. Re-insert into original table
-        // Cast data to the expected type for insert
-        const dataToRestore = record.data as Record<string, unknown>;
+        // Strip auto-generated fields that may cause unique constraint conflicts
+        const dataToRestore = { ...(record.data as Record<string, unknown>) };
+        
+        // Remove 'code' field for tables that auto-generate it (sequence-based)
+        const tablesWithAutoCode = ["ingredients", "beverages", "sub_recipes"];
+        if (tablesWithAutoCode.includes(record.original_table)) {
+          delete dataToRestore.code;
+        }
+        
+        // Update timestamps
+        dataToRestore.updated_at = new Date().toISOString();
+
         const { error: insertError } = await supabase
           .from(record.original_table as ProtectedTable)
           .insert(dataToRestore as any);
 
         if (insertError) {
           console.error("Error restoring to original table:", insertError);
+          
+          // Provide more specific error messages
+          let errorDescription = "Não foi possível restaurar o item.";
+          if (insertError.message?.includes("unique") || insertError.message?.includes("duplicate")) {
+            errorDescription = "Já existe um item com os mesmos dados. Verifique se o item não foi recriado.";
+          } else if (insertError.message?.includes("foreign key") || insertError.message?.includes("violates")) {
+            errorDescription = "Dados vinculados (loja ou sub-receita) não existem mais. Recrie os itens dependentes primeiro.";
+          } else {
+            errorDescription = `Erro: ${insertError.message || "conflito de dados desconhecido."}`;
+          }
+          
           toast({
             title: "Erro ao restaurar",
-            description: "Não foi possível restaurar o item. Pode haver conflito de dados.",
+            description: errorDescription,
             variant: "destructive",
           });
           return false;
@@ -363,12 +384,72 @@ export function useDataProtection() {
     }
   }, []);
 
+  /**
+   * Check how many items depend on a given record
+   */
+  const checkDependencies = useCallback(
+    async (table: string, id: string): Promise<{ total: number; details: string[] }> => {
+      const details: string[] = [];
+      let total = 0;
+
+      try {
+        if (table === "ingredients") {
+          const { count: recipeCount } = await supabase
+            .from("recipe_ingredients")
+            .select("*", { count: "exact", head: true })
+            .eq("ingredient_id", id);
+          if (recipeCount && recipeCount > 0) {
+            details.push(`${recipeCount} ficha(s) técnica(s)`);
+            total += recipeCount;
+          }
+
+          const { count: subRecipeCount } = await supabase
+            .from("sub_recipe_ingredients")
+            .select("*", { count: "exact", head: true })
+            .eq("ingredient_id", id);
+          if (subRecipeCount && subRecipeCount > 0) {
+            details.push(`${subRecipeCount} sub-receita(s)`);
+            total += subRecipeCount;
+          }
+        }
+
+        if (table === "sub_recipes") {
+          const { count: ingredientCount } = await supabase
+            .from("ingredients")
+            .select("*", { count: "exact", head: true })
+            .eq("sub_recipe_id", id);
+          if (ingredientCount && ingredientCount > 0) {
+            details.push(`${ingredientCount} insumo(s) vinculado(s)`);
+            total += ingredientCount;
+          }
+        }
+
+        if (table === "recipes" || table === "beverages") {
+          const { count: comboCount } = await supabase
+            .from("combo_items")
+            .select("*", { count: "exact", head: true })
+            .eq("item_id", id);
+          if (comboCount && comboCount > 0) {
+            details.push(`${comboCount} combo(s)`);
+            total += comboCount;
+          }
+        }
+      } catch (error) {
+        console.error("Error checking dependencies:", error);
+      }
+
+      return { total, details };
+    },
+    []
+  );
+
   return {
     softDelete,
     restore,
     getDeletedItems,
     permanentDelete,
     getRecycleBinCount,
+    checkDependencies,
     logAction,
     isProcessing,
   };
