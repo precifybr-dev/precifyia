@@ -82,7 +82,7 @@ export function useAdminSecurity() {
           isVerified = true;
 
           // Sincronizar mfa_verified no banco para que edge functions reconheçam
-          await supabase
+          const { error: upsertError } = await supabase
             .from("user_security")
             .upsert({
               user_id: session.user.id,
@@ -90,6 +90,17 @@ export function useAdminSecurity() {
               mfa_enabled: true,
               mfa_verified_at: new Date().toISOString(),
             }, { onConflict: "user_id" });
+
+          if (upsertError) {
+            console.error("Upsert failed, trying update:", upsertError);
+            await supabase
+              .from("user_security")
+              .update({
+                mfa_verified: true,
+                mfa_verified_at: new Date().toISOString(),
+              })
+              .eq("user_id", session.user.id);
+          }
 
           // Registrar acesso no log
           await logAdminAccess("google_reauth_verified", true, { role: effectiveRole });
