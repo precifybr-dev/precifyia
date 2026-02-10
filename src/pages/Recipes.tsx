@@ -950,9 +950,15 @@ export default function Recipes() {
               <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
                 <Menu className="w-5 h-5" />
               </button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-2">
+              <Button variant="ghost" size="sm" onClick={() => {
+                if (showForm) {
+                  resetForm();
+                } else {
+                  navigate("/app");
+                }
+              }} className="gap-2">
                 <ArrowLeft className="w-4 h-4" />
-                Voltar
+                {showForm ? "Voltar para lista" : "Voltar"}
               </Button>
               <div>
                 <div className="flex items-center gap-3">
