@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { useToast } from "@/hooks/use-toast";
 
 interface AdminSecurityState {
@@ -12,6 +13,7 @@ interface AdminSecurityState {
 
 const MFA_REQUIRED_ROLES = ["master", "financeiro"];
 const VERIFICATION_EXPIRY_MS = 30 * 60 * 1000; // 30 minutos
+const REAUTH_WINDOW_MS = 120 * 1000; // 2 minutos para completar o fluxo Google
 
 export function useAdminSecurity() {
   const navigate = useNavigate();
@@ -60,27 +62,51 @@ export function useAdminSecurity() {
       const effectiveRole = userRole || collaboratorData?.role || null;
       const requiresMfa = MFA_REQUIRED_ROLES.includes(effectiveRole || "");
 
-      // Verificar status de MFA
-      const { data: securityData } = await supabase
-        .from("user_security")
-        .select("mfa_verified, mfa_enabled")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-      // Verificar se a verificação ainda é válida (baseado em sessão)
-      const storedVerification = sessionStorage.getItem("admin_mfa_verified");
+      // Verificar se há um pending de re-autenticação Google
+      const pendingMfa = sessionStorage.getItem("admin_mfa_pending");
       let isVerified = false;
 
-      if (storedVerification) {
-        const verificationData = JSON.parse(storedVerification);
-        const verificationTime = new Date(verificationData.timestamp).getTime();
+      if (pendingMfa) {
+        const pendingTime = parseInt(pendingMfa, 10);
         const now = Date.now();
 
-        if (now - verificationTime < VERIFICATION_EXPIRY_MS && verificationData.userId === session.user.id) {
+        if (now - pendingTime < REAUTH_WINDOW_MS) {
+          // Usuário acabou de re-autenticar via Google — marcar como verificado
+          const verificationData = {
+            userId: session.user.id,
+            timestamp: new Date().toISOString(),
+            verified: true,
+          };
+          sessionStorage.setItem("admin_mfa_verified", JSON.stringify(verificationData));
+          sessionStorage.removeItem("admin_mfa_pending");
           isVerified = true;
+
+          // Registrar acesso no log
+          await logAdminAccess("google_reauth_verified", true, { role: effectiveRole });
+
+          toast({
+            title: "Verificado!",
+            description: "Acesso ao painel administrativo liberado.",
+          });
         } else {
-          // Verificação expirada, limpar
-          sessionStorage.removeItem("admin_mfa_verified");
+          // Pendente expirado
+          sessionStorage.removeItem("admin_mfa_pending");
+        }
+      }
+
+      // Verificar se a verificação ainda é válida (baseado em sessão)
+      if (!isVerified) {
+        const storedVerification = sessionStorage.getItem("admin_mfa_verified");
+        if (storedVerification) {
+          const verificationData = JSON.parse(storedVerification);
+          const verificationTime = new Date(verificationData.timestamp).getTime();
+          const now = Date.now();
+
+          if (now - verificationTime < VERIFICATION_EXPIRY_MS && verificationData.userId === session.user.id) {
+            isVerified = true;
+          } else {
+            sessionStorage.removeItem("admin_mfa_verified");
+          }
         }
       }
 
@@ -88,6 +114,8 @@ export function useAdminSecurity() {
       if (!requiresMfa) {
         isVerified = true;
       }
+
+      const storedVerification = sessionStorage.getItem("admin_mfa_verified");
 
       setState({
         isVerified,
@@ -102,76 +130,23 @@ export function useAdminSecurity() {
     }
   };
 
-  const requestMfaCode = async (email: string): Promise<{ success: boolean; devCode?: string }> => {
-    if (!userId) return { success: false };
+  const verifyWithGoogle = async () => {
+    // Salvar timestamp antes de redirecionar
+    sessionStorage.setItem("admin_mfa_pending", Date.now().toString());
 
-    try {
-      const { data, error } = await supabase.functions.invoke("send-mfa-code", {
-        body: { email, userId },
-      });
+    await logAdminAccess("google_reauth_requested", true, { role: state.role });
 
-      if (error) throw error;
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + "/admin",
+    } as any);
 
-      toast({
-        title: "Código enviado",
-        description: "Verifique seu email para o código de verificação.",
-      });
-
-      return { success: true, devCode: data?.devCode };
-    } catch (error) {
-      console.error("Erro ao enviar código MFA:", error);
+    if (result && 'error' in result && result.error) {
+      sessionStorage.removeItem("admin_mfa_pending");
       toast({
         title: "Erro",
-        description: "Não foi possível enviar o código de verificação.",
+        description: "Não foi possível iniciar a verificação com Google.",
         variant: "destructive",
       });
-      return { success: false };
-    }
-  };
-
-  const verifyMfaCode = async (code: string): Promise<boolean> => {
-    if (!userId) return false;
-
-    try {
-      const { data, error } = await supabase.functions.invoke("verify-mfa-code", {
-        body: { userId, code },
-      });
-
-      if (error || !data?.valid) {
-        toast({
-          title: "Código inválido",
-          description: data?.error || "O código informado está incorreto ou expirado.",
-          variant: "destructive",
-        });
-        return false;
-      }
-
-      // Salvar verificação na sessão
-      const verificationData = {
-        userId,
-        timestamp: new Date().toISOString(),
-        verified: true,
-      };
-      sessionStorage.setItem("admin_mfa_verified", JSON.stringify(verificationData));
-
-      // Registrar acesso no log
-      await logAdminAccess("mfa_admin_verified", true, { role: state.role });
-
-      setState((prev) => ({
-        ...prev,
-        isVerified: true,
-        lastVerification: verificationData.timestamp,
-      }));
-
-      toast({
-        title: "Verificado!",
-        description: "Acesso ao painel administrativo liberado.",
-      });
-
-      return true;
-    } catch (error) {
-      console.error("Erro ao verificar código MFA:", error);
-      return false;
     }
   };
 
@@ -180,10 +155,14 @@ export function useAdminSecurity() {
     success: boolean,
     metadata?: Record<string, unknown>
   ) => {
-    if (!userId) return;
+    const currentUserId = userId;
+    if (!currentUserId) {
+      // Try to get from session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+    }
 
     try {
-      // Capturar informações do dispositivo
       const deviceInfo = {
         userAgent: navigator.userAgent,
         platform: navigator.platform,
@@ -224,8 +203,7 @@ export function useAdminSecurity() {
     lastVerification: state.lastVerification,
     isLoading,
     userId,
-    requestMfaCode,
-    verifyMfaCode,
+    verifyWithGoogle,
     logAdminAccess,
     invalidateSession,
     refresh: checkSecurityStatus,

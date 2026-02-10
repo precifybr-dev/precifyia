@@ -133,8 +133,6 @@ serve(async (req: Request) => {
       JSON.stringify({ 
         success: true, 
         message: 'Código enviado para seu email',
-        // Retornar código apenas em dev (remover em produção)
-        ...(resendApiKey ? {} : { devCode: code })
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
