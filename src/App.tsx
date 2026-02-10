@@ -35,6 +35,7 @@ import RecycleBin from "./pages/RecycleBin";
 // Admin pages (master/collaborators)
 import AdminDashboard from "./pages/AdminDashboard";
 import Collaborators from "./pages/Collaborators";
+import SystemBook from "./pages/SystemBook";
 
 const queryClient = new QueryClient();
 
@@ -187,6 +188,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <Collaborators />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/system-book" 
+              element={
+                <AdminRoute>
+                  <SystemBook />
                 </AdminRoute>
               } 
             />
