@@ -666,6 +666,66 @@ export type Database = {
           },
         ]
       }
+      help_content: {
+        Row: {
+          category: string
+          content_version: string
+          created_at: string
+          description: string
+          example: string | null
+          feature: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          link_to: string | null
+          needs_review: boolean
+          screen: string | null
+          sort_order: number
+          system_version_required: string
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          content_version?: string
+          created_at?: string
+          description: string
+          example?: string | null
+          feature?: string | null
+          id: string
+          image_url?: string | null
+          is_active?: boolean
+          link_to?: string | null
+          needs_review?: boolean
+          screen?: string | null
+          sort_order?: number
+          system_version_required?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          content_version?: string
+          created_at?: string
+          description?: string
+          example?: string | null
+          feature?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          link_to?: string | null
+          needs_review?: boolean
+          screen?: string | null
+          sort_order?: number
+          system_version_required?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ifood_import_usage: {
         Row: {
           created_at: string
