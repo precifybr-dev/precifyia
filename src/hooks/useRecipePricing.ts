@@ -98,9 +98,9 @@ export function useRecipePricing() {
       return;
     }
 
-    // Deduplicate: skip if same input
     const inputKey = JSON.stringify({ ...input, ingredients: validIngredients });
-    if (inputKey === lastInputRef.current) return;
+    // Deduplicate: skip if same input AND no previous error
+    if (inputKey === lastInputRef.current && !error) return;
 
     setIsCalculating(true);
     setError(null);
@@ -113,45 +113,69 @@ export function useRecipePricing() {
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
 
-      try {
-        lastInputRef.current = inputKey;
-
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.access_token) {
-          setError("Sessão expirada. Faça login novamente.");
-          setIsCalculating(false);
-          return;
-        }
-
-        const response = await fetch(
+      const makeRequest = async (token: string) => {
+        return fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/calculate-recipe-pricing`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${session.access_token}`,
+              Authorization: `Bearer ${token}`,
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             },
             body: JSON.stringify({
               ...input,
               ingredients: validIngredients,
             }),
-            signal: abortRef.current.signal,
+            signal: abortRef.current!.signal,
           }
         );
+      };
+
+      try {
+        // Get a fresh token via getUser() which forces server validation
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+          lastInputRef.current = "";
+          setError("Sessão expirada. Faça login novamente.");
+          setIsCalculating(false);
+          return;
+        }
+
+        // Now get the (refreshed) session token
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+          lastInputRef.current = "";
+          setError("Sessão expirada. Faça login novamente.");
+          setIsCalculating(false);
+          return;
+        }
+
+        let response = await makeRequest(session.access_token);
+
+        // Retry once on 401: refresh session and try again
+        if (response.status === 401) {
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (refreshData.session?.access_token) {
+            response = await makeRequest(refreshData.session.access_token);
+          }
+        }
 
         const data = await response.json();
 
         if (!response.ok) {
+          lastInputRef.current = "";
           setError(data.error || "Erro ao calcular precificação.");
           setIsCalculating(false);
           return;
         }
 
+        lastInputRef.current = inputKey;
         setResult(data as RecipePricingResult);
         setError(null);
       } catch (err: any) {
-        if (err.name === "AbortError") return; // Request was cancelled, ignore
+        if (err.name === "AbortError") return;
+        lastInputRef.current = "";
         console.error("Recipe pricing error:", err);
         setError("Não foi possível calcular a precificação com os dados informados. Verifique seus custos e taxas.");
       } finally {
