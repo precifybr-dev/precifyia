@@ -47,6 +47,8 @@ import {
   RefreshCcw,
   ExternalLink,
   Shield,
+  ShieldCheck,
+  ShieldOff,
   Loader2,
   ArrowUpCircle,
   XCircle,
@@ -245,6 +247,7 @@ export function SupportDashboard() {
                       <TableHead>Tipo</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Prioridade</TableHead>
+                      <TableHead>Consentimento</TableHead>
                       <TableHead>Criado</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
@@ -291,6 +294,19 @@ export function SupportDashboard() {
                             <span className={PRIORITY_CONFIG[ticket.priority as TicketPriority]?.color}>
                               {PRIORITY_CONFIG[ticket.priority as TicketPriority]?.label || ticket.priority}
                             </span>
+                          </TableCell>
+                          <TableCell>
+                            {(ticket as any).consent_granted ? (
+                              <Badge variant="outline" className="gap-1 text-emerald-600 border-emerald-300">
+                                <ShieldCheck className="h-3 w-3" />
+                                Ativo
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="gap-1 text-muted-foreground">
+                                <ShieldOff className="h-3 w-3" />
+                                Inativo
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell>
                             <span className="text-sm text-muted-foreground">
@@ -420,8 +436,14 @@ export function SupportDashboard() {
                         className="w-full justify-start"
                         size="sm"
                         onClick={() => handleAccessUserAccount(selectedTicket.user_id)}
+                        disabled={!(selectedTicket as any).consent_granted}
+                        title={!(selectedTicket as any).consent_granted ? "Usuário não autorizou acesso" : ""}
                       >
-                        <User className="h-4 w-4 mr-2" />
+                        {(selectedTicket as any).consent_granted ? (
+                          <ShieldCheck className="h-4 w-4 mr-2 text-emerald-500" />
+                        ) : (
+                          <ShieldOff className="h-4 w-4 mr-2" />
+                        )}
                         Acessar conta
                       </Button>
                       {selectedTicket.status !== "resolved" && (
