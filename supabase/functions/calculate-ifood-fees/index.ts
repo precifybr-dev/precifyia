@@ -6,6 +6,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─── Calculation Version ───
+const CALCULATION_VERSION = "ifood-fees-v1";
+
 function isValidNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
 }
@@ -240,7 +243,10 @@ Deno.serve(async (req) => {
     // ─── PERSIST: Only after all validations pass ───
     const { error: saveError } = await supabase
       .from("profiles")
-      .update({ ifood_real_percentage: realPercentage })
+      .update({
+        ifood_real_percentage: realPercentage,
+        ifood_calculation_version: CALCULATION_VERSION,
+      })
       .eq("user_id", user.id);
 
     if (saveError) {
@@ -261,7 +267,32 @@ Deno.serve(async (req) => {
       delivery_monthly_cost: parseFloat(deliveryMonthlyCost.toFixed(2)),
       delivery_impact_percent: deliveryImpactPercent,
       warnings,
+      calculation_version: CALCULATION_VERSION,
     };
+
+    // ─── Save calculation history (immutable) ───
+    await supabase.from("calculation_history").insert({
+      user_id: user.id,
+      store_id: body.store_id || null,
+      entity_type: "ifood_fees",
+      entity_id: null,
+      calculation_version: CALCULATION_VERSION,
+      input_snapshot: {
+        plan_type: planType,
+        base_rate: baseRate,
+        anticipation_type: anticipationType,
+        monthly_orders: body.monthly_orders,
+        average_ticket: body.average_ticket,
+        offers_coupon: body.offers_coupon,
+        coupon_value: body.coupon_value,
+        coupon_type: body.coupon_type,
+        has_delivery_fee: body.has_delivery_fee,
+        delivery_fee: body.delivery_fee,
+      },
+      output_snapshot: result,
+    }).then(({ error }) => {
+      if (error) console.error("[VERSION] Failed to save calculation history:", error);
+    });
 
     return new Response(JSON.stringify(result), {
       status: 200,

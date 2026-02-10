@@ -225,6 +225,50 @@ export type Database = {
           },
         ]
       }
+      calculation_history: {
+        Row: {
+          calculated_at: string
+          calculation_version: string
+          entity_id: string | null
+          entity_type: string
+          id: string
+          input_snapshot: Json
+          output_snapshot: Json
+          store_id: string | null
+          user_id: string
+        }
+        Insert: {
+          calculated_at?: string
+          calculation_version: string
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          input_snapshot: Json
+          output_snapshot: Json
+          store_id?: string | null
+          user_id: string
+        }
+        Update: {
+          calculated_at?: string
+          calculation_version?: string
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          input_snapshot?: Json
+          output_snapshot?: Json
+          store_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calculation_history_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       card_fees: {
         Row: {
           created_at: string
@@ -714,6 +758,7 @@ export type Database = {
           id: string
           ifood_average_ticket: number | null
           ifood_base_rate: number | null
+          ifood_calculation_version: string | null
           ifood_coupon_absorber: string | null
           ifood_coupon_type: string | null
           ifood_coupon_value: number | null
@@ -744,6 +789,7 @@ export type Database = {
           id?: string
           ifood_average_ticket?: number | null
           ifood_base_rate?: number | null
+          ifood_calculation_version?: string | null
           ifood_coupon_absorber?: string | null
           ifood_coupon_type?: string | null
           ifood_coupon_value?: number | null
@@ -774,6 +820,7 @@ export type Database = {
           id?: string
           ifood_average_ticket?: number | null
           ifood_base_rate?: number | null
+          ifood_calculation_version?: string | null
           ifood_coupon_absorber?: string | null
           ifood_coupon_type?: string | null
           ifood_coupon_value?: number | null
@@ -874,6 +921,7 @@ export type Database = {
       }
       recipes: {
         Row: {
+          calculation_version: string
           cmv_target: number | null
           cost_per_serving: number
           created_at: string
@@ -889,6 +937,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          calculation_version?: string
           cmv_target?: number | null
           cost_per_serving?: number
           created_at?: string
@@ -904,6 +953,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          calculation_version?: string
           cmv_target?: number | null
           cost_per_serving?: number
           created_at?: string

@@ -6,6 +6,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─── Calculation Version ───
+// Bump this when calculation logic changes. Historical data retains its original version.
+const CALCULATION_VERSION = "recipe-pricing-v1";
+
 // ─── Validation helpers ───
 
 function isValidNumber(v: unknown): v is number {
@@ -462,6 +466,9 @@ Deno.serve(async (req) => {
 
       // Warnings
       warnings: [] as string[],
+
+      // Version
+      calculation_version: CALCULATION_VERSION,
     };
 
     if (actualCMV > 100 && sellingPrice && sellingPrice > 0) {
@@ -473,6 +480,31 @@ Deno.serve(async (req) => {
     if (ifoodNetProfit < 0 && effectiveIfoodRate > 0) {
       result.warnings.push("O lucro líquido no iFood está negativo. Revise o preço ou a taxa iFood.");
     }
+
+    // ─── Save calculation history (immutable) ───
+    await supabase.from("calculation_history").insert({
+      user_id: user.id,
+      store_id: body.store_id || null,
+      entity_type: "recipe_pricing",
+      entity_id: body.recipe_id || null,
+      calculation_version: CALCULATION_VERSION,
+      input_snapshot: {
+        ingredients: body.ingredients,
+        servings,
+        cmv_target: cmvTarget,
+        selling_price: sellingPrice,
+        ifood_selling_price: ifoodSellingPrice,
+        loss_percent: lossPercent,
+        discount_percent: discountPercent,
+        local_ifood_rate: localIfoodRate,
+        global_ifood_rate: globalIfoodRate,
+        production_costs_percent: productionCostsPercent,
+        tax_percentage: taxPercentage,
+      },
+      output_snapshot: result,
+    }).then(({ error }) => {
+      if (error) console.error("[VERSION] Failed to save calculation history:", error);
+    });
 
     return new Response(JSON.stringify(result), {
       status: 200,
