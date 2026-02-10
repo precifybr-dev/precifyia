@@ -21,9 +21,12 @@ import {
   Store,
   HelpCircle,
   Info,
-  BookOpen
+  BookOpen,
+  Loader2,
+  AlertTriangle
 } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import type { RecipePricingResult } from "@/hooks/useRecipePricing";
 
 interface PricingSummaryPanelProps {
   // Costs
@@ -53,7 +56,7 @@ interface PricingSummaryPanelProps {
   // iFood
   ifoodPrice: number;
   suggestedIfoodPrice: number;
-  calculatedIfoodPrice: number; // Preço calculado pela fórmula
+  calculatedIfoodPrice: number;
   localIfoodRate: string;
   setLocalIfoodRate: (value: string) => void;
   ifoodRealPercentage: number | null;
@@ -67,8 +70,13 @@ interface PricingSummaryPanelProps {
   setDiscountPercent: (value: string) => void;
   discountedPrice: number;
   
-  // Taxes (NEW - from business area configuration)
+  // Taxes
   taxPercentage?: number | null;
+  
+  // Backend calculation state
+  isCalculating?: boolean;
+  calculationError?: string | null;
+  pricingResult?: RecipePricingResult | null;
 }
 
 const formatCurrency = (value: number) => {
@@ -105,6 +113,9 @@ export default function PricingSummaryPanel({
   setDiscountPercent,
   discountedPrice,
   taxPercentage,
+  isCalculating = false,
+  calculationError = null,
+  pricingResult = null,
 }: PricingSummaryPanelProps) {
   const hasSellingPrice = sellingPrice.trim() !== "" && parseFloat(sellingPrice) > 0;
   const hasCmvTarget = cmvTarget.trim() !== "" && parseFloat(cmvTarget) > 0;
@@ -115,12 +126,53 @@ export default function PricingSummaryPanel({
   // Effective iFood rate (local overrides global)
   const effectiveIfoodRate = parseFloat(localIfoodRate) || ifoodRealPercentage || 0;
 
+  // Loading indicator component
+  const LoadingValue = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
+    <span className={`relative inline-flex items-center gap-1.5 ${className}`}>
+      {isCalculating && (
+        <Loader2 className="w-3.5 h-3.5 animate-spin text-primary absolute -left-5" />
+      )}
+      {children}
+    </span>
+  );
+
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold flex items-center gap-2">
-        <Calculator className="w-5 h-5 text-primary" />
-        Painel de Precificação
-      </h3>
+      <div className="flex items-center gap-2">
+        <h3 className="text-lg font-semibold flex items-center gap-2">
+          <Calculator className="w-5 h-5 text-primary" />
+          Painel de Precificação
+        </h3>
+        {isCalculating && (
+          <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/30 animate-pulse gap-1">
+            <Loader2 className="w-3 h-3 animate-spin" />
+            Calculando...
+          </Badge>
+        )}
+      </div>
+
+      {/* Calculation Error */}
+      {calculationError && (
+        <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <AlertTriangle className="w-5 h-5 text-destructive flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-destructive text-sm">Erro no cálculo</p>
+            <p className="text-sm text-destructive/80">{calculationError}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Warnings from backend */}
+      {pricingResult?.warnings && pricingResult.warnings.length > 0 && (
+        <div className="space-y-2">
+          {pricingResult.warnings.map((warning, i) => (
+            <div key={i} className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-warning">{warning}</p>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Coluna Esquerda */}
@@ -539,23 +591,23 @@ export default function PricingSummaryPanel({
 
       {/* ==================== LUCRO LÍQUIDO REAL ==================== */}
       {(() => {
-        // Cálculos para Lucro Líquido - LOJA
-        const effectivePrice = parseFloat(sellingPrice) || suggestedPrice;
-        const productionCostValue = effectivePrice * (productionCostsPercent || 0) / 100;
-        const taxValue = effectivePrice * (taxPercentage || 0) / 100;
-        const netProfit = effectivePrice - costWithLoss - productionCostValue - taxValue;
-        const netProfitPercent = effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0;
+        // Use backend values when available, fallback to local calculation
+        const effectivePrice = pricingResult?.final_selling_price ?? (parseFloat(sellingPrice) || suggestedPrice);
+        const productionCostValue = pricingResult?.production_cost_value_loja ?? (effectivePrice * (productionCostsPercent || 0) / 100);
+        const taxValue = pricingResult?.tax_value_loja ?? (effectivePrice * (taxPercentage || 0) / 100);
+        const netProfit = pricingResult?.net_profit_loja ?? (effectivePrice - costWithLoss - productionCostValue - taxValue);
+        const netProfitPercent = pricingResult?.net_profit_loja_percent ?? (effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0);
         const costPercent = effectivePrice > 0 ? (costWithLoss / effectivePrice) * 100 : 0;
-        const taxPercent = taxPercentage || 0;
-        const productionPercent = productionCostsPercent || 0;
+        const taxPercent = pricingResult?.tax_percentage ?? (taxPercentage || 0);
+        const productionPercent = pricingResult?.production_costs_percent ?? (productionCostsPercent || 0);
 
-        // Cálculos para iFood
-        const ifoodFeeValue = ifoodPrice * (effectiveIfoodRate / 100);
-        const ifoodNetRevenue = ifoodPrice - ifoodFeeValue;
-        const ifoodProductionCost = ifoodNetRevenue * (productionCostsPercent || 0) / 100;
-        const ifoodTaxValue = ifoodNetRevenue * (taxPercentage || 0) / 100;
-        const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodProductionCost - ifoodTaxValue;
-        const ifoodNetProfitPercent = ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0;
+        // iFood values from backend
+        const ifoodFeeValue = pricingResult?.ifood_fee_value ?? (ifoodPrice * (effectiveIfoodRate / 100));
+        const ifoodNetRevenue = pricingResult?.ifood_net_revenue ?? (ifoodPrice - ifoodFeeValue);
+        const ifoodProductionCost = pricingResult?.ifood_production_cost ?? (ifoodNetRevenue * (productionCostsPercent || 0) / 100);
+        const ifoodTaxValue = pricingResult?.ifood_tax_value ?? (ifoodNetRevenue * (taxPercentage || 0) / 100);
+        const ifoodNetProfit = pricingResult?.net_profit_ifood ?? (ifoodNetRevenue - costWithLoss - ifoodProductionCost - ifoodTaxValue);
+        const ifoodNetProfitPercent = pricingResult?.net_profit_ifood_percent ?? (ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0);
         const ifoodCostPercent = ifoodPrice > 0 ? (costWithLoss / ifoodPrice) * 100 : 0;
         const ifoodProductionCostPercent = ifoodPrice > 0 ? (ifoodProductionCost / ifoodPrice) * 100 : 0;
         const ifoodTaxPercent = ifoodPrice > 0 ? (ifoodTaxValue / ifoodPrice) * 100 : 0;
