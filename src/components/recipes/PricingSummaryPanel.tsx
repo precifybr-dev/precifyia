@@ -19,8 +19,11 @@ import {
   AlertCircle,
   Wallet,
   Store,
-  HelpCircle
+  HelpCircle,
+  Info,
+  BookOpen
 } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface PricingSummaryPanelProps {
   // Costs
@@ -294,10 +297,10 @@ export default function PricingSummaryPanel({
                       <TooltipTrigger asChild>
                         <HelpCircle className="w-3.5 h-3.5 text-yellow-500/70 cursor-help" />
                       </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[280px] text-xs">
-                        <p className="font-semibold mb-1">Como funciona esse percentual?</p>
-                        <p>Esse valor representa quanto cada produto ajuda a pagar as contas mensais do seu negócio.</p>
-                        <p className="mt-1">Aluguel, internet, energia, sistema e outras despesas não são descontadas diretamente do produto — elas são diluídas em percentual para que cada venda pague apenas a sua parte justa.</p>
+                      <TooltipContent side="top" className="max-w-[300px] text-xs">
+                        <p className="font-semibold mb-1">Custos aplicados neste produto</p>
+                        <p>Este percentual é o impacto real deste produto para ajudar a pagar os custos de produção do mês.</p>
+                        <p className="mt-1">Ele pode ser diferente da média do negócio, pois cada produto contribui de forma diferente para o faturamento.</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -308,6 +311,35 @@ export default function PricingSummaryPanel({
                 <p className="text-xs text-muted-foreground mt-1">
                   Custos de produção rateados sobre o faturamento
                 </p>
+
+                {/* ℹ️ Alerta informativo */}
+                <Collapsible>
+                  <CollapsibleTrigger className="flex items-center gap-1.5 mt-3 text-xs text-blue-600 hover:text-blue-700 transition-colors cursor-pointer">
+                    <Info className="w-3.5 h-3.5" />
+                    <span>Normal que este valor seja diferente da média do negócio.</span>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 text-xs text-muted-foreground bg-blue-500/5 border border-blue-500/20 rounded-lg p-3">
+                    <p>A porcentagem cadastrada no negócio é uma média mensal.</p>
+                    <p className="mt-1">Aqui mostramos quanto este produto específico ajuda a pagar os custos do mês, considerando preço, taxas e participação nas vendas.</p>
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* 🧠 Tooltip educativo */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex items-center gap-1.5 mt-2 text-xs text-muted-foreground cursor-help">
+                        <BookOpen className="w-3.5 h-3.5 text-yellow-500/70" />
+                        <span className="underline decoration-dotted">Importante saber</span>
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[300px] text-xs">
+                      <p className="font-semibold mb-1">Importante saber</p>
+                      <p>Os custos de produção não são pagos por um único produto, mas sim pelo faturamento total do mês.</p>
+                      <p className="mt-1">Cada item contribui com uma parte proporcional.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </CardContent>
             </Card>
           )}
@@ -562,8 +594,9 @@ export default function PricingSummaryPanel({
                             <TooltipTrigger asChild>
                               <span className="text-xs text-muted-foreground cursor-help">{productionPercent.toFixed(1)}%</span>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[280px] text-xs">
-                              Percentual rateado do preço para pagar os custos de produção do negócio. Este é o valor que esse item vai pagar os custos de produção.
+                            <TooltipContent side="top" className="max-w-[300px] text-xs">
+                              <p className="font-semibold mb-1">Custos aplicados neste produto</p>
+                              <p>Este percentual é o impacto real deste produto para ajudar a pagar os custos de produção do mês.</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -599,9 +632,25 @@ export default function PricingSummaryPanel({
                         </span>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2 italic">
-                      Lucro unitário após custo direto, rateio de produção e impostos.
-                    </p>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-xs text-muted-foreground mt-2 italic cursor-help flex items-center gap-1">
+                            <HelpCircle className="w-3 h-3" />
+                            Como o lucro é calculado
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[300px] text-xs">
+                          <p className="font-semibold mb-1">Como o lucro é calculado</p>
+                          <p>O lucro líquido mostrado aqui já considera:</p>
+                          <ul className="list-disc pl-3 mt-1 space-y-0.5">
+                            <li>Custos de produção rateados</li>
+                            <li>Taxas (iFood, cartões, impostos)</li>
+                          </ul>
+                          <p className="mt-1">As despesas do negócio são abatidas apenas do faturamento mensal, não por produto.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
               </CardContent>
@@ -654,8 +703,9 @@ export default function PricingSummaryPanel({
                             <TooltipTrigger asChild>
                               <span className="text-xs text-muted-foreground cursor-help">{ifoodProductionCostPercent.toFixed(1)}%</span>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[280px] text-xs">
-                              Percentual rateado do preço para pagar os custos de produção do negócio. Este é o valor que esse item vai pagar os custos de produção.
+                            <TooltipContent side="top" className="max-w-[300px] text-xs">
+                              <p className="font-semibold mb-1">Custos aplicados neste produto</p>
+                              <p>Este percentual é o impacto real deste produto para ajudar a pagar os custos de produção do mês.</p>
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -691,9 +741,25 @@ export default function PricingSummaryPanel({
                         </span>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-2 italic">
-                      Lucro unitário após taxa iFood, custo direto, rateio de produção e impostos.
-                    </p>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <p className="text-xs text-muted-foreground mt-2 italic cursor-help flex items-center gap-1">
+                            <HelpCircle className="w-3 h-3" />
+                            Como o lucro é calculado
+                          </p>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[300px] text-xs">
+                          <p className="font-semibold mb-1">Como o lucro é calculado</p>
+                          <p>O lucro líquido mostrado aqui já considera:</p>
+                          <ul className="list-disc pl-3 mt-1 space-y-0.5">
+                            <li>Custos de produção rateados</li>
+                            <li>Taxas (iFood, cartões, impostos)</li>
+                          </ul>
+                          <p className="mt-1">As despesas do negócio são abatidas apenas do faturamento mensal, não por produto.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
               </CardContent>
@@ -701,6 +767,12 @@ export default function PricingSummaryPanel({
           </div>
         );
       })()}
+
+      {/* ✅ Frase final de reforço */}
+      <p className="text-xs text-muted-foreground text-center mt-4 flex items-center justify-center gap-1.5">
+        <Calculator className="w-3.5 h-3.5" />
+        📊 Este cálculo segue a lógica real de como os custos são pagos no fim do mês.
+      </p>
     </div>
   );
 }
