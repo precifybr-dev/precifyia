@@ -162,7 +162,7 @@ export function useUserSecurity(userId: string | undefined) {
 
     try {
       await supabase.functions.invoke("log-access", {
-        body: { userId, action, success, metadata },
+        body: { action, success, metadata },
       });
     } catch (error) {
       console.error("Erro ao registrar acesso:", error);

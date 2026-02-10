@@ -31,6 +31,16 @@ serve(async (req: Request) => {
       );
     }
 
+    // ─── OWNERSHIP: Validate that the userId exists in auth.users ───
+    // Prevents spoofing arbitrary user IDs to verify MFA for other accounts
+    const { data: authUser, error: authLookupError } = await supabase.auth.admin.getUserById(userId);
+    if (authLookupError || !authUser?.user) {
+      return new Response(
+        JSON.stringify({ error: 'Usuário não encontrado', valid: false }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ─── Rate Limiting: 10 tentativas/min por usuário, 20/min por IP (anti-brute-force) ───
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const [{ data: userRL }, { data: ipRL }] = await Promise.all([
