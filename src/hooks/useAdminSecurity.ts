@@ -71,17 +71,7 @@ export function useAdminSecurity() {
         const now = Date.now();
 
         if (now - pendingTime < REAUTH_WINDOW_MS) {
-          // Usuário acabou de re-autenticar via Google — marcar como verificado
-          const verificationData = {
-            userId: session.user.id,
-            timestamp: new Date().toISOString(),
-            verified: true,
-          };
-          sessionStorage.setItem("admin_mfa_verified", JSON.stringify(verificationData));
-          sessionStorage.removeItem("admin_mfa_pending");
-          isVerified = true;
-
-          // Sincronizar mfa_verified no banco para que edge functions reconheçam
+          // Sincronizar mfa_verified no banco ANTES de marcar como verificado
           const { error: upsertError } = await supabase
             .from("user_security")
             .upsert({
@@ -91,24 +81,52 @@ export function useAdminSecurity() {
               mfa_verified_at: new Date().toISOString(),
             }, { onConflict: "user_id" });
 
+          let dbSyncSuccess = !upsertError;
+
           if (upsertError) {
             console.error("Upsert failed, trying update:", upsertError);
-            await supabase
+            const { error: updateError } = await supabase
               .from("user_security")
               .update({
                 mfa_verified: true,
                 mfa_verified_at: new Date().toISOString(),
               })
               .eq("user_id", session.user.id);
+
+            dbSyncSuccess = !updateError;
+            if (updateError) {
+              console.error("Update fallback also failed:", updateError);
+            }
           }
 
-          // Registrar acesso no log
-          await logAdminAccess("google_reauth_verified", true, { role: effectiveRole });
+          if (dbSyncSuccess) {
+            // Pequeno delay para garantir que réplicas do banco vejam o valor
+            await new Promise((resolve) => setTimeout(resolve, 300));
 
-          toast({
-            title: "Verificado!",
-            description: "Acesso ao painel administrativo liberado.",
-          });
+            const verificationData = {
+              userId: session.user.id,
+              timestamp: new Date().toISOString(),
+              verified: true,
+            };
+            sessionStorage.setItem("admin_mfa_verified", JSON.stringify(verificationData));
+            sessionStorage.removeItem("admin_mfa_pending");
+            isVerified = true;
+
+            await logAdminAccess("google_reauth_verified", true, { role: effectiveRole });
+
+            toast({
+              title: "Verificado!",
+              description: "Acesso ao painel administrativo liberado.",
+            });
+          } else {
+            // Ambos falharam — não marcar como verificado
+            sessionStorage.removeItem("admin_mfa_pending");
+            toast({
+              title: "Erro de verificação",
+              description: "Não foi possível sincronizar a verificação. Tente novamente.",
+              variant: "destructive",
+            });
+          }
         } else {
           // Pendente expirado
           sessionStorage.removeItem("admin_mfa_pending");
