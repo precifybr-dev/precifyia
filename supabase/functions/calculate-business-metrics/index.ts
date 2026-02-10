@@ -55,6 +55,36 @@ Deno.serve(async (req) => {
       // No body is ok
     }
 
+    // ─── RBAC: Validate store access ───
+    if (storeId) {
+      const { data: storeRole } = await supabase.rpc("get_store_role", {
+        _user_id: user.id,
+        _store_id: storeId,
+      });
+
+      if (!storeRole) {
+        return new Response(JSON.stringify({ error: "Você não tem acesso a esta loja." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Viewers with view_financials permission can read business metrics
+      if (storeRole === "viewer") {
+        const { data: hasFinancialPerm } = await supabase.rpc("viewer_has_permission", {
+          _user_id: user.id,
+          _store_id: storeId,
+          _permission: "view_financials",
+        });
+        if (!hasFinancialPerm) {
+          return new Response(JSON.stringify({ error: "Você não tem permissão para ver dados financeiros desta loja." }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
     // ─── Fetch all data in parallel ───
     const storeFilter = (query: any) => {
       if (storeId) return query.eq("store_id", storeId);

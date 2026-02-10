@@ -892,6 +892,50 @@ export type Database = {
         }
         Relationships: []
       }
+      store_members: {
+        Row: {
+          created_at: string
+          id: string
+          invited_by: string | null
+          is_active: boolean
+          permissions: Database["public"]["Enums"]["store_permission"][] | null
+          role: Database["public"]["Enums"]["store_role"]
+          store_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          is_active?: boolean
+          permissions?: Database["public"]["Enums"]["store_permission"][] | null
+          role?: Database["public"]["Enums"]["store_role"]
+          store_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invited_by?: string | null
+          is_active?: boolean
+          permissions?: Database["public"]["Enums"]["store_permission"][] | null
+          role?: Database["public"]["Enums"]["store_role"]
+          store_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "store_members_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           business_type: string | null
@@ -1522,6 +1566,14 @@ export type Database = {
       }
     }
     Functions: {
+      can_manage_store: {
+        Args: { _store_id: string; _user_id: string }
+        Returns: boolean
+      }
+      can_write_store: {
+        Args: { _store_id: string; _user_id: string }
+        Returns: boolean
+      }
       count_admin_sessions_today: {
         Args: { _admin_id: string }
         Returns: number
@@ -1686,6 +1738,10 @@ export type Database = {
           user_count: number
         }[]
       }
+      get_store_role: {
+        Args: { _store_id: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["store_role"]
+      }
       get_usage_by_hour: {
         Args: { days_back?: number }
         Returns: {
@@ -1720,12 +1776,24 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_store_access: {
+        Args: { _store_id: string; _user_id: string }
+        Returns: boolean
+      }
       is_collaborator: { Args: { _user_id: string }; Returns: boolean }
       is_master: { Args: { _user_id: string }; Returns: boolean }
       user_owns_recipe: { Args: { _recipe_id: string }; Returns: boolean }
       user_owns_store: { Args: { _store_id: string }; Returns: boolean }
       user_owns_sub_recipe: {
         Args: { _sub_recipe_id: string }
+        Returns: boolean
+      }
+      viewer_has_permission: {
+        Args: {
+          _permission: Database["public"]["Enums"]["store_permission"]
+          _store_id: string
+          _user_id: string
+        }
         Returns: boolean
       }
     }
@@ -1748,6 +1816,15 @@ export type Database = {
         | "suporte"
         | "financeiro"
         | "analista"
+      store_permission:
+        | "view_recipes"
+        | "view_ingredients"
+        | "view_beverages"
+        | "view_financials"
+        | "view_costs"
+        | "view_dre"
+        | "view_sub_recipes"
+      store_role: "owner" | "admin" | "viewer"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1895,6 +1972,16 @@ export const Constants = {
         "financeiro",
         "analista",
       ],
+      store_permission: [
+        "view_recipes",
+        "view_ingredients",
+        "view_beverages",
+        "view_financials",
+        "view_costs",
+        "view_dre",
+        "view_sub_recipes",
+      ],
+      store_role: ["owner", "admin", "viewer"],
     },
   },
 } as const

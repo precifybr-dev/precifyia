@@ -61,8 +61,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body: IfoodInput = await req.json();
+    const body: IfoodInput & { store_id?: string | null } = await req.json();
     const warnings: string[] = [];
+
+    // ─── RBAC: Validate store access ───
+    if (body.store_id) {
+      const { data: storeRole } = await supabase.rpc("get_store_role", {
+        _user_id: user.id,
+        _store_id: body.store_id,
+      });
+
+      if (!storeRole) {
+        return new Response(JSON.stringify({ error: "Você não tem acesso a esta loja." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // This function WRITES to profile (saves ifood_real_percentage)
+      // Only owner and admin can do that
+      if (storeRole === "viewer") {
+        return new Response(JSON.stringify({ error: "Viewers não podem alterar configurações de taxas." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     // ─── Validation ───
     const planType = body.plan_type;
