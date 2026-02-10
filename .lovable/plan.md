@@ -1,63 +1,116 @@
 
-# Fix: Race condition between MFA sync and edge function calls
+# Plano: Completar Implementacao dos Combos Inteligentes (BETA)
 
-## Problem
-When the admin returns from Google OAuth, the security hook sets `isVerified = true` in local state before the database upsert completes. This causes the dashboard to render and fire edge function calls that check `mfa_verified` in the database -- which is still `false` at that moment, resulting in 403 errors.
+## Diagnostico Atual
 
-## Timeline of the bug
+Apos auditoria completa, o modulo ja possui:
+- **Backend (Edge Function `generate-combo`)**: Completo - IA com tool calling, validacao financeira, fail-safe de margem minima, controle de uso por plano
+- **Banco de dados**: 3 tabelas (`combos`, `combo_items`, `combo_generation_usage`) com RLS corretas
+- **Frontend (`Combos.tsx`)**: Pagina funcional com seletor de objetivo, listagem, expansao de detalhes, exclusao
+- **Hook (`useCombos.ts`)**: Logica de estado, geracao, exclusao e controle de limites
+- **Planos configurados**: Free (1), Basico (3/mes), Pro (5/mes)
 
-```text
-1. Google OAuth redirect -> /admin
-2. useAdminSecurity detects "admin_mfa_pending" in sessionStorage
-3. Sets isVerified = true in React state (IMMEDIATELY)
-4. Starts upsert to database (ASYNC, not awaited before setting state)
-5. AdminSecurityGate renders children (dashboard, user management)
-6. Children call admin-users, admin-stats edge functions
-7. Edge functions check DB -> mfa_verified is still false -> 403 error
-8. Upsert finally completes -> DB now has mfa_verified = true (too late)
-```
+## Lacunas Identificadas
 
-## Solution
+### 1. Itens do combo nao sao carregados na listagem
+O `fetchCombos` faz `select("*")` apenas na tabela `combos` -- os itens (`combo_items`) nunca sao buscados do banco. Por isso, ao expandir um combo salvo, aparece "Detalhes dos itens nao disponiveis".
 
-Restructure `useAdminSecurity.ts` so that `isVerified` is only set to `true` AFTER the database upsert succeeds. The key change is moving the state update to happen after the `await` calls.
+### 2. Painel Admin de Combos inexistente
+Nao existe nenhuma aba/secao no AdminDashboard para visualizar uso de IA por usuario, historico de combos, objetivos escolhidos ou definir limites personalizados.
 
-### Changes to `src/hooks/useAdminSecurity.ts`
+### 3. Edge Function `admin-stats` nao inclui metricas de combos
+A funcao retorna apenas metricas de usuarios e MRR, sem dados sobre uso de combos.
 
-In the `checkSecurityStatus` function, inside the `pendingMfa` block:
+### 4. Upsell de combos extras nao implementado
+O spec menciona "R$ 9,99 = 3 combos extras" mas nao ha nenhum mecanismo para isso.
 
-1. Move the `isVerified = true` assignment to AFTER the database upsert completes successfully
-2. Add error handling: if the upsert AND fallback update both fail, do NOT mark as verified -- show the Google button again
-3. Add a small delay after the DB write to ensure edge function replicas see the updated value
+### 5. Store filter ausente no fetch
+O `fetchCombos` nao filtra por `activeStore`, mostrando combos de todas as lojas.
 
+---
+
+## Plano de Implementacao
+
+### Fase 1 -- Corrigir carregamento de itens do combo
+
+**Arquivo: `src/hooks/useCombos.ts`**
+- Apos buscar combos, fazer uma segunda query em `combo_items` filtrando pelos `combo_id` retornados
+- Associar os itens a cada combo no estado local
+- Isso corrige o problema de "Detalhes nao disponiveis" nos combos ja salvos
+
+### Fase 2 -- Filtro por loja ativa
+
+**Arquivo: `src/hooks/useCombos.ts`**
+- Adicionar `activeStore` como dependencia do `fetchCombos`
+- Se houver `activeStore.id`, filtrar combos e usage por `store_id`
+
+### Fase 3 -- Painel Admin de Combos
+
+**Arquivo: `supabase/functions/admin-stats/index.ts`**
+- Adicionar ao response metricas de combos:
+  - Total de combos gerados (geral e este mes)
+  - Uso por usuario (top usuarios geradores)
+  - Distribuicao por objetivo
+  - Combos simulacao vs draft vs publicado
+
+**Novo arquivo: `src/components/admin/CombosDashboard.tsx`**
+- Componente com:
+  - KPIs: total combos gerados, uso IA este mes, media por usuario
+  - Tabela de uso por usuario (email, plano, combos gerados, ultimo uso)
+  - Grafico de distribuicao por objetivo (pie chart)
+  - Historico de combos recentes com objetivo, status e data
+
+**Arquivo: `src/pages/AdminDashboard.tsx`**
+- Adicionar nova aba "Combos IA" no TabsList
+- Renderizar `CombosDashboard` no TabsContent correspondente
+
+**Arquivo: `src/components/admin/AdminLayout.tsx`**
+- Adicionar item de navegacao "Combos IA" com icone Sparkles na sidebar
+
+### Fase 4 -- Preparacao para Upsell (sem pagamento)
+
+**Arquivo: `src/pages/Combos.tsx`**
+- Quando `!canGenerate`, exibir card de upsell com texto "Desbloqueie 3 combos extras por R$ 9,99" e botao desabilitado "Em breve"
+- Isso deixa o codigo preparado para integracao futura com Stripe sem implementar cobranca agora
+
+---
+
+## Detalhes Tecnicos
+
+### Query de itens (Fase 1)
 ```typescript
-// BEFORE (broken):
-isVerified = true;  // Set immediately
-await supabase.from("user_security").upsert(...); // DB update happens after
-
-// AFTER (fixed):
-const { error: upsertError } = await supabase.from("user_security").upsert(...);
-if (upsertError) {
-  const { error: updateError } = await supabase.from("user_security").update(...);
-  if (updateError) {
-    // Both failed - do NOT mark as verified
-    sessionStorage.removeItem("admin_mfa_pending");
-    // isVerified stays false, user sees Google button again
-  } else {
-    isVerified = true;
-  }
-} else {
-  isVerified = true;
+// Apos buscar combos
+const comboIds = data.map(c => c.id);
+if (comboIds.length > 0) {
+  const { data: items } = await supabase
+    .from("combo_items")
+    .select("*")
+    .in("combo_id", comboIds);
+  // Agrupar itens por combo_id e mesclar
 }
 ```
 
-### No changes needed to edge functions
+### Metricas admin (Fase 3)
+```sql
+-- Queries via service_role no admin-stats
+SELECT objective, count(*) FROM combos GROUP BY objective;
+SELECT user_id, count(*) FROM combo_generation_usage 
+  WHERE created_at >= start_of_month GROUP BY user_id;
+```
 
-The edge function logic is correct -- it properly checks `mfa_verified` and `mfa_verified_at` in the database. The issue is purely a timing/ordering problem on the frontend.
+### Arquivos criados
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/components/admin/CombosDashboard.tsx` | Painel admin de combos |
 
-## Technical details
+### Arquivos modificados
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/hooks/useCombos.ts` | Fetch de items + filtro por store |
+| `supabase/functions/admin-stats/index.ts` | Metricas de combos |
+| `src/pages/AdminDashboard.tsx` | Nova aba "Combos IA" |
+| `src/components/admin/AdminLayout.tsx` | Nav item "Combos IA" |
+| `src/pages/Combos.tsx` | Card de upsell preparatorio |
 
-- File modified: `src/hooks/useAdminSecurity.ts`
-- Only the `checkSecurityStatus` function changes
-- The `pendingMfa` code block (around lines 72-103) is restructured
-- No database migrations needed
-- No edge function changes needed
+### Sem alteracoes de banco de dados
+Todas as tabelas e policies ja existem e estao corretas. Nenhuma migration necessaria.
