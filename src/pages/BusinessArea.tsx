@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Building2, 
@@ -49,6 +49,7 @@ import TaxesAndFeesBlock from "@/components/business/TaxesAndFeesBlock";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
+import { useBusinessMetrics } from "@/hooks/useBusinessMetrics";
 interface BusinessMetrics {
   ingredientsCount: number;
   recipesCount: number;
@@ -75,6 +76,7 @@ const taxRegimes = [
 ];
 
 export default function BusinessArea() {
+  const { result: businessMetrics, isCalculating: isMetricsCalculating, calculate: calculateMetrics } = useBusinessMetrics();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -185,10 +187,12 @@ export default function BusinessArea() {
       
       await fetchMetrics(session.user.id);
       setIsLoading(false);
+      // Trigger backend business metrics calculation
+      calculateMetrics();
     };
 
     checkAuth();
-  }, [navigate]);
+  }, [navigate, calculateMetrics]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -620,15 +624,20 @@ export default function BusinessArea() {
               userId={user?.id}
               onAverageChange={(avg) => {
                 setCalculatedMonthlyRevenue(avg);
-                // Update profile with new average
                 setProfile((prev: any) => prev ? { ...prev, monthly_revenue: avg } : prev);
+                calculateMetrics();
               }}
             />
           </div>
 
           {/* ========== SECTION: Taxes and Fees ========== */}
           <div className="mt-8">
-            <TaxesAndFeesBlock userId={user?.id} />
+            <TaxesAndFeesBlock userId={user?.id} 
+              taxPercentage={businessMetrics?.tax_percentage}
+              averageCardFee={businessMetrics?.average_card_fee}
+              totalDeductions={businessMetrics?.total_deductions}
+              onDataChanged={() => calculateMetrics()}
+            />
           </div>
 
           {/* ========== SECTION: Production Costs (per item) ========== */}
@@ -645,38 +654,33 @@ export default function BusinessArea() {
             <div className="grid lg:grid-cols-2 gap-6">
               <FixedCostsBlock 
                 userId={user?.id} 
-                onTotalChange={setFixedCostsTotal}
+                onTotalChange={(v) => { setFixedCostsTotal(v); calculateMetrics(); }}
               />
               <VariableCostsBlock 
                 userId={user?.id} 
-                onTotalChange={setVariableCostsTotal}
+                onTotalChange={(v) => { setVariableCostsTotal(v); calculateMetrics(); }}
               />
             </div>
-            {(fixedCostsTotal > 0 || variableCostsTotal > 0) && (() => {
-              const effectiveRevenue = calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null);
-              const totalCosts = fixedCostsTotal + variableCostsTotal;
-              const costPercent = effectiveRevenue && effectiveRevenue > 0 ? (totalCosts / effectiveRevenue) * 100 : null;
-              return (
-                <div className="mt-4 p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg border border-blue-500/20">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Total Custos de Produção:</span>
-                    <div className="text-right">
-                      <span className="font-display text-xl font-bold text-foreground">
-                        {costPercent !== null ? `${costPercent.toFixed(2)}%` : '—'}
-                      </span>
-                      <span className="text-sm text-muted-foreground ml-2">
-                        (R$ {totalCosts.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mês)
-                      </span>
-                    </div>
+            {businessMetrics && businessMetrics.production_costs_total > 0 && (
+              <div className="mt-4 p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg border border-blue-500/20">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Total Custos de Produção:</span>
+                  <div className="text-right">
+                    <span className="font-display text-xl font-bold text-foreground">
+                      {businessMetrics.production_costs_percent !== null ? `${businessMetrics.production_costs_percent.toFixed(2)}%` : '—'}
+                    </span>
+                    <span className="text-sm text-muted-foreground ml-2">
+                      (R$ {businessMetrics.production_costs_total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mês)
+                    </span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {costPercent !== null
-                      ? 'Percentual rateado sobre o faturamento mensal — aplicado sobre o preço de venda nas fichas técnicas'
-                      : 'Informe o faturamento mensal para calcular o percentual de rateio'}
-                  </p>
                 </div>
-              );
-            })()}
+                <p className="text-xs text-muted-foreground mt-1">
+                  {businessMetrics.production_costs_percent !== null
+                    ? 'Percentual rateado sobre o faturamento mensal — aplicado sobre o preço de venda nas fichas técnicas'
+                    : 'Informe o faturamento mensal para calcular o percentual de rateio'}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* ========== SECTION: Business Expenses (monthly) ========== */}
@@ -693,10 +697,13 @@ export default function BusinessArea() {
 
             {/* Total Business Expenses Block */}
             <TotalBusinessCostBlock
-              fixedExpensesTotal={fixedExpensesTotal}
-              variableExpensesTotal={variableExpensesTotal}
-              monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-              costLimitPercent={profile?.cost_limit_percent ?? 40}
+              fixedExpensesPercent={businessMetrics?.fixed_expenses_percent ?? null}
+              variableExpensesPercent={businessMetrics?.variable_expenses_percent ?? null}
+              totalExpensesPercent={businessMetrics?.total_expenses_percent ?? null}
+              isOverLimit={businessMetrics?.is_over_limit ?? false}
+              excessPercent={businessMetrics?.excess_percent ?? 0}
+              costLimitPercent={businessMetrics?.cost_limit_percent ?? profile?.cost_limit_percent ?? 40}
+              isCalculating={isMetricsCalculating}
               onLimitChange={async (newLimit) => {
                 const { error } = await supabase
                   .from("profiles")
@@ -706,6 +713,7 @@ export default function BusinessArea() {
                 if (!error) {
                   setProfile({ ...profile, cost_limit_percent: newLimit });
                   toast({ title: "Sucesso!", description: "Limite atualizado" });
+                  calculateMetrics();
                 }
               }}
             />
@@ -714,13 +722,13 @@ export default function BusinessArea() {
             <div className="mt-6 grid lg:grid-cols-2 gap-6">
               <FixedExpensesBlock 
                 userId={user?.id} 
-                monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-                onTotalChange={setFixedExpensesTotal}
+                monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
+                onTotalChange={(v) => { setFixedExpensesTotal(v); calculateMetrics(); }}
               />
               <VariableExpensesBlock 
                 userId={user?.id} 
-                monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-                onTotalChange={setVariableExpensesTotal}
+                monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
+                onTotalChange={(v) => { setVariableExpensesTotal(v); calculateMetrics(); }}
               />
             </div>
           </div>
@@ -738,18 +746,27 @@ export default function BusinessArea() {
             </div>
 
             <TotalProductCostBlock
-              fixedCostsTotal={fixedCostsTotal}
-              variableCostsTotal={variableCostsTotal}
-              monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
+              productionCostsTotal={businessMetrics?.production_costs_total ?? 0}
+              productionCostsPercent={businessMetrics?.production_costs_percent ?? null}
+              remainingMargin={businessMetrics?.production_remaining_margin ?? null}
+              monthlyRevenue={businessMetrics?.monthly_revenue ?? null}
+              isCalculating={isMetricsCalculating}
             />
           </div>
 
           {/* ========== SECTION: Simplified DRE ========== */}
           <div className="mt-8">
             <SimplifiedDREBlock
-              monthlyRevenue={calculatedMonthlyRevenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-              fixedExpensesTotal={fixedExpensesTotal}
-              variableExpensesTotal={variableExpensesTotal}
+              monthlyRevenue={businessMetrics?.monthly_revenue ?? null}
+              fixedExpensesTotal={businessMetrics?.fixed_expenses_total ?? 0}
+              variableExpensesTotal={businessMetrics?.variable_expenses_total ?? 0}
+              totalExpenses={businessMetrics?.total_expenses ?? 0}
+              netResult={businessMetrics?.net_result ?? null}
+              netMarginPercent={businessMetrics?.net_margin_percent ?? null}
+              isProfit={businessMetrics?.is_profit ?? false}
+              fixedExpensesPercent={businessMetrics?.fixed_expenses_percent ?? null}
+              variableExpensesPercent={businessMetrics?.variable_expenses_percent ?? null}
+              isCalculating={isMetricsCalculating}
             />
           </div>
 

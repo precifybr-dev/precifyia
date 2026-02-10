@@ -4,39 +4,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 interface TotalBusinessCostBlockProps {
-  fixedExpensesTotal: number;
-  variableExpensesTotal: number;
-  monthlyRevenue: number | null;
+  fixedExpensesPercent: number | null;
+  variableExpensesPercent: number | null;
+  totalExpensesPercent: number | null;
+  isOverLimit: boolean;
+  excessPercent: number;
   costLimitPercent: number;
   onLimitChange?: (newLimit: number) => void;
+  isCalculating?: boolean;
 }
 
 export default function TotalBusinessCostBlock({
-  fixedExpensesTotal,
-  variableExpensesTotal,
-  monthlyRevenue,
+  fixedExpensesPercent,
+  variableExpensesPercent,
+  totalExpensesPercent,
+  isOverLimit,
+  excessPercent,
   costLimitPercent,
   onLimitChange,
+  isCalculating,
 }: TotalBusinessCostBlockProps) {
   const [isEditingLimit, setIsEditingLimit] = useState(false);
   const [editLimitValue, setEditLimitValue] = useState(costLimitPercent.toString());
-
-  const hasRevenue = monthlyRevenue && monthlyRevenue > 0;
-  
-  const fixedPercent = hasRevenue 
-    ? (fixedExpensesTotal / monthlyRevenue) * 100 
-    : null;
-  
-  const variablePercent = hasRevenue 
-    ? (variableExpensesTotal / monthlyRevenue) * 100 
-    : null;
-  
-  const totalCostPercent = fixedPercent !== null && variablePercent !== null
-    ? fixedPercent + variablePercent
-    : null;
-
-  const isOverLimit = totalCostPercent !== null && totalCostPercent > costLimitPercent;
-  const excessPercent = isOverLimit ? totalCostPercent - costLimitPercent : 0;
 
   const formatPercent = (value: number | null) => {
     if (value === null) return "—";
@@ -55,6 +44,21 @@ export default function TotalBusinessCostBlock({
     setEditLimitValue(costLimitPercent.toString());
     setIsEditingLimit(false);
   };
+
+  if (isCalculating) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-6 shadow-card">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-muted rounded w-1/3" />
+          <div className="grid grid-cols-3 gap-4">
+            <div className="h-20 bg-muted rounded" />
+            <div className="h-20 bg-muted rounded" />
+            <div className="h-20 bg-muted rounded" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-card rounded-xl border p-6 shadow-card transition-colors ${isOverLimit ? 'border-destructive/50 bg-destructive/5' : 'border-border'}`}>
@@ -129,42 +133,39 @@ export default function TotalBusinessCostBlock({
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-3 gap-4">
-        {/* Despesas Fixas */}
         <div className="text-center p-4 bg-rose-500/10 rounded-lg border border-rose-500/20">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Receipt className="w-4 h-4 text-rose-500" />
             <span className="text-sm text-muted-foreground">Desp. Fixas</span>
           </div>
-          <p className={`font-display text-2xl font-bold ${fixedPercent !== null ? 'text-rose-600' : 'text-muted-foreground'}`}>
-            {formatPercent(fixedPercent)}
+          <p className={`font-display text-2xl font-bold ${fixedExpensesPercent !== null ? 'text-rose-600' : 'text-muted-foreground'}`}>
+            {formatPercent(fixedExpensesPercent)}
           </p>
         </div>
 
-        {/* Despesas Variáveis */}
         <div className="text-center p-4 bg-orange-500/10 rounded-lg border border-orange-500/20">
           <div className="flex items-center justify-center gap-2 mb-2">
             <TrendingDown className="w-4 h-4 text-orange-500" />
             <span className="text-sm text-muted-foreground">Desp. Variáveis</span>
           </div>
-          <p className={`font-display text-2xl font-bold ${variablePercent !== null ? 'text-orange-600' : 'text-muted-foreground'}`}>
-            {formatPercent(variablePercent)}
+          <p className={`font-display text-2xl font-bold ${variableExpensesPercent !== null ? 'text-orange-600' : 'text-muted-foreground'}`}>
+            {formatPercent(variableExpensesPercent)}
           </p>
         </div>
 
-        {/* Total */}
         <div className={`text-center p-4 rounded-lg border-2 ${isOverLimit ? 'bg-destructive/10 border-destructive/30' : 'bg-primary/10 border-primary/30'}`}>
           <div className="flex items-center justify-center gap-2 mb-2">
             <PieChart className={`w-4 h-4 ${isOverLimit ? 'text-destructive' : 'text-primary'}`} />
             <span className="text-sm text-muted-foreground">Total</span>
           </div>
-          <p className={`font-display text-2xl font-bold ${totalCostPercent !== null ? (isOverLimit ? 'text-destructive' : 'text-primary') : 'text-muted-foreground'}`}>
-            {formatPercent(totalCostPercent)}
+          <p className={`font-display text-2xl font-bold ${totalExpensesPercent !== null ? (isOverLimit ? 'text-destructive' : 'text-primary') : 'text-muted-foreground'}`}>
+            {formatPercent(totalExpensesPercent)}
           </p>
         </div>
       </div>
 
-      {/* Progress bar showing limit */}
-      {hasRevenue && totalCostPercent !== null && (
+      {/* Progress bar */}
+      {totalExpensesPercent !== null && (
         <div className="mt-6">
           <div className="flex items-center justify-between text-xs text-muted-foreground mb-2">
             <span>0%</span>
@@ -174,29 +175,25 @@ export default function TotalBusinessCostBlock({
             <span>100%</span>
           </div>
           <div className="relative h-3 bg-muted rounded-full overflow-hidden">
-            {/* Limit marker */}
             <div 
               className="absolute top-0 bottom-0 w-0.5 bg-foreground/50 z-10"
               style={{ left: `${Math.min(costLimitPercent, 100)}%` }}
             />
-            {/* Progress fill */}
             <div 
               className={`h-full rounded-full transition-all ${isOverLimit ? 'bg-destructive' : 'bg-success'}`}
-              style={{ width: `${Math.min(totalCostPercent, 100)}%` }}
+              style={{ width: `${Math.min(totalExpensesPercent, 100)}%` }}
             />
           </div>
           <div className="flex items-center justify-between text-xs mt-1">
-            <span className="text-muted-foreground">
-              Limite: {costLimitPercent}%
-            </span>
+            <span className="text-muted-foreground">Limite: {costLimitPercent}%</span>
             <span className={`font-medium ${isOverLimit ? 'text-destructive' : 'text-success'}`}>
-              Atual: {totalCostPercent.toFixed(1)}%
+              Atual: {totalExpensesPercent.toFixed(1)}%
             </span>
           </div>
         </div>
       )}
 
-      {!hasRevenue && (
+      {totalExpensesPercent === null && (
         <p className="text-xs text-muted-foreground mt-4 text-center">
           Informe o faturamento mensal nas configurações para calcular os percentuais
         </p>
