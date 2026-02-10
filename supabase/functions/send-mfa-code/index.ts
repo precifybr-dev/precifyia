@@ -125,8 +125,8 @@ serve(async (req: Request) => {
         console.error('Erro ao enviar email:', await emailResponse.text());
       }
     } else {
-      // Log do código para desenvolvimento (remover em produção)
-      console.log(`[DEV] Código MFA para ${email}: ${code}`);
+      // RESEND_API_KEY not configured - code saved to DB but no email sent
+      console.warn('[MFA] RESEND_API_KEY not configured. MFA code generated but email not sent.');
     }
 
     return new Response(
