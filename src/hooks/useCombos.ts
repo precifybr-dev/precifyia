@@ -60,14 +60,44 @@ export function useCombos() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      let combosQuery = supabase
         .from("combos")
         .select("*")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
+      if (activeStore?.id) {
+        combosQuery = combosQuery.eq("store_id", activeStore.id);
+      }
+
+      const { data, error } = await combosQuery;
+
       if (!error && data) {
-        setCombos(data as unknown as Combo[]);
+        // Fetch combo items for all combos
+        const comboIds = data.map((c: any) => c.id);
+        let itemsByCombo: Record<string, ComboItem[]> = {};
+
+        if (comboIds.length > 0) {
+          const { data: items } = await supabase
+            .from("combo_items")
+            .select("*")
+            .in("combo_id", comboIds);
+
+          if (items) {
+            for (const item of items) {
+              const cid = (item as any).combo_id;
+              if (!itemsByCombo[cid]) itemsByCombo[cid] = [];
+              itemsByCombo[cid].push(item as unknown as ComboItem);
+            }
+          }
+        }
+
+        const combosWithItems = data.map((c: any) => ({
+          ...c,
+          items: itemsByCombo[c.id] || [],
+        }));
+
+        setCombos(combosWithItems as Combo[]);
       }
 
       // Get usage this month
@@ -75,12 +105,17 @@ export function useCombos() {
       startOfMonth.setDate(1);
       startOfMonth.setHours(0, 0, 0, 0);
 
-      const { count } = await supabase
+      let usageQuery = supabase
         .from("combo_generation_usage")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
         .gte("created_at", startOfMonth.toISOString());
 
+      if (activeStore?.id) {
+        usageQuery = usageQuery.eq("store_id", activeStore.id);
+      }
+
+      const { count } = await usageQuery;
       setMonthlyUsage(count ?? 0);
 
       // Get plan limits
@@ -106,7 +141,7 @@ export function useCombos() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeStore?.id]);
 
   useEffect(() => {
     fetchCombos();

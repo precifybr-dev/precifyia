@@ -154,10 +154,20 @@ export default function Combos() {
                 )}
                 {isGenerating ? "Gerando combo..." : "Gerar combo com IA"}
               </Button>
-              {!canGenerate && (
-                <p className="text-sm text-muted-foreground mt-3">
-                  Limite mensal atingido. Faça upgrade para gerar mais combos.
-                </p>
+        {!canGenerate && (
+                <div className="mt-4 p-4 rounded-xl border border-primary/20 bg-primary/5 max-w-sm text-center">
+                  <Crown className="w-6 h-6 text-primary mx-auto mb-2" />
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    Limite mensal atingido
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Desbloqueie 3 combos extras por R$ 9,99
+                  </p>
+                  <Button size="sm" variant="outline" disabled className="gap-2">
+                    <Sparkles className="w-4 h-4" />
+                    Em breve
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
