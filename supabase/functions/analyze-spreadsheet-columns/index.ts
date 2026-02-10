@@ -54,6 +54,19 @@ serve(async (req) => {
       );
     }
 
+    // ─── FEATURE FLAG: Check plan allows spreadsheet_import ───
+    const { data: featureCheck } = await supabase.rpc("check_plan_feature", {
+      _user_id: user.id,
+      _feature: "spreadsheet_import",
+    });
+    const ff = featureCheck?.[0];
+    if (ff && !ff.allowed) {
+      return new Response(
+        JSON.stringify({ error: ff.reason, upgrade_required: true, current_plan: ff.current_plan }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const rawBody = await req.json();
 
     // ─── MASS ASSIGNMENT PROTECTION: Only allow headers array ───
