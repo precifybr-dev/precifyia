@@ -29,6 +29,7 @@ import {
   Moon,
   Bell,
   BookOpen,
+  Sparkles,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -57,6 +58,7 @@ const navItems: NavItem[] = [
   { id: "financial", label: "Financeiro", icon: Wallet, section: "financial", permission: "view_financials" },
   { id: "support", label: "Suporte", icon: Headphones, section: "support", permission: "respond_support" },
   { id: "metrics", label: "Métricas", icon: BarChart3, section: "usage", permission: "view_metrics" },
+  { id: "combos-ai", label: "Combos IA", icon: Sparkles, section: "combos", permission: "view_metrics" },
   { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs" },
   { id: "system-book", label: "Livro do Sistema", icon: BookOpen, path: "/admin/system-book", masterOnly: true },
 ];

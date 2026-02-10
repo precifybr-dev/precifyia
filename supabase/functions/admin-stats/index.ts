@@ -169,6 +169,102 @@ serve(async (req: Request) => {
     const arpu = totalUsers > 0 ? totalMRR / totalUsers : 0;
     const averageLTV = arpu * 12;
 
+    // ─── Combo Stats ───
+    const startOfMonthISO = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const { count: totalCombos } = await supabase
+      .from("combos")
+      .select("*", { count: "exact", head: true });
+
+    const { count: combosThisMonth } = await supabase
+      .from("combos")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", startOfMonthISO);
+
+    const { count: usageThisMonth } = await supabase
+      .from("combo_generation_usage")
+      .select("*", { count: "exact", head: true })
+      .gte("created_at", startOfMonthISO);
+
+    // By objective
+    const { data: objectiveData } = await supabase
+      .from("combos")
+      .select("objective");
+
+    const objectiveCounts: Record<string, number> = {};
+    (objectiveData || []).forEach((c: any) => {
+      objectiveCounts[c.objective] = (objectiveCounts[c.objective] || 0) + 1;
+    });
+    const byObjective = Object.entries(objectiveCounts).map(([name, value]) => ({ name, value }));
+
+    // Top users this month
+    const { data: usageRows } = await supabase
+      .from("combo_generation_usage")
+      .select("user_id, created_at")
+      .gte("created_at", startOfMonthISO)
+      .order("created_at", { ascending: false });
+
+    const userUsageMap: Record<string, { count: number; last_used: string }> = {};
+    (usageRows || []).forEach((r: any) => {
+      if (!userUsageMap[r.user_id]) {
+        userUsageMap[r.user_id] = { count: 0, last_used: r.created_at };
+      }
+      userUsageMap[r.user_id].count++;
+    });
+
+    const topUserIds = Object.keys(userUsageMap);
+    let topUsers: any[] = [];
+    if (topUserIds.length > 0) {
+      const { data: topProfiles } = await supabase
+        .from("profiles")
+        .select("user_id, user_plan")
+        .in("user_id", topUserIds);
+
+      const { data: { users: authUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+      const emailMap: Record<string, string> = {};
+      (authUsers || []).forEach((u: any) => { emailMap[u.id] = u.email || ""; });
+
+      topUsers = topUserIds
+        .map((uid) => {
+          const prof = (topProfiles || []).find((p: any) => p.user_id === uid);
+          return {
+            user_id: uid,
+            email: emailMap[uid] || uid,
+            plan: prof?.user_plan || "free",
+            count: userUsageMap[uid].count,
+            last_used: userUsageMap[uid].last_used,
+          };
+        })
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 20);
+    }
+
+    // Recent combos
+    const { data: recentCombosData } = await supabase
+      .from("combos")
+      .select("id, name, objective, status, created_at, user_id")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    const recentComboUserIds = [...new Set((recentCombosData || []).map((c: any) => c.user_id))];
+    const { data: { users: comboAuthUsers } } = await supabase.auth.admin.listUsers({ perPage: 1000 });
+    const comboEmailMap: Record<string, string> = {};
+    (comboAuthUsers || []).forEach((u: any) => { comboEmailMap[u.id] = u.email || ""; });
+
+    const recentCombos = (recentCombosData || []).map((c: any) => ({
+      ...c,
+      user_email: comboEmailMap[c.user_id] || c.user_id,
+    }));
+
+    const comboStats = {
+      totalCombos: totalCombos || 0,
+      combosThisMonth: combosThisMonth || 0,
+      usageThisMonth: usageThisMonth || 0,
+      byObjective,
+      topUsers,
+      recentCombos,
+    };
+
     return new Response(
       JSON.stringify({
         metrics: {
@@ -187,8 +283,9 @@ serve(async (req: Request) => {
           totalMRR,
           arpu,
           averageLTV,
-          churnRate: 0 // TODO: calcular quando tivermos dados de cancelamento
-        }
+          churnRate: 0
+        },
+        comboStats
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

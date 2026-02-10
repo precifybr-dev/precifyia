@@ -13,6 +13,7 @@ import { FinancialDashboard } from "@/components/admin/FinancialDashboard";
 import { SupportDashboard } from "@/components/admin/SupportDashboard";
 import { UsageMetricsDashboard } from "@/components/admin/UsageMetricsDashboard";
 import { ConversionMetricsBlock } from "@/components/admin/ConversionMetricsBlock";
+import { CombosDashboard } from "@/components/admin/CombosDashboard";
 import { PlanLimitsTable } from "@/components/admin/PlanLimitsTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,6 +39,7 @@ import {
 } from "recharts";
 import {
   Users,
+  Sparkles,
   TrendingUp,
   DollarSign,
   Activity,
@@ -341,6 +343,10 @@ export default function AdminDashboard() {
                   <BarChart3 className="h-4 w-4" />
                   Métricas
                 </TabsTrigger>
+                <TabsTrigger value="combos" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Sparkles className="h-4 w-4" />
+                  Combos IA
+                </TabsTrigger>
                 <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <History className="h-4 w-4" />
                   Logs
@@ -588,6 +594,10 @@ export default function AdminDashboard() {
 
               <TabsContent value="usage">
                 <UsageMetricsDashboard />
+              </TabsContent>
+
+              <TabsContent value="combos">
+                <CombosDashboard />
               </TabsContent>
 
               <TabsContent value="logs" className="space-y-4">
