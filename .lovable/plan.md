@@ -1,56 +1,66 @@
 
-# Fix: "Sessao Invalida" no Painel de Precificacao
+# Plano de Correções: Menus Admin, Navegação e Autenticação
 
-## Causa raiz
+## Problemas Identificados
 
-O erro acontece por dois motivos combinados:
+### 1. Menus do Admin que nao abrem ao clicar
+**Causa raiz**: Os itens do menu lateral (Usuarios, Financeiro, Suporte, Metricas, Logs) usam `section` para trocar abas dentro do `AdminDashboard`. Porem, quando o usuario esta em `/admin/collaborators` ou `/admin/system-book`, clicar nesses itens nao faz nada porque o `onSectionChange` so funciona dentro da pagina AdminDashboard.
 
-1. **Token de sessao expirado/invalido**: O hook `useRecipePricing` usa `supabase.auth.getSession()` que pode retornar um token cacheado ja expirado. A Edge Function valida esse token com `getUser()` e rejeita com "Sessao invalida."
+**Solucao**: Alterar o `handleNavClick` no `AdminLayout.tsx` para que, ao clicar num item com `section`, primeiro navegue para `/admin` e passe a section como parametro (via state ou query param). O `AdminDashboard` deve ler esse parametro e ativar a aba correta.
 
-2. **Cache de deduplicacao impede retry**: Quando o calculo falha, o `lastInputRef.current` mantem o valor do input. Na proxima renderizacao com os mesmos ingredientes, o hook detecta "mesmo input" e retorna sem tentar novamente -- o erro antigo fica preso na tela.
+### 2. Botao "Voltar" na Ficha Tecnica vai para Dashboard
+**Causa raiz**: Na pagina `Recipes.tsx` (linha 953), o botao "Voltar" sempre faz `navigate("/app")`. Quando o usuario esta editando uma ficha tecnica (formulario aberto), deveria voltar para a lista de fichas tecnicas, nao para o Dashboard.
 
-```text
-Fluxo do bug:
-  1. Sessao expira no browser
-  2. Hook envia token expirado -> Edge Function retorna 401
-  3. Hook seta error = "Sessao invalida"
-  4. Usuario faz login novamente (ou sessao renova)
-  5. Componente chama calculate() com mesmos dados
-  6. inputKey === lastInputRef -> return (nao tenta de novo)
-  7. Erro fica preso na tela permanentemente
-```
+**Solucao**: Alterar o botao "Voltar" para verificar se `showForm` esta ativo. Se estiver, chamar `resetForm()` (que fecha o formulario e volta para a lista). Caso contrario, manter `navigate("/app")`.
 
-## Correcoes
+### 3. Permissao do Master para acessar conta de usuarios (Suporte)
+**Causa raiz**: O sistema de impersonacao ja existe e funciona via `useImpersonation`. O `UserManagement` ja tem a funcionalidade de acessar conta de usuarios. O fluxo parece estar implementado, mas precisa ser verificado se o botao de impersonacao esta corretamente conectado e visivel para o Master.
 
-### 1. Limpar cache de deduplicacao quando ha erro
+**Solucao**: Verificar e garantir que o botao de impersonacao no `UserManagement` esteja funcional e acessivel ao Master. Revisar se ha alguma condicao bloqueando o acesso.
 
-No `useRecipePricing.ts`, quando ocorre erro (linhas 146-148 e 153-156), resetar `lastInputRef.current = ""` para permitir que a proxima chamada com os mesmos dados tente novamente.
+### 4. Remover codigo visivel no site ao acessar como Master
+**Causa raiz**: Provavelmente se refere a elementos de debug, banners ou marcacoes visuais que aparecem quando o Master acessa a area do usuario. Sera necessario verificar se ha algum componente renderizando informacao tecnica indesejada.
 
-### 2. Trocar `getSession()` por `getUser()` para obter token valido
+**Solucao**: Revisar os componentes renderizados na area do usuario e remover qualquer elemento de debug ou codigo exposto.
 
-Substituir `supabase.auth.getSession()` por uma abordagem que force refresh do token quando necessario. Usar `supabase.auth.getUser()` para validar e depois pegar o token atualizado.
+### 5. Autenticacao Google
+**Status**: Ja esta implementado usando `lovable.auth.signInWithOAuth("google")` que e o provedor gerenciado gratuito do Lovable Cloud. Nenhuma alteracao necessaria.
 
-### 3. Adicionar retry automatico em erro 401
+---
 
-Quando a Edge Function retornar 401, tentar um `supabase.auth.refreshSession()` e repetir a chamada uma vez antes de mostrar o erro ao usuario.
+## Detalhes Tecnicos
 
-## Arquivo afetado
-
-- `src/hooks/useRecipePricing.ts`
-
-## Mudancas especificas
+### Arquivo 1: `src/components/admin/AdminLayout.tsx`
+- Modificar `handleNavClick`: quando o item tem `section` e a rota atual nao e `/admin`, navegar para `/admin` com `state: { section: item.section }`
+- Isso garante que clicar em qualquer menu sempre funciona, independente da pagina atual
 
 ```text
-Linha 103:    Mover a checagem de deduplicacao para DEPOIS da checagem de erro
-Linhas 119-124: Substituir getSession() por getUser() + refresh
-Linhas 146-148: Adicionar lastInputRef.current = "" no bloco de erro
-Linhas 153-156: Adicionar lastInputRef.current = "" no bloco catch
-Novo:          Adicionar logica de retry em caso de 401
+handleNavClick(item) {
+  if (item.path) {
+    navigate(item.path);
+  } else if (item.section) {
+    if (location.pathname !== "/admin") {
+      navigate("/admin", { state: { section: item.section } });
+    } else if (onSectionChange) {
+      onSectionChange(item.section);
+    }
+  }
+}
 ```
 
-## Resultado esperado
+### Arquivo 2: `src/pages/AdminDashboard.tsx`
+- Ler `location.state?.section` no `useEffect` e chamar `setActiveTab` com o valor recebido
+- Limpar o state apos aplicar para evitar reativacao em navegacoes futuras
 
-- Erro de sessao nunca fica "preso" na tela
-- Se o token expirou, o hook tenta renovar automaticamente
-- Se a renovacao falhar, mostra mensagem pedindo novo login
-- Mesmos dados podem ser recalculados apos correcao de erro
+### Arquivo 3: `src/pages/Recipes.tsx`
+- Alterar o botao "Voltar" (linha 953) para verificar `showForm`:
+  - Se `showForm === true`: chamar `resetForm()` para voltar a lista
+  - Se `showForm === false`: manter `navigate("/app")`
+- Alterar o texto do botao para refletir o destino: "Voltar para lista" vs "Voltar"
+
+### Arquivo 4: Verificacao do `UserManagement.tsx`
+- Confirmar que o fluxo de impersonacao esta conectado e funcional
+- Garantir que o botao "Acessar conta" esta visivel para o Master
+
+### Arquivo 5: Revisao de elementos visuais indesejados
+- Verificar se ha algum componente de debug sendo renderizado na area do usuario quando acessado pelo Master
