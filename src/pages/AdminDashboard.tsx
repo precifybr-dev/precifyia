@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useAdminDashboard } from "@/hooks/useAdminDashboard";
@@ -84,6 +84,7 @@ const ALERT_COLORS = {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [userId, setUserId] = useState<string | undefined>();
   const { isLoading: rbacLoading } = useRBAC(userId);
   const {
@@ -113,6 +114,16 @@ export default function AdminDashboard() {
     };
     getUser();
   }, []);
+
+  // Read section from navigation state
+  useEffect(() => {
+    const section = (location.state as any)?.section;
+    if (section) {
+      setActiveTab(section);
+      // Clear state to prevent re-activation on future navigations
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const unreadAlerts = alerts.filter((a) => !a.is_read);
 

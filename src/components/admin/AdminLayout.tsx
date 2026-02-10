@@ -118,8 +118,12 @@ export function AdminLayout({ children, unreadAlerts = 0, activeSection, onSecti
   const handleNavClick = (item: NavItem) => {
     if (item.path) {
       navigate(item.path);
-    } else if (item.section && onSectionChange) {
-      onSectionChange(item.section);
+    } else if (item.section) {
+      if (location.pathname !== "/admin") {
+        navigate("/admin", { state: { section: item.section } });
+      } else if (onSectionChange) {
+        onSectionChange(item.section);
+      }
     }
   };
 
