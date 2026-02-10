@@ -1,85 +1,81 @@
 
-# Responsividade Mobile + Mensagem de Boas-vindas com Importacao
 
-## Resumo
+# Proteger campos de plano contra alteracao pelo usuario
 
-Tornar o site responsivo para dispositivos moveis em todas as telas principais (Landing, Login, Dashboard, Ingredients, Recipes, BusinessArea). Adicionar na tela inicial (Dashboard) uma mensagem de boas-vindas que sugere importar dados da planilha (para Insumos) e puxar do iFood (para Fichas Tecnicas), com mini-tutoriais visuais para guiar o usuario.
+## Problema
 
-## Parte 1: Responsividade Mobile
+A tabela `profiles` possui uma politica de UPDATE que permite ao usuario alterar qualquer coluna da sua linha, incluindo `user_plan`, `subscription_status` e `subscription_expires_at`. Isso significa que um usuario com conhecimento tecnico poderia abrir o console do navegador e executar:
 
-### 1.1 Dashboard (`src/pages/Dashboard.tsx`)
-- Header: tornar o badge "Trial: 7 dias" responsivo (esconder texto em telas pequenas, manter apenas icone)
-- StoreSwitcher: esconder em mobile no header (ja acessivel no sidebar)
-- Stats grid: usar `grid-cols-2` em mobile ao inves de coluna unica
-- Welcome card: ajustar padding e tamanho de fonte em mobile
-- Quick Actions: `grid-cols-1` em telas xs
-
-### 1.2 Login (`src/pages/Login.tsx`)
-- Ja esta razoavelmente responsivo (lado decorativo esconde em mobile com `hidden lg:flex`)
-- Ajustar padding do formulario: `p-4 sm:p-8`
-
-### 1.3 Landing Page
-- Ja usa classes responsivas (`sm:`, `lg:`, `hidden sm:block` nos floating cards)
-- Ajustes menores em padding e espacamento da HeroSection
-
-### 1.4 Paginas internas (Ingredients, Recipes, BusinessArea, Beverages)
-- Todas usam sidebar identico ao Dashboard -- o sidebar ja abre/fecha com hamburger menu
-- Tabelas: adicionar `overflow-x-auto` para scroll horizontal em mobile
-- Formularios: ajustar grids de `grid-cols-2` para `grid-cols-1` em mobile onde necessario
-
-## Parte 2: Mensagem de Boas-vindas com Importacao
-
-### 2.1 Novo componente: `src/components/dashboard/WelcomeImportPrompt.tsx`
-
-Um componente que aparece na tela inicial (Dashboard) logo apos o card de boas-vindas. Sera exibido apenas quando o usuario ainda nao tem insumos OU nao tem fichas tecnicas cadastradas. Armazena no `localStorage` se o usuario ja dispensou a mensagem.
-
-Conteudo do componente:
-- **Card visual** com fundo suave e icones
-- **Dois blocos lado a lado (empilhados em mobile)**:
-  1. **Importar Insumos da Planilha**: icone de planilha, texto explicando que pode importar via CTRL+C/CTRL+V, botao "Importar Planilha" que abre o `SpreadsheetImportModal`, e um mini-tutorial (3 passos com icones numerados):
-     - Passo 1: Abra sua planilha (Excel, Google Sheets)
-     - Passo 2: Selecione os dados e copie (Ctrl+C)
-     - Passo 3: Cole aqui e a IA mapeia automaticamente
-  2. **Importar Fichas do iFood**: icone do iFood/link, texto explicando que pode puxar os produtos direto do iFood, botao "Importar do iFood" que navega para `/app/recipes` e abre o modal de importacao iFood, e mini-tutorial:
-     - Passo 1: Acesse seu restaurante no iFood pelo navegador
-     - Passo 2: Copie o link da pagina do seu restaurante
-     - Passo 3: Cole aqui e importamos seus produtos
-
-- **Botao "Nao mostrar novamente"** que persiste no localStorage
-
-### 2.2 Integracao no Dashboard (`src/pages/Dashboard.tsx`)
-- Importar o novo componente `WelcomeImportPrompt`
-- Renderizar entre o card de boas-vindas e o OnboardingProgress
-- Passar props: `userId`, `storeId`, `onOpenSpreadsheetImport`, `onNavigateToRecipes`
-- Importar e adicionar o `SpreadsheetImportModal` no Dashboard (atualmente so existe na pagina de Insumos)
-
-### 2.3 Props e estado
-- Estado `showImportPrompt`: baseado no localStorage (`precify_import_prompt_dismissed`)
-- Estado `importModalOpen`: para abrir o modal de importacao de planilha
-- Estado `ingredientsCount` e `recipesCount`: buscar contagem no banco para decidir se exibe o prompt
-
-## Parte 3: Detalhes tecnicos
-
-### Arquivos a criar
-| Arquivo | Descricao |
-|---------|-----------|
-| `src/components/dashboard/WelcomeImportPrompt.tsx` | Componente de boas-vindas com opcoes de importacao e mini-tutoriais |
-
-### Arquivos a modificar
-| Arquivo | Mudanca |
-|---------|---------|
-| `src/pages/Dashboard.tsx` | Responsividade mobile + integracao do WelcomeImportPrompt + SpreadsheetImportModal |
-| `src/pages/Login.tsx` | Ajustes de padding mobile |
-| `src/pages/Ingredients.tsx` | Overflow-x em tabelas, grids responsivos |
-| `src/pages/Recipes.tsx` | Overflow-x em tabelas, grids responsivos |
-| `src/pages/BusinessArea.tsx` | Grids responsivos em formularios |
-
-### Logica de exibicao do prompt
-```text
-SE localStorage("precify_import_prompt_dismissed") !== "true"
-  E (ingredientsCount === 0 OU recipesCount === 0)
-ENTAO mostrar WelcomeImportPrompt
+```javascript
+supabase.from('profiles').update({ user_plan: 'pro', subscription_status: 'active' }).eq('user_id', '...')
 ```
 
-### Mini-tutorial visual (dentro do componente)
-Cada tutorial sera uma lista numerada com icones, usando classes Tailwind para layout compacto e responsivo. Estilo: passos em `flex gap-2` com numeros em circulos coloridos (`bg-primary/10 text-primary rounded-full w-6 h-6`).
+E ganhar acesso ao plano Pro sem pagar.
+
+## Solucao
+
+Criar uma funcao SECURITY DEFINER no banco que valida se os campos protegidos estao sendo alterados pelo usuario. Se estiverem, a alteracao e bloqueada via trigger BEFORE UPDATE.
+
+### Migracao SQL
+
+1. Criar trigger `protect_plan_fields` na tabela `profiles` que impede usuarios comuns de alterar os campos:
+   - `user_plan`
+   - `subscription_status`
+   - `subscription_expires_at`
+
+2. A funcao do trigger verifica:
+   - Se algum desses campos esta mudando (OLD vs NEW)
+   - Se o chamador NAO e `service_role` (usado pelas Edge Functions administrativas)
+   - Se for usuario comum tentando alterar, restaura os valores originais (OLD) silenciosamente
+
+3. Isso permite que:
+   - Edge Functions (admin-users) continuem alterando planos normalmente (usam service_role)
+   - Usuarios atualizem seus dados normais (business_name, monthly_revenue, etc)
+   - Usuarios NAO consigam alterar seu proprio plano
+
+### Detalhes tecnicos da funcao
+
+```sql
+CREATE OR REPLACE FUNCTION public.protect_plan_fields()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+BEGIN
+  -- Se NAO e service_role, impedir alteracao dos campos de plano
+  IF current_setting('request.jwt.claims', true)::json->>'role' != 'service_role' THEN
+    NEW.user_plan := OLD.user_plan;
+    NEW.subscription_status := OLD.subscription_status;
+    NEW.subscription_expires_at := OLD.subscription_expires_at;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER protect_plan_fields_trigger
+BEFORE UPDATE ON public.profiles
+FOR EACH ROW
+EXECUTE FUNCTION public.protect_plan_fields();
+```
+
+### Por que trigger em vez de RLS separada?
+
+- RLS com politicas por coluna nao existe no Postgres (RLS e por linha, nao por coluna)
+- Separar em duas tabelas seria uma refatoracao grande e quebraria muitas queries existentes
+- O trigger BEFORE UPDATE e a forma mais segura e menos invasiva de proteger campos especificos
+
+### Impacto
+
+- Nenhuma alteracao no frontend necessaria
+- Edge Functions continuam funcionando normalmente (usam `createClient` com service_role key)
+- Usuarios podem continuar atualizando seus dados de negocio sem problemas
+- Campos de plano ficam 100% protegidos contra manipulacao client-side
+
+### Arquivos a modificar
+
+| Arquivo | Acao |
+|---------|------|
+| Migracao SQL | Criar funcao + trigger `protect_plan_fields` |
+
+Nenhum arquivo de codigo precisa ser alterado.
