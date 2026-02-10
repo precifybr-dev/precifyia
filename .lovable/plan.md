@@ -1,30 +1,49 @@
 
 
-# Correcao: Constante `MAX_SESSIONS_PER_ADMIN_PER_DAY` nao definida
+# Mover Lixeira e Backup para a area do usuario
 
-## Problema
+## Resumo
 
-O erro ocorre ao clicar em "Modo Suporte" no painel admin. A Edge Function `admin-users` tenta usar a constante `MAX_SESSIONS_PER_ADMIN_PER_DAY` (linha 682), mas ela nunca foi declarada no arquivo. Foi removida acidentalmente junto com outras configuracoes de rate limit (linha 18 tem o comentario "Rate limit config removed").
+Remover "Backup" da navegacao principal e adicionar tanto "Backup" quanto "Lixeira" como opcoes na area inferior do sidebar, junto com "Modo Claro/Escuro" e "Sair", conforme o print de referencia. A Lixeira tera uma descricao visivel: "Itens excluidos sao mantidos por 30 dias".
 
-## Solucao
+## Mudancas
 
-Adicionar a constante no topo do arquivo `supabase/functions/admin-users/index.ts`, logo apos os CORS headers:
+### Arquivo: `src/pages/Dashboard.tsx`
 
-```typescript
-const MAX_SESSIONS_PER_ADMIN_PER_DAY = 10;
+1. **Remover "Backup" do array `navItems`** (linha 184) -- ele nao deve aparecer na navegacao principal.
+
+2. **Adicionar rotas `recycle-bin` e `backup` no `handleNavClick`** (linhas 111-129) para que os novos botoes funcionem.
+
+3. **Adicionar dois botoes na secao inferior do sidebar** (entre o toggle de tema e o user info, linhas 329-363):
+   - **Lixeira** (icone `Trash2`): navega para `/app/recycle-bin`, com subtexto "Itens mantidos por 30 dias"
+   - **Backup** (icone `HardDrive`): navega para `/app/backup`
+
+### Layout final da area inferior do sidebar
+
+```text
+------------------------------
+  Modo Claro / Modo Escuro
+  Lixeira (30 dias)
+  Backup dos meus dados
+------------------------------
+  [Avatar] LANCHES PARANA
+           email@gmail...
+------------------------------
+  Sair
+------------------------------
 ```
 
-O valor 10 e um padrao razoavel para limitar sessoes de suporte por admin por dia. Pode ser ajustado conforme necessidade.
+### Detalhes tecnicos
 
-## Arquivo modificado
+- Importar `Trash2` do lucide-react
+- Remover item `{ icon: HardDrive, label: "Backup", path: "backup" }` do array `navItems`
+- Adicionar `"recycle-bin": "/app/recycle-bin"` no objeto `routes` dentro de `handleNavClick`
+- Criar dois `Button variant="ghost"` na secao inferior, seguindo o mesmo padrao visual do botao "Modo Claro"
+- O botao da Lixeira tera um texto secundario em `text-xs text-muted-foreground` informando "Itens mantidos por 30 dias"
+
+### Arquivos modificados
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `supabase/functions/admin-users/index.ts` | Adicionar constante `MAX_SESSIONS_PER_ADMIN_PER_DAY = 10` na linha 18 |
-
-## Impacto
-
-- Corrige o erro 500 ao iniciar modo suporte
-- Mantem o limite de seguranca de sessoes diarias por admin
-- Nenhuma outra mudanca necessaria
+| `src/pages/Dashboard.tsx` | Mover Backup e adicionar Lixeira na secao inferior do sidebar |
 
