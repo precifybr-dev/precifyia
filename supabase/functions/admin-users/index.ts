@@ -16,6 +16,7 @@ interface AdminAction {
 }
 
 // Rate limit config removed - now using DB-based check_rate_limit
+const MAX_SESSIONS_PER_ADMIN_PER_DAY = 10;
 
 // Enhanced device fingerprint
 function getDeviceFingerprint(req: Request): Record<string, string | null> {
