@@ -1,1 +1,4 @@
 project_id = "epypncqtkpytsbllicqc"
+
+[functions.calculate-recipe-pricing]
+verify_jwt = false
