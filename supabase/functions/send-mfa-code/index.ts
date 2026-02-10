@@ -26,8 +26,12 @@ serve(async (req: Request) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { email, userId }: MFARequest = await req.json();
-    
+    const rawBody = await req.json();
+
+    // ─── MASS ASSIGNMENT PROTECTION: Only allow email and userId ───
+    const email = typeof rawBody.email === 'string' ? rawBody.email.trim() : null;
+    const userId = typeof rawBody.userId === 'string' ? rawBody.userId.trim() : null;
+
     if (!email || !userId) {
       return new Response(
         JSON.stringify({ error: 'Email e userId são obrigatórios' }),

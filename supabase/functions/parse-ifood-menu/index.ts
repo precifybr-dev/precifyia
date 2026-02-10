@@ -62,8 +62,12 @@ serve(async (req) => {
       );
     }
 
-    const { ifoodUrl, importType } = await req.json();
-    
+    const rawBody = await req.json();
+
+    // ─── MASS ASSIGNMENT PROTECTION: Only allow ifoodUrl and importType ───
+    const ifoodUrl = typeof rawBody.ifoodUrl === 'string' ? rawBody.ifoodUrl.trim() : null;
+    const importType = typeof rawBody.importType === 'string' ? rawBody.importType : 'ingredients';
+
     if (!ifoodUrl) {
       return new Response(
         JSON.stringify({ error: "URL do iFood é obrigatória" }),

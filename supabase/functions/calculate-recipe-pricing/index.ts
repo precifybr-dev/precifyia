@@ -137,7 +137,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    const body: RequestBody = await req.json();
+    const rawBody = await req.json();
+
+    // ─── MASS ASSIGNMENT PROTECTION: Only allow whitelisted fields ───
+    const ALLOWED_FIELDS = [
+      'recipe_id', 'ingredients', 'servings', 'cmv_target',
+      'selling_price', 'ifood_selling_price', 'loss_percent',
+      'discount_percent', 'local_ifood_rate', 'recipe_name', 'store_id',
+    ];
+    const body: RequestBody = {} as RequestBody;
+    for (const key of ALLOWED_FIELDS) {
+      if (key in rawBody) {
+        (body as any)[key] = rawBody[key];
+      }
+    }
 
     // ─── RBAC: Validate store access ───
     if (body.store_id) {

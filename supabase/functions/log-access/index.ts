@@ -78,9 +78,15 @@ serve(async (req: Request) => {
     // userId is ALWAYS derived from the authenticated token — never from the body
     const userId = user.id;
 
-    const body: LogAccessRequest = await req.json();
-    const { action, success, metadata } = body;
-    
+    const rawBody = await req.json();
+
+    // ─── MASS ASSIGNMENT PROTECTION: Only allow whitelisted fields ───
+    const action = typeof rawBody.action === 'string' ? rawBody.action : null;
+    const success = typeof rawBody.success === 'boolean' ? rawBody.success : true;
+    const metadata = (rawBody.metadata && typeof rawBody.metadata === 'object' && !Array.isArray(rawBody.metadata))
+      ? rawBody.metadata as Record<string, unknown>
+      : {};
+
     if (!action) {
       return new Response(
         JSON.stringify({ error: 'action é obrigatório' }),

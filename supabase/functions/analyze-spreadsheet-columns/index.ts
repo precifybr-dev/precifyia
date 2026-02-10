@@ -54,7 +54,13 @@ serve(async (req) => {
       );
     }
 
-    const { headers } = await req.json();
+    const rawBody = await req.json();
+
+    // ─── MASS ASSIGNMENT PROTECTION: Only allow headers array ───
+    const headers = Array.isArray(rawBody.headers)
+      ? rawBody.headers.filter((h: unknown) => typeof h === 'string').slice(0, 50)
+      : [];
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
