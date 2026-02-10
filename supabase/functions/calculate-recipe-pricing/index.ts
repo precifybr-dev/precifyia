@@ -367,24 +367,30 @@ Deno.serve(async (req) => {
     const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodProductionCost - ifoodTaxValue;
     const ifoodNetProfitPercent = ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0;
 
-    // ─── 4. Anti-fraud checks ───
+    // ═══════════════════════════════════════════════════════════════
+    // ─── FAIL-SAFE GATE: All outputs validated BEFORE response ───
+    // If ANY calculated value is invalid (NaN, Infinity), abort entirely
+    // No partial or auto-corrected data is ever returned
+    // ═══════════════════════════════════════════════════════════════
 
-    const allValues = [
+    const allOutputs: Record<string, number> = {
       ingredientsCostTotal, ingredientsCostPerServing, costWithLoss,
       suggestedPrice, finalSellingPrice, actualCMV, grossMargin, grossMarginPercent,
-      discountedPrice, ifoodPrice, netProfitLoja, ifoodNetProfit,
-    ];
+      discountedPrice, ifoodPrice, netProfitLoja, netProfitLojaPercent,
+      ifoodNetProfit, ifoodNetProfitPercent, ifoodFeeValue, ifoodNetRevenue,
+      productionCostValue, taxValue, suggestedIfoodPrice, calculatedIfoodPrice,
+    };
 
-    for (const v of allValues) {
+    for (const [key, v] of Object.entries(allOutputs)) {
       if (!isValidNumber(v)) {
-        throw new AntifraudError("Detectamos uma inconsistência no cálculo. Os valores não foram salvos.");
+        console.error(`[FAIL-SAFE] Invalid output: ${key} = ${v}`);
+        throw new AntifraudError("Detectamos uma inconsistência no cálculo. Nenhum valor foi salvo ou retornado.");
       }
     }
 
     // Logical consistency checks
     if (actualCMV > 100 && sellingPrice && sellingPrice > 0) {
       // CMV > 100% means cost exceeds selling price — warn but allow (user set the price)
-      // We'll flag it in the response
     }
 
     // ─── 5. Build response ───

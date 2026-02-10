@@ -209,22 +209,47 @@ Deno.serve(async (req) => {
       warnings.push("Atenção: esta taxa está diferente do padrão do iFood para Entrega Própria. Confirme se está correta.");
     }
 
-    // Anti-fraud: check all outputs
-    const allValues = [realPercentage, baseRateReal, monthlyRevenue, couponMonthlyCost, deliveryMonthlyCost];
-    for (const v of allValues) {
+    // ═══════════════════════════════════════════════════════════════
+    // ─── FAIL-SAFE GATE: All outputs must be valid BEFORE any persistence ───
+    // If ANY value is invalid, abort entirely — never persist partial data
+    // ═══════════════════════════════════════════════════════════════
+    const allOutputs = {
+      realPercentage, baseRateReal: parseFloat(baseRateReal.toFixed(2)),
+      monthlyRevenue, couponMonthlyCost, deliveryMonthlyCost,
+      couponImpactPercent, deliveryImpactPercent, anticipationFee,
+    };
+
+    for (const [key, v] of Object.entries(allOutputs)) {
       if (!isValidNumber(v)) {
-        return new Response(JSON.stringify({ error: "Detectamos uma inconsistência no cálculo das taxas iFood." }), {
+        console.error(`[FAIL-SAFE] Invalid output detected: ${key} = ${v}`);
+        return new Response(JSON.stringify({ error: "Detectamos uma inconsistência no cálculo das taxas iFood. Nenhum dado foi salvo." }), {
           status: 422,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
     }
 
-    // ─── Save to profile ───
-    await supabase
+    // Additional fail-safe: realPercentage must be within sane bounds
+    if (realPercentage >= 100) {
+      return new Response(JSON.stringify({ error: "A taxa real calculada excede 100%. Verifique os valores informados. Nenhum dado foi salvo." }), {
+        status: 422,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── PERSIST: Only after all validations pass ───
+    const { error: saveError } = await supabase
       .from("profiles")
       .update({ ifood_real_percentage: realPercentage })
       .eq("user_id", user.id);
+
+    if (saveError) {
+      console.error("[FAIL-SAFE] Save failed, no data persisted:", saveError);
+      return new Response(JSON.stringify({ error: "Erro ao salvar taxa iFood. Nenhum dado foi alterado." }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const result = {
       real_percentage: realPercentage,

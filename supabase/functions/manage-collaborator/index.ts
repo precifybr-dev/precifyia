@@ -240,44 +240,27 @@ async function handleCreateCollaborator(
     );
   }
 
-  // Criar registro de colaborador
-  const { error: collaboratorError } = await supabase
-    .from('collaborators')
-    .insert({
-      user_id: newUser.user.id,
-      role,
-      name,
-      email,
-      is_active: true,
-      created_by: createdBy,
+  // ═══════════════════════════════════════════════════════════════
+    // FAIL-SAFE: Use transactional DB function to insert collaborator + role + security
+    // If ANY step fails, the entire transaction rolls back — no partial data persisted
+    // ═══════════════════════════════════════════════════════════════
+    const { data: txResult, error: txError } = await supabase.rpc('create_collaborator_atomic', {
+      _user_id: newUser.user.id,
+      _role: role,
+      _name: name,
+      _email: email,
+      _created_by: createdBy,
     });
 
-  if (collaboratorError) {
-    // Rollback: deletar usuário criado
-    await supabase.auth.admin.deleteUser(newUser.user.id);
-    return new Response(
-      JSON.stringify({ error: 'Erro ao criar colaborador: ' + collaboratorError.message }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // Criar role do usuário
-  await supabase
-    .from('user_roles')
-    .insert({
-      user_id: newUser.user.id,
-      role,
-      is_protected: false,
-    });
-
-  // Configurar segurança (forçar troca de senha no primeiro login)
-  await supabase
-    .from('user_security')
-    .insert({
-      user_id: newUser.user.id,
-      must_change_password: true,
-      mfa_enabled: false,
-    });
+    if (txError) {
+      // Rollback: delete the auth user since DB transaction failed
+      console.error('[FAIL-SAFE] Transaction failed, rolling back auth user:', txError);
+      await supabase.auth.admin.deleteUser(newUser.user.id);
+      return new Response(
+        JSON.stringify({ error: 'Erro ao criar colaborador: ' + txError.message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   return new Response(
     JSON.stringify({ 
@@ -329,26 +312,22 @@ async function handleUpdateCollaborator(
     );
   }
 
-  // Atualizar colaborador
-  const { error } = await supabase
-    .from('collaborators')
-    .update(updates)
-    .eq('id', collaboratorId);
+  // ═══════════════════════════════════════════════════════════════
+    // FAIL-SAFE: Use transactional DB function for atomic update
+    // ═══════════════════════════════════════════════════════════════
+    const { error } = await supabase.rpc('update_collaborator_atomic', {
+      _collaborator_id: collaboratorId,
+      _name: updates.name || null,
+      _role: updates.role || null,
+      _is_active: updates.is_active ?? null,
+    });
 
-  if (error) {
-    return new Response(
-      JSON.stringify({ error: 'Erro ao atualizar: ' + error.message }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // Se a role foi alterada, atualizar também na tabela user_roles
-  if (updates.role) {
-    await supabase
-      .from('user_roles')
-      .update({ role: updates.role })
-      .eq('user_id', collaborator.user_id);
-  }
+    if (error) {
+      return new Response(
+        JSON.stringify({ error: 'Erro ao atualizar: ' + error.message }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   return new Response(
     JSON.stringify({ success: true }),
