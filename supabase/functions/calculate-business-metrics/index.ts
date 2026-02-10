@@ -6,6 +6,9 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─── Calculation Version ───
+const CALCULATION_VERSION = "business-metrics-v1";
+
 function isValidNumber(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
 }
@@ -224,7 +227,32 @@ Deno.serve(async (req) => {
 
       // Warnings
       warnings,
+
+      // Version
+      calculation_version: CALCULATION_VERSION,
     };
+
+    // ─── Save calculation history (immutable) ───
+    await supabase.from("calculation_history").insert({
+      user_id: user.id,
+      store_id: storeId || null,
+      entity_type: "business_metrics",
+      entity_id: null,
+      calculation_version: CALCULATION_VERSION,
+      input_snapshot: {
+        monthly_revenue: monthlyRevenue,
+        cost_limit_percent: costLimitPercent,
+        fixed_costs_count: fixedCosts?.length || 0,
+        variable_costs_count: variableCosts?.length || 0,
+        fixed_expenses_count: fixedExpenses?.length || 0,
+        variable_expenses_count: variableExpenses?.length || 0,
+        tax_percentage: taxPercentage,
+        card_fees_count: cardFees?.length || 0,
+      },
+      output_snapshot: result,
+    }).then(({ error }) => {
+      if (error) console.error("[VERSION] Failed to save calculation history:", error);
+    });
 
     return new Response(JSON.stringify(result), {
       status: 200,
