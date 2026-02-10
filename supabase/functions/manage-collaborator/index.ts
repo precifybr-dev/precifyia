@@ -111,7 +111,47 @@ serve(async (req: Request) => {
       );
     }
 
-    const body: RequestBody = await req.json();
+    const rawBody = await req.json();
+
+    // ─── MASS ASSIGNMENT PROTECTION: Only allow whitelisted fields per action ───
+    let body: RequestBody;
+    const action = rawBody.action;
+
+    if (action === 'create') {
+      body = {
+        action: 'create',
+        email: typeof rawBody.email === 'string' ? rawBody.email.trim() : '',
+        name: typeof rawBody.name === 'string' ? rawBody.name.trim() : '',
+        role: rawBody.role as AppRole,
+        password: typeof rawBody.password === 'string' ? rawBody.password : '',
+      };
+    } else if (action === 'update') {
+      const updates: Record<string, any> = {};
+      if (typeof rawBody.updates?.name === 'string') updates.name = rawBody.updates.name.trim();
+      if (typeof rawBody.updates?.role === 'string') updates.role = rawBody.updates.role;
+      if (typeof rawBody.updates?.is_active === 'boolean') updates.is_active = rawBody.updates.is_active;
+      body = {
+        action: 'update',
+        collaboratorId: typeof rawBody.collaboratorId === 'string' ? rawBody.collaboratorId : '',
+        updates,
+      };
+    } else if (action === 'reset_password') {
+      body = {
+        action: 'reset_password',
+        userId: typeof rawBody.userId === 'string' ? rawBody.userId : '',
+        newPassword: typeof rawBody.newPassword === 'string' ? rawBody.newPassword : '',
+      };
+    } else if (action === 'reset_2fa') {
+      body = {
+        action: 'reset_2fa',
+        userId: typeof rawBody.userId === 'string' ? rawBody.userId : '',
+      };
+    } else {
+      return new Response(
+        JSON.stringify({ error: 'Ação inválida' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Validação adicional: impedir que master tente criar/promover para master
     if (body.action === 'create' && body.role === 'master') {

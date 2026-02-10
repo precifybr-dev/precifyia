@@ -110,7 +110,48 @@ serve(async (req: Request) => {
       );
     }
 
-    const body: AdminAction = await req.json();
+    const rawBody = await req.json();
+
+    // ─── MASS ASSIGNMENT PROTECTION: Only allow whitelisted fields ───
+    const ALLOWED_ACTIONS = [
+      'list_users', 'get_user', 'reset_password', 'change_plan',
+      'extend_subscription', 'get_financial_history', 'get_support_history',
+      'start_impersonation', 'end_impersonation', 'update_status',
+      'check_consent', 'get_session_logs', 'get_abuse_alerts',
+    ];
+    if (!ALLOWED_ACTIONS.includes(rawBody.action)) {
+      return new Response(
+        JSON.stringify({ error: 'Ação inválida' }),
+        { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Whitelist data fields per action — never pass raw data through
+    const ALLOWED_DATA_FIELDS: Record<string, string[]> = {
+      'reset_password': ['newPassword'],
+      'change_plan': ['newPlan'],
+      'extend_subscription': ['days'],
+      'update_status': ['status'],
+      'start_impersonation': ['reason'],
+      'end_impersonation': ['sessionId'],
+    };
+
+    let sanitizedData: Record<string, any> | undefined;
+    if (rawBody.data && typeof rawBody.data === 'object') {
+      const allowedKeys = ALLOWED_DATA_FIELDS[rawBody.action] || [];
+      sanitizedData = {};
+      for (const key of allowedKeys) {
+        if (key in rawBody.data) {
+          sanitizedData[key] = rawBody.data[key];
+        }
+      }
+    }
+
+    const body: AdminAction = {
+      action: rawBody.action,
+      targetUserId: typeof rawBody.targetUserId === 'string' ? rawBody.targetUserId : undefined,
+      data: sanitizedData,
+    };
 
     // Verificar MFA para roles sensíveis
     const { data: roleData } = await supabase

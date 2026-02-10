@@ -59,11 +59,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Optional store_id from body
+    // ─── MASS ASSIGNMENT PROTECTION: Only accept store_id ───
     let storeId: string | null = null;
     try {
-      const body = await req.json();
-      storeId = body.store_id || null;
+      const rawBody = await req.json();
+      // Only allow store_id — reject everything else silently
+      if (typeof rawBody.store_id === 'string' && rawBody.store_id.length > 0) {
+        storeId = rawBody.store_id;
+      }
     } catch {
       // No body is ok
     }

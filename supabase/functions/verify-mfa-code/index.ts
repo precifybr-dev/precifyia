@@ -22,8 +22,12 @@ serve(async (req: Request) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { userId, code }: VerifyRequest = await req.json();
-    
+    const rawBody = await req.json();
+
+    // ─── MASS ASSIGNMENT PROTECTION: Only allow userId and code ───
+    const userId = typeof rawBody.userId === 'string' ? rawBody.userId.trim() : null;
+    const code = typeof rawBody.code === 'string' ? rawBody.code.trim() : null;
+
     if (!userId || !code) {
       return new Response(
         JSON.stringify({ error: 'userId e code são obrigatórios' }),
