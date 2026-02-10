@@ -28,16 +28,26 @@ serve(async (req: Request) => {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    // Verificar token do usuário
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    // Verificar token do usuário via getClaims
+    const supabaseUser = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
 
-    if (userError || !user) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims) {
       return new Response(
         JSON.stringify({ error: 'Token inválido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const user = {
+      id: claimsData.claims.sub as string,
+      email: claimsData.claims.email as string,
+    };
 
     // Verificar se é colaborador com permissão view_metrics
     const { data: hasPermission } = await supabase.rpc('has_permission', {
