@@ -8,7 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Smartphone, Truck, Calculator, Percent, Info, ShoppingCart, Receipt, Gift, TrendingUp } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Smartphone, Truck, Calculator, Percent, Info, ShoppingCart, Receipt, Gift, TrendingUp, HelpCircle, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -179,8 +180,8 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
       }
     }
 
-    // Round to 2 decimal places
-    realPercentage = Math.round(realPercentage * 100) / 100;
+    // Round to 2 decimal places and ensure non-negative
+    realPercentage = Math.max(0, Math.round(realPercentage * 100) / 100);
     couponImpactPercent = Math.round(couponImpactPercent * 100) / 100;
     deliveryImpactPercent = Math.round(deliveryImpactPercent * 100) / 100;
 
@@ -261,9 +262,12 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
     }).format(value);
   };
 
+  const [userEditedRate, setUserEditedRate] = useState(false);
+
   const handlePlanTypeChange = (value: string) => {
     const autoRate = value === "own_delivery" ? 12 : value === "ifood_delivery" ? 23 : null;
     setSettings(prev => ({ ...prev, planType: value, baseRate: autoRate }));
+    setUserEditedRate(false);
   };
 
   const handleAnticipationTypeChange = (value: string) => {
@@ -273,6 +277,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
   const handleBaseRateChange = (value: string) => {
     const rate = value === "" ? null : parseFloat(value);
     setSettings(prev => ({ ...prev, baseRate: rate }));
+    setUserEditedRate(true);
   };
 
   const handleMonthlyOrdersChange = (value: string) => {
@@ -416,6 +421,23 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                 <Info className="h-3 w-3" />
                 Taxa de comissão base cobrada pelo iFood (ex: 12% Básico, 23% Entrega)
               </p>
+              {/* Alert for unusual manual rate */}
+              {userEditedRate && settings.baseRate !== null && settings.planType === "ifood_delivery" && settings.baseRate < 20 && (
+                <div className="flex items-start gap-2 p-2 bg-warning/10 border border-warning/30 rounded-lg mt-1">
+                  <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning">
+                    Atenção: esta taxa está diferente do padrão do iFood. Confirme se está correta.
+                  </p>
+                </div>
+              )}
+              {userEditedRate && settings.baseRate !== null && settings.planType === "own_delivery" && settings.baseRate < 8 && (
+                <div className="flex items-start gap-2 p-2 bg-warning/10 border border-warning/30 rounded-lg mt-1">
+                  <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-warning">
+                    Atenção: esta taxa está diferente do padrão do iFood. Confirme se está correta.
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Taxa Real Explicada */}
@@ -456,7 +478,20 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                     <span className="font-mono font-medium">{settings.anticipationType === "weekly" ? "1,59%" : "0%"}</span>
                   </div>
                   <div className="flex justify-between items-center pt-2">
-                    <span className="font-semibold text-foreground">Taxa Base Real</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-foreground">Taxa Base Real</span>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <HelpCircle className="w-3.5 h-3.5 text-yellow-500/70 cursor-help" />
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-[300px] text-xs">
+                            <p className="font-semibold mb-1">Taxa Base Real do iFood</p>
+                            <p>Esta é a taxa total real cobrada pelo iFood, considerando plano, forma de pagamento e antecipação (se houver).</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                     <span className="font-mono font-bold text-destructive text-lg">
                       {(settings.baseRate + 3.2 + (settings.anticipationType === "weekly" ? 1.59 : 0)).toFixed(2)}%
                     </span>
@@ -757,9 +792,22 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
               {/* Main Result */}
               <div className="p-4 bg-destructive text-destructive-foreground rounded-lg">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium opacity-90">Porcentagem Real iFood para Precificação</p>
-                    <p className="text-xs opacity-75 mt-1">Valor usado automaticamente em todas as fichas técnicas</p>
+                  <div className="flex items-center gap-2">
+                    <div>
+                      <p className="text-sm font-medium opacity-90">Porcentagem Real iFood para Precificação</p>
+                      <p className="text-xs opacity-75 mt-1">Valor usado automaticamente em todas as fichas técnicas</p>
+                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="w-4 h-4 opacity-75 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[300px] text-xs">
+                          <p className="font-semibold mb-1">Taxa Base Real do iFood</p>
+                          <p>Esta é a taxa total real cobrada pelo iFood, considerando plano, forma de pagamento e antecipação (se houver).</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                   <div className="text-right">
                     <span className="text-3xl font-bold">
@@ -768,6 +816,16 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                   </div>
                 </div>
               </div>
+
+              {/* Warning: zero rate with active iFood */}
+              {settings.realPercentage !== null && settings.realPercentage === 0 && settings.planType && (
+                <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                  <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-destructive">
+                    A taxa base real não pode ser zero com o iFood ativo. Verifique os valores informados.
+                  </p>
+                </div>
+              )}
 
               {/* Warning if no volume data */}
               {settings.baseRate !== null && !hasVolumeData && (
