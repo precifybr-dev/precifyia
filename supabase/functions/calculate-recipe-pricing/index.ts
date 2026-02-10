@@ -1,0 +1,426 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+// ─── Validation helpers ───
+
+function isValidNumber(v: unknown): v is number {
+  return typeof v === "number" && Number.isFinite(v);
+}
+
+function requirePositive(v: unknown, field: string): number {
+  if (!isValidNumber(v) || v < 0)
+    throw new ValidationError(`${field}: Este campo não pode conter valores negativos ou vazios.`);
+  return v;
+}
+
+function requireStrictlyPositive(v: unknown, field: string): number {
+  const n = requirePositive(v, field);
+  if (n <= 0) throw new ValidationError(`${field}: Este campo deve ser maior que zero.`);
+  return n;
+}
+
+function requirePercent(v: unknown, field: string, allowZero = true, allowHundred = false): number {
+  if (!isValidNumber(v))
+    throw new ValidationError(`${field}: O percentual informado está fora do intervalo permitido.`);
+  if (v < 0 || (!allowHundred && v >= 100) || (allowHundred && v > 100))
+    throw new ValidationError(`${field}: O percentual informado está fora do intervalo permitido (0–${allowHundred ? "100" : "99.99"}%).`);
+  if (!allowZero && v === 0)
+    throw new ValidationError(`${field}: O percentual deve ser maior que zero.`);
+  return v;
+}
+
+class ValidationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "ValidationError";
+  }
+}
+
+class AntifraudError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AntifraudError";
+  }
+}
+
+// ─── Unit conversion (mirroring lib/ingredient-utils) ───
+
+function convertToBaseUnit(quantity: number, fromUnit: string, toUnit: string): number {
+  const from = fromUnit.toLowerCase();
+  const to = toUnit.toLowerCase();
+  if (from === to) return quantity;
+  if (from === "g" && to === "kg") return quantity / 1000;
+  if (from === "kg" && to === "g") return quantity * 1000;
+  if (from === "mg" && to === "kg") return quantity / 1_000_000;
+  if (from === "mg" && to === "g") return quantity / 1000;
+  if (from === "ml" && to === "l") return quantity / 1000;
+  if (from === "l" && to === "ml") return quantity * 1000;
+  return quantity;
+}
+
+function calculateIngredientCost(unitPrice: number, qty: number, qtyUnit: string, baseUnit: string): number {
+  return unitPrice * convertToBaseUnit(qty, qtyUnit, baseUnit);
+}
+
+// ─── Types ───
+
+interface IngredientInput {
+  ingredient_id: string;
+  quantity: number;
+  unit: string;
+}
+
+interface RequestBody {
+  recipe_id?: string; // for update
+  ingredients: IngredientInput[];
+  servings: number;
+  cmv_target: number;
+  selling_price?: number | null;
+  ifood_selling_price?: number | null;
+  loss_percent?: number;
+  discount_percent?: number;
+  local_ifood_rate?: number | null;
+  recipe_name: string;
+  store_id?: string | null;
+}
+
+// ─── Main handler ───
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    // Authenticate
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: "Não autorizado." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Verify user
+    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Sessão inválida." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body: RequestBody = await req.json();
+
+    // ─── 1. Input validation ───
+
+    if (!body.recipe_name || typeof body.recipe_name !== "string" || body.recipe_name.trim().length === 0) {
+      throw new ValidationError("Nome da receita é obrigatório.");
+    }
+    if (body.recipe_name.trim().length > 200) {
+      throw new ValidationError("Nome da receita deve ter no máximo 200 caracteres.");
+    }
+
+    const servings = requireStrictlyPositive(body.servings, "Porções");
+    if (!Number.isInteger(servings)) throw new ValidationError("Porções deve ser um número inteiro.");
+
+    const cmvTarget = requirePercent(body.cmv_target, "CMV Desejado", false);
+
+    const lossPercent = requirePercent(body.loss_percent ?? 0, "% Perda", true, true);
+    const discountPercent = requirePercent(body.discount_percent ?? 0, "% Desconto", true, true);
+
+    if (!Array.isArray(body.ingredients) || body.ingredients.length === 0) {
+      throw new ValidationError("Adicione pelo menos um insumo à receita.");
+    }
+
+    // Validate each ingredient input
+    for (const ing of body.ingredients) {
+      if (!ing.ingredient_id || typeof ing.ingredient_id !== "string") {
+        throw new ValidationError("Cada insumo deve ter um identificador válido.");
+      }
+      requireStrictlyPositive(ing.quantity, "Quantidade do insumo");
+      if (!ing.unit || typeof ing.unit !== "string") {
+        throw new ValidationError("Cada insumo deve ter uma unidade válida.");
+      }
+    }
+
+    // Validate optional prices
+    let sellingPrice: number | null = null;
+    if (body.selling_price !== null && body.selling_price !== undefined) {
+      sellingPrice = requirePositive(body.selling_price, "Preço de Venda");
+      if (sellingPrice === 0) sellingPrice = null; // treat 0 as "not set"
+    }
+
+    let ifoodSellingPrice: number | null = null;
+    if (body.ifood_selling_price !== null && body.ifood_selling_price !== undefined) {
+      ifoodSellingPrice = requirePositive(body.ifood_selling_price, "Preço iFood");
+      if (ifoodSellingPrice === 0) ifoodSellingPrice = null;
+    }
+
+    let localIfoodRate: number | null = null;
+    if (body.local_ifood_rate !== null && body.local_ifood_rate !== undefined) {
+      localIfoodRate = requirePercent(body.local_ifood_rate, "Taxa iFood local", true, false);
+    }
+
+    // ─── 2. Fetch server-side data ───
+
+    // Fetch ingredient data from DB (server-side truth for prices)
+    const ingredientIds = body.ingredients.map((i) => i.ingredient_id);
+    const { data: dbIngredients, error: ingError } = await supabase
+      .from("ingredients")
+      .select("id, unit, unit_price, purchase_price, purchase_quantity, correction_factor")
+      .eq("user_id", user.id)
+      .in("id", ingredientIds);
+
+    if (ingError) throw new Error("Erro ao buscar insumos: " + ingError.message);
+    if (!dbIngredients || dbIngredients.length === 0) {
+      throw new ValidationError("Nenhum insumo válido encontrado.");
+    }
+
+    // Map for fast lookup
+    const ingredientMap = new Map(dbIngredients.map((i) => [i.id, i]));
+
+    // Validate all requested ingredients exist and belong to user
+    for (const inp of body.ingredients) {
+      if (!ingredientMap.has(inp.ingredient_id)) {
+        throw new ValidationError(`Insumo não encontrado ou não pertence ao seu cadastro.`);
+      }
+    }
+
+    // Fetch profile for business config
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("monthly_revenue, ifood_real_percentage, default_cmv")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (profileError) throw new Error("Erro ao buscar perfil: " + profileError.message);
+
+    const monthlyRevenue = profile?.monthly_revenue ? Number(profile.monthly_revenue) : null;
+    const globalIfoodRate = profile?.ifood_real_percentage ? Number(profile.ifood_real_percentage) : null;
+
+    // Fetch production costs (fixed + variable)
+    const [{ data: fixedCosts }, { data: variableCosts }] = await Promise.all([
+      supabase.from("fixed_costs").select("value_per_item").eq("user_id", user.id),
+      supabase.from("variable_costs").select("value_per_item").eq("user_id", user.id),
+    ]);
+
+    const fixedCostsTotal = fixedCosts?.reduce((s, c) => s + Number(c.value_per_item), 0) || 0;
+    const variableCostsTotal = variableCosts?.reduce((s, c) => s + Number(c.value_per_item), 0) || 0;
+    const totalProductionCosts = fixedCostsTotal + variableCostsTotal;
+
+    let productionCostsPercent: number | null = null;
+    if (monthlyRevenue && monthlyRevenue > 0 && totalProductionCosts > 0) {
+      productionCostsPercent = (totalProductionCosts / monthlyRevenue) * 100;
+    } else if (totalProductionCosts === 0) {
+      productionCostsPercent = 0;
+    }
+
+    // Fetch tax percentage
+    const { data: taxData } = await supabase
+      .from("business_taxes")
+      .select("tax_percentage")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    const taxPercentage = taxData?.tax_percentage ? Number(taxData.tax_percentage) : 0;
+
+    // ─── 3. Server-side calculations ───
+
+    // Calculate ingredient costs using server-side prices
+    const calculatedIngredients: { ingredient_id: string; quantity: number; unit: string; cost: number }[] = [];
+    let ingredientsCostTotal = 0;
+
+    for (const inp of body.ingredients) {
+      const dbIng = ingredientMap.get(inp.ingredient_id)!;
+      const unitPrice = dbIng.unit_price ?? (dbIng.purchase_price / (dbIng.purchase_quantity || 1));
+
+      if (!isValidNumber(unitPrice) || unitPrice < 0) {
+        throw new ValidationError(`Preço unitário inválido para um insumo. Verifique o cadastro de insumos.`);
+      }
+
+      const cost = calculateIngredientCost(unitPrice, inp.quantity, inp.unit, dbIng.unit);
+
+      if (!isValidNumber(cost)) {
+        throw new AntifraudError("Detectamos uma inconsistência no cálculo de custo de insumo. Os valores não foram salvos.");
+      }
+
+      calculatedIngredients.push({
+        ingredient_id: inp.ingredient_id,
+        quantity: inp.quantity,
+        unit: inp.unit,
+        cost: parseFloat(cost.toFixed(2)),
+      });
+
+      ingredientsCostTotal += cost;
+    }
+
+    // Per serving
+    const ingredientsCostPerServing = ingredientsCostTotal / servings;
+
+    // Loss
+    const lossMultiplier = 1 + lossPercent / 100;
+    const costWithLoss = ingredientsCostPerServing * lossMultiplier;
+
+    // Suggested price (from CMV target)
+    const suggestedPrice = cmvTarget > 0 && cmvTarget < 100
+      ? costWithLoss / (cmvTarget / 100)
+      : costWithLoss;
+
+    // Final selling price
+    const finalSellingPrice = sellingPrice && sellingPrice > 0 ? sellingPrice : suggestedPrice;
+
+    // Actual CMV
+    const actualCMV = finalSellingPrice > 0 ? (costWithLoss / finalSellingPrice) * 100 : 0;
+
+    // Gross margins
+    const grossMargin = finalSellingPrice - costWithLoss;
+    const grossMarginPercent = finalSellingPrice > 0 ? (grossMargin / finalSellingPrice) * 100 : 0;
+
+    // Discounted price
+    const discountedPrice = finalSellingPrice * (1 - discountPercent / 100);
+
+    // iFood calculations
+    const effectiveIfoodRate = localIfoodRate ?? globalIfoodRate ?? 0;
+
+    const suggestedIfoodPrice = effectiveIfoodRate > 0 && effectiveIfoodRate < 100
+      ? suggestedPrice / (1 - effectiveIfoodRate / 100)
+      : suggestedPrice;
+
+    const calculatedIfoodPrice = effectiveIfoodRate > 0 && effectiveIfoodRate < 100
+      ? finalSellingPrice / (1 - effectiveIfoodRate / 100)
+      : finalSellingPrice;
+
+    const ifoodPrice = ifoodSellingPrice && ifoodSellingPrice > 0 ? ifoodSellingPrice : calculatedIfoodPrice;
+
+    // ─── Net Profit - LOJA ───
+    const productionCostValue = finalSellingPrice * (productionCostsPercent || 0) / 100;
+    const taxValue = finalSellingPrice * taxPercentage / 100;
+    const netProfitLoja = finalSellingPrice - costWithLoss - productionCostValue - taxValue;
+    const netProfitLojaPercent = finalSellingPrice > 0 ? (netProfitLoja / finalSellingPrice) * 100 : 0;
+
+    // ─── Net Profit - IFOOD ───
+    const ifoodFeeValue = ifoodPrice * (effectiveIfoodRate / 100);
+    const ifoodNetRevenue = ifoodPrice - ifoodFeeValue;
+    const ifoodProductionCost = ifoodNetRevenue * (productionCostsPercent || 0) / 100;
+    const ifoodTaxValue = ifoodNetRevenue * taxPercentage / 100;
+    const ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodProductionCost - ifoodTaxValue;
+    const ifoodNetProfitPercent = ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0;
+
+    // ─── 4. Anti-fraud checks ───
+
+    const allValues = [
+      ingredientsCostTotal, ingredientsCostPerServing, costWithLoss,
+      suggestedPrice, finalSellingPrice, actualCMV, grossMargin, grossMarginPercent,
+      discountedPrice, ifoodPrice, netProfitLoja, ifoodNetProfit,
+    ];
+
+    for (const v of allValues) {
+      if (!isValidNumber(v)) {
+        throw new AntifraudError("Detectamos uma inconsistência no cálculo. Os valores não foram salvos.");
+      }
+    }
+
+    // Logical consistency checks
+    if (actualCMV > 100 && sellingPrice && sellingPrice > 0) {
+      // CMV > 100% means cost exceeds selling price — warn but allow (user set the price)
+      // We'll flag it in the response
+    }
+
+    // ─── 5. Build response ───
+
+    const result = {
+      // Ingredients (server-calculated costs)
+      ingredients: calculatedIngredients,
+
+      // Core costs
+      ingredients_cost_total: parseFloat(ingredientsCostTotal.toFixed(2)),
+      ingredients_cost_per_serving: parseFloat(ingredientsCostPerServing.toFixed(2)),
+      cost_with_loss: parseFloat(costWithLoss.toFixed(2)),
+      loss_multiplier: lossMultiplier,
+
+      // Pricing
+      suggested_price: parseFloat(suggestedPrice.toFixed(2)),
+      final_selling_price: parseFloat(finalSellingPrice.toFixed(2)),
+      selling_price_is_manual: sellingPrice !== null && sellingPrice > 0,
+
+      // CMV
+      cmv_target: cmvTarget,
+      actual_cmv: parseFloat(actualCMV.toFixed(2)),
+
+      // Margins
+      gross_margin: parseFloat(grossMargin.toFixed(2)),
+      gross_margin_percent: parseFloat(grossMarginPercent.toFixed(2)),
+
+      // Promotion
+      discount_percent: discountPercent,
+      discounted_price: parseFloat(discountedPrice.toFixed(2)),
+
+      // iFood
+      effective_ifood_rate: effectiveIfoodRate,
+      suggested_ifood_price: parseFloat(suggestedIfoodPrice.toFixed(2)),
+      calculated_ifood_price: parseFloat(calculatedIfoodPrice.toFixed(2)),
+      ifood_price: parseFloat(ifoodPrice.toFixed(2)),
+      ifood_price_is_manual: ifoodSellingPrice !== null && ifoodSellingPrice > 0,
+
+      // Net Profit - Loja
+      production_costs_percent: productionCostsPercent !== null ? parseFloat(productionCostsPercent.toFixed(2)) : null,
+      tax_percentage: taxPercentage,
+      production_cost_value_loja: parseFloat(productionCostValue.toFixed(2)),
+      tax_value_loja: parseFloat(taxValue.toFixed(2)),
+      net_profit_loja: parseFloat(netProfitLoja.toFixed(2)),
+      net_profit_loja_percent: parseFloat(netProfitLojaPercent.toFixed(2)),
+
+      // Net Profit - iFood
+      ifood_fee_value: parseFloat(ifoodFeeValue.toFixed(2)),
+      ifood_net_revenue: parseFloat(ifoodNetRevenue.toFixed(2)),
+      ifood_production_cost: parseFloat(ifoodProductionCost.toFixed(2)),
+      ifood_tax_value: parseFloat(ifoodTaxValue.toFixed(2)),
+      net_profit_ifood: parseFloat(ifoodNetProfit.toFixed(2)),
+      net_profit_ifood_percent: parseFloat(ifoodNetProfitPercent.toFixed(2)),
+
+      // Warnings
+      warnings: [] as string[],
+    };
+
+    if (actualCMV > 100 && sellingPrice && sellingPrice > 0) {
+      result.warnings.push("Os custos informados são maiores que o preço de venda. O CMV está acima de 100%.");
+    }
+    if (netProfitLoja < 0) {
+      result.warnings.push("O lucro líquido da loja está negativo. Revise custos, taxas e preço de venda.");
+    }
+    if (ifoodNetProfit < 0 && effectiveIfoodRate > 0) {
+      result.warnings.push("O lucro líquido no iFood está negativo. Revise o preço ou a taxa iFood.");
+    }
+
+    return new Response(JSON.stringify(result), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (err) {
+    const isValidation = err instanceof ValidationError;
+    const isAntifraud = err instanceof AntifraudError;
+    const status = isValidation ? 400 : isAntifraud ? 422 : 500;
+    const message = isValidation || isAntifraud
+      ? err.message
+      : "Não foi possível calcular a precificação com os dados informados. Verifique seus custos e taxas.";
+
+    console.error("calculate-recipe-pricing error:", err);
+
+    return new Response(JSON.stringify({ error: message }), {
+      status,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
