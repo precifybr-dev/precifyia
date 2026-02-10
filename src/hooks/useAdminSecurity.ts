@@ -104,7 +104,7 @@ export function useAdminSecurity() {
         }
       }
 
-      // Verificar se a verificação ainda é válida (baseado em sessão)
+      // Verificar se a verificação ainda é válida (baseado em sessão + banco)
       if (!isVerified) {
         const storedVerification = sessionStorage.getItem("admin_mfa_verified");
         if (storedVerification) {
@@ -113,7 +113,24 @@ export function useAdminSecurity() {
           const now = Date.now();
 
           if (now - verificationTime < VERIFICATION_EXPIRY_MS && verificationData.userId === session.user.id) {
-            isVerified = true;
+            // Também verificar se o banco tem mfa_verified_at válido
+            const { data: securityCheck } = await supabase
+              .from("user_security")
+              .select("mfa_verified, mfa_verified_at")
+              .eq("user_id", session.user.id)
+              .single();
+
+            const dbVerifiedAt = securityCheck?.mfa_verified_at
+              ? new Date(securityCheck.mfa_verified_at).getTime()
+              : 0;
+            const dbValid = securityCheck?.mfa_verified && (now - dbVerifiedAt < VERIFICATION_EXPIRY_MS);
+
+            if (dbValid) {
+              isVerified = true;
+            } else {
+              // Banco não reconhece — limpar sessionStorage e exigir re-verificação
+              sessionStorage.removeItem("admin_mfa_verified");
+            }
           } else {
             sessionStorage.removeItem("admin_mfa_verified");
           }
