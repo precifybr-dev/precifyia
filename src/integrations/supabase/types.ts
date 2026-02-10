@@ -346,6 +346,166 @@ export type Database = {
         }
         Relationships: []
       }
+      combo_generation_usage: {
+        Row: {
+          combo_id: string | null
+          created_at: string
+          id: string
+          is_simulation: boolean
+          objective: string
+          store_id: string | null
+          tokens_used: number | null
+          user_id: string
+        }
+        Insert: {
+          combo_id?: string | null
+          created_at?: string
+          id?: string
+          is_simulation?: boolean
+          objective: string
+          store_id?: string | null
+          tokens_used?: number | null
+          user_id: string
+        }
+        Update: {
+          combo_id?: string | null
+          created_at?: string
+          id?: string
+          is_simulation?: boolean
+          objective?: string
+          store_id?: string | null
+          tokens_used?: number | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combo_generation_usage_combo_id_fkey"
+            columns: ["combo_id"]
+            isOneToOne: false
+            referencedRelation: "combos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "combo_generation_usage_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      combo_items: {
+        Row: {
+          combo_id: string
+          cost: number
+          created_at: string
+          id: string
+          individual_price: number
+          is_bait: boolean
+          item_id: string | null
+          item_name: string
+          item_type: string
+          role: string | null
+        }
+        Insert: {
+          combo_id: string
+          cost?: number
+          created_at?: string
+          id?: string
+          individual_price?: number
+          is_bait?: boolean
+          item_id?: string | null
+          item_name: string
+          item_type: string
+          role?: string | null
+        }
+        Update: {
+          combo_id?: string
+          cost?: number
+          created_at?: string
+          id?: string
+          individual_price?: number
+          is_bait?: boolean
+          item_id?: string | null
+          item_name?: string
+          item_type?: string
+          role?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combo_items_combo_id_fkey"
+            columns: ["combo_id"]
+            isOneToOne: false
+            referencedRelation: "combos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      combos: {
+        Row: {
+          ai_raw_response: Json | null
+          combo_price: number
+          created_at: string
+          description: string | null
+          estimated_profit: number
+          id: string
+          individual_total_price: number
+          margin_percent: number
+          name: string
+          objective: string
+          status: string
+          store_id: string | null
+          strategy_explanation: string | null
+          total_cost: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_raw_response?: Json | null
+          combo_price?: number
+          created_at?: string
+          description?: string | null
+          estimated_profit?: number
+          id?: string
+          individual_total_price?: number
+          margin_percent?: number
+          name: string
+          objective: string
+          status?: string
+          store_id?: string | null
+          strategy_explanation?: string | null
+          total_cost?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_raw_response?: Json | null
+          combo_price?: number
+          created_at?: string
+          description?: string | null
+          estimated_profit?: number
+          id?: string
+          individual_total_price?: number
+          margin_percent?: number
+          name?: string
+          objective?: string
+          status?: string
+          store_id?: string | null
+          strategy_explanation?: string | null
+          total_cost?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "combos_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_audit_log: {
         Row: {
           action: string
