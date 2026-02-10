@@ -38,8 +38,9 @@ export default function RecycleBin() {
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<DeletedRecord | null>(null);
+  const [dependencyInfo, setDependencyInfo] = useState<{ total: number; details: string[] } | null>(null);
 
-  const { getDeletedItems, restore, permanentDelete, isProcessing } = useDataProtection();
+  const { getDeletedItems, restore, permanentDelete, checkDependencies, isProcessing } = useDataProtection();
 
   const fetchItems = async () => {
     setIsLoading(true);
@@ -73,9 +74,14 @@ export default function RecycleBin() {
     setSelectedItem(null);
   };
 
-  const openDeleteDialog = (item: DeletedRecord) => {
+  const openDeleteDialog = async (item: DeletedRecord) => {
     setSelectedItem(item);
+    setDependencyInfo(null);
     setDeleteDialogOpen(true);
+    
+    // Check dependencies in background
+    const deps = await checkDependencies(item.original_table, item.original_id);
+    setDependencyInfo(deps);
   };
 
   const getDaysRemaining = (expiresAt: string) => {
@@ -203,10 +209,17 @@ export default function RecycleBin() {
       {/* Permanent Delete Dialog */}
       <DestructiveActionDialog
         open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
+        onOpenChange={(open) => {
+          setDeleteDialogOpen(open);
+          if (!open) setDependencyInfo(null);
+        }}
         title="Excluir Permanentemente"
         itemName={selectedItem ? getItemName(selectedItem) : ""}
-        warningMessage="Este item será excluído permanentemente e não poderá ser recuperado."
+        warningMessage={
+          dependencyInfo && dependencyInfo.total > 0
+            ? `⚠️ Este item está vinculado a ${dependencyInfo.details.join(", ")}. Ao excluir permanentemente, esses vínculos serão perdidos e não poderão ser recuperados.`
+            : "Este item será excluído permanentemente e não poderá ser recuperado."
+        }
         confirmationWord="EXCLUIR"
         timerSeconds={5}
         onConfirm={handlePermanentDelete}
