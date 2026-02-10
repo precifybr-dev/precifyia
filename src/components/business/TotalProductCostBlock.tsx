@@ -2,25 +2,22 @@ import { Calculator, Package, AlertTriangle, TrendingUp, HelpCircle } from "luci
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface TotalProductCostBlockProps {
-  fixedCostsTotal: number;
-  variableCostsTotal: number;
-  monthlyRevenue?: number | null;
+  productionCostsTotal: number;
+  productionCostsPercent: number | null;
+  remainingMargin: number | null;
+  monthlyRevenue: number | null;
+  isCalculating?: boolean;
 }
 
 export default function TotalProductCostBlock({
-  fixedCostsTotal,
-  variableCostsTotal,
+  productionCostsTotal,
+  productionCostsPercent,
+  remainingMargin,
   monthlyRevenue,
+  isCalculating,
 }: TotalProductCostBlockProps) {
-  const totalProductionCosts = fixedCostsTotal + variableCostsTotal;
-  const hasRevenue = monthlyRevenue && monthlyRevenue > 0;
-  
-  const productionCostsPercent = hasRevenue 
-    ? (totalProductionCosts / monthlyRevenue) * 100 
-    : null;
-  
   const isOverLimit = productionCostsPercent !== null && productionCostsPercent >= 100;
-  const remainingMargin = productionCostsPercent !== null ? 100 - productionCostsPercent : null;
+  const hasRevenue = monthlyRevenue !== null && monthlyRevenue > 0;
 
   const formatPercent = (value: number | null) => {
     if (value === null) return "—";
@@ -30,6 +27,20 @@ export default function TotalProductCostBlock({
   const formatCurrency = (value: number) => {
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
+
+  if (isCalculating) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-6 shadow-card">
+        <div className="animate-pulse space-y-4">
+          <div className="h-6 bg-muted rounded w-1/3" />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="h-20 bg-muted rounded" />
+            <div className="h-20 bg-muted rounded" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`bg-card rounded-xl border p-6 shadow-card transition-colors ${isOverLimit ? 'border-destructive/50 bg-destructive/5' : 'border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10'}`}>
@@ -60,20 +71,18 @@ export default function TotalProductCostBlock({
         </TooltipProvider>
       </div>
 
-      {/* Metrics Grid - 2 columns */}
+      {/* Metrics Grid */}
       <div className="grid grid-cols-2 gap-4 mb-6">
-        {/* Production Costs */}
         <div className="text-center p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Package className="w-4 h-4 text-blue-500" />
             <span className="text-xs text-muted-foreground">Custos Produção</span>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            R$ {formatCurrency(totalProductionCosts)} / mês
+            R$ {formatCurrency(productionCostsTotal)} / mês
           </p>
         </div>
 
-        {/* Total % */}
         <div className={`text-center p-4 rounded-lg border-2 ${isOverLimit ? 'bg-destructive/10 border-destructive/30' : 'bg-primary/10 border-primary/30'}`}>
           <div className="flex items-center justify-center gap-2 mb-2">
             <Calculator className={`w-4 h-4 ${isOverLimit ? 'text-destructive' : 'text-primary'}`} />
@@ -90,7 +99,7 @@ export default function TotalProductCostBlock({
         </div>
       </div>
 
-      {/* Visual Progress - simple single color */}
+      {/* Visual Progress */}
       {productionCostsPercent !== null && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -120,7 +129,6 @@ export default function TotalProductCostBlock({
         </div>
       )}
 
-      {/* Info messages */}
       {!hasRevenue && (
         <p className="text-xs text-muted-foreground mt-4 text-center p-3 bg-muted/50 rounded-lg">
           Informe o faturamento mensal para calcular o percentual de custos de produção

@@ -4,25 +4,28 @@ interface SimplifiedDREBlockProps {
   monthlyRevenue: number | null;
   fixedExpensesTotal: number;
   variableExpensesTotal: number;
+  totalExpenses: number;
+  netResult: number | null;
+  netMarginPercent: number | null;
+  isProfit: boolean;
+  fixedExpensesPercent: number | null;
+  variableExpensesPercent: number | null;
+  isCalculating?: boolean;
 }
 
 export default function SimplifiedDREBlock({
   monthlyRevenue,
   fixedExpensesTotal,
   variableExpensesTotal,
+  totalExpenses,
+  netResult,
+  netMarginPercent,
+  isProfit,
+  fixedExpensesPercent,
+  variableExpensesPercent,
+  isCalculating,
 }: SimplifiedDREBlockProps) {
-  const hasRevenue = monthlyRevenue && monthlyRevenue > 0;
-  const totalExpenses = fixedExpensesTotal + variableExpensesTotal;
-  
-  // Resultado Líquido = Faturamento − Despesas Totais
-  const netResult = hasRevenue ? monthlyRevenue - totalExpenses : null;
-  
-  // Margem Líquida (%) = (Resultado Líquido / Faturamento) × 100
-  const netMarginPercent = hasRevenue && netResult !== null
-    ? (netResult / monthlyRevenue) * 100
-    : null;
-
-  const isProfit = netResult !== null && netResult >= 0;
+  const hasRevenue = monthlyRevenue !== null && monthlyRevenue > 0;
   const isLoss = netResult !== null && netResult < 0;
 
   const formatCurrency = (value: number) => {
@@ -33,6 +36,20 @@ export default function SimplifiedDREBlock({
     if (value === null) return "—";
     return `${value.toFixed(2)}%`;
   };
+
+  if (isCalculating) {
+    return (
+      <div className="bg-card rounded-xl border border-border p-6 shadow-card">
+        <div className="animate-pulse space-y-3">
+          <div className="h-6 bg-muted rounded w-1/3" />
+          <div className="h-12 bg-muted rounded" />
+          <div className="h-10 bg-muted rounded" />
+          <div className="h-10 bg-muted rounded" />
+          <div className="h-14 bg-muted rounded" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-card rounded-xl border border-border p-6 shadow-card">
@@ -49,7 +66,6 @@ export default function SimplifiedDREBlock({
 
       {/* DRE Table */}
       <div className="space-y-1">
-        {/* Faturamento */}
         <div className="flex items-center justify-between p-3 bg-success/10 rounded-lg border border-success/20">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-success" />
@@ -60,13 +76,11 @@ export default function SimplifiedDREBlock({
           </span>
         </div>
 
-        {/* Separator */}
         <div className="flex items-center gap-2 py-2">
           <span className="text-sm text-muted-foreground">(−) Despesas do Negócio</span>
           <div className="flex-1 border-t border-dashed border-border" />
         </div>
 
-        {/* Despesas Fixas */}
         <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-rose-500" />
@@ -76,15 +90,14 @@ export default function SimplifiedDREBlock({
             <span className="font-medium text-rose-600">
               − R$ {formatCurrency(fixedExpensesTotal)}
             </span>
-            {hasRevenue && (
+            {fixedExpensesPercent !== null && (
               <span className="text-xs text-muted-foreground ml-2">
-                ({((fixedExpensesTotal / monthlyRevenue) * 100).toFixed(1)}%)
+                ({fixedExpensesPercent.toFixed(1)}%)
               </span>
             )}
           </div>
         </div>
 
-        {/* Despesas Variáveis */}
         <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-orange-500" />
@@ -94,15 +107,14 @@ export default function SimplifiedDREBlock({
             <span className="font-medium text-orange-600">
               − R$ {formatCurrency(variableExpensesTotal)}
             </span>
-            {hasRevenue && (
+            {variableExpensesPercent !== null && (
               <span className="text-xs text-muted-foreground ml-2">
-                ({((variableExpensesTotal / monthlyRevenue) * 100).toFixed(1)}%)
+                ({variableExpensesPercent.toFixed(1)}%)
               </span>
             )}
           </div>
         </div>
 
-        {/* Total Despesas */}
         <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border border-border">
           <span className="font-medium text-muted-foreground">Total Despesas</span>
           <span className="font-display font-bold text-foreground">
@@ -110,10 +122,8 @@ export default function SimplifiedDREBlock({
           </span>
         </div>
 
-        {/* Divider */}
         <div className="border-t-2 border-border my-2" />
 
-        {/* Resultado Líquido */}
         <div className={`flex items-center justify-between p-4 rounded-lg border-2 ${
           isProfit 
             ? 'bg-success/10 border-success/30' 
@@ -139,7 +149,6 @@ export default function SimplifiedDREBlock({
           </span>
         </div>
 
-        {/* Margem Líquida */}
         <div className={`flex items-center justify-between p-4 rounded-lg ${
           isProfit 
             ? 'bg-success/5 border border-success/20' 
@@ -159,7 +168,6 @@ export default function SimplifiedDREBlock({
         </div>
       </div>
 
-      {/* Alert for loss */}
       {isLoss && (
         <div className="mt-4 p-3 bg-destructive/10 border border-destructive/30 rounded-lg flex items-start gap-2">
           <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
@@ -169,7 +177,6 @@ export default function SimplifiedDREBlock({
         </div>
       )}
 
-      {/* Texto educativo */}
       {hasRevenue && netResult !== null && (
         <p className="text-xs text-muted-foreground mt-4 text-center p-3 bg-muted/30 rounded-lg">
           Despesas do negócio são pagas com o faturamento total do mês, não por produto individual.

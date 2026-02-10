@@ -61,11 +61,13 @@ const paymentTypes = [
 
 interface Props {
   userId: string | undefined;
-  onTaxChange?: (taxPercent: number) => void;
-  onCardFeesChange?: (fees: CardFee[]) => void;
+  taxPercentage?: number | null;
+  averageCardFee?: number | null;
+  totalDeductions?: number | null;
+  onDataChanged?: () => void;
 }
 
-export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChange }: Props) {
+export default function TaxesAndFeesBlock({ userId, taxPercentage: backendTaxPercentage, averageCardFee: backendAverageCardFee, totalDeductions: backendTotalDeductions, onDataChanged }: Props) {
   const { activeStore } = useStore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +92,6 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
     setIsLoading(true);
 
     try {
-      // Fetch business tax
       let taxQuery = supabase
         .from("business_taxes")
         .select("*")
@@ -109,16 +110,13 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
         setTaxRegime(taxData.tax_regime);
         setTaxPercentage(taxData.tax_percentage?.toString() || "");
         setTaxNotes(taxData.notes || "");
-        onTaxChange?.(taxData.tax_percentage || 0);
       } else {
         setBusinessTax(null);
         setTaxRegime("simples");
         setTaxPercentage("");
         setTaxNotes("");
-        onTaxChange?.(0);
       }
 
-      // Fetch card fees
       let feesQuery = supabase
         .from("card_fees")
         .select("*")
@@ -132,15 +130,13 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
       }
 
       const { data: feesData } = await feesQuery;
-      const fees = (feesData || []) as CardFee[];
-      setCardFees(fees);
-      onCardFeesChange?.(fees);
+      setCardFees((feesData || []) as CardFee[]);
     } catch (error) {
       console.error("Error fetching taxes and fees:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [userId, storeId, onTaxChange, onCardFeesChange]);
+  }, [userId, storeId]);
 
   useEffect(() => {
     fetchData();
@@ -154,7 +150,6 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
 
     try {
       if (businessTax) {
-        // Update existing
         const { error } = await supabase
           .from("business_taxes")
           .update({
@@ -166,7 +161,6 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
 
         if (error) throw error;
       } else {
-        // Insert new
         const { error } = await supabase
           .from("business_taxes")
           .insert({
@@ -181,8 +175,8 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
       }
 
       toast({ title: "Sucesso!", description: "Configuração de impostos salva" });
-      onTaxChange?.(taxValue);
       fetchData();
+      onDataChanged?.();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
@@ -219,6 +213,7 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
       setNewFeePercentage("");
       setNewFeeNotes("");
       fetchData();
+      onDataChanged?.();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } finally {
@@ -237,6 +232,7 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
 
       toast({ title: "Taxa removida" });
       fetchData();
+      onDataChanged?.();
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     }
@@ -246,16 +242,10 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
     return paymentTypes.find(t => t.value === value)?.label || value;
   };
 
-  const getTaxRegimeLabel = (value: string) => {
-    return taxRegimes.find(t => t.value === value)?.label || value;
-  };
-
-  // Calculate weighted average card fee
-  const averageCardFee = cardFees.length > 0
-    ? cardFees.reduce((sum, f) => sum + (f.fee_percentage || 0), 0) / cardFees.length
-    : 0;
-
-  const totalDeductions = (parseFloat(taxPercentage) || 0) + averageCardFee;
+  // Use backend values for summary display
+  const displayTax = backendTaxPercentage ?? (parseFloat(taxPercentage) || 0);
+  const displayAvgFee = backendAverageCardFee ?? 0;
+  const displayTotal = backendTotalDeductions ?? (displayTax + displayAvgFee);
 
   if (isLoading) {
     return (
@@ -373,7 +363,6 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
           <h4 className="font-medium text-foreground">Taxas de Cartão de Crédito e Débito</h4>
         </div>
 
-        {/* Existing fees list */}
         {cardFees.length > 0 && (
           <div className="space-y-2 mb-4">
             {cardFees.map((fee) => (
@@ -460,31 +449,31 @@ export default function TaxesAndFeesBlock({ userId, onTaxChange, onCardFeesChang
         </div>
       </div>
 
-      {/* Summary */}
-      {(parseFloat(taxPercentage) > 0 || cardFees.length > 0) && (
+      {/* Summary - using backend-calculated values */}
+      {(displayTax > 0 || displayAvgFee > 0) && (
         <div className="mt-6 p-4 bg-gradient-to-r from-amber-500/10 to-orange-500/10 rounded-lg border border-amber-500/20">
           <div className="grid sm:grid-cols-3 gap-4">
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Impostos</p>
               <p className="font-display text-xl font-bold text-foreground">
-                {parseFloat(taxPercentage) || 0}%
+                {displayTax}%
               </p>
             </div>
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Taxa média cartão</p>
               <p className="font-display text-xl font-bold text-foreground">
-                {averageCardFee.toFixed(2)}%
+                {displayAvgFee.toFixed(2)}%
               </p>
             </div>
             <div className="text-center">
               <p className="text-sm text-muted-foreground">Dedução total</p>
               <p className="font-display text-xl font-bold text-amber-600">
-                {totalDeductions.toFixed(2)}%
+                {displayTotal.toFixed(2)}%
               </p>
             </div>
           </div>
           <p className="text-xs text-center text-muted-foreground mt-3">
-            A cada R$ 100 vendidos, você recebe aproximadamente R$ {(100 - totalDeductions).toFixed(2)} líquidos
+            A cada R$ 100 vendidos, você recebe aproximadamente R$ {(100 - displayTotal).toFixed(2)} líquidos
           </p>
         </div>
       )}

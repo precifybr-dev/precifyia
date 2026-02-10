@@ -2,3 +2,9 @@ project_id = "epypncqtkpytsbllicqc"
 
 [functions.calculate-recipe-pricing]
 verify_jwt = false
+
+[functions.calculate-business-metrics]
+verify_jwt = false
+
+[functions.calculate-ifood-fees]
+verify_jwt = false
