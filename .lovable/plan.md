@@ -1,116 +1,144 @@
 
-# Plano: Completar Implementacao dos Combos Inteligentes (BETA)
 
-## Diagnostico Atual
+# Plano: Sistema de Suporte para Usuarios + Integracao Admin
 
-Apos auditoria completa, o modulo ja possui:
-- **Backend (Edge Function `generate-combo`)**: Completo - IA com tool calling, validacao financeira, fail-safe de margem minima, controle de uso por plano
-- **Banco de dados**: 3 tabelas (`combos`, `combo_items`, `combo_generation_usage`) com RLS corretas
-- **Frontend (`Combos.tsx`)**: Pagina funcional com seletor de objetivo, listagem, expansao de detalhes, exclusao
-- **Hook (`useCombos.ts`)**: Logica de estado, geracao, exclusao e controle de limites
-- **Planos configurados**: Free (1), Basico (3/mes), Pro (5/mes)
+## Resumo
 
-## Lacunas Identificadas
+Criar uma pagina de Suporte acessivel pelo usuario logado, onde ele pode abrir tickets, acompanhar o historico e controlar o consentimento de acesso (chave liga/desliga) por ticket. No lado administrativo, os tickets aparecem com indicacao visual de consentimento, permitindo ao admin ativar o modo suporte apenas quando autorizado.
 
-### 1. Itens do combo nao sao carregados na listagem
-O `fetchCombos` faz `select("*")` apenas na tabela `combos` -- os itens (`combo_items`) nunca sao buscados do banco. Por isso, ao expandir um combo salvo, aparece "Detalhes dos itens nao disponiveis".
+---
 
-### 2. Painel Admin de Combos inexistente
-Nao existe nenhuma aba/secao no AdminDashboard para visualizar uso de IA por usuario, historico de combos, objetivos escolhidos ou definir limites personalizados.
+## O que ja existe
 
-### 3. Edge Function `admin-stats` nao inclui metricas de combos
-A funcao retorna apenas metricas de usuarios e MRR, sem dados sobre uso de combos.
+- Tabelas `support_tickets`, `ticket_messages`, `support_consent` com RLS configuradas
+- Hook `useSupportDashboard` (lado admin) com gestao completa de tickets
+- Componente `SupportConsentButton` (consentimento isolado, sem vinculo a ticket)
+- Sistema de impersonacao (`useImpersonation`) funcional
+- Painel admin de suporte (`SupportDashboard`) com listagem, filtros e detalhes
 
-### 4. Upsell de combos extras nao implementado
-O spec menciona "R$ 9,99 = 3 combos extras" mas nao ha nenhum mecanismo para isso.
+## O que falta
 
-### 5. Store filter ausente no fetch
-O `fetchCombos` nao filtra por `activeStore`, mostrando combos de todas as lojas.
+1. **Pagina de Suporte do usuario** -- nao existe nenhuma tela para o usuario abrir/ver tickets
+2. **Consentimento vinculado ao ticket** -- o campo `ticket_id` existe em `support_consent` mas nao e usado no fluxo
+3. **Coluna `consent_granted` no ticket** -- para o admin saber rapidamente se aquele ticket tem consentimento ativo
+4. **Navegacao do usuario** -- nao existe item "Suporte" no menu lateral do Dashboard
+5. **Indicacao visual no admin** -- mostrar no painel admin quais tickets tem consentimento ativo
 
 ---
 
 ## Plano de Implementacao
 
-### Fase 1 -- Corrigir carregamento de itens do combo
+### Fase 1 -- Banco de dados
 
-**Arquivo: `src/hooks/useCombos.ts`**
-- Apos buscar combos, fazer uma segunda query em `combo_items` filtrando pelos `combo_id` retornados
-- Associar os itens a cada combo no estado local
-- Isso corrige o problema de "Detalhes nao disponiveis" nos combos ja salvos
+**Migration: Adicionar coluna `consent_granted` em `support_tickets`**
 
-### Fase 2 -- Filtro por loja ativa
+- Adicionar `consent_granted BOOLEAN DEFAULT false` na tabela `support_tickets`
+- Essa coluna sera atualizada automaticamente via trigger quando um `support_consent` for inserido/atualizado para aquele `ticket_id`
+- Criar trigger `sync_ticket_consent` que, ao inserir ou atualizar `support_consent`, atualiza `support_tickets.consent_granted` correspondente
 
-**Arquivo: `src/hooks/useCombos.ts`**
-- Adicionar `activeStore` como dependencia do `fetchCombos`
-- Se houver `activeStore.id`, filtrar combos e usage por `store_id`
+### Fase 2 -- Pagina de Suporte do Usuario
 
-### Fase 3 -- Painel Admin de Combos
+**Novo arquivo: `src/pages/UserSupport.tsx`**
 
-**Arquivo: `supabase/functions/admin-stats/index.ts`**
-- Adicionar ao response metricas de combos:
-  - Total de combos gerados (geral e este mes)
-  - Uso por usuario (top usuarios geradores)
-  - Distribuicao por objetivo
-  - Combos simulacao vs draft vs publicado
+Pagina com:
+- **Formulario de abertura de ticket**: assunto, mensagem, tipo (bug/duvida/pagamento)
+- **Switch de consentimento**: dentro do formulario, um toggle (chave) com texto "Autorizar acesso de suporte a sua conta (somente leitura)" -- desabilitado por padrao
+- **Lista de tickets do usuario**: mostrando assunto, status (aberto/em andamento/resolvido), data, e indicacao se consentimento esta ativo
+- **Detalhe do ticket**: ao clicar, abre dialogo com historico de mensagens e campo para enviar nova mensagem
+- **Controle de consentimento por ticket**: dentro do detalhe, toggle para habilitar/desabilitar consentimento a qualquer momento
 
-**Novo arquivo: `src/components/admin/CombosDashboard.tsx`**
-- Componente com:
-  - KPIs: total combos gerados, uso IA este mes, media por usuario
-  - Tabela de uso por usuario (email, plano, combos gerados, ultimo uso)
-  - Grafico de distribuicao por objetivo (pie chart)
-  - Historico de combos recentes com objetivo, status e data
+### Fase 3 -- Hook do usuario
 
-**Arquivo: `src/pages/AdminDashboard.tsx`**
-- Adicionar nova aba "Combos IA" no TabsList
-- Renderizar `CombosDashboard` no TabsContent correspondente
+**Novo arquivo: `src/hooks/useUserSupport.ts`**
 
-**Arquivo: `src/components/admin/AdminLayout.tsx`**
-- Adicionar item de navegacao "Combos IA" com icone Sparkles na sidebar
+- `fetchMyTickets()` -- busca tickets do usuario logado
+- `createTicket(subject, message, type, consentGranted)` -- cria ticket e, se consentido, insere em `support_consent`
+- `sendMessage(ticketId, message)` -- envia mensagem no ticket
+- `toggleConsent(ticketId, grant)` -- insere ou revoga consentimento para aquele ticket
+- `fetchTicketMessages(ticketId)` -- carrega mensagens de um ticket
 
-### Fase 4 -- Preparacao para Upsell (sem pagamento)
+### Fase 4 -- Navegacao
 
-**Arquivo: `src/pages/Combos.tsx`**
-- Quando `!canGenerate`, exibir card de upsell com texto "Desbloqueie 3 combos extras por R$ 9,99" e botao desabilitado "Em breve"
-- Isso deixa o codigo preparado para integracao futura com Stripe sem implementar cobranca agora
+**Arquivo: `src/pages/Dashboard.tsx`**
+
+- Adicionar item "Suporte" com icone `Headphones` no array `navItems`
+- Adicionar rota `support` no mapa de rotas
+
+**Arquivo: `src/App.tsx`**
+
+- Registrar rota `/app/support` apontando para `UserSupport`
+
+### Fase 5 -- Indicacao no Admin
+
+**Arquivo: `src/components/admin/SupportDashboard.tsx`**
+
+- Na tabela de tickets, adicionar coluna "Consentimento" com icone verde (Shield + check) se `consent_granted = true`, ou cinza se false
+- No detalhe do ticket, mostrar status do consentimento e, se ativo, habilitar botao "Acessar conta" (que ja existe)
+- Se consentimento nao ativo, desabilitar o botao "Acessar conta" com tooltip "Usuario nao autorizou acesso"
+
+**Arquivo: `src/hooks/useSupportDashboard.ts`**
+
+- O `fetchTickets` ja busca `select("*")`, entao a nova coluna `consent_granted` vira automaticamente apos a migration
 
 ---
 
 ## Detalhes Tecnicos
 
-### Query de itens (Fase 1)
-```typescript
-// Apos buscar combos
-const comboIds = data.map(c => c.id);
-if (comboIds.length > 0) {
-  const { data: items } = await supabase
-    .from("combo_items")
-    .select("*")
-    .in("combo_id", comboIds);
-  // Agrupar itens por combo_id e mesclar
-}
+### Trigger de sincronizacao (Migration)
+
+```sql
+-- Coluna
+ALTER TABLE public.support_tickets 
+  ADD COLUMN consent_granted BOOLEAN DEFAULT false;
+
+-- Funcao de sync
+CREATE OR REPLACE FUNCTION public.sync_ticket_consent()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.ticket_id IS NOT NULL THEN
+    UPDATE public.support_tickets 
+    SET consent_granted = (NEW.is_active AND NEW.revoked_at IS NULL AND NEW.expires_at > now())
+    WHERE id = NEW.ticket_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = 'public';
+
+-- Trigger
+CREATE TRIGGER trg_sync_ticket_consent
+AFTER INSERT OR UPDATE ON public.support_consent
+FOR EACH ROW EXECUTE FUNCTION public.sync_ticket_consent();
 ```
 
-### Metricas admin (Fase 3)
-```sql
--- Queries via service_role no admin-stats
-SELECT objective, count(*) FROM combos GROUP BY objective;
-SELECT user_id, count(*) FROM combo_generation_usage 
-  WHERE created_at >= start_of_month GROUP BY user_id;
+### Fluxo do usuario
+
+```text
+Usuario abre pagina Suporte
+  -> Ve lista de tickets anteriores
+  -> Clica "Abrir novo ticket"
+  -> Preenche assunto + mensagem + tipo
+  -> Opcionalmente liga chave de consentimento
+  -> Envia
+  -> Ticket aparece na lista com status "Aberto"
+  -> Admin ve o ticket no painel com indicacao de consentimento
 ```
 
 ### Arquivos criados
 | Arquivo | Descricao |
 |---------|-----------|
-| `src/components/admin/CombosDashboard.tsx` | Painel admin de combos |
+| `src/pages/UserSupport.tsx` | Pagina de suporte do usuario |
+| `src/hooks/useUserSupport.ts` | Hook com logica de tickets do usuario |
 
 ### Arquivos modificados
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/hooks/useCombos.ts` | Fetch de items + filtro por store |
-| `supabase/functions/admin-stats/index.ts` | Metricas de combos |
-| `src/pages/AdminDashboard.tsx` | Nova aba "Combos IA" |
-| `src/components/admin/AdminLayout.tsx` | Nav item "Combos IA" |
-| `src/pages/Combos.tsx` | Card de upsell preparatorio |
+| `src/App.tsx` | Nova rota `/app/support` |
+| `src/pages/Dashboard.tsx` | Item "Suporte" no menu lateral |
+| `src/components/admin/SupportDashboard.tsx` | Coluna de consentimento + bloqueio de acesso |
 
-### Sem alteracoes de banco de dados
-Todas as tabelas e policies ja existem e estao corretas. Nenhuma migration necessaria.
+### Migration
+| Mudanca | Descricao |
+|---------|-----------|
+| `support_tickets.consent_granted` | Coluna boolean para indicar consentimento ativo |
+| `sync_ticket_consent()` | Funcao + trigger para manter sincronizado |
+
