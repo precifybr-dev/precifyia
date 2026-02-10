@@ -1,80 +1,85 @@
 
+# Responsividade Mobile + Mensagem de Boas-vindas com Importacao
 
-# Alteracao segura de e-mail com protecao anti-fraude
+## Resumo
 
-## Problema
+Tornar o site responsivo para dispositivos moveis em todas as telas principais (Landing, Login, Dashboard, Ingredients, Recipes, BusinessArea). Adicionar na tela inicial (Dashboard) uma mensagem de boas-vindas que sugere importar dados da planilha (para Insumos) e puxar do iFood (para Fichas Tecnicas), com mini-tutoriais visuais para guiar o usuario.
 
-Atualmente nao existe nenhum fluxo de alteracao de e-mail no sistema. Um usuario poderia, em teoria, alterar seu e-mail e depois criar uma conta nova com o e-mail antigo para ganhar um novo trial gratuito.
+## Parte 1: Responsividade Mobile
 
-## Solucao
+### 1.1 Dashboard (`src/pages/Dashboard.tsx`)
+- Header: tornar o badge "Trial: 7 dias" responsivo (esconder texto em telas pequenas, manter apenas icone)
+- StoreSwitcher: esconder em mobile no header (ja acessivel no sidebar)
+- Stats grid: usar `grid-cols-2` em mobile ao inves de coluna unica
+- Welcome card: ajustar padding e tamanho de fonte em mobile
+- Quick Actions: `grid-cols-1` em telas xs
 
-### 1. Tabela de historico de e-mails (migracao SQL)
+### 1.2 Login (`src/pages/Login.tsx`)
+- Ja esta razoavelmente responsivo (lado decorativo esconde em mobile com `hidden lg:flex`)
+- Ajustar padding do formulario: `p-4 sm:p-8`
 
-Criar a tabela `email_change_history` para rastrear todos os e-mails ja usados por cada `user_id`:
+### 1.3 Landing Page
+- Ja usa classes responsivas (`sm:`, `lg:`, `hidden sm:block` nos floating cards)
+- Ajustes menores em padding e espacamento da HeroSection
 
-| Coluna | Tipo | Descricao |
-|--------|------|-----------|
-| id | uuid (PK) | Identificador |
-| user_id | uuid (FK auth.users) | Dono da conta |
-| old_email | text | E-mail anterior |
-| new_email | text | Novo e-mail |
-| changed_at | timestamptz | Data da troca |
+### 1.4 Paginas internas (Ingredients, Recipes, BusinessArea, Beverages)
+- Todas usam sidebar identico ao Dashboard -- o sidebar ja abre/fecha com hamburger menu
+- Tabelas: adicionar `overflow-x-auto` para scroll horizontal em mobile
+- Formularios: ajustar grids de `grid-cols-2` para `grid-cols-1` em mobile onde necessario
 
-- RLS habilitado: usuario so le seus proprios registros
-- Indice no campo `old_email` para buscas rapidas no cadastro
+## Parte 2: Mensagem de Boas-vindas com Importacao
 
-### 2. Configuracao de confirmacao dupla de e-mail
+### 2.1 Novo componente: `src/components/dashboard/WelcomeImportPrompt.tsx`
 
-Ativar no `config.toml` a opcao `double_confirm_changes = true` na secao `[auth]`. Isso faz com que o sistema exija confirmacao tanto no e-mail antigo quanto no novo antes de efetivar a troca.
+Um componente que aparece na tela inicial (Dashboard) logo apos o card de boas-vindas. Sera exibido apenas quando o usuario ainda nao tem insumos OU nao tem fichas tecnicas cadastradas. Armazena no `localStorage` se o usuario ja dispensou a mensagem.
 
-### 3. Edge Function: `change-email`
+Conteudo do componente:
+- **Card visual** com fundo suave e icones
+- **Dois blocos lado a lado (empilhados em mobile)**:
+  1. **Importar Insumos da Planilha**: icone de planilha, texto explicando que pode importar via CTRL+C/CTRL+V, botao "Importar Planilha" que abre o `SpreadsheetImportModal`, e um mini-tutorial (3 passos com icones numerados):
+     - Passo 1: Abra sua planilha (Excel, Google Sheets)
+     - Passo 2: Selecione os dados e copie (Ctrl+C)
+     - Passo 3: Cole aqui e a IA mapeia automaticamente
+  2. **Importar Fichas do iFood**: icone do iFood/link, texto explicando que pode puxar os produtos direto do iFood, botao "Importar do iFood" que navega para `/app/recipes` e abre o modal de importacao iFood, e mini-tutorial:
+     - Passo 1: Acesse seu restaurante no iFood pelo navegador
+     - Passo 2: Copie o link da pagina do seu restaurante
+     - Passo 3: Cole aqui e importamos seus produtos
 
-Nova Edge Function que:
-- Recebe o novo e-mail do usuario autenticado
-- Valida formato e tamanho do e-mail
-- Chama `supabase.auth.admin.updateUserById()` com o novo e-mail (isso dispara os e-mails de confirmacao)
-- Registra a troca na tabela `email_change_history`
+- **Botao "Nao mostrar novamente"** que persiste no localStorage
 
-### 4. Verificacao anti-fraude no cadastro (Register)
+### 2.2 Integracao no Dashboard (`src/pages/Dashboard.tsx`)
+- Importar o novo componente `WelcomeImportPrompt`
+- Renderizar entre o card de boas-vindas e o OnboardingProgress
+- Passar props: `userId`, `storeId`, `onOpenSpreadsheetImport`, `onNavigateToRecipes`
+- Importar e adicionar o `SpreadsheetImportModal` no Dashboard (atualmente so existe na pagina de Insumos)
 
-No `src/pages/Register.tsx`, antes de criar a conta, consultar `email_change_history` para verificar se o e-mail informado ja foi usado como `old_email`. Se sim:
-- Bloquear o cadastro
-- Exibir mensagem: "Este e-mail foi migrado para outro endereco. Use seu e-mail atualizado para fazer login."
+### 2.3 Props e estado
+- Estado `showImportPrompt`: baseado no localStorage (`precify_import_prompt_dismissed`)
+- Estado `importModalOpen`: para abrir o modal de importacao de planilha
+- Estado `ingredientsCount` e `recipesCount`: buscar contagem no banco para decidir se exibe o prompt
 
-Mesma verificacao sera adicionada na Edge Function de registro (server-side) para proteger contra bypass do frontend.
+## Parte 3: Detalhes tecnicos
 
-### 5. Interface de alteracao de e-mail no Dashboard
+### Arquivos a criar
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/components/dashboard/WelcomeImportPrompt.tsx` | Componente de boas-vindas com opcoes de importacao e mini-tutoriais |
 
-Adicionar um botao "Alterar e-mail" na area de informacoes do usuario no sidebar (onde aparece o e-mail atual). Ao clicar, abre um dialog pedindo:
-- Novo e-mail
-- Senha atual (para confirmacao de identidade)
+### Arquivos a modificar
+| Arquivo | Mudanca |
+|---------|---------|
+| `src/pages/Dashboard.tsx` | Responsividade mobile + integracao do WelcomeImportPrompt + SpreadsheetImportModal |
+| `src/pages/Login.tsx` | Ajustes de padding mobile |
+| `src/pages/Ingredients.tsx` | Overflow-x em tabelas, grids responsivos |
+| `src/pages/Recipes.tsx` | Overflow-x em tabelas, grids responsivos |
+| `src/pages/BusinessArea.tsx` | Grids responsivos em formularios |
 
-Apos envio, exibe mensagem informando que ambos os e-mails (antigo e novo) receberao um link de confirmacao.
+### Logica de exibicao do prompt
+```text
+SE localStorage("precify_import_prompt_dismissed") !== "true"
+  E (ingredientsCount === 0 OU recipesCount === 0)
+ENTAO mostrar WelcomeImportPrompt
+```
 
-## Arquivos a criar/modificar
-
-| Arquivo | Acao |
-|---------|------|
-| Migracao SQL | Criar tabela `email_change_history` + indice + RLS |
-| `supabase/functions/change-email/index.ts` | Nova Edge Function |
-| `src/pages/Register.tsx` | Adicionar verificacao anti-fraude no cadastro |
-| `src/pages/Dashboard.tsx` | Adicionar botao "Alterar e-mail" + dialog |
-| `src/components/account/ChangeEmailDialog.tsx` | Novo componente de dialog |
-
-## Fluxo do usuario
-
-1. Usuario clica em "Alterar e-mail" no sidebar
-2. Informa novo e-mail + senha atual
-3. Sistema envia confirmacao para AMBOS os e-mails
-4. Somente apos ambas as confirmacoes, o e-mail e atualizado
-5. Registro salvo em `email_change_history`
-6. Se alguem tentar criar conta com o e-mail antigo, o sistema bloqueia e informa
-
-## Seguranca
-
-- Confirmacao dupla (e-mail antigo + novo) via configuracao nativa
-- Senha exigida para iniciar a troca
-- Historico imutavel de trocas de e-mail (sem UPDATE/DELETE via RLS)
-- Verificacao server-side no cadastro para prevenir bypass
-- O `user_id` nunca muda, garantindo continuidade da cobranca e dados
-
+### Mini-tutorial visual (dentro do componente)
+Cada tutorial sera uma lista numerada com icones, usando classes Tailwind para layout compacto e responsivo. Estilo: passos em `flex gap-2` com numeros em circulos coloridos (`bg-primary/10 text-primary rounded-full w-6 h-6`).
