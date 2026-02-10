@@ -123,6 +123,26 @@ Deno.serve(async (req) => {
 
     const body: RequestBody = await req.json();
 
+    // ─── RBAC: Validate store access ───
+    if (body.store_id) {
+      const { data: storeRole } = await supabase.rpc("get_store_role", {
+        _user_id: user.id,
+        _store_id: body.store_id,
+      });
+
+      if (!storeRole) {
+        return new Response(JSON.stringify({ error: "Você não tem acesso a esta loja." }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      if (storeRole === "viewer") {
+        // Viewers can calculate pricing (read-only operation) but we flag it
+        // Pricing calculation is read-only so viewers are allowed
+      }
+    }
+
     // ─── 1. Input validation ───
 
     if (!body.recipe_name || typeof body.recipe_name !== "string" || body.recipe_name.trim().length === 0) {
