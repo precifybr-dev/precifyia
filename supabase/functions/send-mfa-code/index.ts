@@ -35,6 +35,23 @@ serve(async (req: Request) => {
       );
     }
 
+    // ─── OWNERSHIP: Validate userId matches the email in auth.users ───
+    // Never trust IDs from frontend — verify the userId actually belongs to this email
+    const { data: authUser, error: authLookupError } = await supabase.auth.admin.getUserById(userId);
+    if (authLookupError || !authUser?.user) {
+      return new Response(
+        JSON.stringify({ error: 'Usuário não encontrado' }),
+        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    if (authUser.user.email?.toLowerCase() !== email.toLowerCase()) {
+      console.error(`[SECURITY] MFA ownership mismatch: userId=${userId} email=${email} actual=${authUser.user.email}`);
+      return new Response(
+        JSON.stringify({ error: 'Dados de autenticação inconsistentes' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // ─── Rate Limiting: 5 req/min por usuário, 10 req/min por IP (anti-brute-force) ───
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const [{ data: userRL }, { data: ipRL }] = await Promise.all([

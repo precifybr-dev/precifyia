@@ -195,7 +195,6 @@ export function useAdminSecurity() {
 
       await supabase.functions.invoke("log-access", {
         body: {
-          userId,
           action,
           success,
           metadata: {

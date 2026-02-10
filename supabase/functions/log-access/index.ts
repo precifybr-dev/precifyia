@@ -7,32 +7,9 @@ const corsHeaders = {
 };
 
 interface LogAccessRequest {
-  userId: string;
   action: string;
   success: boolean;
   metadata?: Record<string, unknown>;
-}
-
-// Rate limiting for logging
-const LOG_RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
-const LOG_RATE_LIMIT_MAX = 100; // Max logs per window per user
-const logRateLimitStore = new Map<string, { count: number; resetTime: number }>();
-
-function checkLogRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const userLimit = logRateLimitStore.get(userId);
-
-  if (!userLimit || now > userLimit.resetTime) {
-    logRateLimitStore.set(userId, { count: 1, resetTime: now + LOG_RATE_LIMIT_WINDOW_MS });
-    return true;
-  }
-
-  if (userLimit.count >= LOG_RATE_LIMIT_MAX) {
-    return false;
-  }
-
-  userLimit.count++;
-  return true;
 }
 
 // Enhanced device/network fingerprinting
@@ -41,33 +18,25 @@ function getClientInfo(req: Request): Record<string, string | null> {
   const ipList = forwardedFor?.split(',').map(ip => ip.trim()) || [];
   
   return {
-    // Primary IP (first in chain, closest to client)
     ip: ipList[0] || req.headers.get('cf-connecting-ip') || req.headers.get('x-real-ip') || 'unknown',
-    // Full IP chain for proxy detection
     ipChain: forwardedFor || null,
-    // User agent
     userAgent: req.headers.get('user-agent') || 'unknown',
-    // Cloudflare geolocation
     country: req.headers.get('cf-ipcountry') || null,
     city: req.headers.get('cf-ipcity') || null,
     region: req.headers.get('cf-ipregion') || null,
     continent: req.headers.get('cf-ipcontinent') || null,
     timezone: req.headers.get('cf-timezone') || null,
-    // Connection info
     connectionType: req.headers.get('cf-ipclienttcprtt') || null,
     httpProtocol: req.headers.get('cf-visitor') || null,
     tlsVersion: req.headers.get('cf-tls-version') || null,
-    // Client hints (modern browsers)
     deviceModel: req.headers.get('sec-ch-ua-model') || null,
     platform: req.headers.get('sec-ch-ua-platform') || null,
     platformVersion: req.headers.get('sec-ch-ua-platform-version') || null,
     isMobile: req.headers.get('sec-ch-ua-mobile') || null,
-    // Request info
     acceptLanguage: req.headers.get('accept-language') || null,
     acceptEncoding: req.headers.get('accept-encoding') || null,
     origin: req.headers.get('origin') || null,
     referer: req.headers.get('referer') || null,
-    // Bot detection hints
     isBot: req.headers.get('cf-bot-management') || null,
     threatScore: req.headers.get('cf-threat-score') || null,
   };
@@ -86,19 +55,45 @@ serve(async (req: Request) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    const { userId, action, success, metadata }: LogAccessRequest = await req.json();
-    
-    if (!userId || !action) {
+
+    // ─── OWNERSHIP: Authenticate user and derive userId from token ───
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
-        JSON.stringify({ error: 'userId e action são obrigatórios' }),
+        JSON.stringify({ error: 'Não autorizado' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!);
+    const token = authHeader.replace('Bearer ', '');
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Sessão inválida' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // userId is ALWAYS derived from the authenticated token — never from the body
+    const userId = user.id;
+
+    const body: LogAccessRequest = await req.json();
+    const { action, success, metadata } = body;
+    
+    if (!action) {
+      return new Response(
+        JSON.stringify({ error: 'action é obrigatório' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check rate limit for logging
-    if (!checkLogRateLimit(userId)) {
-      console.log('[LOG] Rate limit exceeded for user:', userId);
+    // ─── Rate Limiting: 100 req/min por usuário ───
+    const { data: rlData } = await supabase.rpc("check_rate_limit", {
+      _key: userId, _endpoint: "log-access", _max_requests: 100, _window_seconds: 60, _block_seconds: 120,
+    });
+    const rl = rlData?.[0];
+    if (rl && !rl.allowed) {
       return new Response(
         JSON.stringify({ error: 'Muitos logs. Tente novamente em breve.' }),
         { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -131,7 +126,7 @@ serve(async (req: Request) => {
       },
     };
 
-    // Insert log with enhanced data
+    // Insert log — userId comes from the token, not from the request body
     const { error: insertError } = await supabase
       .from('access_logs')
       .insert({

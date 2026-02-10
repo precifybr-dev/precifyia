@@ -27,15 +27,34 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // ─── Rate Limiting by IP: 5 req/min (importações são pesadas) ───
-    const { createClient: createSB } = await import("https://esm.sh/@supabase/supabase-js@2");
-    const supabase = createSB(supabaseUrl, supabaseServiceKey);
+    // ─── OWNERSHIP: Require authentication ───
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Não autorizado." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Sessão inválida." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ─── Rate Limiting: 5 req/min por usuário (importações são pesadas) ───
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
-    const { data: rlData } = await supabase.rpc("check_rate_limit", {
-      _key: `ip:${clientIp}`, _endpoint: "parse-ifood", _max_requests: 5, _window_seconds: 60, _block_seconds: 180,
-    });
-    const rl = rlData?.[0];
+    const [{ data: userRL }, { data: ipRL }] = await Promise.all([
+      supabase.rpc("check_rate_limit", { _key: user.id, _endpoint: "parse-ifood", _max_requests: 5, _window_seconds: 60, _block_seconds: 180 }),
+      supabase.rpc("check_rate_limit", { _key: `ip:${clientIp}`, _endpoint: "parse-ifood", _max_requests: 10, _window_seconds: 60, _block_seconds: 180 }),
+    ]);
+    const rl = userRL?.[0] || ipRL?.[0];
     if (rl && !rl.allowed) {
       return new Response(
         JSON.stringify({ error: "Muitas importações. Aguarde alguns minutos." }),
