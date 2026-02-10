@@ -121,6 +121,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── Rate Limiting: 20 req/min por usuário, 60 req/min por IP ───
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+
+    const [{ data: userRL }, { data: ipRL }] = await Promise.all([
+      supabase.rpc("check_rate_limit", { _key: user.id, _endpoint: "recipe-pricing", _max_requests: 20, _window_seconds: 60, _block_seconds: 120 }),
+      supabase.rpc("check_rate_limit", { _key: `ip:${clientIp}`, _endpoint: "recipe-pricing", _max_requests: 60, _window_seconds: 60, _block_seconds: 120 }),
+    ]);
+
+    const rl = userRL?.[0] || ipRL?.[0];
+    if (rl && !rl.allowed) {
+      return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em breve." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(rl.retry_after_seconds) },
+      });
+    }
+
     const body: RequestBody = await req.json();
 
     // ─── RBAC: Validate store access ───

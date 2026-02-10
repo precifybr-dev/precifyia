@@ -61,6 +61,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    // ─── Rate Limiting: 10 req/min por usuário ───
+    const { data: rlData } = await supabase.rpc("check_rate_limit", {
+      _key: user.id, _endpoint: "ifood-fees", _max_requests: 10, _window_seconds: 60, _block_seconds: 120,
+    });
+    const rl = rlData?.[0];
+    if (rl && !rl.allowed) {
+      return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em breve." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(rl.retry_after_seconds) },
+      });
+    }
+
     const body: IfoodInput & { store_id?: string | null } = await req.json();
     const warnings: string[] = [];
 

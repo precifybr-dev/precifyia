@@ -31,6 +31,20 @@ serve(async (req: Request) => {
       );
     }
 
+    // ─── Rate Limiting: 10 tentativas/min por usuário, 20/min por IP (anti-brute-force) ───
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const [{ data: userRL }, { data: ipRL }] = await Promise.all([
+      supabase.rpc("check_rate_limit", { _key: userId, _endpoint: "verify-mfa", _max_requests: 10, _window_seconds: 60, _block_seconds: 300 }),
+      supabase.rpc("check_rate_limit", { _key: `ip:${clientIp}`, _endpoint: "verify-mfa", _max_requests: 20, _window_seconds: 60, _block_seconds: 300 }),
+    ]);
+    const rl = userRL?.[0] || ipRL?.[0];
+    if (rl && !rl.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Muitas tentativas. Aguarde alguns minutos.', valid: false }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(rl.retry_after_seconds) } }
+      );
+    }
+
     // Buscar código salvo
     const { data: security, error: fetchError } = await supabase
       .from('user_security')
