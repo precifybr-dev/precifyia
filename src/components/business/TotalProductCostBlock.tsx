@@ -49,12 +49,12 @@ export default function TotalProductCostBlock({
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <HelpCircle className="w-5 h-5 text-muted-foreground cursor-help flex-shrink-0" />
+              <HelpCircle className="w-5 h-5 text-yellow-500/70 cursor-help flex-shrink-0" />
             </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-[300px] text-xs">
-              <p className="font-semibold mb-1">Como funciona esse percentual?</p>
-              <p>Esse valor representa quanto cada produto ajuda a pagar as contas mensais do seu negócio.</p>
-              <p className="mt-1">Aluguel, internet, energia, sistema e outras despesas não são descontadas diretamente do produto — elas são diluídas em percentual para que cada venda pague apenas a sua parte justa.</p>
+            <TooltipContent side="top" className="max-w-[320px] text-xs">
+              <p className="font-semibold mb-1">Custos de produção do negócio</p>
+              <p>Este percentual mostra quanto do faturamento mensal médio do seu negócio é usado para pagar os custos de produção.</p>
+              <p className="mt-1">Ele é uma média geral do mês e serve como base para o cálculo dos produtos.</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
