@@ -28,6 +28,7 @@ import {
   Sun,
   Moon,
   Bell,
+  BookOpen,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -46,6 +47,7 @@ interface NavItem {
   section?: string;
   permission?: string;
   badge?: number;
+  masterOnly?: boolean;
 }
 
 const navItems: NavItem[] = [
@@ -56,6 +58,7 @@ const navItems: NavItem[] = [
   { id: "support", label: "Suporte", icon: Headphones, section: "support", permission: "respond_support" },
   { id: "metrics", label: "Métricas", icon: BarChart3, section: "usage", permission: "view_metrics" },
   { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs" },
+  { id: "system-book", label: "Livro do Sistema", icon: BookOpen, path: "/admin/system-book", masterOnly: true },
 ];
 
 export function AdminLayout({ children, unreadAlerts = 0, activeSection, onSectionChange }: AdminLayoutProps) {
@@ -96,6 +99,7 @@ export function AdminLayout({ children, unreadAlerts = 0, activeSection, onSecti
   };
 
   const canAccessItem = (item: NavItem) => {
+    if (item.masterOnly && !isMaster()) return false;
     if (!item.permission) return true;
     if (isMaster()) return true;
     return hasPermission(item.permission as any);
