@@ -152,6 +152,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ─── FEATURE FLAG: Check plan allows advanced_pricing features ───
+    if (body.loss_percent || body.discount_percent || body.local_ifood_rate) {
+      const { data: featureCheck } = await supabase.rpc("check_plan_feature", {
+        _user_id: user.id,
+        _feature: "advanced_pricing",
+      });
+      const ff = featureCheck?.[0];
+      if (ff && !ff.allowed) {
+        return new Response(JSON.stringify({ error: ff.reason, upgrade_required: true, current_plan: ff.current_plan }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     // ─── RBAC: Validate store access ───
     if (body.store_id) {
       const { data: storeRole } = await supabase.rpc("get_store_role", {

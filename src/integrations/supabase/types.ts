@@ -647,6 +647,33 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_features: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          feature: string
+          id: string
+          plan: string
+          usage_limit: number | null
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          feature: string
+          id?: string
+          plan: string
+          usage_limit?: number | null
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          feature?: string
+          id?: string
+          plan?: string
+          usage_limit?: number | null
+        }
+        Relationships: []
+      }
       platform_events: {
         Row: {
           created_at: string
@@ -1603,6 +1630,15 @@ export type Database = {
       can_write_store: {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
+      }
+      check_plan_feature: {
+        Args: { _feature: string; _user_id: string }
+        Returns: {
+          allowed: boolean
+          current_plan: string
+          reason: string
+          usage_limit: number
+        }[]
       }
       check_rate_limit: {
         Args: {
