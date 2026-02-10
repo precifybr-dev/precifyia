@@ -19,7 +19,8 @@ import {
   Sun,
     Moon,
     Sparkles,
-    Headphones
+    Headphones,
+    HardDrive
   } from "lucide-react";
 import { useStore } from "@/contexts/StoreContext";
 import { CreateStoreModal } from "@/components/store/CreateStoreModal";
@@ -118,6 +119,7 @@ export default function Dashboard() {
       beverages: "/app/beverages",
       recipes: "/app/recipes",
       combos: "/app/combos",
+      backup: "/app/backup",
       support: "/app/support",
     };
     
@@ -179,6 +181,7 @@ export default function Dashboard() {
     { icon: Wine, label: "Bebidas", path: "beverages" },
     { icon: FileSpreadsheet, label: "Fichas Técnicas", path: "recipes" },
     { icon: Sparkles, label: "Combos (BETA)", path: "combos" },
+    { icon: HardDrive, label: "Backup", path: "backup" },
     { icon: Headphones, label: "Suporte", path: "support" },
   ];
 
