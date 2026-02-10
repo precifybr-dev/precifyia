@@ -16,77 +16,91 @@ serve(async (req: Request) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    
+
+    // ─── AUTHENTICATION REQUIRED ───
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Autenticação obrigatória' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const supabase = createClient(supabaseUrl, supabaseServiceKey, {
       auth: { autoRefreshToken: false, persistSession: false }
     });
 
-    // Verificar se o usuário master já existe
-    const { data: existingUsers, error: listError } = await supabase.auth.admin.listUsers();
-    
-    if (listError) {
-      console.error('Erro ao listar usuários:', listError);
+    // ─── VERIFY CALLER IDENTITY ───
+    const anonClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false }
+    });
+
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await anonClient.auth.getClaims(token);
+
+    if (claimsError || !claimsData?.claims) {
       return new Response(
-        JSON.stringify({ error: 'Erro ao verificar usuários' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Token inválido' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const masterUser = existingUsers.users.find(u => u.email === MASTER_EMAIL);
+    const callerId = claimsData.claims.sub as string;
+    const callerEmail = claimsData.claims.email as string;
 
-    if (masterUser) {
-      // Verificar se já tem role master configurado
-      const { data: existingRole } = await supabase
-        .from('user_roles')
-        .select('*')
-        .eq('user_id', masterUser.id)
-        .eq('role', 'master')
-        .maybeSingle();
-
-      if (existingRole) {
-        return new Response(
-          JSON.stringify({ message: 'Usuário master já configurado', userId: masterUser.id }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Configurar role e segurança para usuário existente
-      await setupMasterUser(supabase, masterUser.id);
-
+    // ─── ONLY THE MASTER EMAIL CAN INVOKE THIS ───
+    if (callerEmail?.toLowerCase() !== MASTER_EMAIL.toLowerCase()) {
+      console.error(`[SECURITY] Unauthorized setup-master-user attempt by: ${callerEmail} (${callerId})`);
       return new Response(
-        JSON.stringify({ message: 'Configuração master aplicada ao usuário existente', userId: masterUser.id }),
+        JSON.stringify({ error: 'Acesso restrito ao proprietário do sistema' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ─── Rate Limiting: 3 req/hour ───
+    const { data: rlData } = await supabase.rpc("check_rate_limit", {
+      _key: callerId, _endpoint: "setup-master", _max_requests: 3, _window_seconds: 3600, _block_seconds: 3600,
+    });
+    const rl = rlData?.[0];
+    if (rl && !rl.allowed) {
+      return new Response(
+        JSON.stringify({ error: 'Muitas tentativas. Aguarde antes de tentar novamente.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(rl.retry_after_seconds) } }
+      );
+    }
+
+    // Verificar se já tem role master configurado
+    const { data: existingRole } = await supabase
+      .from('user_roles')
+      .select('*')
+      .eq('user_id', callerId)
+      .eq('role', 'master')
+      .maybeSingle();
+
+    if (existingRole) {
+      return new Response(
+        JSON.stringify({ message: 'Usuário master já configurado', userId: callerId }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Criar novo usuário master
-    const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
-      email: MASTER_EMAIL,
-      password: '10203040',
-      email_confirm: true,
-      user_metadata: {
-        full_name: 'Master PRECIFY',
-        is_master: true,
-      }
+    // Configurar role e segurança para o usuário autenticado
+    await setupMasterUser(supabase, callerId);
+
+    // ─── AUDIT LOG ───
+    await supabase.from('admin_audit_logs').insert({
+      admin_user_id: callerId,
+      target_user_id: callerId,
+      action: 'setup_master_user',
+      action_type: 'security',
+      new_value: { role: 'master', is_protected: true },
     });
-
-    if (createError) {
-      console.error('Erro ao criar usuário master:', createError);
-      return new Response(
-        JSON.stringify({ error: 'Erro ao criar usuário master: ' + createError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Configurar role e segurança
-    await setupMasterUser(supabase, newUser.user.id);
 
     return new Response(
       JSON.stringify({ 
-        message: 'Usuário master criado com sucesso', 
-        userId: newUser.user.id,
-        email: MASTER_EMAIL,
-        temporaryPassword: '10203040'
+        message: 'Configuração master aplicada com sucesso', 
+        userId: callerId,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
@@ -110,12 +124,12 @@ async function setupMasterUser(supabase: any, userId: string) {
       is_protected: true,
     }, { onConflict: 'user_id,role' });
 
-  // Configurar segurança - forçar troca de senha e MFA
+  // Configurar segurança - MFA ativado
   await supabase
     .from('user_security')
     .upsert({
       user_id: userId,
-      must_change_password: true,
+      must_change_password: false,
       mfa_enabled: true,
       mfa_verified: false,
     }, { onConflict: 'user_id' });
