@@ -2,10 +2,10 @@ import { useEffect } from "react";
 import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { PainSection } from "@/components/landing/PainSection";
-import { SolutionSection } from "@/components/landing/SolutionSection";
+import { ComparisonSection } from "@/components/landing/ComparisonSection";
+import { DemoSection } from "@/components/landing/DemoSection";
 import { BenefitsSection } from "@/components/landing/BenefitsSection";
 import { SocialProofSection } from "@/components/landing/SocialProofSection";
-import { DemoSection } from "@/components/landing/DemoSection";
 import { DifferentialsSection } from "@/components/landing/DifferentialsSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { FAQSection } from "@/components/landing/FAQSection";
@@ -29,10 +29,10 @@ export default function Landing() {
       <Header />
       <HeroSection />
       <PainSection />
-      <SolutionSection />
+      <ComparisonSection />
+      <DemoSection />
       <BenefitsSection />
       <SocialProofSection />
-      <DemoSection />
       <DifferentialsSection />
       <PricingSection />
       <FAQSection />

@@ -44,7 +44,7 @@ const plans = [
       { text: "Dashboard avançado + DRE", included: true },
       { text: "Importação de planilha", included: true },
       { text: "Multi-loja + equipe", included: true },
-      { text: "Combos estratégicos com IA", included: true },
+      { text: "Combos estratégicos", included: true },
     ],
     popular: true,
   },
@@ -54,17 +54,21 @@ export function PricingSection() {
   return (
     <section className="py-16 lg:py-24 bg-muted/30" id="precos">
       <div className="container px-4 mx-auto">
-        <div className="text-center max-w-3xl mx-auto mb-16">
+        <div className="text-center max-w-3xl mx-auto mb-6">
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 text-foreground">
-            Escolha o plano ideal para{" "}
-            <span className="text-gradient">seu negócio</span>
+            Quanto custa continuar{" "}
+            <span className="text-gradient">errando sua margem?</span>
           </h2>
-          <p className="text-lg text-muted-foreground">
-            Teste por 7 dias sem compromisso. Sem cartão de crédito.
+          <p className="text-lg text-muted-foreground max-w-xl mx-auto">
+            Se você errar R$2 por prato e vender 1.000 no mês, isso já é{" "}
+            <span className="font-semibold text-destructive">R$2.000 perdidos.</span>
+          </p>
+          <p className="text-muted-foreground mt-2">
+            O Precify custa menos que 1 erro por dia.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mt-12">
           {plans.map((plan) => (
             <div
               key={plan.name}
@@ -133,7 +137,7 @@ export function PricingSection() {
                   }`}
                   variant={plan.popular ? "default" : "outline"}
                 >
-                  Começar a Precificar Certo
+                  {plan.name === "Teste" ? "Testar por 7 dias" : "Calcular meu lucro agora"}
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>

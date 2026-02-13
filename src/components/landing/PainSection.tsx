@@ -1,11 +1,14 @@
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, X, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const painPoints = [
-  "Ignora a taxa real do iFood na hora de precificar",
-  "Não calcula o CMV corretamente",
-  "Não considera perdas naturais dos insumos",
-  "Não inclui custos fixos no preço",
-  "Ajusta preço \"no chute\"",
+  "Fórmula que quebra e você não sabe onde mexer",
+  "8 abas abertas e ninguém entende nada",
+  "Preço calculado errado e você só descobre no fim do mês",
+  "Arquivo perdido ou duplicado",
+  "Comissão do iFood calculada errado",
+  "Lucro que some e você não sabe por quê",
 ];
 
 export function PainSection() {
@@ -18,16 +21,11 @@ export function PainSection() {
           </div>
 
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4">
-            Você pode estar vendendo muito…{" "}
-            <span className="text-destructive">e lucrando pouco.</span>
+            Se você usa planilha, provavelmente{" "}
+            <span className="text-destructive">já passou por isso:</span>
           </h2>
 
-          <p className="text-lg text-muted-foreground mb-10 max-w-2xl mx-auto leading-relaxed">
-            A maioria dos restaurantes não sabe o lucro real porque comete esses
-            erros na hora de precificar:
-          </p>
-
-          <div className="grid sm:grid-cols-2 gap-4 text-left max-w-2xl mx-auto mb-10">
+          <div className="grid sm:grid-cols-2 gap-4 text-left max-w-2xl mx-auto mb-10 mt-8">
             {painPoints.map((point, i) => (
               <div
                 key={i}
@@ -43,15 +41,24 @@ export function PainSection() {
             ))}
           </div>
 
-          <div className="p-6 rounded-2xl bg-warning/5 border border-warning/20 max-w-xl mx-auto">
+          <div className="p-6 rounded-2xl bg-warning/5 border border-warning/20 max-w-xl mx-auto mb-8">
             <p className="text-foreground font-semibold text-lg mb-1">
-              ⚠️ O resultado?
+              O problema não é vender pouco.
             </p>
             <p className="text-muted-foreground">
-              Quanto mais vende errado, mais trabalha e menos sobra no fim do
-              mês.
+              É precificar errado.
             </p>
           </div>
+
+          <Link to="/register">
+            <Button
+              size="lg"
+              className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 group"
+            >
+              Calcular meu lucro agora
+              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

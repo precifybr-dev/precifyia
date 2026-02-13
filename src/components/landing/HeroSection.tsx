@@ -3,9 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 
 const bullets = [
-  "Veja seu lucro real por produto",
-  "Considere todas as taxas automaticamente",
-  "Ajuste preços em minutos",
+  "Descubra sua margem real em menos de 1 minuto",
+  "Pare de depender de planilhas confusas",
+  "Ajuste preços sem medo de prejuízo",
 ];
 
 export function HeroSection() {
@@ -19,13 +19,14 @@ export function HeroSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-3xl mx-auto text-center animate-slide-up">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight mb-6">
-            Saiba exatamente quanto você lucra{" "}
-            <span className="text-gradient">por pedido no iFood.</span>
+            Você pode estar perdendo até 20% de lucro no iFood{" "}
+            <span className="text-gradient">sem perceber.</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground leading-relaxed mb-10 max-w-2xl mx-auto">
-            Descubra quanto realmente sobra por item, ajuste seus preços
-            corretamente e pare de trabalhar no escuro.
+            A maioria dos restaurantes usa planilha errada, fórmula quebrada ou
+            esquece custos escondidos. O Precify calcula automaticamente o preço
+            ideal e protege sua margem em segundos.
           </p>
 
           <div className="flex flex-col items-center gap-6 mb-10">
@@ -43,7 +44,7 @@ export function HeroSection() {
                 size="xl"
                 className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 group text-lg px-10"
               >
-                Começar a Precificar Certo
+                Calcular meu lucro agora
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
