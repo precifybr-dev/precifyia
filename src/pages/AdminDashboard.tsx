@@ -14,6 +14,7 @@ import { SupportDashboard } from "@/components/admin/SupportDashboard";
 import { UsageMetricsDashboard } from "@/components/admin/UsageMetricsDashboard";
 import { ConversionMetricsBlock } from "@/components/admin/ConversionMetricsBlock";
 import { CombosDashboard } from "@/components/admin/CombosDashboard";
+import { AffiliatesDashboard } from "@/components/admin/AffiliatesDashboard";
 import { PlanLimitsTable } from "@/components/admin/PlanLimitsTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,7 @@ import {
   Headphones,
   BarChart3,
   LayoutDashboard,
+  Ticket,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -347,6 +349,10 @@ export default function AdminDashboard() {
                   <Sparkles className="h-4 w-4" />
                   Combos IA
                 </TabsTrigger>
+                <TabsTrigger value="affiliates" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Ticket className="h-4 w-4" />
+                  Cupons & Afiliados
+                </TabsTrigger>
                 <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <History className="h-4 w-4" />
                   Logs
@@ -598,6 +604,10 @@ export default function AdminDashboard() {
 
               <TabsContent value="combos">
                 <CombosDashboard />
+              </TabsContent>
+
+              <TabsContent value="affiliates">
+                <AffiliatesDashboard />
               </TabsContent>
 
               <TabsContent value="logs" className="space-y-4">
