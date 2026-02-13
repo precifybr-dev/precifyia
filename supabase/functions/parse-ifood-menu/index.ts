@@ -187,6 +187,15 @@ ${pageContent ? `\nConteúdo da página (parcial):\n${pageContent.slice(0, 8000)
 Extraia ou sugira PRODUTOS/LANCHES típicos para este tipo de estabelecimento.
 Responda em JSON: { "storeName": "Nome da Loja", "items": [{ "name": "Nome do Produto", "category": "Categoria" }] }`;
 
+    // ─── Circuit Breaker Global ───
+    const { data: cbAllowed } = await supabase.rpc("check_global_ai_limit", { _endpoint: "parse-ifood-menu" });
+    if (cbAllowed === false) {
+      await supabase.from("strategic_usage_logs").insert({ user_id: user.id, endpoint: "parse-ifood-menu-circuit-break", tokens_used: 0 });
+      return new Response(JSON.stringify({ error: "Sistema de IA temporariamente indisponível. Tente novamente em alguns minutos." }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
