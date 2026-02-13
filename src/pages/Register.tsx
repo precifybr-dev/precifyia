@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/ui/Logo";
@@ -37,31 +37,37 @@ export default function Register() {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/secure-signup`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            email,
+            password,
             full_name: name,
             business_name: businessName,
-          },
-          emailRedirectTo: window.location.origin,
-        },
-      });
+          }),
+        }
+      );
 
-      if (error) {
+      const data = await response.json();
+
+      if (!response.ok) {
         toast({
           title: "Erro ao criar conta",
-          description: error.message,
+          description: data.error || "Tente novamente mais tarde.",
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Conta criada com sucesso!",
-          description: "Bem-vindo ao PRECIFY. Seu trial de 7 dias começou!",
+          title: "Solicitação recebida!",
+          description: data.message || "Verifique seu email para confirmar a conta.",
         });
-        // Redirect to onboarding for new users
-        navigate("/onboarding");
+        navigate("/login");
       }
     } catch (error) {
       toast({

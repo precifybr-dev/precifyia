@@ -2562,6 +2562,7 @@ export type Database = {
         Args: { p_fingerprint: string; p_ip: string; p_user: string }
         Returns: boolean
       }
+      check_signup_limit: { Args: { _ip: string }; Returns: boolean }
       cleanup_rate_limit_entries: { Args: never; Returns: undefined }
       count_admin_sessions_today: {
         Args: { _admin_id: string }
