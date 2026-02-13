@@ -65,8 +65,8 @@ export default function ServiceContract() {
               Contrato de Prestação de Serviços
             </h1>
             <div className="text-sm text-muted-foreground space-y-0.5 mt-4">
-              <p><strong>Empresa:</strong> Precify Tecnologia LTDA</p>
-              <p><strong>CNPJ:</strong> 00.000.000/0001-00</p>
+              <p><strong>Empresa:</strong> TA ON - Precify Tecnologia LTDA</p>
+              <p><strong>CNPJ:</strong> 48.245.923/0001-30</p>
               <p><strong>Endereço:</strong> Rua Exemplo, 123 — Centro, São Paulo/SP — CEP 01000-000</p>
               <p><strong>E-mail jurídico:</strong> juridico@precify.com.br</p>
               <p><strong>Última atualização:</strong> {LAST_UPDATED}</p>
