@@ -4,10 +4,12 @@ import { HeroSection } from "@/components/landing/HeroSection";
 import { PainSection } from "@/components/landing/PainSection";
 import { SolutionSection } from "@/components/landing/SolutionSection";
 import { BenefitsSection } from "@/components/landing/BenefitsSection";
-import { DemoSection } from "@/components/landing/DemoSection";
 import { SocialProofSection } from "@/components/landing/SocialProofSection";
-import { FAQSection } from "@/components/landing/FAQSection";
+import { DemoSection } from "@/components/landing/DemoSection";
+import { DifferentialsSection } from "@/components/landing/DifferentialsSection";
 import { PricingSection } from "@/components/landing/PricingSection";
+import { FAQSection } from "@/components/landing/FAQSection";
+import { FinalCTASection } from "@/components/landing/FinalCTASection";
 import { Footer } from "@/components/landing/Footer";
 import { WhatsAppButton } from "@/components/landing/WhatsAppButton";
 
@@ -29,10 +31,12 @@ export default function Landing() {
       <PainSection />
       <SolutionSection />
       <BenefitsSection />
-      <DemoSection />
       <SocialProofSection />
+      <DemoSection />
+      <DifferentialsSection />
       <PricingSection />
       <FAQSection />
+      <FinalCTASection />
       <Footer />
       <WhatsAppButton />
     </div>

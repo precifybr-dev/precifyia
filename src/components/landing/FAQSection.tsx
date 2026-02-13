@@ -8,94 +8,82 @@ import { useEffect } from "react";
 
 const faqs = [
   {
-    question: "Por que o preço do marketplace é maior que o do balcão?",
+    question: "É difícil de usar?",
     answer:
-      "Porque marketplaces como iFood, Rappi e 99Food cobram taxas de comissão (geralmente entre 12% e 27%). Para você manter a mesma margem de lucro, o preço precisa ser maior. O sistema calcula automaticamente quanto cobrar em cada canal para que seu lucro seja o mesmo.",
+      "Não. O sistema foi feito para donos de restaurante, não para contadores. Você cadastra seus insumos, monta a receita e o sistema faz todo o cálculo. Sem fórmulas, sem planilhas.",
   },
   {
-    question: "O que é CMV e por que ele é importante?",
+    question: "Preciso entender de finanças?",
     answer:
-      "CMV significa Custo de Mercadoria Vendida. É o percentual do preço de venda que vai para pagar os ingredientes e custos diretos do produto. Por exemplo, se você vende um hambúrguer por R$ 40 e gasta R$ 12 em ingredientes, seu CMV é 30%. O ideal para food service é manter o CMV entre 28% e 35%.",
+      "Não. O Precify traduz tudo em linguagem simples. Você vai ver quanto lucra em reais, não em indicadores financeiros complicados. Tudo é visual e direto ao ponto.",
   },
   {
-    question: "Posso usar o mesmo preço no balcão e no iFood?",
+    question: "Funciona para qualquer tipo de restaurante?",
     answer:
-      "Pode, mas você vai lucrar menos (ou até ter prejuízo) nas vendas pelo marketplace. As taxas do iFood, por exemplo, podem chegar a 27%. Se você não ajustar o preço, essa taxa sai direto da sua margem. O sistema mostra exatamente quanto você perde em cada cenário.",
+      "Sim. Hamburguerias, pizzarias, marmitarias, dark kitchens, confeitarias, food trucks — qualquer operação que precise precificar produtos alimentícios e venda por delivery ou balcão.",
   },
   {
-    question: "O que é Fator de Correção (F.C.)?",
+    question: "Em quanto tempo vejo resultado?",
     answer:
-      "É um multiplicador que considera as perdas durante o preparo. Por exemplo, se você compra 1kg de carne mas só aproveita 800g após limpeza, o F.C. é 1,25 (1000 ÷ 800). O sistema usa esse fator para calcular o custo real dos seus insumos.",
+      "A maioria dos usuários descobre problemas de precificação nos primeiros 10 minutos. Com os ajustes, o impacto na margem aparece já no primeiro mês.",
   },
   {
-    question: "Preciso cadastrar todos os meus produtos?",
+    question: "Meus dados estão seguros?",
     answer:
-      "Não necessariamente. Comece pelos produtos mais vendidos ou pelos que você suspeita que podem estar dando prejuízo. Muitos usuários descobrem problemas de precificação logo nos primeiros 3 a 5 produtos cadastrados.",
+      "Sim. Seus dados ficam protegidos com criptografia, backup automático e acesso restrito. Só você e quem você autorizar podem ver suas informações.",
   },
   {
-    question: "O sistema funciona para quem não usa iFood?",
+    question: "Posso usar com mais de uma loja?",
     answer:
-      "Sim! O sistema calcula o preço ideal para venda direta (balcão, WhatsApp, delivery próprio) considerando seus custos e a margem desejada. A calculadora de marketplace é opcional — você só usa se vender por apps de delivery.",
+      "Sim, no plano Pro. Cada loja tem seus insumos, receitas e relatórios separados, sem misturar os dados entre unidades.",
+  },
+  {
+    question: "Posso cancelar quando quiser?",
+    answer:
+      "Sim. Não existe fidelidade nem multa. Você pode cancelar a qualquer momento direto pelo sistema, sem burocracia.",
   },
 ];
 
-// Generate JSON-LD schema for FAQ
-const generateFAQSchema = () => {
-  return {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faqs.map((faq) => ({
-      "@type": "Question",
-      name: faq.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: faq.answer,
-      },
-    })),
-  };
-};
+const generateFAQSchema = () => ({
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((faq) => ({
+    "@type": "Question",
+    name: faq.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.answer,
+    },
+  })),
+});
 
 export function FAQSection() {
   useEffect(() => {
-    // Add JSON-LD schema to head
     const script = document.createElement("script");
     script.type = "application/ld+json";
     script.text = JSON.stringify(generateFAQSchema());
     script.id = "faq-schema";
-    
-    // Remove existing if any
+
     const existing = document.getElementById("faq-schema");
-    if (existing) {
-      existing.remove();
-    }
-    
+    if (existing) existing.remove();
+
     document.head.appendChild(script);
 
     return () => {
-      const schemaScript = document.getElementById("faq-schema");
-      if (schemaScript) {
-        schemaScript.remove();
-      }
+      const s = document.getElementById("faq-schema");
+      if (s) s.remove();
     };
   }, []);
 
   return (
-    <section className="py-16 lg:py-24 bg-muted/30">
+    <section className="py-16 lg:py-24 bg-background">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-sm font-medium text-primary uppercase tracking-wide mb-2">
-            Tire suas dúvidas
-          </p>
           <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4">
             Perguntas Frequentes
           </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Entenda como funciona a precificação e por que cada canal precisa de um preço diferente
-          </p>
         </div>
 
-        {/* FAQ Accordion */}
         <div className="max-w-3xl mx-auto">
           <Accordion type="single" collapsible className="space-y-4">
             {faqs.map((faq, index) => (
@@ -113,20 +101,6 @@ export function FAQSection() {
               </AccordionItem>
             ))}
           </Accordion>
-        </div>
-
-        {/* CTA */}
-        <div className="text-center mt-12">
-          <p className="text-muted-foreground mb-4">
-            Ainda tem dúvidas? Experimente o sistema gratuitamente.
-          </p>
-          <a
-            href="/register"
-            className="inline-flex items-center gap-2 text-primary font-medium hover:underline"
-          >
-            Começar agora — é grátis por 7 dias
-            <span>→</span>
-          </a>
         </div>
       </div>
     </section>
