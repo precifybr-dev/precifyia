@@ -31,6 +31,7 @@ import {
   BookOpen,
   Sparkles,
   Ticket,
+  TrendingUp,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -62,6 +63,7 @@ const navItems: NavItem[] = [
   { id: "combos-ai", label: "Combos IA", icon: Sparkles, section: "combos", permission: "view_metrics" },
   { id: "affiliates", label: "Cupons & Afiliados", icon: Ticket, section: "affiliates", permission: "view_financials" },
   { id: "commissions", label: "Comissões", icon: Wallet, section: "commissions", permission: "view_financials", masterOnly: true },
+  { id: "monetization", label: "Monetização", icon: TrendingUp, section: "monetization", permission: "view_financials", masterOnly: true },
   { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs" },
   { id: "system-book", label: "Livro do Sistema", icon: BookOpen, path: "/admin/system-book", masterOnly: true },
 ];
