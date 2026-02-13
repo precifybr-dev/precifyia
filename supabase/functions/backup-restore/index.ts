@@ -523,22 +523,25 @@ Deno.serve(async (req) => {
 
     const userId = user.id;
 
-    // Rate limiting
-    const endpoint = action === "export" ? "backup_export" : "backup_import";
-    const maxRequests = action === "export" ? 5 : 3;
-    const { data: rateResult } = await supabaseAuth.rpc("check_rate_limit", {
-      _key: userId,
-      _endpoint: endpoint,
-      _max_requests: maxRequests,
-      _window_seconds: 3600,
-      _block_seconds: 300,
-    });
+    // Rate limiting — skip for import preview (read-only validation)
+    const isImportPreview = action === "import" && url.searchParams.get("preview") === "true";
+    if (!isImportPreview) {
+      const endpoint = action === "export" ? "backup_export" : "backup_import";
+      const maxRequests = action === "export" ? 10 : 10;
+      const { data: rateResult } = await supabaseAuth.rpc("check_rate_limit", {
+        _key: userId,
+        _endpoint: endpoint,
+        _max_requests: maxRequests,
+        _window_seconds: 3600,
+        _block_seconds: 300,
+      });
 
-    if (rateResult && rateResult.length > 0 && !rateResult[0].allowed) {
-      return jsonResponse({
-        error: "Limite de operações atingido. Tente novamente em alguns minutos.",
-        retry_after: rateResult[0].retry_after_seconds,
-      }, 429);
+      if (rateResult && rateResult.length > 0 && !rateResult[0].allowed) {
+        return jsonResponse({
+          error: "Limite de operações atingido. Tente novamente em alguns minutos.",
+          retry_after: rateResult[0].retry_after_seconds,
+        }, 429);
+      }
     }
 
     if (action === "export") {
