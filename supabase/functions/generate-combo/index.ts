@@ -43,7 +43,7 @@ serve(async (req) => {
       });
     }
 
-    const { objective, storeId } = await req.json();
+    const { objective, storeId, selectedItemIds } = await req.json();
 
     if (!objective) {
       return new Response(JSON.stringify({ error: "Objetivo é obrigatório" }), {
@@ -123,40 +123,60 @@ serve(async (req) => {
 
     // Build AI prompt
     const objectiveDescriptions: Record<string, string> = {
-      ticket_medio: "Aumentar o ticket médio dos clientes",
-      dias_fracos: "Vender mais em dias fracos (segunda a quarta)",
-      percepcao_vantagem: "Criar percepção de vantagem e economia para o cliente",
-      girar_estoque: "Girar estoque de produtos com baixa saída",
-      combo_familia: "Criar um combo família atrativo para grupos",
-      teste_rapido: "Testar rapidamente uma combinação de produtos",
+      ticket_medio: "Aumentar o ticket médio dos clientes no delivery",
+      conversao_ifood: "Melhorar a taxa de conversão no iFood, otimizando para mais vendas",
+      produto_ancora: "Criar um produto âncora de referência no cardápio de delivery",
+      dias_fracos: "Vender mais em dias fracos (segunda a quarta) no delivery",
+      percepcao_vantagem: "Criar percepção de vantagem e economia para o cliente no delivery",
+      girar_estoque: "Girar estoque de produtos com baixa saída via combos delivery",
+      combo_familia: "Criar um combo família atrativo para grupos no delivery",
+      teste_rapido: "Testar rapidamente uma combinação de produtos no delivery",
+      teste_estrategico: "Teste estratégico rápido de combo para delivery",
     };
 
     const objectiveText = objectiveDescriptions[objective] || objective;
 
-    const recipesContext = recipes.map((r) => ({
+    // Filter items if manual selection was provided
+    let filteredRecipes = recipes;
+    let filteredBeverages = beverages;
+
+    if (selectedItemIds && selectedItemIds.length > 0) {
+      filteredRecipes = recipes.filter((r: any) => selectedItemIds.includes(r.id));
+      filteredBeverages = beverages.filter((b: any) => selectedItemIds.includes(b.id));
+    }
+
+    const recipesContext = filteredRecipes.map((r: any) => ({
       name: r.name,
       cost: r.cost_per_serving ?? r.total_cost,
-      sellingPrice: r.selling_price ?? r.suggested_price,
+      sellingPrice: r.ifood_selling_price || r.selling_price || r.suggested_price,
+      ifoodPrice: r.ifood_selling_price,
       servings: r.servings,
     }));
 
-    const beveragesContext = beverages.map((b) => ({
+    const beveragesContext = filteredBeverages.map((b: any) => ({
       name: b.name,
       cost: b.purchase_price,
       sellingPrice: b.selling_price,
       category: b.category,
     }));
 
-    const systemPrompt = `Você é um especialista em precificação e criação de combos para restaurantes e negócios gastronômicos no Brasil.
+    const manualSelectionNote = selectedItemIds?.length > 0
+      ? `\n\nIMPORTANTE: O usuário selecionou manualmente os itens abaixo. Use OBRIGATORIAMENTE estes itens no combo. Você pode reorganizá-los e definir papéis estratégicos.`
+      : "";
+
+    const systemPrompt = `Você é um especialista em precificação e criação de combos para DELIVERY e iFOOD no Brasil.
 
 REGRAS OBRIGATÓRIAS:
 1. NUNCA sugira combo com lucro negativo
-2. Use linguagem comercial brasileira simples e chamativa
+2. Use linguagem comercial brasileira, otimizada para cardápio digital (iFood)
 3. Siga EXATAMENTE a estrutura solicitada
 4. Preços em Reais (R$)
-5. Identifique claramente o item isca (lucro zero ou mínimo) e onde está o lucro real
-6. A margem do combo DEVE ser positiva (mínimo 15%)
-7. Considere que itens isca existem para atrair, mas o combo como um todo DEVE ser lucrativo
+5. Identifique o produto carro-chefe e itens de maior margem
+6. Identifique claramente o item isca (lucro zero ou mínimo) e onde está o lucro real
+7. A margem do combo DEVE ser positiva (mínimo 15%)
+8. Calcule o preço ideal considerando taxas de delivery/iFood
+9. A descrição deve ser otimizada para conversão no iFood (curta, chamativa)
+${manualSelectionNote}
 
 DADOS DO NEGÓCIO:
 - Tipo: ${profile?.business_type || "restaurante"}

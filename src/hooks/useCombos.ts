@@ -36,12 +36,24 @@ export interface ComboUsage {
   plan: string;
 }
 
+export interface AvailableItem {
+  id: string;
+  name: string;
+  type: "recipe" | "beverage";
+  price: number;
+  cost: number;
+  category?: string;
+}
+
 const OBJECTIVE_LABELS: Record<string, string> = {
   ticket_medio: "Aumentar ticket médio",
-  dias_fracos: "Vender mais em dias fracos",
-  percepcao_vantagem: "Criar percepção de vantagem",
+  conversao_ifood: "Melhorar conversão iFood",
+  produto_ancora: "Criar produto âncora",
   girar_estoque: "Girar estoque",
+  dias_fracos: "Vender mais em dias fracos",
   combo_familia: "Criar combo família",
+  teste_estrategico: "Teste estratégico",
+  percepcao_vantagem: "Criar percepção de vantagem",
   teste_rapido: "Teste rápido",
 };
 
@@ -52,6 +64,8 @@ export function useCombos() {
   const [monthlyUsage, setMonthlyUsage] = useState(0);
   const [usageLimit, setUsageLimit] = useState<number | null>(null);
   const [userPlan, setUserPlan] = useState("free");
+  const [availableRecipes, setAvailableRecipes] = useState<AvailableItem[]>([]);
+  const [availableBeverages, setAvailableBeverages] = useState<AvailableItem[]>([]);
   const { toast } = useToast();
   const { activeStore } = useStore();
 
@@ -73,7 +87,6 @@ export function useCombos() {
       const { data, error } = await combosQuery;
 
       if (!error && data) {
-        // Fetch combo items for all combos
         const comboIds = data.map((c: any) => c.id);
         let itemsByCombo: Record<string, ComboItem[]> = {};
 
@@ -98,6 +111,37 @@ export function useCombos() {
         }));
 
         setCombos(combosWithItems as Combo[]);
+      }
+
+      // Fetch available items for manual selection
+      const [recipesRes, beveragesRes] = await Promise.all([
+        supabase.from("recipes")
+          .select("id, name, total_cost, cost_per_serving, selling_price, suggested_price")
+          .eq("user_id", user.id),
+        supabase.from("beverages")
+          .select("id, name, purchase_price, selling_price, category")
+          .eq("user_id", user.id),
+      ]);
+
+      if (recipesRes.data) {
+        setAvailableRecipes(recipesRes.data.map(r => ({
+          id: r.id,
+          name: r.name,
+          type: "recipe" as const,
+          price: r.selling_price || r.suggested_price || 0,
+          cost: r.cost_per_serving || r.total_cost || 0,
+        })));
+      }
+
+      if (beveragesRes.data) {
+        setAvailableBeverages(beveragesRes.data.map(b => ({
+          id: b.id,
+          name: b.name,
+          type: "beverage" as const,
+          price: b.selling_price || 0,
+          cost: b.purchase_price || 0,
+          category: b.category || undefined,
+        })));
       }
 
       // Get usage this month
@@ -147,35 +191,25 @@ export function useCombos() {
     fetchCombos();
   }, [fetchCombos]);
 
-  const generateCombo = useCallback(async (objective: string): Promise<Combo | null> => {
+  const generateCombo = useCallback(async (objective: string, selectedItemIds?: string[]): Promise<Combo | null> => {
     setIsGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke("generate-combo", {
-        body: { objective, storeId: activeStore?.id },
+        body: { objective, storeId: activeStore?.id, selectedItemIds },
       });
 
       if (error) {
-        // Try to parse the error body
         let errorMessage = "Erro ao gerar combo";
         try {
           const errBody = typeof error === "object" && error.message ? error.message : String(error);
           errorMessage = errBody;
         } catch {}
-
-        toast({
-          title: "Erro",
-          description: errorMessage,
-          variant: "destructive",
-        });
+        toast({ title: "Erro", description: errorMessage, variant: "destructive" });
         return null;
       }
 
       if (data?.error) {
-        toast({
-          title: "Erro",
-          description: data.error,
-          variant: "destructive",
-        });
+        toast({ title: "Erro", description: data.error, variant: "destructive" });
         return null;
       }
 
@@ -185,22 +219,42 @@ export function useCombos() {
       setMonthlyUsage(usage.used);
       setCombos((prev) => [combo, ...prev]);
 
-      toast({
-        title: "Combo gerado! ✨",
-        description: `"${combo.name}" foi criado com sucesso.`,
-      });
-
+      toast({ title: "Combo gerado! ✨", description: `"${combo.name}" foi criado com sucesso.` });
       return combo;
     } catch (err) {
       console.error("Error generating combo:", err);
-      toast({
-        title: "Erro",
-        description: "Erro inesperado ao gerar combo. Tente novamente.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro", description: "Erro inesperado ao gerar combo.", variant: "destructive" });
       return null;
     } finally {
       setIsGenerating(false);
+    }
+  }, [activeStore?.id, toast]);
+
+  const generateMenuStrategy = useCallback(async (strategyId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-menu-strategy", {
+        body: { strategyId, storeId: activeStore?.id },
+      });
+
+      if (error) {
+        toast({ title: "Erro", description: "Erro ao gerar estratégia", variant: "destructive" });
+        return null;
+      }
+
+      if (data?.error) {
+        toast({ title: "Erro", description: data.error, variant: "destructive" });
+        return null;
+      }
+
+      const usage = data.usage;
+      setMonthlyUsage(usage.used);
+
+      toast({ title: "Estratégia gerada! 🎯", description: "Confira a organização sugerida para seu cardápio." });
+      return data.strategy;
+    } catch (err) {
+      console.error("Error generating strategy:", err);
+      toast({ title: "Erro", description: "Erro inesperado.", variant: "destructive" });
+      return null;
     }
   }, [activeStore?.id, toast]);
 
@@ -224,7 +278,10 @@ export function useCombos() {
     userPlan,
     canGenerate,
     isFree,
+    availableRecipes,
+    availableBeverages,
     generateCombo,
+    generateMenuStrategy,
     deleteCombo,
     refresh: fetchCombos,
     objectiveLabels: OBJECTIVE_LABELS,
