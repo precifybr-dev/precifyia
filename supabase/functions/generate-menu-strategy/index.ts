@@ -38,6 +38,31 @@ serve(async (req) => {
       });
     }
 
+    // ─── Rate Limit Global ───
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const fingerprintHash = req.headers.get("x-fingerprint") || "";
+
+    const { data: rlAllowed } = await supabaseAdmin.rpc("check_rate_limit_global", {
+      p_user: user.id,
+      p_ip: clientIp,
+      p_fingerprint: fingerprintHash,
+    });
+
+    if (rlAllowed === false) {
+      return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em alguns minutos." }), {
+        status: 429,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Log usage for rate limit tracking
+    await supabaseAdmin.from("rate_limit_global").insert({
+      user_id: user.id,
+      ip: clientIp,
+      fingerprint_hash: fingerprintHash || null,
+      endpoint: "generate-menu-strategy",
+    });
+
     const { strategyId, storeId } = await req.json();
     if (!strategyId) {
       return new Response(JSON.stringify({ error: "Estratégia é obrigatória" }), {
