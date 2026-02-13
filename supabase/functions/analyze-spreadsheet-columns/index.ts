@@ -54,15 +54,20 @@ serve(async (req) => {
       );
     }
 
-    // ─── FEATURE FLAG: Check plan allows spreadsheet_import ───
-    const { data: featureCheck } = await supabase.rpc("check_plan_feature", {
+    // ─── Atomic Usage Check (prevents race conditions) ───
+    const { data: usageCheck, error: usageError } = await supabase.rpc("check_and_increment_usage", {
       _user_id: user.id,
       _feature: "spreadsheet_import",
+      _endpoint: "analyze-spreadsheet-columns",
     });
-    const ff = featureCheck?.[0];
-    if (ff && !ff.allowed) {
+    const usageInfo = usageCheck?.[0];
+    if (usageError || !usageInfo?.allowed) {
       return new Response(
-        JSON.stringify({ error: ff.reason, upgrade_required: true, current_plan: ff.current_plan }),
+        JSON.stringify({
+          error: usageInfo?.reason || "Funcionalidade não disponível no seu plano.",
+          upgrade_required: true,
+          current_plan: usageInfo?.current_plan || "free",
+        }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

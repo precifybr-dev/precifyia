@@ -2519,6 +2519,21 @@ export type Database = {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
       }
+      check_and_increment_usage: {
+        Args: {
+          _endpoint: string
+          _feature: string
+          _metadata?: Json
+          _user_id: string
+        }
+        Returns: {
+          allowed: boolean
+          current_plan: string
+          current_usage: number
+          reason: string
+          usage_limit: number
+        }[]
+      }
       check_plan_feature: {
         Args: { _feature: string; _user_id: string }
         Returns: {

@@ -77,44 +77,26 @@ serve(async (req) => {
       });
     }
 
-    // Check plan limits
-    const { data: planCheck } = await supabaseAdmin.rpc("check_plan_feature", {
+    // ─── Atomic Usage Check (prevents race conditions) ───
+    const { data: usageCheck, error: usageError } = await supabaseAdmin.rpc("check_and_increment_usage", {
       _user_id: user.id,
       _feature: "combos_ai",
+      _endpoint: "generate-combo",
     });
 
-    const planInfo = planCheck?.[0];
-    if (!planInfo?.allowed) {
-      return new Response(JSON.stringify({ error: planInfo?.reason || "Funcionalidade não disponível" }), {
-        status: 403,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Count usage this month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const { count: usageCount } = await supabaseAdmin
-      .from("combo_generation_usage")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .gte("created_at", startOfMonth.toISOString());
-
-    const limit = planInfo.usage_limit;
-    if (limit !== null && (usageCount ?? 0) >= limit) {
+    const usageInfo = usageCheck?.[0];
+    if (usageError || !usageInfo?.allowed) {
       return new Response(
         JSON.stringify({
-          error: `Limite de ${limit} combo(s) por mês atingido. Faça upgrade para gerar mais.`,
-          usage: usageCount,
-          limit,
+          error: usageInfo?.reason || "Funcionalidade não disponível no seu plano.",
+          usage: Number(usageInfo?.current_usage || 0),
+          limit: Number(usageInfo?.usage_limit || 0),
         }),
-        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const isFree = planInfo.current_plan === "free";
+    const isFree = usageInfo.current_plan === "free";
 
     // Fetch user data + combo memory for AI context
     const storeFilter = storeId ? { store_id: storeId } : {};
@@ -449,7 +431,7 @@ Responda OBRIGATORIAMENTE usando a função suggest_combo com TODOS os campos pr
       await supabaseAdmin.from("combo_items").insert(itemsToInsert);
     }
 
-    // Log usage
+    // Log combo linkage (atomic usage already tracked by check_and_increment_usage)
     await supabaseAdmin.from("combo_generation_usage").insert({
       user_id: user.id,
       store_id: storeId || null,
@@ -467,9 +449,9 @@ Responda OBRIGATORIAMENTE usando a função suggest_combo com TODOS os campos pr
           is_simulation: isFree,
         },
         usage: {
-          used: (usageCount ?? 0) + 1,
-          limit,
-          plan: planInfo.current_plan,
+          used: Number(usageInfo.current_usage),
+          limit: Number(usageInfo.usage_limit),
+          plan: usageInfo.current_plan,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -70,35 +70,23 @@ serve(async (req) => {
       });
     }
 
-    // Check plan limits (shared with combos_ai)
-    const { data: planCheck } = await supabaseAdmin.rpc("check_plan_feature", {
+    // ─── Atomic Usage Check (prevents race conditions) ───
+    const { data: usageCheck, error: usageError } = await supabaseAdmin.rpc("check_and_increment_usage", {
       _user_id: user.id,
       _feature: "combos_ai",
+      _endpoint: "generate-menu-strategy",
     });
 
-    const planInfo = planCheck?.[0];
-    if (!planInfo?.allowed) {
-      return new Response(JSON.stringify({ error: planInfo?.reason || "Funcionalidade não disponível" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Count usage this month
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
-
-    const { count: usageCount } = await supabaseAdmin
-      .from("combo_generation_usage")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", user.id)
-      .gte("created_at", startOfMonth.toISOString());
-
-    const limit = planInfo.usage_limit;
-    if (limit !== null && (usageCount ?? 0) >= limit) {
-      return new Response(JSON.stringify({ error: `Limite de ${limit} uso(s) por mês atingido.` }), {
-        status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const usageInfo = usageCheck?.[0];
+    if (usageError || !usageInfo?.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: usageInfo?.reason || "Funcionalidade não disponível no seu plano.",
+          usage: Number(usageInfo?.current_usage || 0),
+          limit: Number(usageInfo?.usage_limit || 0),
+        }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Fetch recipes and beverages
@@ -243,18 +231,18 @@ REGRAS:
       throw new Error("Erro ao processar resposta da IA");
     }
 
-    // Log usage
+    // Log linkage (atomic usage already tracked by check_and_increment_usage)
     await supabaseAdmin.from("combo_generation_usage").insert({
       user_id: user.id,
       store_id: storeId || null,
       objective: `strategy_${strategyId}`,
-      is_simulation: planInfo.current_plan === "free",
+      is_simulation: usageInfo.current_plan === "free",
     });
 
     return new Response(
       JSON.stringify({
         strategy: strategyResult,
-        usage: { used: (usageCount ?? 0) + 1, limit, plan: planInfo.current_plan },
+        usage: { used: Number(usageInfo.current_usage), limit: Number(usageInfo.usage_limit), plan: usageInfo.current_plan },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
