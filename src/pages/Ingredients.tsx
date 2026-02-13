@@ -20,7 +20,8 @@ import {
   AlertTriangle,
   Sparkles,
   Sun,
-  Moon
+  Moon,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,7 +57,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { formatIngredientCode } from "@/lib/ingredient-utils";
+import { formatIngredientCode, calculateIngredientCost } from "@/lib/ingredient-utils";
 import { normalizeText } from "@/lib/utils";
 import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
 import { SpreadsheetImportModal } from "@/components/spreadsheet-import/SpreadsheetImportModal";
@@ -112,6 +113,7 @@ export default function Ingredients() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [ingredientToDelete, setIngredientToDelete] = useState<Ingredient | null>(null);
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
@@ -329,7 +331,36 @@ export default function Ingredients() {
       if (error) {
         toast({ title: "Erro", description: "Não foi possível atualizar", variant: "destructive" });
       } else {
-        toast({ title: "Sucesso", description: "Insumo atualizado!" });
+        // Auto-recalculate recipes that use this ingredient
+        const qty = parseFloat(formData.purchase_quantity) || 1;
+        const fc = parseFloat(formData.correction_factor) || 1;
+        const newUnitPrice = (parseFloat(formData.purchase_price) / qty) * fc;
+        
+        const { data: affectedRI } = await supabase
+          .from("recipe_ingredients")
+          .select("id, quantity, unit, recipe_id")
+          .eq("ingredient_id", editingId);
+
+        if (affectedRI && affectedRI.length > 0) {
+          for (const ri of affectedRI) {
+            const newCost = calculateIngredientCost(newUnitPrice, ri.quantity, ri.unit, formData.unit);
+            await supabase.from("recipe_ingredients").update({ cost: newCost }).eq("id", ri.id);
+          }
+          // Recalculate affected recipes
+          const recipeIds = [...new Set(affectedRI.map((ri) => ri.recipe_id))];
+          for (const recipeId of recipeIds) {
+            const { data: riData } = await supabase.from("recipe_ingredients").select("cost").eq("recipe_id", recipeId);
+            if (riData) {
+              const totalCost = riData.reduce((sum, r) => sum + (r.cost || 0), 0);
+              const { data: recipeData } = await supabase.from("recipes").select("servings").eq("id", recipeId).single();
+              const costPerServing = totalCost / (recipeData?.servings || 1);
+              await supabase.from("recipes").update({ total_cost: totalCost, cost_per_serving: costPerServing }).eq("id", recipeId);
+            }
+          }
+          toast({ title: "Sucesso", description: `Insumo atualizado! ${affectedRI.length} receitas recalculadas.` });
+        } else {
+          toast({ title: "Sucesso", description: "Insumo atualizado!" });
+        }
         await fetchIngredients(user.id, activeStore?.id);
         resetForm();
       }
@@ -377,6 +408,101 @@ export default function Ingredients() {
   const handleDeleteComplete = async () => {
     await fetchIngredients(user.id, activeStore?.id);
     setIngredientToDelete(null);
+  };
+
+  // Recalculate all recipe costs based on current ingredient prices
+  const handleRecalculatePrices = async () => {
+    if (!user?.id) return;
+    setIsRecalculating(true);
+    try {
+      // Fetch all ingredients for this user
+      const { data: allIngredients } = await supabase
+        .from("ingredients")
+        .select("id, unit, unit_price, purchase_price, purchase_quantity, correction_factor")
+        .eq("user_id", user.id);
+
+      if (!allIngredients) throw new Error("Erro ao buscar insumos");
+
+      // Build a map of ingredient id -> unit_price
+      const ingMap = new Map<string, { unitPrice: number; unit: string; correctionFactor: number }>();
+      allIngredients.forEach((ing) => {
+        const qty = ing.purchase_quantity || 1;
+        const fc = ing.correction_factor || 1;
+        const unitPrice = ing.unit_price || ((ing.purchase_price / qty) * fc);
+        ingMap.set(ing.id, { unitPrice, unit: ing.unit, correctionFactor: fc });
+      });
+
+      // Fetch all recipe_ingredients for this user's recipes
+      const { data: recipes } = await supabase
+        .from("recipes")
+        .select("id")
+        .eq("user_id", user.id);
+
+      if (!recipes || recipes.length === 0) {
+        toast({ title: "Nenhuma ficha técnica", description: "Cadastre fichas técnicas para recalcular." });
+        setIsRecalculating(false);
+        return;
+      }
+
+      const recipeIds = recipes.map((r) => r.id);
+
+      const { data: recipeIngredients } = await supabase
+        .from("recipe_ingredients")
+        .select("id, ingredient_id, quantity, unit, recipe_id")
+        .in("recipe_id", recipeIds);
+
+      if (!recipeIngredients) throw new Error("Erro ao buscar ingredientes das receitas");
+
+      // Update each recipe_ingredient cost
+      let updatedCount = 0;
+      for (const ri of recipeIngredients) {
+        const ing = ingMap.get(ri.ingredient_id);
+        if (!ing) continue;
+
+        const newCost = calculateIngredientCost(ing.unitPrice, ri.quantity, ri.unit, ing.unit);
+        
+        await supabase
+          .from("recipe_ingredients")
+          .update({ cost: newCost })
+          .eq("id", ri.id);
+        updatedCount++;
+      }
+
+      // Now recalculate each recipe's total_cost and cost_per_serving
+      for (const recipe of recipes) {
+        const { data: riData } = await supabase
+          .from("recipe_ingredients")
+          .select("cost")
+          .eq("recipe_id", recipe.id);
+
+        if (riData) {
+          const totalCost = riData.reduce((sum, r) => sum + (r.cost || 0), 0);
+          
+          const { data: recipeData } = await supabase
+            .from("recipes")
+            .select("servings")
+            .eq("id", recipe.id)
+            .single();
+
+          const servings = recipeData?.servings || 1;
+          const costPerServing = totalCost / servings;
+
+          await supabase
+            .from("recipes")
+            .update({ total_cost: totalCost, cost_per_serving: costPerServing })
+            .eq("id", recipe.id);
+        }
+      }
+
+      toast({
+        title: "Preços atualizados!",
+        description: `${updatedCount} itens recalculados em ${recipes.length} fichas técnicas.`,
+      });
+    } catch (err: any) {
+      toast({ title: "Erro ao recalcular", description: err.message, variant: "destructive" });
+    } finally {
+      setIsRecalculating(false);
+    }
   };
 
   // Convert ingredients to IngredientData format for the selector
@@ -559,6 +685,17 @@ export default function Ingredients() {
                 showColorFilter={true}
               />
               <StoreSwitcher />
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleRecalculatePrices}
+                disabled={isRecalculating}
+                className="gap-2 text-primary border-primary/30 hover:bg-primary/10"
+                title="Recalcular custos de todas as fichas técnicas"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRecalculating ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">{isRecalculating ? "Recalculando..." : "Atualizar Fichas"}</span>
+              </Button>
               <Button 
                 variant="outline" 
                 size="sm"

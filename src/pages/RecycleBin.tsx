@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { Trash2, RotateCcw, Clock, Package, ChefHat, Wine, FileText, Loader2, AlertTriangle } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Trash2, RotateCcw, Clock, Package, ChefHat, Wine, FileText, Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -32,6 +33,7 @@ const TABLE_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
 };
 
 export default function RecycleBin() {
+  const navigate = useNavigate();
   const [deletedItems, setDeletedItems] = useState<DeletedRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<string>("all");
@@ -107,6 +109,9 @@ export default function RecycleBin() {
   return (
     <div className="container mx-auto py-6 px-4 max-w-6xl">
       <div className="flex items-center gap-3 mb-6">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/app")}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
         <div className="p-2 rounded-lg bg-destructive/10">
           <Trash2 className="w-6 h-6 text-destructive" />
         </div>
