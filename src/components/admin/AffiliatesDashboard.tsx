@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useAffiliatesAdmin, CouponFormData } from "@/hooks/useAffiliatesAdmin";
+import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -52,8 +53,12 @@ const STATUS_COLORS: Record<string, string> = {
   suspended: "bg-destructive/10 text-destructive",
 };
 
-function CreateCouponDialog({ affiliates, onSubmit }: { affiliates: any[]; onSubmit: (data: CouponFormData) => void }) {
+function CreateCouponDialog({ onSubmit }: { onSubmit: (data: CouponFormData) => void }) {
   const [open, setOpen] = useState(false);
+  const [affiliateEmail, setAffiliateEmail] = useState("");
+  const [affiliateFound, setAffiliateFound] = useState<{ id: string; name: string } | null>(null);
+  const [affiliateError, setAffiliateError] = useState("");
+  const [searchingAffiliate, setSearchingAffiliate] = useState(false);
   const [form, setForm] = useState<CouponFormData>({
     code: "",
     coupon_type: "interno",
@@ -65,11 +70,41 @@ function CreateCouponDialog({ affiliates, onSubmit }: { affiliates: any[]; onSub
     notes: null,
   });
 
+  const searchAffiliate = async () => {
+    if (!affiliateEmail.trim()) return;
+    setSearchingAffiliate(true);
+    setAffiliateError("");
+    setAffiliateFound(null);
+    const { data, error } = await supabase
+      .from("affiliates")
+      .select("id, name, email, status")
+      .eq("email", affiliateEmail.trim().toLowerCase())
+      .maybeSingle();
+    setSearchingAffiliate(false);
+    if (error || !data) {
+      setAffiliateError("Afiliado não encontrado com este email");
+      setForm((f) => ({ ...f, affiliate_id: null }));
+    } else if (data.status !== "active") {
+      setAffiliateError(`Afiliado "${data.name}" não está ativo (status: ${data.status})`);
+      setForm((f) => ({ ...f, affiliate_id: null }));
+    } else {
+      setAffiliateFound({ id: data.id, name: data.name });
+      setForm((f) => ({ ...f, affiliate_id: data.id }));
+    }
+  };
+
   const handleSubmit = () => {
     if (!form.code.trim()) return;
+    if (form.coupon_type === "influencer" && !form.affiliate_id) {
+      setAffiliateError("Busque e vincule um afiliado válido");
+      return;
+    }
     onSubmit({ ...form, code: form.code.toUpperCase().trim() });
     setOpen(false);
     setForm({ code: "", coupon_type: "interno", discount_type: "percentage", discount_value: 10, max_uses: null, expires_at: null, affiliate_id: null, notes: null });
+    setAffiliateEmail("");
+    setAffiliateFound(null);
+    setAffiliateError("");
   };
 
   return (
@@ -117,15 +152,26 @@ function CreateCouponDialog({ affiliates, onSubmit }: { affiliates: any[]; onSub
           </div>
           {form.coupon_type === "influencer" && (
             <div>
-              <Label>Afiliado</Label>
-              <Select value={form.affiliate_id ?? ""} onValueChange={(v) => setForm({ ...form, affiliate_id: v || null })}>
-                <SelectTrigger><SelectValue placeholder="Selecionar afiliado" /></SelectTrigger>
-                <SelectContent>
-                  {affiliates.filter((a: any) => a.status === "active").map((a: any) => (
-                    <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Email do Afiliado</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  value={affiliateEmail}
+                  onChange={(e) => { setAffiliateEmail(e.target.value); setAffiliateFound(null); setAffiliateError(""); setForm((f) => ({ ...f, affiliate_id: null })); }}
+                  placeholder="email@afiliado.com"
+                />
+                <Button type="button" variant="outline" size="sm" onClick={searchAffiliate} disabled={searchingAffiliate || !affiliateEmail.trim()}>
+                  {searchingAffiliate ? "..." : "Buscar"}
+                </Button>
+              </div>
+              {affiliateFound && (
+                <p className="text-sm text-success mt-1 flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" /> {affiliateFound.name}
+                </p>
+              )}
+              {affiliateError && (
+                <p className="text-sm text-destructive mt-1">{affiliateError}</p>
+              )}
             </div>
           )}
           <div>
@@ -181,7 +227,7 @@ export function AffiliatesDashboard() {
                 <CardTitle className="text-base">Cupons</CardTitle>
                 <CardDescription>{coupons.length} cupons cadastrados</CardDescription>
               </div>
-              <CreateCouponDialog affiliates={affiliates} onSubmit={(data) => createCoupon.mutate(data)} />
+              <CreateCouponDialog onSubmit={(data) => createCoupon.mutate(data)} />
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea className="h-[400px]">
