@@ -1586,6 +1586,33 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_global: {
+        Row: {
+          created_at: string
+          endpoint: string
+          fingerprint_hash: string | null
+          id: string
+          ip: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          fingerprint_hash?: string | null
+          id?: string
+          ip?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          fingerprint_hash?: string | null
+          id?: string
+          ip?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       recipe_ingredients: {
         Row: {
           cost: number
