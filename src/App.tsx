@@ -24,6 +24,7 @@ import TermsOfUse from "./pages/TermsOfUse";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CancellationPolicy from "./pages/CancellationPolicy";
 import ChargebackPolicy from "./pages/ChargebackPolicy";
+import PublicHelp from "./pages/PublicHelp";
 import { ContextualHelp } from "@/components/help/ContextualHelp";
 
 // Auth/Security pages
@@ -69,6 +70,7 @@ const App = () => (
             <Route path="/politica-antifraude" element={<AntiFraudPolicy />} />
             <Route path="/cancelamento" element={<CancellationPolicy />} />
             <Route path="/chargeback" element={<ChargebackPolicy />} />
+            <Route path="/ajuda" element={<PublicHelp />} />
             <Route 
               path="/login" 
               element={

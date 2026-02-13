@@ -9,6 +9,7 @@ import { FeaturesSection } from "@/components/landing/FeaturesSection";
 import { FAQSection } from "@/components/landing/FAQSection";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { Footer } from "@/components/landing/Footer";
+import { WhatsAppButton } from "@/components/landing/WhatsAppButton";
 
 export default function Landing() {
   // Force light mode on landing page - dark mode only for authenticated users
@@ -36,6 +37,7 @@ export default function Landing() {
       <FAQSection />
       <PricingSection />
       <Footer />
+      <WhatsAppButton />
     </div>
   );
 }
