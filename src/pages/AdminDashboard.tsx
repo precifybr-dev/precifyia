@@ -16,6 +16,7 @@ import { ConversionMetricsBlock } from "@/components/admin/ConversionMetricsBloc
 import { CombosDashboard } from "@/components/admin/CombosDashboard";
 import { AffiliatesDashboard } from "@/components/admin/AffiliatesDashboard";
 import { CommissionConfigPanel } from "@/components/admin/CommissionConfigPanel";
+import { MonetizationPanel } from "@/components/admin/MonetizationPanel";
 import { PlanLimitsTable } from "@/components/admin/PlanLimitsTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -358,6 +359,10 @@ export default function AdminDashboard() {
                   <DollarSign className="h-4 w-4" />
                   Comissões
                 </TabsTrigger>
+                <TabsTrigger value="monetization" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <TrendingUp className="h-4 w-4" />
+                  Monetização
+                </TabsTrigger>
                 <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <History className="h-4 w-4" />
                   Logs
@@ -617,6 +622,10 @@ export default function AdminDashboard() {
 
               <TabsContent value="commissions">
                 <CommissionConfigPanel />
+              </TabsContent>
+
+              <TabsContent value="monetization">
+                <MonetizationPanel />
               </TabsContent>
 
               <TabsContent value="logs" className="space-y-4">

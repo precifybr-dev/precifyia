@@ -1254,6 +1254,39 @@ export type Database = {
           },
         ]
       }
+      monetization_settings: {
+        Row: {
+          created_at: string
+          created_by: string
+          description: string | null
+          id: string
+          is_active: boolean
+          setting_key: string
+          setting_value: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          setting_key: string
+          setting_value?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          setting_key?: string
+          setting_value?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       monthly_revenues: {
         Row: {
           created_at: string
@@ -2480,6 +2513,15 @@ export type Database = {
           email: string
           last_activity: string
           user_id: string
+        }[]
+      }
+      get_ltv_metrics: {
+        Args: never
+        Returns: {
+          average_ltv: number
+          average_subscription_months: number
+          ltv_by_plan: Json
+          total_active_subscribers: number
         }[]
       }
       get_most_used_features: {
