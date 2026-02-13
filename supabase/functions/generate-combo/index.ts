@@ -279,6 +279,15 @@ FORMATO DE SAÍDA OBRIGATÓRIO (use a função suggest_combo com TODOS os campos
 
 Responda OBRIGATORIAMENTE usando a função suggest_combo com TODOS os campos preenchidos.`;
 
+    // ─── Circuit Breaker Global ───
+    const { data: cbAllowed } = await supabaseAdmin.rpc("check_global_ai_limit", { _endpoint: "generate-combo" });
+    if (cbAllowed === false) {
+      await supabaseAdmin.from("strategic_usage_logs").insert({ user_id: user.id, endpoint: "generate-combo-circuit-break", tokens_used: 0 });
+      return new Response(JSON.stringify({ error: "Sistema de IA temporariamente indisponível. Tente novamente em alguns minutos." }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+
     // Call Lovable AI with tool calling for structured output
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",

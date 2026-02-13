@@ -114,6 +114,15 @@ ${JSON.stringify(headers)}
 Retorne APENAS o JSON no formato:
 {"name": 0, "price": 1, "quantity": 2, "unit": 3, "correction_factor": null}`;
 
+    // ─── Circuit Breaker Global ───
+    const { data: cbAllowed } = await supabase.rpc("check_global_ai_limit", { _endpoint: "analyze-spreadsheet-columns" });
+    if (cbAllowed === false) {
+      await supabase.from("strategic_usage_logs").insert({ user_id: user.id, endpoint: "analyze-spreadsheet-circuit-break", tokens_used: 0 });
+      return new Response(JSON.stringify({ error: "Sistema de IA temporariamente indisponível. Tente novamente em alguns minutos." }), {
+        status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      });
+    }
+
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {

@@ -2534,6 +2534,7 @@ export type Database = {
           usage_limit: number
         }[]
       }
+      check_global_ai_limit: { Args: { _endpoint: string }; Returns: boolean }
       check_plan_feature: {
         Args: { _feature: string; _user_id: string }
         Returns: {
