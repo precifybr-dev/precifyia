@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import { Turnstile } from "react-turnstile";
 
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/ui/Logo";
+
+const TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
 
 export default function Register() {
   // Force light mode on public pages - dark mode only for authenticated users
@@ -29,6 +32,8 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [boundTurnstile, setBoundTurnstile] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -50,6 +55,7 @@ export default function Register() {
             password,
             full_name: name,
             business_name: businessName,
+            turnstile_token: turnstileToken,
           }),
         }
       );
@@ -77,6 +83,8 @@ export default function Register() {
       });
     } finally {
       setIsLoading(false);
+      setTurnstileToken(null);
+      boundTurnstile?.reset();
     }
   };
 
@@ -233,6 +241,13 @@ export default function Register() {
                 </button>
               </div>
             </div>
+
+            <Turnstile
+              sitekey={TURNSTILE_SITE_KEY}
+              onVerify={(token, bt) => { setTurnstileToken(token); setBoundTurnstile(bt); }}
+              onExpire={() => setTurnstileToken(null)}
+              size="invisible"
+            />
 
             <Button type="submit" variant="hero" size="lg" className="w-full" disabled={isLoading || isGoogleLoading}>
               {isLoading ? "Criando conta..." : "Criar conta grátis"}

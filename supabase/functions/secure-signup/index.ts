@@ -70,6 +70,45 @@ serve(async (req) => {
     const password = typeof rawBody.password === "string" ? rawBody.password : null;
     const fullName = typeof rawBody.full_name === "string" ? rawBody.full_name.trim() : "";
     const businessName = typeof rawBody.business_name === "string" ? rawBody.business_name.trim() : "";
+    const turnstileToken = typeof rawBody.turnstile_token === "string" ? rawBody.turnstile_token : null;
+
+    // ─── 2b. Validate Cloudflare Turnstile CAPTCHA ───
+    const turnstileSecret = Deno.env.get("TURNSTILE_SECRET_KEY");
+    if (turnstileSecret) {
+      if (!turnstileToken) {
+        // No token = silent block (generic message)
+        return new Response(
+          JSON.stringify({ message: GENERIC_SUCCESS }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const turnstileRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          secret: turnstileSecret,
+          response: turnstileToken,
+          remoteip: clientIp,
+        }),
+      });
+
+      const turnstileData = await turnstileRes.json();
+      if (!turnstileData.success) {
+        // Failed CAPTCHA = silent block (generic message)
+        await supabaseAdmin.from("rate_limit_global").insert({
+          ip: clientIp,
+          endpoint: "secure-signup-captcha-failed",
+          user_id: null,
+          fingerprint_hash: null,
+        });
+
+        return new Response(
+          JSON.stringify({ message: GENERIC_SUCCESS }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     if (!email || !password) {
       return new Response(
