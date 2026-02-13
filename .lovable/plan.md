@@ -1,59 +1,58 @@
 
+# Redesign: Botao "Atualizar Precos" no Dashboard
 
-# Plano: Telas de Gestao de Cupons e Afiliados
+## Conceito
 
-## Resumo
+Transformar o widget atual (que ja mostra a lista de insumos inline) em duas partes:
 
-Criar as telas de administracao no painel admin para gerenciar cupons, afiliados e comissoes. O modulo sera integrado como uma nova aba no AdminDashboard e um novo item no menu lateral.
+1. **Botao-card chamativo no Dashboard** -- compacto, com icone animado, frase motivacional e contador de atualizacoes recentes
+2. **Modal/Drawer** que abre ao clicar, contendo a busca e edicao de precos (logica atual)
+3. **Feedback pos-salvamento** mostrando exatamente quantos insumos e quantas fichas tecnicas foram recalculadas
 
-## O que sera criado
+## O que o usuario vera
 
-### 1. Nova aba "Cupons & Afiliados" no Admin Dashboard
+### No Dashboard (botao-card)
+- Icone de refresh com pulso sutil (animacao CSS)
+- Titulo: **"Atualizar Precos"**
+- Subtitulo motivacional: *"Mantenha seus custos em dia e nao perca dinheiro"*
+- Badge mostrando total de insumos cadastrados
+- Efeito hover/active com escala e brilho
 
-Uma nova secao com 3 sub-abas internas:
+### Ao clicar (abre Drawer mobile / Dialog desktop)
+- Campo de busca por nome ou codigo
+- Lista de insumos com preco atual clicavel
+- Ao salvar um preco, mostra um **resumo visual**:
+  - "Tomate atualizado para R$ 8,50"
+  - "3 fichas tecnicas recalculadas automaticamente"
+  - Icone de check verde com animacao
 
-- **Cupons**: Listagem, criacao, edicao e desativacao de cupons. Filtros por tipo (influencer, trial, interno) e status. Exibe codigo, desconto, usos, validade.
-- **Afiliados**: Listagem de afiliados com status, taxa de comissao, saldo pendente/pago. Acoes para aprovar/bloquear afiliados.
-- **Comissoes**: Visao do ledger financeiro. Filtros por status (pending, eligible, approved, paid). Acoes em lote para avancar status. Historico de saques.
-
-### 2. Atualizacao do menu lateral (AdminLayout)
-
-Adicionar item "Cupons & Afiliados" com icone `Ticket` na navegacao, apontando para a secao `affiliates` do dashboard.
-
-### 3. Nova aba no TabsList do AdminDashboard
-
-Adicionar `TabsTrigger` com valor `affiliates` e o componente `AffiliatesDashboard` no `TabsContent`.
+### Resumo acumulado na sessao
+- Apos cada atualizacao, o botao-card no dashboard atualiza um contador:
+  - Ex: **"2 insumos atualizados hoje"**
+  - Reforco positivo para o usuario continuar
 
 ## Detalhes Tecnicos
 
-### Arquivos novos
-- `src/components/admin/AffiliatesDashboard.tsx` - Componente principal com sub-abas (Cupons, Afiliados, Comissoes)
-- `src/hooks/useAffiliatesAdmin.ts` - Hook para buscar dados das tabelas `coupons`, `affiliates`, `commissions`, `coupon_uses`
+### Arquivo: `src/components/dashboard/QuickPriceUpdate.tsx`
+- Refatorar para separar em dois componentes:
+  - `QuickPriceButton` -- o card/botao visivel no dashboard
+  - `QuickPriceModal` -- o drawer/dialog com a logica de edicao
+- Manter toda a logica de cascade (já funciona)
+- Adicionar estado `updatedCount` e `recipesAffectedCount` para feedback
+- Usar `Drawer` (vaul) no mobile e `Dialog` no desktop via hook `use-mobile`
 
-### Arquivos modificados
-- `src/components/admin/AdminLayout.tsx` - Adicionar item de menu `{ id: "affiliates", label: "Cupons & Afiliados", icon: Ticket, section: "affiliates", permission: "view_financials" }`
-- `src/pages/AdminDashboard.tsx` - Adicionar TabsTrigger e TabsContent para a secao `affiliates`
+### Arquivo: `src/pages/Dashboard.tsx`
+- Substituir o `<QuickPriceUpdate>` inline pelo novo `<QuickPriceButton>` dentro do grid de acesso rapido
+- O botao ocupa uma posicao de destaque (pode ser full-width abaixo do grid de stats, ou integrado no grid de acesso rapido)
 
-### Funcionalidades da tela de Cupons
-- Tabela com colunas: Codigo, Tipo, Desconto, Usos (atual/max), Validade, Status
-- Botao "Novo Cupom" com formulario modal (codigo, tipo, desconto %, trial extra dias, max usos, data expiracao, affiliate vinculado)
-- Toggle para ativar/desativar cupons
-- KPIs: Total de cupons ativos, Total de usos, Cupons expirados
+### Animacoes CSS
+- Pulso sutil no icone (`animate-pulse` customizado, lento)
+- `active:scale-[0.97]` no botao
+- Transicao de cor no badge apos atualizacao (neutro -> verde)
 
-### Funcionalidades da tela de Afiliados
-- Tabela: Nome/Email, Status, Taxa Comissao, Total Ganho, Pendente, Pago
-- Acoes: Aprovar, Suspender, Editar taxa
-- KPIs: Total afiliados ativos, Comissoes pendentes (R$), Comissoes pagas (R$)
-
-### Funcionalidades da tela de Comissoes
-- Tabela: Afiliado, Cliente, Mes, Valor, Status
-- Filtros por status e por afiliado
-- Acoes em lote: "Avancar para Eligible", "Aprovar selecionados"
-- Chama a Edge Function `process-commissions` para acoes de status
-- KPIs: Total pendente, Total eligible, Total aprovado, Total pago
-
-### Seguranca
-- Permissao `view_financials` para acessar a secao
-- Todas as mutacoes de status passam pela Edge Function `process-commissions` (nunca direto no banco pelo cliente)
-- Criacao/edicao de cupons via query direta (permitido pela RLS para master)
-
+### Feedback pos-save (dentro do modal)
+- Toast substituido por um bloco inline no modal mostrando:
+  - Nome do insumo + novo preco
+  - Quantidade de `recipe_ingredients` afetados
+  - Quantidade de `recipes` recalculadas
+- Manter toast tambem para quando o modal fechar (resumo final)
