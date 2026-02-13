@@ -33,6 +33,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import OnboardingProgress from "@/components/dashboard/OnboardingProgress";
 import WelcomeImportPrompt from "@/components/dashboard/WelcomeImportPrompt";
+import { QuickPriceUpdate } from "@/components/dashboard/QuickPriceUpdate";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { SpreadsheetImportModal } from "@/components/spreadsheet-import/SpreadsheetImportModal";
@@ -634,40 +635,48 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* When onboarding is complete, show quick access cards */}
+          {/* When onboarding is complete, show quick access cards + quick price update */}
           {isOnboardingComplete && (
-            <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-card">
-              <h3 className="font-display font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-foreground">Acesso Rápido</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <button 
-                  onClick={() => handleNavClick("business")}
-                  className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
-                >
-                  <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
-                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Área do Negócio</h4>
-                </button>
-                <button 
-                  onClick={() => handleNavClick("ingredients")}
-                  className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
-                >
-                  <Package className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
-                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Insumos ({ingredientsCount})</h4>
-                </button>
-                <button 
-                  onClick={() => handleNavClick("recipes")}
-                  className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
-                >
-                  <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
-                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Fichas ({recipesCount})</h4>
-                </button>
-                <button 
-                  onClick={() => handleNavClick("beverages")}
-                  className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
-                >
-                  <Wine className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
-                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Bebidas</h4>
-                </button>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-card">
+                <h3 className="font-display font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-foreground">Acesso Rápido</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => handleNavClick("business")}
+                    className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
+                  >
+                    <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
+                    <h4 className="font-semibold text-xs sm:text-sm text-foreground">Área do Negócio</h4>
+                  </button>
+                  <button 
+                    onClick={() => handleNavClick("ingredients")}
+                    className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
+                  >
+                    <Package className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
+                    <h4 className="font-semibold text-xs sm:text-sm text-foreground">Insumos ({ingredientsCount})</h4>
+                  </button>
+                  <button 
+                    onClick={() => handleNavClick("recipes")}
+                    className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
+                  >
+                    <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
+                    <h4 className="font-semibold text-xs sm:text-sm text-foreground">Fichas ({recipesCount})</h4>
+                  </button>
+                  <button 
+                    onClick={() => handleNavClick("beverages")}
+                    className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
+                  >
+                    <Wine className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
+                    <h4 className="font-semibold text-xs sm:text-sm text-foreground">Bebidas</h4>
+                  </button>
+                </div>
               </div>
+
+              <QuickPriceUpdate
+                userId={user?.id}
+                storeId={activeStore?.id || null}
+                onPriceUpdated={() => fetchMetrics(user?.id, profile)}
+              />
             </div>
           )}
         </div>
