@@ -24,7 +24,7 @@ import {
   Trash2,
   User,
   ChevronUp,
-  RefreshCw
+  RefreshCw,
 } from "lucide-react";
 import { useStore } from "@/contexts/StoreContext";
 import { CreateStoreModal } from "@/components/store/CreateStoreModal";
@@ -635,9 +635,17 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* When onboarding is complete, show quick access cards + quick price update */}
+          {/* When onboarding is complete, show quick access + price update button */}
           {isOnboardingComplete && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="space-y-4">
+              {/* Price Update CTA - full width, prominent */}
+              <QuickPriceUpdate
+                userId={user?.id}
+                storeId={activeStore?.id || null}
+                onPriceUpdated={() => fetchMetrics(user?.id, profile)}
+              />
+
+              {/* Quick Access */}
               <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-card">
                 <h3 className="font-display font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-foreground">Acesso Rápido</h3>
                 <div className="grid grid-cols-2 gap-3">
@@ -671,12 +679,6 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
-
-              <QuickPriceUpdate
-                userId={user?.id}
-                storeId={activeStore?.id || null}
-                onPriceUpdated={() => fetchMetrics(user?.id, profile)}
-              />
             </div>
           )}
         </div>
