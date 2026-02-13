@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
-import { Package, Plus, Trash2, AlertCircle, Pencil, X, Check, Loader2 } from "lucide-react";
+import { Package, Plus, Trash2, AlertCircle, Pencil, X, Check, Loader2, ClipboardCopy, Sparkles, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { SpreadsheetImportModal } from "@/components/spreadsheet-import/SpreadsheetImportModal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -70,6 +71,9 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [defaultStoreId, setDefaultStoreId] = useState<string | null>(null);
@@ -84,6 +88,7 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      setUserId(user.id);
 
       // Busca a loja padrão do usuário (criada no passo anterior)
       const { data: storeData } = await supabase
@@ -368,18 +373,104 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
         </div>
       </div>
 
-      <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-        <div className="text-sm">
-          <p className="font-medium text-foreground mb-1">Dica importante</p>
-          <p className="text-muted-foreground">
-            Cadastre os insumos com o preço e quantidade da compra. O custo unitário
-            é calculado automaticamente. Ex: 1kg de farinha por R$ 5,00 = R$ 5,00/kg.
-          </p>
-        </div>
-      </div>
+      {/* Import Tutorial - shown when no ingredients yet */}
+      {ingredients.length === 0 && (
+        <div className="space-y-4 mb-6">
+          {/* Primary CTA: Import from Spreadsheet */}
+          <div className="border-2 border-primary/20 bg-primary/5 rounded-xl p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <ClipboardCopy className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-foreground text-sm sm:text-base">
+                  📋 Já tem uma planilha? Importe em segundos!
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Não perca tempo digitando — copie da sua planilha e cole aqui.
+                </p>
+              </div>
+            </div>
 
-      {/* Add new ingredient form */}
+            {/* Step-by-step guide */}
+            <div className="grid gap-2.5">
+              {[
+                { step: 1, emoji: "📂", text: "Abra sua planilha (Excel, Google Sheets, etc.)" },
+                { step: 2, emoji: "📋", text: "Selecione os dados com os insumos e copie (Ctrl+C)" },
+                { step: 3, emoji: "✨", text: "Clique no botão abaixo, cole e pronto! A IA mapeia tudo." },
+              ].map((item) => (
+                <div key={item.step} className="flex items-center gap-3 p-2.5 rounded-lg bg-background/60">
+                  <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                    {item.step}
+                  </span>
+                  <span className="text-sm text-foreground">
+                    <span className="mr-1">{item.emoji}</span> {item.text}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <Button
+              size="lg"
+              className="w-full gap-2 text-base"
+              onClick={() => setImportModalOpen(true)}
+            >
+              <Sparkles className="w-5 h-5" />
+              Importar da Planilha (rápido e fácil)
+            </Button>
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground font-medium">ou cadastre manualmente</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          {/* Toggle manual form */}
+          <button
+            type="button"
+            onClick={() => setShowManualForm(!showManualForm)}
+            className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showManualForm ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            {showManualForm ? "Ocultar formulário manual" : "Digitar insumos um a um"}
+          </button>
+        </div>
+      )}
+
+      {/* Tip for users with ingredients */}
+      {ingredients.length > 0 && (
+        <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground mb-1">Dica importante</p>
+            <p className="text-muted-foreground">
+              Cadastre os insumos com o preço e quantidade da compra. O custo unitário
+              é calculado automaticamente. Ex: 1kg de farinha por R$ 5,00 = R$ 5,00/kg.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Import button when user already has ingredients */}
+      {ingredients.length > 0 && (
+        <div className="flex gap-2 mb-4">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => setImportModalOpen(true)}
+          >
+            <ClipboardCopy className="w-4 h-4" />
+            Importar mais da planilha
+          </Button>
+        </div>
+      )}
+
+      {/* Add new ingredient form - shown when has ingredients OR manually toggled */}
+      {(ingredients.length > 0 || showManualForm) && (
       <div className="grid grid-cols-12 gap-3 items-end p-4 bg-muted/50 rounded-lg mb-4">
         <div className="col-span-12 sm:col-span-4 space-y-2">
           <Label htmlFor="new-name">
@@ -460,6 +551,19 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
           </Button>
         </div>
       </div>
+      )}
+
+      {/* Import modal */}
+      {userId && (
+        <SpreadsheetImportModal
+          open={importModalOpen}
+          onOpenChange={setImportModalOpen}
+          userId={userId}
+          storeId={defaultStoreId}
+          existingIngredients={ingredients.map(i => ({ name: i.name }))}
+          onImportComplete={fetchData}
+        />
+      )}
 
       {/* Ingredients table */}
       {isLoading ? (
@@ -616,11 +720,11 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
             </TableBody>
           </Table>
         </div>
-      ) : (
+      ) : !showManualForm && ingredients.length === 0 ? null : (
         <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg mb-6">
           <Package className="w-10 h-10 mx-auto mb-2 opacity-50" />
           <p>Nenhum insumo cadastrado ainda.</p>
-          <p className="text-sm">Use o formulário acima para adicionar.</p>
+          <p className="text-sm">Use o formulário acima ou importe da planilha.</p>
         </div>
       )}
 

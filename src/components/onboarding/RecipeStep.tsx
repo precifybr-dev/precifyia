@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileSpreadsheet, Plus, Trash2, Calculator, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, Plus, Trash2, Calculator, AlertCircle, Link2, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +24,7 @@ export function RecipeStep({ onAdvance }: RecipeStepProps) {
     { id: crypto.randomUUID(), name: "", quantity: "", unit: "g", cost: "" },
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showManualForm, setShowManualForm] = useState(false);
   const { toast } = useToast();
 
   const addIngredient = () => {
@@ -126,18 +127,82 @@ export function RecipeStep({ onAdvance }: RecipeStepProps) {
         </div>
       </div>
 
-      <div className="bg-success/10 border border-success/20 rounded-lg p-4 mb-6 flex items-start gap-3">
-        <AlertCircle className="w-5 h-5 text-success shrink-0 mt-0.5" />
-        <div className="text-sm">
-          <p className="font-medium text-foreground mb-1">Quase lá!</p>
-          <p className="text-muted-foreground">
-            Crie uma ficha técnica simples para começar. Você pode adicionar mais
-            detalhes e receitas depois no dashboard.
-          </p>
+      {/* Import Tutorial - iFood */}
+      <div className="space-y-4 mb-6">
+        <div className="border-2 border-primary/20 bg-primary/5 rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Link2 className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground text-sm sm:text-base">
+                🍔 Vende no iFood? Importe seus produtos!
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Puxe o cardápio do iFood automaticamente — sem digitar nada.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid gap-2.5">
+            {[
+              { step: 1, emoji: "🌐", text: "Abra seu restaurante no iFood pelo navegador" },
+              { step: 2, emoji: "📋", text: "Copie o link da página (ex: ifood.com.br/seu-restaurante)" },
+              { step: 3, emoji: "✨", text: "Cole aqui e importamos seus produtos automaticamente" },
+            ].map((item) => (
+              <div key={item.step} className="flex items-center gap-3 p-2.5 rounded-lg bg-background/60">
+                <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                  {item.step}
+                </span>
+                <span className="text-sm text-foreground">
+                  <span className="mr-1">{item.emoji}</span> {item.text}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <Button
+            size="lg"
+            className="w-full gap-2 text-base"
+            onClick={() => {
+              window.location.href = "/app/recipes?openIfood=true";
+            }}
+          >
+            <ExternalLink className="w-5 h-5" />
+            Importar do iFood
+          </Button>
         </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-xs text-muted-foreground font-medium">ou crie manualmente</span>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+
+        {/* Toggle manual form */}
+        <button
+          type="button"
+          onClick={() => setShowManualForm(!showManualForm)}
+          className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          {showManualForm ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          {showManualForm ? "Ocultar formulário manual" : "Criar ficha técnica manualmente"}
+        </button>
       </div>
 
+      {showManualForm && (
       <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="bg-success/10 border border-success/20 rounded-lg p-4 mb-2 flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-success shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="font-medium text-foreground mb-1">Quase lá!</p>
+            <p className="text-muted-foreground">
+              Crie uma ficha técnica simples para começar. Você pode adicionar mais
+              detalhes e receitas depois no dashboard.
+            </p>
+          </div>
+        </div>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="recipeName">
@@ -271,25 +336,30 @@ export function RecipeStep({ onAdvance }: RecipeStepProps) {
 
         <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <Button
-            type="button"
-            variant="ghost"
-            className="sm:flex-1"
-            onClick={handleSkip}
-            disabled={isLoading}
-          >
-            Pular por agora
-          </Button>
-          <Button
             type="submit"
             variant="success"
             size="lg"
-            className="sm:flex-[2]"
+            className="w-full"
             disabled={isLoading}
           >
             {isLoading ? "Finalizando..." : "Concluir Onboarding 🎉"}
           </Button>
         </div>
       </form>
+      )}
+
+      {/* Skip button always visible */}
+      <div className="flex flex-col sm:flex-row gap-3 pt-4">
+        <Button
+          type="button"
+          variant="ghost"
+          className="flex-1"
+          onClick={handleSkip}
+          disabled={isLoading}
+        >
+          Pular por agora → Ir ao Dashboard
+        </Button>
+      </div>
     </div>
   );
 }
