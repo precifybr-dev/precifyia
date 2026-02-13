@@ -243,6 +243,17 @@ REGRAS:
     }
 
     const aiData = await aiResponse.json();
+
+    // ─── Strategic Usage Log (feeds anti-fraud system) ───
+    const tokensUsed = (aiData.usage?.total_tokens || aiData.usage?.completion_tokens || 0);
+    await supabaseAdmin.from("strategic_usage_logs").insert({
+      user_id: user.id,
+      endpoint: "generate-menu-strategy",
+      tokens_used: tokensUsed,
+      ip_address: clientIp,
+      fingerprint_hash: fingerprintHash || null,
+    });
+
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
 
     if (!toolCall?.function?.arguments) {
