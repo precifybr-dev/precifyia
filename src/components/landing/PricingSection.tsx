@@ -142,17 +142,13 @@ export function PricingSection() {
             Prefere falar com alguém?
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <span 
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success font-medium text-sm select-all cursor-pointer"
-              title="Clique para selecionar e copiar"
+             <a 
+              href="https://wa.me/5547996887776"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success font-medium text-sm hover:opacity-80 transition-opacity"
             >
-              💬 WhatsApp: (47) 99688-7776
-            </span>
-            <a 
-              href="mailto:precify.br@gmail.com" 
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors font-medium text-sm"
-            >
-              ✉️ Falar por email
+              💬 Falar no WhatsApp
             </a>
           </div>
         </div>

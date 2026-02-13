@@ -67,8 +67,6 @@ export default function ServiceContract() {
             <div className="text-sm text-muted-foreground space-y-0.5 mt-4">
               <p><strong>Empresa:</strong> TA ON - Precify Tecnologia LTDA</p>
               <p><strong>CNPJ:</strong> 48.245.923/0001-30</p>
-              <p><strong>Endereço:</strong> Rua Exemplo, 123 — Centro, São Paulo/SP — CEP 01000-000</p>
-              <p><strong>E-mail jurídico:</strong> juridico@precify.com.br</p>
               <p><strong>Última atualização:</strong> {LAST_UPDATED}</p>
               <p><strong>Versão:</strong> {CONTRACT_VERSION}</p>
             </div>

@@ -22,7 +22,7 @@ export default function PrivacyPolicy() {
             <div className="text-sm text-muted-foreground space-y-0.5 mt-4">
               <p><strong>Empresa:</strong> TA ON - Precify Tecnologia LTDA</p>
               <p><strong>CNPJ:</strong> 48.245.923/0001-30</p>
-              <p><strong>Encarregado de Dados (DPO):</strong> privacidade@precify.com.br</p>
+              
               <p><strong>Última atualização:</strong> {LAST_UPDATED}</p>
             </div>
           </header>
@@ -97,7 +97,7 @@ export default function PrivacyPolicy() {
                 <li>Informação sobre compartilhamento com terceiros.</li>
               </ul>
               <p className="mt-2">
-                Solicitações devem ser enviadas para: <strong>privacidade@precify.com.br</strong>. O prazo de resposta é de até
+                Solicitações devem ser enviadas através do nosso canal de atendimento via WhatsApp. O prazo de resposta é de até
                 15 (quinze) dias úteis.
               </p>
             </Section>
@@ -129,7 +129,7 @@ export default function PrivacyPolicy() {
             <Section n={11} title="Contato">
               <p>
                 Para exercer seus direitos ou esclarecer dúvidas sobre o tratamento de seus dados pessoais, entre em contato
-                com nosso Encarregado de Dados (DPO): <strong>privacidade@precify.com.br</strong>.
+                através do nosso canal de atendimento via WhatsApp.
               </p>
             </Section>
           </div>
