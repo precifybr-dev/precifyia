@@ -1,50 +1,56 @@
-import { Star, Users } from "lucide-react";
+import { Star, Users, Calculator } from "lucide-react";
 
 const testimonials = [
   {
-    quote:
-      "Descobri que estava lucrando menos da metade do que imaginava. Ajustei os preços e a diferença apareceu no mesmo mês.",
+    quote: "Descobri que estava praticamente pagando para vender.",
     author: "Carla M.",
     role: "Marmitaria em SP",
   },
   {
-    quote:
-      "Ajustei 4 produtos no iFood e minha margem subiu quase 20%. Eu vendia no prejuízo sem saber.",
+    quote: "Eu achava que estava lucrando, mas estava errando na comissão.",
     author: "Roberto S.",
     role: "Hamburgueria em BH",
   },
   {
-    quote:
-      "Hoje eu sei exatamente quanto sobra por pedido. Simples de usar e me economiza horas por semana.",
+    quote: "Em 10 minutos ajustei meu cardápio inteiro.",
     author: "Fernanda L.",
     role: "Pizzaria em RJ",
   },
+];
+
+const counters = [
+  { icon: Users, value: "+400", label: "restaurantes analisando margem" },
+  { icon: Calculator, value: "+30 mil", label: "cálculos realizados" },
 ];
 
 export function SocialProofSection() {
   return (
     <section className="py-16 lg:py-24 bg-muted/30">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-4">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-10">
-            Restaurantes que decidiram parar de trabalhar no escuro
+        <div className="text-center mb-12">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4">
+            Quem usa, não volta para planilha
           </h2>
         </div>
 
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <Users className="w-6 h-6 text-primary" />
+        {/* Counters */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 mb-12">
+          {counters.map((c) => (
+            <div key={c.label} className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <c.icon className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <span className="text-3xl sm:text-4xl font-bold text-foreground">
+                  {c.value}
+                </span>
+                <p className="text-sm text-muted-foreground">{c.label}</p>
+              </div>
             </div>
-            <span className="text-4xl sm:text-5xl font-bold text-foreground">
-              380+
-            </span>
-          </div>
-          <p className="text-lg text-muted-foreground">
-            restaurantes já usam o Precify para precificar corretamente
-          </p>
+          ))}
         </div>
 
+        {/* Testimonials */}
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {testimonials.map((testimonial, index) => (
             <div

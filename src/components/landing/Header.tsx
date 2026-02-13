@@ -9,9 +9,8 @@ export function Header() {
   const navigate = useNavigate();
 
   const navLinks = [
-    { href: "#como-funciona", label: "Como funciona" },
-    { href: "#resultados", label: "Resultados" },
     { href: "#calculadora", label: "Calculadora" },
+    { href: "#resultados", label: "Resultados" },
     { href: "#precos", label: "Preços" },
   ];
 
@@ -60,7 +59,7 @@ export function Header() {
               className="bg-success hover:bg-success/90 text-success-foreground group"
               onClick={() => navigate("/register")}
             >
-              Começar a Precificar Certo
+              Calcular meu lucro agora
               <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
             </Button>
           </div>
@@ -109,7 +108,7 @@ export function Header() {
                     navigate("/register");
                   }}
                 >
-                  Começar a Precificar Certo
+                  Calcular meu lucro agora
                 </Button>
               </div>
             </nav>

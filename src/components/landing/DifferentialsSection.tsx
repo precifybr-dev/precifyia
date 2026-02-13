@@ -1,19 +1,21 @@
-import { Receipt, BarChart3, RefreshCw, FileBarChart, Store, ShieldCheck } from "lucide-react";
+import { Receipt, BarChart3, RefreshCw, FileBarChart, Store, ShieldCheck, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 
 const differentials = [
   {
     icon: Receipt,
     title: "Considera taxa real do iFood",
-    description: "Calcula automaticamente a comissão, taxa de pagamento e antecipação.",
+    description: "Comissão, taxa de pagamento e antecipação — tudo calculado automaticamente.",
   },
   {
     icon: BarChart3,
     title: "Mostra lucro líquido real",
-    description: "Não só CMV — lucro por produto descontando impostos, taxas e custos fixos.",
+    description: "Lucro por produto descontando impostos, taxas e custos fixos — não só CMV.",
   },
   {
     icon: RefreshCw,
-    title: "Recalcula tudo automaticamente",
+    title: "Recalcula tudo quando insumo muda",
     description: "Mudou o preço de um insumo? Todo o cardápio é atualizado em segundos.",
   },
   {
@@ -23,8 +25,8 @@ const differentials = [
   },
   {
     icon: Store,
-    title: "Multi-loja",
-    description: "Gerencie mais de uma operação sem misturar dados entre unidades.",
+    title: "Multi-loja para mais de uma operação",
+    description: "Gerencie cada unidade separadamente sem misturar dados.",
   },
   {
     icon: ShieldCheck,
@@ -61,6 +63,18 @@ export function DifferentialsSection() {
               </p>
             </div>
           ))}
+        </div>
+
+        <div className="text-center mt-10">
+          <Link to="/register">
+            <Button
+              size="lg"
+              className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 group"
+            >
+              Calcular meu lucro agora
+              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

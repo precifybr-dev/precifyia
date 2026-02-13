@@ -8,39 +8,39 @@ import { useEffect } from "react";
 
 const faqs = [
   {
-    question: "É difícil de usar?",
+    question: "É difícil usar?",
     answer:
-      "Não. O sistema foi feito para donos de restaurante, não para contadores. Você cadastra seus insumos, monta a receita e o sistema faz todo o cálculo. Sem fórmulas, sem planilhas.",
+      "Não. O Precify foi feito para ser simples. Você cadastra seus insumos, monta as receitas e o sistema faz todo o cálculo automaticamente. Se sabe preencher um formulário, sabe usar o Precify.",
   },
   {
     question: "Preciso entender de finanças?",
     answer:
-      "Não. O Precify traduz tudo em linguagem simples. Você vai ver quanto lucra em reais, não em indicadores financeiros complicados. Tudo é visual e direto ao ponto.",
+      "Não precisa. O sistema explica tudo de forma simples e calcula automaticamente impostos, taxas e custos. Você só precisa informar os dados do seu restaurante.",
   },
   {
-    question: "Funciona para qualquer tipo de restaurante?",
+    question: "Funciona para qualquer restaurante?",
     answer:
-      "Sim. Hamburguerias, pizzarias, marmitarias, dark kitchens, confeitarias, food trucks — qualquer operação que precise precificar produtos alimentícios e venda por delivery ou balcão.",
+      "Sim. Hamburguerias, pizzarias, marmitarias, dark kitchens, padarias, confeitarias — qualquer negócio que venda comida e precise saber o lucro real.",
   },
   {
     question: "Em quanto tempo vejo resultado?",
     answer:
-      "A maioria dos usuários descobre problemas de precificação nos primeiros 10 minutos. Com os ajustes, o impacto na margem aparece já no primeiro mês.",
+      "Em minutos. Assim que cadastrar seus primeiros produtos, você já vê o lucro real de cada um e pode ajustar os preços imediatamente.",
   },
   {
     question: "Meus dados estão seguros?",
     answer:
-      "Sim. Seus dados ficam protegidos com criptografia, backup automático e acesso restrito. Só você e quem você autorizar podem ver suas informações.",
+      "Sim. Seus dados ficam protegidos com backup automático, criptografia e acesso seguro. Só você tem acesso às suas informações.",
   },
   {
     question: "Posso usar com mais de uma loja?",
     answer:
-      "Sim, no plano Pro. Cada loja tem seus insumos, receitas e relatórios separados, sem misturar os dados entre unidades.",
+      "Sim, no plano Pro. Você gerencia cada unidade separadamente, com dados isolados e controle individual de custos e preços.",
   },
   {
     question: "Posso cancelar quando quiser?",
     answer:
-      "Sim. Não existe fidelidade nem multa. Você pode cancelar a qualquer momento direto pelo sistema, sem burocracia.",
+      "Sim, sem burocracia. Você pode cancelar a qualquer momento direto pelo sistema, sem multa e sem precisar falar com ninguém.",
   },
 ];
 
@@ -85,14 +85,14 @@ export function FAQSection() {
         </div>
 
         <div className="max-w-3xl mx-auto">
-          <Accordion type="single" collapsible className="space-y-4">
+          <Accordion type="single" collapsible className="space-y-3">
             {faqs.map((faq, index) => (
               <AccordionItem
                 key={index}
-                value={`item-${index}`}
+                value={`faq-${index}`}
                 className="bg-card border border-border rounded-xl px-6 data-[state=open]:shadow-md transition-shadow"
               >
-                <AccordionTrigger className="text-left text-base font-medium hover:no-underline py-5">
+                <AccordionTrigger className="text-left font-semibold text-foreground hover:no-underline py-5">
                   {faq.question}
                 </AccordionTrigger>
                 <AccordionContent className="text-muted-foreground pb-5 leading-relaxed">
