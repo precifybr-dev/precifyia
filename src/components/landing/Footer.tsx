@@ -94,21 +94,25 @@ export function Footer() {
           <p className="text-sm text-muted-foreground">
             © {new Date().getFullYear()} PRECIFY. Todos os direitos reservados.
           </p>
-          <div className="flex items-center gap-6">
-            <a 
-              href="#" 
-              onClick={(e) => handlePlaceholderLink(e, "Termos de Uso")}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
+          <div className="flex items-center gap-4 flex-wrap justify-center">
+            <Link to="/termos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Termos de Uso
-            </a>
-            <a 
-              href="#" 
-              onClick={(e) => handlePlaceholderLink(e, "Política de Privacidade")}
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-            >
-              Política de Privacidade
-            </a>
+            </Link>
+            <Link to="/contrato" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Contrato
+            </Link>
+            <Link to="/privacidade" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Privacidade
+            </Link>
+            <Link to="/politica-antifraude" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Antifraude
+            </Link>
+            <Link to="/cancelamento" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Cancelamento
+            </Link>
+            <Link to="/chargeback" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Chargeback
+            </Link>
           </div>
         </div>
       </div>
