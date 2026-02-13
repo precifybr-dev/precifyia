@@ -20,6 +20,10 @@ import Forbidden from "./pages/Forbidden";
 import HelpCenter from "./pages/HelpCenter";
 import ServiceContract from "./pages/ServiceContract";
 import AntiFraudPolicy from "./pages/AntiFraudPolicy";
+import TermsOfUse from "./pages/TermsOfUse";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import CancellationPolicy from "./pages/CancellationPolicy";
+import ChargebackPolicy from "./pages/ChargebackPolicy";
 import { ContextualHelp } from "@/components/help/ContextualHelp";
 
 // Auth/Security pages
@@ -60,7 +64,11 @@ const App = () => (
             {/* ========== PUBLIC ROUTES ========== */}
             <Route path="/" element={<Landing />} />
             <Route path="/contrato" element={<ServiceContract />} />
+            <Route path="/termos" element={<TermsOfUse />} />
+            <Route path="/privacidade" element={<PrivacyPolicy />} />
             <Route path="/politica-antifraude" element={<AntiFraudPolicy />} />
+            <Route path="/cancelamento" element={<CancellationPolicy />} />
+            <Route path="/chargeback" element={<ChargebackPolicy />} />
             <Route 
               path="/login" 
               element={
