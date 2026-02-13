@@ -19,6 +19,7 @@ import AuthCallback from "./pages/AuthCallback";
 import Forbidden from "./pages/Forbidden";
 import HelpCenter from "./pages/HelpCenter";
 import ServiceContract from "./pages/ServiceContract";
+import AntiFraudPolicy from "./pages/AntiFraudPolicy";
 import { ContextualHelp } from "@/components/help/ContextualHelp";
 
 // Auth/Security pages
@@ -59,6 +60,7 @@ const App = () => (
             {/* ========== PUBLIC ROUTES ========== */}
             <Route path="/" element={<Landing />} />
             <Route path="/contrato" element={<ServiceContract />} />
+            <Route path="/politica-antifraude" element={<AntiFraudPolicy />} />
             <Route 
               path="/login" 
               element={
