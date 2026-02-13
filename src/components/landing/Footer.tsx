@@ -33,12 +33,6 @@ export function Footer() {
             <p className="text-muted-foreground max-w-md leading-relaxed mb-4">
               Saiba exatamente quanto você lucra em cada venda no iFood e no balcão.
             </p>
-            <span 
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-success/10 text-success font-medium text-sm select-all cursor-pointer"
-              title="Clique para selecionar e copiar"
-            >
-              💬 WhatsApp: (47) 99688-7776
-            </span>
           </div>
 
           {/* Links */}
@@ -70,13 +64,12 @@ export function Footer() {
             <h4 className="font-display font-semibold mb-4 text-foreground">Suporte</h4>
             <ul className="space-y-3">
               <li>
-                <a 
-                  href="#" 
-                  onClick={(e) => handlePlaceholderLink(e, "Central de Ajuda")}
-                  className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                <Link 
+                  to="/ajuda"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
                 >
                   Central de Ajuda
-                </a>
+                </Link>
               </li>
               <li>
                 <a 
