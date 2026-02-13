@@ -185,10 +185,100 @@ function CreateCouponDialog({ onSubmit }: { onSubmit: (data: CouponFormData) => 
   );
 }
 
+function CreateAffiliateDialog({ onSubmit }: { onSubmit: (data: any) => void }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    instagram: "",
+    commission_rate: 0.1,
+    pix_key: "",
+    pix_key_type: "email",
+    notes: "",
+  });
+
+  const handleSubmit = () => {
+    if (!form.name.trim() || !form.email.trim()) return;
+    onSubmit({
+      name: form.name.trim(),
+      email: form.email.trim().toLowerCase(),
+      phone: form.phone || undefined,
+      instagram: form.instagram || undefined,
+      commission_rate: form.commission_rate,
+      pix_key: form.pix_key || undefined,
+      pix_key_type: form.pix_key || form.pix_key_type ? form.pix_key_type : undefined,
+      notes: form.notes || undefined,
+    });
+    setForm({ name: "", email: "", phone: "", instagram: "", commission_rate: 0.1, pix_key: "", pix_key_type: "email", notes: "" });
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" className="gap-2"><Plus className="h-4 w-4" />Novo Afiliado</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Cadastrar Afiliado</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Nome *</Label>
+            <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome do afiliado" />
+          </div>
+          <div>
+            <Label>Email *</Label>
+            <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="email@exemplo.com" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Telefone</Label>
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="(11) 99999-9999" />
+            </div>
+            <div>
+              <Label>Instagram</Label>
+              <Input value={form.instagram} onChange={(e) => setForm({ ...form, instagram: e.target.value })} placeholder="@usuario" />
+            </div>
+          </div>
+          <div>
+            <Label>Taxa de Comissão (%)</Label>
+            <Input type="number" min={1} max={100} value={(form.commission_rate * 100).toString()} onChange={(e) => setForm({ ...form, commission_rate: (parseFloat(e.target.value) || 10) / 100 })} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Tipo Chave PIX</Label>
+              <Select value={form.pix_key_type} onValueChange={(v) => setForm({ ...form, pix_key_type: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="cpf">CPF</SelectItem>
+                  <SelectItem value="phone">Telefone</SelectItem>
+                  <SelectItem value="random">Aleatória</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Chave PIX</Label>
+              <Input value={form.pix_key} onChange={(e) => setForm({ ...form, pix_key: e.target.value })} placeholder="Chave PIX" />
+            </div>
+          </div>
+          <div>
+            <Label>Observações</Label>
+            <Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+          </div>
+          <Button onClick={handleSubmit} className="w-full" disabled={!form.name.trim() || !form.email.trim()}>Cadastrar Afiliado</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export function AffiliatesDashboard() {
   const {
     coupons, affiliates, commissions, isLoading,
-    createCoupon, toggleCoupon, updateAffiliateStatus, processCommissions,
+    createCoupon, toggleCoupon, updateAffiliateStatus, createAffiliate, processCommissions,
     kpis, commissionsByStatus,
   } = useAffiliatesAdmin();
 
@@ -289,9 +379,12 @@ export function AffiliatesDashboard() {
           </div>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Afiliados</CardTitle>
-              <CardDescription>{affiliates.length} afiliados cadastrados</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Afiliados</CardTitle>
+                <CardDescription>{affiliates.length} afiliados cadastrados</CardDescription>
+              </div>
+              <CreateAffiliateDialog onSubmit={(data) => createAffiliate.mutate(data)} />
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea className="h-[400px]">
