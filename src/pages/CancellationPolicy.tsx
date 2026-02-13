@@ -78,7 +78,7 @@ export default function CancellationPolicy() {
 
             <Section n={7} title="Procedimento de Solicitação">
               <p>
-                Para solicitar cancelamento ou reembolso, o Usuário deverá enviar e-mail para <strong>suporte@precify.com.br</strong> contendo:
+                Para solicitar cancelamento ou reembolso, o Usuário deverá entrar em contato via WhatsApp informando:
                 nome completo, e-mail cadastrado, motivo da solicitação e, se aplicável, comprovante de pagamento.
                 A equipe responderá em até 3 (três) dias úteis.
               </p>

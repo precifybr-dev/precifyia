@@ -73,10 +73,12 @@ export function Footer() {
               </li>
               <li>
                 <a 
-                  href="mailto:precify.br@gmail.com" 
+                  href="https://wa.me/5547996887776" 
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  precify.br@gmail.com
+                  Falar no WhatsApp
                 </a>
               </li>
             </ul>

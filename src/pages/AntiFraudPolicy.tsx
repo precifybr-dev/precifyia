@@ -28,7 +28,7 @@ export default function AntiFraudPolicy() {
             <div className="text-sm text-muted-foreground space-y-0.5 mt-4">
               <p><strong>Empresa:</strong> TA ON - Precify Tecnologia LTDA</p>
               <p><strong>CNPJ:</strong> 48.245.923/0001-30</p>
-              <p><strong>E-mail:</strong> antifraude@precify.com.br</p>
+              
               <p><strong>Última atualização:</strong> {LAST_UPDATED}</p>
               <p><strong>Versão:</strong> {POLICY_VERSION}</p>
             </div>
@@ -185,7 +185,7 @@ export default function AntiFraudPolicy() {
                 <li>Esta Política Antifraude é parte integrante do Contrato de Prestação de Serviços e dos Termos de Uso da Plataforma.</li>
                 <li>A Plataforma reserva-se o direito de atualizar esta política a qualquer momento, comunicando os usuários por e-mail ou notificação in-app.</li>
                 <li>A continuidade do uso da Plataforma após a publicação de alterações constitui aceitação tácita das novas condições.</li>
-                <li>Em caso de dúvidas sobre esta política, o usuário deverá entrar em contato pelo e-mail: <strong>antifraude@precify.com.br</strong>.</li>
+                <li>Em caso de dúvidas sobre esta política, o usuário deverá entrar em contato através do nosso canal de atendimento via WhatsApp.</li>
               </ul>
             </Section>
           </div>
