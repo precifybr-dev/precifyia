@@ -507,28 +507,27 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="flex-1 lg:ml-64">
         {/* Header */}
-        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                className="lg:hidden p-2 hover:bg-muted rounded-lg"
-                onClick={() => setSidebarOpen(true)}
-                aria-label="Abrir menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              <div>
-                <h1 className="font-display text-xl font-bold text-foreground">Dashboard</h1>
-                <p className="text-sm text-muted-foreground">
-                  Visão geral do seu negócio
-                </p>
-              </div>
+        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+          <div className="flex items-center gap-3">
+            <button
+              className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0"
+              onClick={() => setSidebarOpen(true)}
+              aria-label="Abrir menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-display text-lg sm:text-xl font-bold text-foreground">Dashboard</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">
+                Visão geral do seu negócio
+              </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <div className="hidden sm:block"><StoreSwitcher /></div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 text-warning-foreground border border-warning/20 text-sm font-medium">
-                <AlertTriangle className="w-4 h-4 text-warning" />
+              <div className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-full bg-warning/10 text-warning-foreground border border-warning/20 text-xs sm:text-sm font-medium">
+                <AlertTriangle className="w-3.5 h-3.5 text-warning flex-shrink-0" />
                 <span className="hidden sm:inline">Trial: 7 dias restantes</span>
+                <span className="sm:hidden">7d</span>
               </div>
             </div>
           </div>
@@ -577,21 +576,21 @@ export default function Dashboard() {
           )}
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-6">
             {stats.map((stat) => (
               <div
                 key={stat.label}
-                className="bg-card rounded-xl p-5 border border-border shadow-card hover:shadow-card-hover transition-shadow cursor-pointer"
+                className="bg-card rounded-xl p-3 sm:p-5 border border-border shadow-card hover:shadow-card-hover transition-shadow cursor-pointer active:scale-[0.98]"
                 onClick={() => handleNavClick(stat.label === "Fichas Técnicas" ? "recipes" : "dashboard")}
               >
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`w-10 h-10 rounded-lg ${stat.color === 'success' ? 'bg-success/10' : 'bg-primary/10'} flex items-center justify-center`}>
-                    <stat.icon className={`w-5 h-5 ${stat.color === 'success' ? 'text-success' : 'text-primary'}`} />
+                <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg ${stat.color === 'success' ? 'bg-success/10' : 'bg-primary/10'} flex items-center justify-center flex-shrink-0`}>
+                    <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color === 'success' ? 'text-success' : 'text-primary'}`} />
                   </div>
-                  <span className="text-sm text-muted-foreground">{stat.label}</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground leading-tight">{stat.label}</span>
                 </div>
-                <p className="font-display text-2xl font-bold mb-1 text-foreground">{stat.value}</p>
-                <p className="text-xs text-muted-foreground">{stat.change}</p>
+                <p className="font-display text-lg sm:text-2xl font-bold mb-0.5 text-foreground">{stat.value}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.change}</p>
               </div>
             ))}
           </div>
@@ -637,36 +636,36 @@ export default function Dashboard() {
 
           {/* When onboarding is complete, show quick access cards */}
           {isOnboardingComplete && (
-            <div className="bg-card rounded-xl border border-border p-6 shadow-card">
-              <h3 className="font-display font-semibold text-lg mb-4 text-foreground">Acesso Rápido</h3>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-card">
+              <h3 className="font-display font-semibold text-base sm:text-lg mb-3 sm:mb-4 text-foreground">Acesso Rápido</h3>
+              <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => handleNavClick("business")}
-                  className="p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                  className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
                 >
-                  <Building2 className="w-6 h-6 text-primary mb-2" />
-                  <h4 className="font-semibold text-sm text-foreground">Área do Negócio</h4>
+                  <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
+                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Área do Negócio</h4>
                 </button>
                 <button 
                   onClick={() => handleNavClick("ingredients")}
-                  className="p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                  className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
                 >
-                  <Package className="w-6 h-6 text-primary mb-2" />
-                  <h4 className="font-semibold text-sm text-foreground">Insumos ({ingredientsCount})</h4>
+                  <Package className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
+                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Insumos ({ingredientsCount})</h4>
                 </button>
                 <button 
                   onClick={() => handleNavClick("recipes")}
-                  className="p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                  className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
                 >
-                  <FileSpreadsheet className="w-6 h-6 text-primary mb-2" />
-                  <h4 className="font-semibold text-sm text-foreground">Fichas Técnicas ({recipesCount})</h4>
+                  <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
+                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Fichas ({recipesCount})</h4>
                 </button>
                 <button 
                   onClick={() => handleNavClick("beverages")}
-                  className="p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                  className="p-3 sm:p-4 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-all text-left group active:scale-[0.98]"
                 >
-                  <Wine className="w-6 h-6 text-primary mb-2" />
-                  <h4 className="font-semibold text-sm text-foreground">Bebidas</h4>
+                  <Wine className="w-5 h-5 sm:w-6 sm:h-6 text-primary mb-1.5 sm:mb-2" />
+                  <h4 className="font-semibold text-xs sm:text-sm text-foreground">Bebidas</h4>
                 </button>
               </div>
             </div>

@@ -657,67 +657,70 @@ export default function Ingredients() {
       {sidebarOpen && <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <main className="flex-1 lg:ml-64">
-        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
-                <Menu className="w-5 h-5" />
-              </button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Voltar
-              </Button>
-              <div>
-                <h1 className="font-display text-xl font-bold text-foreground">Insumos</h1>
-                <p className="text-sm text-muted-foreground">Gerencie os ingredientes das suas receitas</p>
-              </div>
+        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+          {/* Row 1: Navigation + Title */}
+          <div className="flex items-center gap-3 mb-2 sm:mb-0">
+            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={() => setSidebarOpen(true)}>
+              <Menu className="w-5 h-5" />
+            </button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-1 px-2 flex-shrink-0">
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Voltar</span>
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-display text-lg sm:text-xl font-bold text-foreground">Insumos</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">Gerencie os ingredientes</p>
             </div>
-            <div className="flex items-center gap-2">
-              <SearchAndFilter
-                searchTerm={searchTerm}
-                onSearchChange={handleSearchChange}
-                sortOption={sortOption}
-                onSortChange={setSortOption}
-                selectedColor={selectedColor}
-                onColorChange={setSelectedColor}
-                showCostSort={true}
-                showSellingSort={false}
-                showColorFilter={true}
-              />
+            <div className="hidden sm:flex items-center gap-2">
               <StoreSwitcher />
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleRecalculatePrices}
-                disabled={isRecalculating}
-                className="gap-2 text-primary border-primary/30 hover:bg-primary/10"
-                title="Recalcular custos de todas as fichas técnicas"
-              >
-                <RefreshCw className={`w-4 h-4 ${isRecalculating ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">{isRecalculating ? "Recalculando..." : "Atualizar Fichas"}</span>
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setImportModalOpen(true)}
-                className="gap-2 text-muted-foreground"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span className="hidden sm:inline">Importar da Planilha (IA)</span>
-                <span className="sm:hidden">Planilha</span>
-              </Button>
-              <Button onClick={() => {
-                setFormData({ ...formData, code: getNextCode().toString() });
-                setShowForm(true);
-              }} className="gap-2">
-                <Plus className="w-4 h-4" />
-                Novo Insumo
-              </Button>
             </div>
+          </div>
+          {/* Row 2: Actions - scrollable on mobile */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 -mb-1 scrollbar-none">
+            <SearchAndFilter
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              sortOption={sortOption}
+              onSortChange={setSortOption}
+              selectedColor={selectedColor}
+              onColorChange={setSelectedColor}
+              showCostSort={true}
+              showSellingSort={false}
+              showColorFilter={true}
+            />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleRecalculatePrices}
+              disabled={isRecalculating}
+              className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10 flex-shrink-0 text-xs sm:text-sm"
+              title="Recalcular custos de todas as fichas técnicas"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRecalculating ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">{isRecalculating ? "Recalculando..." : "Atualizar Fichas"}</span>
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setImportModalOpen(true)}
+              className="gap-1.5 text-muted-foreground flex-shrink-0 text-xs sm:text-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Importar (IA)</span>
+              <span className="sm:hidden">Planilha</span>
+            </Button>
+            <Button size="sm" onClick={() => {
+              setFormData({ ...formData, code: getNextCode().toString() });
+              setShowForm(true);
+            }} className="gap-1.5 flex-shrink-0 text-xs sm:text-sm">
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Novo Insumo</span>
+              <span className="sm:hidden">Novo</span>
+            </Button>
           </div>
         </header>
 
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
           {showForm && (
             <div ref={formRef} className="bg-card rounded-xl border border-border p-6 mb-6 shadow-card">
               <div className="flex items-center justify-between mb-4">
