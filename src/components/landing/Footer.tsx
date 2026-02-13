@@ -109,9 +109,6 @@ export function Footer() {
             <Link to="/termos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Termos de Uso
             </Link>
-            <Link to="/contrato" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              Contrato
-            </Link>
             <Link to="/privacidade" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Privacidade
             </Link>
