@@ -498,6 +498,36 @@ export type Database = {
           },
         ]
       }
+      combo_memory: {
+        Row: {
+          estrategias_usadas: Json | null
+          id: string
+          margem_media: number | null
+          produtos_frequentes: Json | null
+          ultimo_objetivo: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          estrategias_usadas?: Json | null
+          id?: string
+          margem_media?: number | null
+          produtos_frequentes?: Json | null
+          ultimo_objetivo?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          estrategias_usadas?: Json | null
+          id?: string
+          margem_media?: number | null
+          produtos_frequentes?: Json | null
+          ultimo_objetivo?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       combos: {
         Row: {
           ai_raw_response: Json | null
@@ -2097,6 +2127,44 @@ export type Database = {
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "support_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      topo_cardapio_simulacoes: {
+        Row: {
+          created_at: string
+          estrategia_aplicada: string
+          explicacao: string | null
+          id: string
+          itens_simulados: Json
+          store_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          estrategia_aplicada: string
+          explicacao?: string | null
+          id?: string
+          itens_simulados?: Json
+          store_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          estrategia_aplicada?: string
+          explicacao?: string | null
+          id?: string
+          itens_simulados?: Json
+          store_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "topo_cardapio_simulacoes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]
