@@ -52,6 +52,30 @@ interface ExpiringUser {
   days_until_expiry: number;
 }
 
+export interface LTVMetrics {
+  average_ltv: number;
+  average_subscription_months: number;
+  total_active_subscribers: number;
+}
+
+export interface ChurnRiskUser {
+  user_id: string;
+  email: string;
+  business_name: string | null;
+  user_plan: string;
+  last_activity: string;
+  previous_activity_level: string;
+  days_since_active: number;
+}
+
+export interface InactiveUser {
+  user_id: string;
+  email: string;
+  business_name: string | null;
+  last_activity: string;
+  days_inactive: number;
+}
+
 export function useFinancialDashboard() {
   const [summary, setSummary] = useState<FinancialSummary | null>(null);
   const [revenueByPlan, setRevenueByPlan] = useState<RevenueByPlan[]>([]);
@@ -59,6 +83,9 @@ export function useFinancialDashboard() {
   const [renewalStats, setRenewalStats] = useState<RenewalStats | null>(null);
   const [expiringByPlan, setExpiringByPlan] = useState<ExpiringByPlan[]>([]);
   const [expiringUsers, setExpiringUsers] = useState<ExpiringUser[]>([]);
+  const [ltvMetrics, setLtvMetrics] = useState<LTVMetrics | null>(null);
+  const [churnRiskUsers, setChurnRiskUsers] = useState<ChurnRiskUser[]>([]);
+  const [inactiveUsers, setInactiveUsers] = useState<InactiveUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,9 +93,7 @@ export function useFinancialDashboard() {
     try {
       const { data, error } = await supabase.rpc("get_financial_summary");
       if (error) throw error;
-      if (data && data.length > 0) {
-        setSummary(data[0]);
-      }
+      if (data && data.length > 0) setSummary(data[0]);
     } catch (err: any) {
       console.error("Error fetching financial summary:", err);
       setError(err.message);
@@ -87,9 +112,7 @@ export function useFinancialDashboard() {
 
   const fetchRevenueByPeriod = useCallback(async (daysBack: number = 30) => {
     try {
-      const { data, error } = await supabase.rpc("get_revenue_by_period", {
-        days_back: daysBack,
-      });
+      const { data, error } = await supabase.rpc("get_revenue_by_period", { days_back: daysBack });
       if (error) throw error;
       setRevenueByPeriod(data || []);
     } catch (err: any) {
@@ -101,9 +124,7 @@ export function useFinancialDashboard() {
     try {
       const { data, error } = await supabase.rpc("get_renewal_stats");
       if (error) throw error;
-      if (data && data.length > 0) {
-        setRenewalStats(data[0]);
-      }
+      if (data && data.length > 0) setRenewalStats(data[0]);
     } catch (err: any) {
       console.error("Error fetching renewal stats:", err);
     }
@@ -111,9 +132,7 @@ export function useFinancialDashboard() {
 
   const fetchExpiringByPlan = useCallback(async (daysAhead: number = 30) => {
     try {
-      const { data, error } = await supabase.rpc("get_expiring_users_by_plan", {
-        days_ahead: daysAhead,
-      });
+      const { data, error } = await supabase.rpc("get_expiring_users_by_plan", { days_ahead: daysAhead });
       if (error) throw error;
       setExpiringByPlan(data || []);
     } catch (err: any) {
@@ -125,7 +144,6 @@ export function useFinancialDashboard() {
     try {
       const now = new Date();
       const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-
       const { data, error } = await supabase
         .from("profiles")
         .select("user_id, business_name, user_plan, subscription_expires_at")
@@ -134,34 +152,58 @@ export function useFinancialDashboard() {
         .lte("subscription_expires_at", thirtyDaysFromNow.toISOString())
         .order("subscription_expires_at", { ascending: true })
         .limit(50);
-
       if (error) throw error;
-
-      // Map to include email - we'll need to get this from admin-users function or auth
       const usersWithDays: ExpiringUser[] = (data || []).map((profile: any) => {
         const expiryDate = new Date(profile.subscription_expires_at);
         const daysUntilExpiry = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        
         return {
           id: profile.user_id,
-          email: "", // Will be populated if we fetch from admin function
+          email: "",
           business_name: profile.business_name,
           user_plan: profile.user_plan || "free",
           subscription_expires_at: profile.subscription_expires_at,
           days_until_expiry: daysUntilExpiry,
         };
       });
-
       setExpiringUsers(usersWithDays);
     } catch (err: any) {
       console.error("Error fetching expiring users:", err);
     }
   }, []);
 
+  const fetchLTVMetrics = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_ltv_metrics");
+      if (error) throw error;
+      if (data && data.length > 0) setLtvMetrics(data[0]);
+    } catch (err: any) {
+      console.error("Error fetching LTV metrics:", err);
+    }
+  }, []);
+
+  const fetchChurnRiskUsers = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.rpc("get_churn_risk_users");
+      if (error) throw error;
+      setChurnRiskUsers(data || []);
+    } catch (err: any) {
+      console.error("Error fetching churn risk users:", err);
+    }
+  }, []);
+
+  const fetchInactiveUsers = useCallback(async (inactiveDays: number = 7) => {
+    try {
+      const { data, error } = await supabase.rpc("get_inactive_users", { inactive_days: inactiveDays });
+      if (error) throw error;
+      setInactiveUsers(data || []);
+    } catch (err: any) {
+      console.error("Error fetching inactive users:", err);
+    }
+  }, []);
+
   const loadAllData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
     await Promise.all([
       fetchFinancialSummary(),
       fetchRevenueByPlan(),
@@ -169,16 +211,15 @@ export function useFinancialDashboard() {
       fetchRenewalStats(),
       fetchExpiringByPlan(30),
       fetchExpiringUsers(),
+      fetchLTVMetrics(),
+      fetchChurnRiskUsers(),
+      fetchInactiveUsers(7),
     ]);
-
     setIsLoading(false);
   }, [
-    fetchFinancialSummary,
-    fetchRevenueByPlan,
-    fetchRevenueByPeriod,
-    fetchRenewalStats,
-    fetchExpiringByPlan,
-    fetchExpiringUsers,
+    fetchFinancialSummary, fetchRevenueByPlan, fetchRevenueByPeriod,
+    fetchRenewalStats, fetchExpiringByPlan, fetchExpiringUsers,
+    fetchLTVMetrics, fetchChurnRiskUsers, fetchInactiveUsers,
   ]);
 
   useEffect(() => {
@@ -186,21 +227,9 @@ export function useFinancialDashboard() {
   }, [loadAllData]);
 
   return {
-    // Data
-    summary,
-    revenueByPlan,
-    revenueByPeriod,
-    renewalStats,
-    expiringByPlan,
-    expiringUsers,
-
-    // State
-    isLoading,
-    error,
-
-    // Actions
-    refetch: loadAllData,
-    fetchRevenueByPeriod,
-    fetchExpiringByPlan,
+    summary, revenueByPlan, revenueByPeriod, renewalStats,
+    expiringByPlan, expiringUsers, ltvMetrics, churnRiskUsers, inactiveUsers,
+    isLoading, error,
+    refetch: loadAllData, fetchRevenueByPeriod, fetchExpiringByPlan, fetchInactiveUsers,
   };
 }
