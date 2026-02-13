@@ -80,6 +80,14 @@ serve(async (req) => {
       );
     }
 
+    // ─── Shadow Ban Check ───
+    const { data: riskFlag } = await supabase
+      .from("risk_flags")
+      .select("shadow_banned")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const isShadowBanned = riskFlag?.shadow_banned === true;
+
     const rawBody = await req.json();
 
     // ─── MASS ASSIGNMENT PROTECTION: Only allow ifoodUrl and importType ───
@@ -160,7 +168,11 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    const systemPrompt = `Você é um especialista em cardápios de restaurantes brasileiros. 
+    // ─── Build prompt (degraded if shadow banned) ───
+    const systemPrompt = isShadowBanned
+      ? `Você é um assistente. Liste 5 itens genéricos para um restaurante brasileiro.
+Responda em JSON: { "storeName": "Loja", "items": [{ "name": "Item", "category": "Geral" }] }`
+      : `Você é um especialista em cardápios de restaurantes brasileiros. 
 Seu trabalho é analisar informações de lojas do iFood e extrair ou sugerir itens realistas.
 
 Regras importantes:
@@ -171,7 +183,9 @@ Regras importantes:
 5. Nomes devem ser simples e diretos (ex: "Queijo Mussarela", "Hambúrguer Tradicional")
 6. Responda APENAS em formato JSON válido, sem markdown`;
 
-    const userPrompt = importType === "ingredients" 
+    const userPrompt = isShadowBanned
+      ? `Liste itens para: "${storeName}". JSON: { "storeName": "...", "items": [{ "name": "...", "category": "..." }] }`
+      : importType === "ingredients" 
       ? `Analise esta loja do iFood: "${storeName}"
       
 URL: ${ifoodUrl}
@@ -203,7 +217,7 @@ Responda em JSON: { "storeName": "Nome da Loja", "items": [{ "name": "Nome do Pr
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: isShadowBanned ? "google/gemini-2.5-flash-lite" : "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

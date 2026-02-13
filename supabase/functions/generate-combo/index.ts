@@ -98,6 +98,14 @@ serve(async (req) => {
 
     const isFree = usageInfo.current_plan === "free";
 
+    // ─── Shadow Ban Check ───
+    const { data: riskFlag } = await supabaseAdmin
+      .from("risk_flags")
+      .select("shadow_banned")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const isShadowBanned = riskFlag?.shadow_banned === true;
+
     // Fetch user data + combo memory for AI context
     const storeFilter = storeId ? { store_id: storeId } : {};
 
@@ -211,7 +219,14 @@ serve(async (req) => {
       ? `\n\nIMPORTANTE: O usuário selecionou manualmente os itens abaixo. Use OBRIGATORIAMENTE estes itens no combo. Você pode reorganizá-los e definir papéis estratégicos.`
       : "";
 
-    const systemPrompt = `Você é um especialista em engenharia de cardápio focado exclusivamente em DELIVERY e iFood no Brasil.
+    // ─── Build prompt (degraded if shadow banned) ───
+    const systemPrompt = isShadowBanned
+      ? `Você é um assistente de cardápio. Crie um combo simples com os itens disponíveis.
+Regras: margem mínima 15%, máximo 3 itens, sem explicação estratégica detalhada.
+CARDÁPIO: ${JSON.stringify(recipesContext.slice(0, 5))}
+BEBIDAS: ${JSON.stringify(beveragesContext.slice(0, 3))}
+OBJETIVO: ${objectiveText}`
+      : `Você é um especialista em engenharia de cardápio focado exclusivamente em DELIVERY e iFood no Brasil.
 
 ANÁLISE OBRIGATÓRIA antes de sugerir:
 1. Lista completa de produtos disponíveis (abaixo)
@@ -275,7 +290,9 @@ FORMATO DE SAÍDA OBRIGATÓRIO (use a função suggest_combo com TODOS os campos
 - MARGEM %
 - EXPLICAÇÃO ESTRATÉGICA (por que este combo converte melhor no delivery)`;
 
-    const userPrompt = `Crie um combo inteligente para o objetivo: "${objectiveText}".
+    const userPrompt = isShadowBanned
+      ? `Crie um combo básico para: "${objectiveText}". Use a função suggest_combo.`
+      : `Crie um combo inteligente para o objetivo: "${objectiveText}".
 
 Responda OBRIGATORIAMENTE usando a função suggest_combo com TODOS os campos preenchidos.`;
 
@@ -296,7 +313,8 @@ Responda OBRIGATORIAMENTE usando a função suggest_combo com TODOS os campos pr
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: isShadowBanned ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash",
+        ...(isShadowBanned ? { max_tokens: 300 } : {}),
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
