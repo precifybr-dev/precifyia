@@ -15,6 +15,7 @@ import { UsageMetricsDashboard } from "@/components/admin/UsageMetricsDashboard"
 import { ConversionMetricsBlock } from "@/components/admin/ConversionMetricsBlock";
 import { CombosDashboard } from "@/components/admin/CombosDashboard";
 import { AffiliatesDashboard } from "@/components/admin/AffiliatesDashboard";
+import { CommissionConfigPanel } from "@/components/admin/CommissionConfigPanel";
 import { PlanLimitsTable } from "@/components/admin/PlanLimitsTable";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -353,6 +354,10 @@ export default function AdminDashboard() {
                   <Ticket className="h-4 w-4" />
                   Cupons & Afiliados
                 </TabsTrigger>
+                <TabsTrigger value="commissions" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <DollarSign className="h-4 w-4" />
+                  Comissões
+                </TabsTrigger>
                 <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <History className="h-4 w-4" />
                   Logs
@@ -608,6 +613,10 @@ export default function AdminDashboard() {
 
               <TabsContent value="affiliates">
                 <AffiliatesDashboard />
+              </TabsContent>
+
+              <TabsContent value="commissions">
+                <CommissionConfigPanel />
               </TabsContent>
 
               <TabsContent value="logs" className="space-y-4">

@@ -563,6 +563,54 @@ export type Database = {
           },
         ]
       }
+      commission_config: {
+        Row: {
+          category_overrides: Json | null
+          created_at: string
+          created_by: string
+          default_percentage: number
+          fixed_fee: number
+          id: string
+          is_active: boolean
+          margin_action: string
+          minimum_commission: number
+          minimum_margin_percent: number
+          model_type: string
+          tier_ranges: Json | null
+          updated_at: string
+        }
+        Insert: {
+          category_overrides?: Json | null
+          created_at?: string
+          created_by: string
+          default_percentage?: number
+          fixed_fee?: number
+          id?: string
+          is_active?: boolean
+          margin_action?: string
+          minimum_commission?: number
+          minimum_margin_percent?: number
+          model_type?: string
+          tier_ranges?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          category_overrides?: Json | null
+          created_at?: string
+          created_by?: string
+          default_percentage?: number
+          fixed_fee?: number
+          id?: string
+          is_active?: boolean
+          margin_action?: string
+          minimum_commission?: number
+          minimum_margin_percent?: number
+          model_type?: string
+          tier_ranges?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       commission_payouts: {
         Row: {
           affiliate_id: string
