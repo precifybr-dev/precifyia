@@ -250,10 +250,32 @@ async function handleImportExecute(supabaseAdmin: any, body: any, userId: string
   if (body.schema_version !== SCHEMA_VERSION) {
     return jsonResponse({ error: `Versão incompatível: ${body.schema_version}` }, 400);
   }
-  // user_id validation removed — data is always re-assigned to the importing user
 
   const data = body.data || {};
-  const storeId = body.store_id || null;
+  
+  // Resolve store: check if the backup's store exists for this user, otherwise use default or create one
+  let storeId: string | null = null;
+  if (body.store_id) {
+    const { data: existingStore } = await supabaseAdmin
+      .from("stores").select("id").eq("id", body.store_id).eq("user_id", userId).maybeSingle();
+    if (existingStore) {
+      storeId = existingStore.id;
+    } else {
+      // Try to find user's default store
+      const { data: defaultStore } = await supabaseAdmin
+        .from("stores").select("id").eq("user_id", userId).eq("is_default", true).maybeSingle();
+      if (defaultStore) {
+        storeId = defaultStore.id;
+      } else {
+        // Create a new store with the backup's store name
+        const storeName = body.store_name || "Loja Importada";
+        const { data: newStore, error: storeErr } = await supabaseAdmin
+          .from("stores").insert({ user_id: userId, name: storeName, is_default: true }).select("id").single();
+        if (storeErr) throw new Error(`Erro ao criar loja: ${storeErr.message}`);
+        storeId = newStore.id;
+      }
+    }
+  }
 
   try {
     if (mode === "replace") {
