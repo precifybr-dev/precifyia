@@ -99,6 +99,26 @@ export function useAffiliatesAdmin() {
     },
   });
 
+  // Create affiliate
+  const createAffiliate = useMutation({
+    mutationFn: async (data: { name: string; email: string; phone?: string; instagram?: string; commission_rate: number; pix_key?: string; pix_key_type?: string; notes?: string }) => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const { error } = await supabase.from("affiliates").insert({
+        ...data,
+        user_id: session.user.id,
+        status: "active",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin-affiliates"] });
+      toast.success("Afiliado cadastrado com sucesso");
+    },
+    onError: (err: any) => toast.error(err.message || "Erro ao cadastrar afiliado"),
+  });
+
   // Update affiliate commission rate
   const updateAffiliateRate = useMutation({
     mutationFn: async ({ id, commission_rate }: { id: string; commission_rate: number }) => {
@@ -164,6 +184,7 @@ export function useAffiliatesAdmin() {
     toggleCoupon,
     updateAffiliateStatus,
     updateAffiliateRate,
+    createAffiliate,
     processCommissions,
     kpis: {
       activeCoupons,
