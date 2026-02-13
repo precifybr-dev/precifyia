@@ -1690,6 +1690,27 @@ export type Database = {
           },
         ]
       }
+      risk_flags: {
+        Row: {
+          risk_score: number
+          shadow_banned: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          risk_score?: number
+          shadow_banned?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          risk_score?: number
+          shadow_banned?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       role_permissions: {
         Row: {
           created_at: string
