@@ -2542,6 +2542,10 @@ export type Database = {
           retry_after_seconds: number
         }[]
       }
+      check_rate_limit_global: {
+        Args: { p_fingerprint: string; p_ip: string; p_user: string }
+        Returns: boolean
+      }
       cleanup_rate_limit_entries: { Args: never; Returns: undefined }
       count_admin_sessions_today: {
         Args: { _admin_id: string }
