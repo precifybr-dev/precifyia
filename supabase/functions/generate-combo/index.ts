@@ -164,18 +164,30 @@ serve(async (req) => {
       ? `\n\nIMPORTANTE: O usuário selecionou manualmente os itens abaixo. Use OBRIGATORIAMENTE estes itens no combo. Você pode reorganizá-los e definir papéis estratégicos.`
       : "";
 
-    const systemPrompt = `Você é um especialista em precificação e criação de combos para DELIVERY e iFOOD no Brasil.
+    const systemPrompt = `Você é um especialista em engenharia de cardápio focado exclusivamente em DELIVERY e iFood no Brasil.
+
+ANÁLISE OBRIGATÓRIA antes de sugerir:
+1. Lista completa de produtos disponíveis (abaixo)
+2. Custos individuais de cada item
+3. Margem por item
+4. Objetivo escolhido pelo usuário
+5. Itens selecionados manualmente (se houver)
 
 REGRAS OBRIGATÓRIAS:
-1. NUNCA sugira combo com lucro negativo
-2. Use linguagem comercial brasileira, otimizada para cardápio digital (iFood)
-3. Siga EXATAMENTE a estrutura solicitada
-4. Preços em Reais (R$)
-5. Identifique o produto carro-chefe e itens de maior margem
-6. Identifique claramente o item isca (lucro zero ou mínimo) e onde está o lucro real
-7. A margem do combo DEVE ser positiva (mínimo 15%)
-8. Calcule o preço ideal considerando taxas de delivery/iFood
-9. A descrição deve ser otimizada para conversão no iFood (curta, chamativa)
+1. NUNCA gerar combo com lucro negativo
+2. Definir claramente o item isca (lucro zero ou mínimo) — ele atrai o cliente
+3. Sempre priorizar margem combinada do combo (mínimo 15%)
+4. Aplicar psicologia de cardápio:
+   - Ancoragem: mostrar preço avulso somado alto vs preço combo baixo
+   - Decoy effect: incluir item que torna o combo irresistível comparado à compra avulsa
+   - Percepção de vantagem: o cliente DEVE sentir que está economizando
+   - Economia visível: destacar o desconto real em R$
+5. Estruturar preço pensando em taxa de marketplace (iFood cobra ~12-27%)
+6. Linguagem simples, comercial e pronta para iFood
+7. Máximo 2 frases na descrição — curta e chamativa
+8. Preços em Reais (R$)
+9. Identificar o produto carro-chefe (maior apelo comercial)
+10. Identificar itens de maior margem para compor o lucro real
 ${manualSelectionNote}
 
 DADOS DO NEGÓCIO:
@@ -190,7 +202,19 @@ ${JSON.stringify(recipesContext, null, 2)}
 BEBIDAS DISPONÍVEIS:
 ${beveragesContext.length > 0 ? JSON.stringify(beveragesContext, null, 2) : "Nenhuma bebida cadastrada"}
 
-OBJETIVO DO COMBO: ${objectiveText}`;
+OBJETIVO DO COMBO: ${objectiveText}
+
+FORMATO DE SAÍDA OBRIGATÓRIO (use a função suggest_combo com TODOS os campos):
+- NOME DO COMBO
+- DESCRIÇÃO (max 2 frases)
+- ITENS INCLUÍDOS (com papel estratégico de cada um)
+- ITEM ISCA (identificado claramente)
+- PREÇO AVULSO SOMADO
+- PREÇO DO COMBO
+- CUSTO TOTAL
+- LUCRO ESTIMADO
+- MARGEM %
+- EXPLICAÇÃO ESTRATÉGICA (por que este combo converte melhor no delivery)`;
 
     const userPrompt = `Crie um combo inteligente para o objetivo: "${objectiveText}".
 
