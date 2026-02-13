@@ -81,12 +81,30 @@ export function Footer() {
               </li>
             </ul>
           </div>
+
+          <div>
+            <h4 className="font-display font-semibold mb-4 text-foreground">Redes Sociais</h4>
+            <ul className="space-y-3">
+              <li>
+                <a 
+                  href="https://www.instagram.com/precifyia/" 
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+                  @precifyia
+                </a>
+              </li>
+            </ul>
+          </div>
         </div>
 
         <div className="border-t border-border pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-          <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} PRECIFY. Todos os direitos reservados.
-          </p>
+          <div className="text-sm text-muted-foreground space-y-1">
+            <p>© {new Date().getFullYear()} TA ON - Precify Tecnologia LTDA. Todos os direitos reservados.</p>
+            <p>CNPJ: 48.245.923/0001-30</p>
+          </div>
           <div className="flex items-center gap-4 flex-wrap justify-center">
             <Link to="/termos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Termos de Uso
