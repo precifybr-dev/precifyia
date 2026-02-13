@@ -89,6 +89,14 @@ serve(async (req) => {
       );
     }
 
+    // ─── Shadow Ban Check ───
+    const { data: riskFlag } = await supabaseAdmin
+      .from("risk_flags")
+      .select("shadow_banned")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const isShadowBanned = riskFlag?.shadow_banned === true;
+
     // Fetch recipes and beverages
     const [recipesRes, beveragesRes, profileRes] = await Promise.all([
       supabaseAdmin.from("recipes")
@@ -136,7 +144,12 @@ serve(async (req) => {
       })),
     ];
 
-    const systemPrompt = `Você é um especialista em cardápios digitais para iFood e delivery no Brasil.
+    // ─── Build prompt (degraded if shadow banned) ───
+    const systemPrompt = isShadowBanned
+      ? `Você é um assistente de cardápio. Organize os 5 primeiros itens do cardápio por preço decrescente.
+CARDÁPIO: ${JSON.stringify(allItems.slice(0, 8))}
+Responda usando a função organize_menu.`
+      : `Você é um especialista em cardápios digitais para iFood e delivery no Brasil.
 
 ESTRATÉGIA SELECIONADA: ${strategyDescriptions[strategyId] || strategyId}
 
@@ -152,7 +165,9 @@ REGRAS:
 4. A explicação deve ser focada em conversão no iFood
 5. Preços em R$ com 2 casas decimais`;
 
-    const userPrompt = `Reorganize os 5 primeiros itens do cardápio usando a estratégia selecionada. Use a função organize_menu.`;
+    const userPrompt = isShadowBanned
+      ? `Organize os itens do cardápio. Use a função organize_menu.`
+      : `Reorganize os 5 primeiros itens do cardápio usando a estratégia selecionada. Use a função organize_menu.`;
 
     // ─── Circuit Breaker Global ───
     const { data: cbAllowed } = await supabaseAdmin.rpc("check_global_ai_limit", { _endpoint: "generate-menu-strategy" });
@@ -170,7 +185,8 @@ REGRAS:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: isShadowBanned ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-flash",
+        ...(isShadowBanned ? { max_tokens: 300 } : {}),
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

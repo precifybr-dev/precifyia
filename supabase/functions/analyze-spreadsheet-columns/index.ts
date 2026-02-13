@@ -72,6 +72,14 @@ serve(async (req) => {
       );
     }
 
+    // ─── Shadow Ban Check ───
+    const { data: riskFlag } = await supabase
+      .from("risk_flags")
+      .select("shadow_banned")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const isShadowBanned = riskFlag?.shadow_banned === true;
+
     const rawBody = await req.json();
 
     // ─── MASS ASSIGNMENT PROTECTION: Only allow headers array ───
@@ -130,13 +138,13 @@ Retorne APENAS o JSON no formato:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: isShadowBanned ? "google/gemini-2.5-flash-lite" : "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         temperature: 0.1,
-        max_tokens: 200,
+        max_tokens: isShadowBanned ? 100 : 200,
       }),
     });
 
