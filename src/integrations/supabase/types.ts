@@ -1788,6 +1788,39 @@ export type Database = {
         }
         Relationships: []
       }
+      strategic_usage_logs: {
+        Row: {
+          created_at: string
+          endpoint: string
+          fingerprint_hash: string | null
+          id: string
+          ip_address: string | null
+          tokens_used: number | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          endpoint: string
+          fingerprint_hash?: string | null
+          id?: string
+          ip_address?: string | null
+          tokens_used?: number | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          endpoint?: string
+          fingerprint_hash?: string | null
+          id?: string
+          ip_address?: string | null
+          tokens_used?: number | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       sub_recipe_ingredients: {
         Row: {
           cost: number
