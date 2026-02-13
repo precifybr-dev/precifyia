@@ -1,58 +1,64 @@
 
-# Redesign: Botao "Atualizar Precos" no Dashboard
 
-## Conceito
+# Redesign: Botao "Atualizar Precos" com Animacao de Carrinho
 
-Transformar o widget atual (que ja mostra a lista de insumos inline) em duas partes:
+## Resumo
 
-1. **Botao-card chamativo no Dashboard** -- compacto, com icone animado, frase motivacional e contador de atualizacoes recentes
-2. **Modal/Drawer** que abre ao clicar, contendo a busca e edicao de precos (logica atual)
-3. **Feedback pos-salvamento** mostrando exatamente quantos insumos e quantas fichas tecnicas foram recalculadas
+Transformar o botao e o modal de atualizacao de precos para incluir:
+1. Botao verde destacado no Dashboard com texto "Atualizar Precos"
+2. Modal redesenhado mostrando valor anterior ao editar
+3. Animacao de carrinho de mercado viajando ate icone de sincronizacao durante o salvamento
+4. Contagem em tempo real de fichas tecnicas atualizadas durante a animacao
 
 ## O que o usuario vera
 
-### No Dashboard (botao-card)
-- Icone de refresh com pulso sutil (animacao CSS)
-- Titulo: **"Atualizar Precos"**
-- Subtitulo motivacional: *"Mantenha seus custos em dia e nao perca dinheiro"*
-- Badge mostrando total de insumos cadastrados
-- Efeito hover/active com escala e brilho
+### Botao no Dashboard
+- Botao com fundo verde (bg-success), texto branco "Atualizar Precos"
+- Icone de carrinho de mercado (ShoppingCart)
+- Ao ter atualizacoes na sessao, mostra contador abaixo
 
-### Ao clicar (abre Drawer mobile / Dialog desktop)
-- Campo de busca por nome ou codigo
-- Lista de insumos com preco atual clicavel
-- Ao salvar um preco, mostra um **resumo visual**:
-  - "Tomate atualizado para R$ 8,50"
-  - "3 fichas tecnicas recalculadas automaticamente"
-  - Icone de check verde com animacao
+### Ao clicar no preco de um insumo para editar
+- Campo de edicao aparece com o **valor anterior** visivel (ex: "Anterior: R$ 5,00")
+- Novo campo para digitar o valor atualizado
 
-### Resumo acumulado na sessao
-- Apos cada atualizacao, o botao-card no dashboard atualiza um contador:
-  - Ex: **"2 insumos atualizados hoje"**
-  - Reforco positivo para o usuario continuar
+### Ao salvar (animacao de carrinho)
+- O modal mostra uma animacao centralizada:
+  - Icone de carrinho (ShoppingCart) se move da esquerda para a direita
+  - No destino, um icone de sincronizacao (RefreshCw) girando
+  - Barra de progresso acompanha o movimento
+  - Texto mostrando em tempo real: "Atualizando ficha 1 de 5..."
+- Ao completar, icone de check verde com contagem final
+- Resultado fica visivel: "3 fichas tecnicas atualizadas"
 
 ## Detalhes Tecnicos
 
+### Arquivo: `src/components/dashboard/QuickPriceButton.tsx`
+- Trocar o estilo do botao para verde (bg-success text-white)
+- Usar icone ShoppingCart em vez de RefreshCw
+- Texto principal: "Atualizar Precos"
+- Manter badge de contagem e feedback pos-sessao
+
+### Arquivo: `src/components/dashboard/QuickPriceModal.tsx`
+- Adicionar estado `syncPhase`: "idle" | "syncing" | "complete"
+- Adicionar estado `syncProgress`: { current: number, total: number }
+- Ao editar um insumo, mostrar `previousPrice` (valor antes da edicao)
+- Substituir o loading simples por animacao de carrinho:
+  - Fase "syncing": container com carrinho animado (translateX de 0% a 100%), barra de progresso, icone RefreshCw girando no destino
+  - Texto dinamico: "Sincronizando ficha X de Y..."
+  - Fase "complete": icone CheckCircle verde, resumo final
+- Usar CSS keyframes para a animacao do carrinho (translateX com ease-in-out)
+- O handleSave sera modificado para atualizar `syncProgress` a cada ficha tecnica processada (loop ja existente no codigo)
+
+### Arquivo: `src/index.css` (ou inline styles)
+- Adicionar keyframe `@keyframes cart-travel` para o movimento do carrinho
+- Animacao de ~2-3s com easing suave
+
 ### Arquivo: `src/components/dashboard/QuickPriceUpdate.tsx`
-- Refatorar para separar em dois componentes:
-  - `QuickPriceButton` -- o card/botao visivel no dashboard
-  - `QuickPriceModal` -- o drawer/dialog com a logica de edicao
-- Manter toda a logica de cascade (já funciona)
-- Adicionar estado `updatedCount` e `recipesAffectedCount` para feedback
-- Usar `Drawer` (vaul) no mobile e `Dialog` no desktop via hook `use-mobile`
+- Sem alteracoes estruturais, apenas passa os novos props se necessario
 
-### Arquivo: `src/pages/Dashboard.tsx`
-- Substituir o `<QuickPriceUpdate>` inline pelo novo `<QuickPriceButton>` dentro do grid de acesso rapido
-- O botao ocupa uma posicao de destaque (pode ser full-width abaixo do grid de stats, ou integrado no grid de acesso rapido)
-
-### Animacoes CSS
-- Pulso sutil no icone (`animate-pulse` customizado, lento)
-- `active:scale-[0.97]` no botao
-- Transicao de cor no badge apos atualizacao (neutro -> verde)
-
-### Feedback pos-save (dentro do modal)
-- Toast substituido por um bloco inline no modal mostrando:
-  - Nome do insumo + novo preco
-  - Quantidade de `recipe_ingredients` afetados
-  - Quantidade de `recipes` recalculadas
-- Manter toast tambem para quando o modal fechar (resumo final)
+### Fluxo tecnico do salvamento com animacao
+1. Usuario clica salvar -> `syncPhase = "syncing"`, `syncProgress = { current: 0, total: recipeIds.length }`
+2. Loop existente de atualizacao de receitas: a cada iteracao, incrementa `syncProgress.current`
+3. Animacao do carrinho acompanha o progresso (width da barra = current/total * 100%)
+4. Ao terminar -> `syncPhase = "complete"`, mostra resultado final
+5. Apos 3 segundos, volta para `syncPhase = "idle"`
