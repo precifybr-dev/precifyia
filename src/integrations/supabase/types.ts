@@ -119,6 +119,63 @@ export type Database = {
         }
         Relationships: []
       }
+      affiliates: {
+        Row: {
+          commission_rate: number
+          created_at: string
+          email: string
+          id: string
+          instagram: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          pix_key: string | null
+          pix_key_type: string | null
+          status: string
+          total_earned: number
+          total_paid: number
+          total_pending: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          commission_rate?: number
+          created_at?: string
+          email: string
+          id?: string
+          instagram?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          status?: string
+          total_earned?: number
+          total_paid?: number
+          total_pending?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          commission_rate?: number
+          created_at?: string
+          email?: string
+          id?: string
+          instagram?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          status?: string
+          total_earned?: number
+          total_paid?: number
+          total_pending?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       beverages: {
         Row: {
           category: string | null
@@ -506,6 +563,237 @@ export type Database = {
           },
         ]
       }
+      commission_payouts: {
+        Row: {
+          affiliate_id: string
+          amount: number
+          created_at: string
+          id: string
+          notes: string | null
+          pix_key: string | null
+          pix_key_type: string | null
+          processed_at: string | null
+          processed_by: string | null
+          receipt_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          affiliate_id: string
+          amount: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          receipt_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          affiliate_id?: string
+          amount?: number
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pix_key?: string | null
+          pix_key_type?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          receipt_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commission_payouts_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commissions: {
+        Row: {
+          affiliate_id: string
+          approved_at: string | null
+          cancelled_reason: string | null
+          commission_amount: number
+          commission_rate: number
+          coupon_id: string | null
+          created_at: string
+          id: string
+          max_recurring_months: number
+          paid_amount: number
+          paid_at: string | null
+          payment_id: string | null
+          period_month: number | null
+          period_year: number | null
+          recurring_month: number
+          referred_user_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          affiliate_id: string
+          approved_at?: string | null
+          cancelled_reason?: string | null
+          commission_amount?: number
+          commission_rate?: number
+          coupon_id?: string | null
+          created_at?: string
+          id?: string
+          max_recurring_months?: number
+          paid_amount?: number
+          paid_at?: string | null
+          payment_id?: string | null
+          period_month?: number | null
+          period_year?: number | null
+          recurring_month?: number
+          referred_user_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          affiliate_id?: string
+          approved_at?: string | null
+          cancelled_reason?: string | null
+          commission_amount?: number
+          commission_rate?: number
+          coupon_id?: string | null
+          created_at?: string
+          id?: string
+          max_recurring_months?: number
+          paid_amount?: number
+          paid_at?: string | null
+          payment_id?: string | null
+          period_month?: number | null
+          period_year?: number | null
+          recurring_month?: number
+          referred_user_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commissions_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commissions_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupon_uses: {
+        Row: {
+          applied_discount: number
+          coupon_id: string
+          created_at: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          applied_discount?: number
+          coupon_id: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          applied_discount?: number
+          coupon_id?: string
+          created_at?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupon_uses_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coupons: {
+        Row: {
+          affiliate_id: string | null
+          code: string
+          coupon_type: string
+          created_at: string
+          created_by: string
+          current_uses: number
+          discount_type: string
+          discount_value: number
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_uses: number | null
+          notes: string | null
+          starts_at: string
+          updated_at: string
+        }
+        Insert: {
+          affiliate_id?: string | null
+          code: string
+          coupon_type?: string
+          created_at?: string
+          created_by: string
+          current_uses?: number
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          notes?: string | null
+          starts_at?: string
+          updated_at?: string
+        }
+        Update: {
+          affiliate_id?: string | null
+          code?: string
+          coupon_type?: string
+          created_at?: string
+          created_by?: string
+          current_uses?: number
+          discount_type?: string
+          discount_value?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_uses?: number | null
+          notes?: string | null
+          starts_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coupons_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       data_audit_log: {
         Row: {
           action: string
@@ -662,6 +950,69 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fraud_flags: {
+        Row: {
+          affiliate_id: string | null
+          coupon_id: string | null
+          created_at: string
+          description: string
+          flag_type: string
+          id: string
+          is_resolved: boolean
+          metadata: Json | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          user_id: string | null
+        }
+        Insert: {
+          affiliate_id?: string | null
+          coupon_id?: string | null
+          created_at?: string
+          description: string
+          flag_type: string
+          id?: string
+          is_resolved?: boolean
+          metadata?: Json | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Update: {
+          affiliate_id?: string | null
+          coupon_id?: string | null
+          created_at?: string
+          description?: string
+          flag_type?: string
+          id?: string
+          is_resolved?: boolean
+          metadata?: Json | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fraud_flags_affiliate_id_fkey"
+            columns: ["affiliate_id"]
+            isOneToOne: false
+            referencedRelation: "affiliates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fraud_flags_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
             referencedColumns: ["id"]
           },
         ]
