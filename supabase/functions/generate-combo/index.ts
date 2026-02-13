@@ -91,10 +91,10 @@ serve(async (req) => {
 
     const isFree = planInfo.current_plan === "free";
 
-    // Fetch user data for AI context
+    // Fetch user data + combo memory for AI context
     const storeFilter = storeId ? { store_id: storeId } : {};
 
-    const [recipesRes, beveragesRes, profileRes] = await Promise.all([
+    const [recipesRes, beveragesRes, profileRes, comboHistoryRes] = await Promise.all([
       supabaseAdmin
         .from("recipes")
         .select("id, name, total_cost, cost_per_serving, selling_price, suggested_price, servings, cmv_target, ifood_selling_price")
@@ -108,11 +108,51 @@ serve(async (req) => {
         .select("business_name, business_type, monthly_revenue, default_cmv")
         .eq("user_id", user.id)
         .single(),
+      // Fetch last 10 combos as memory context
+      supabaseAdmin
+        .from("combos")
+        .select("name, objective, combo_price, total_cost, margin_percent, strategy_explanation, created_at, combo_items(item_name, role, is_bait)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10),
     ]);
 
     const recipes = recipesRes.data || [];
     const beverages = beveragesRes.data || [];
     const profile = profileRes.data;
+    const comboHistory = comboHistoryRes.data || [];
+
+    // Build memory context from past combos
+    const memoryContext = comboHistory.length > 0
+      ? comboHistory.map((c: any) => {
+          const items = (c.combo_items || []).map((i: any) => `${i.item_name} (${i.role}${i.is_bait ? ', ISCA' : ''})`).join(', ');
+          return `- "${c.name}" | Objetivo: ${c.objective} | Preço: R$${c.combo_price} | Margem: ${c.margin_percent}% | Itens: [${items}] | Data: ${c.created_at?.slice(0, 10)}`;
+        }).join('\n')
+      : "Nenhum combo criado anteriormente.";
+
+    // Identify frequently used items
+    const itemFrequency: Record<string, number> = {};
+    comboHistory.forEach((c: any) => {
+      (c.combo_items || []).forEach((i: any) => {
+        itemFrequency[i.item_name] = (itemFrequency[i.item_name] || 0) + 1;
+      });
+    });
+    const frequentItems = Object.entries(itemFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => `${name} (${count}x)`)
+      .join(', ');
+
+    // Identify pattern of objectives
+    const objectiveFrequency: Record<string, number> = {};
+    comboHistory.forEach((c: any) => {
+      objectiveFrequency[c.objective] = (objectiveFrequency[c.objective] || 0) + 1;
+    });
+    const topObjectives = Object.entries(objectiveFrequency)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([obj, count]) => `${obj} (${count}x)`)
+      .join(', ');
 
     if (recipes.length === 0) {
       return new Response(
@@ -203,6 +243,18 @@ BEBIDAS DISPONÍVEIS:
 ${beveragesContext.length > 0 ? JSON.stringify(beveragesContext, null, 2) : "Nenhuma bebida cadastrada"}
 
 OBJETIVO DO COMBO: ${objectiveText}
+
+MEMÓRIA DE COMBOS ANTERIORES (NÃO REPITA combinações iguais):
+${memoryContext}
+
+ITENS MAIS FREQUENTES NOS COMBOS: ${frequentItems || "Nenhum padrão ainda"}
+OBJETIVOS MAIS USADOS: ${topObjectives || "Nenhum padrão ainda"}
+
+INSTRUÇÕES DE MEMÓRIA:
+- NÃO repita a mesma combinação de itens de combos anteriores
+- Se o usuário já usou muito um item, sugira ALTERNATIVAS ou novas combinações
+- Evolua estrategicamente: se já fez combo de ticket médio, sugira abordagem diferente
+- Identifique padrões e proponha evolução (ex: "Você já explorou ancoragem, agora tente decoy effect")
 
 FORMATO DE SAÍDA OBRIGATÓRIO (use a função suggest_combo com TODOS os campos):
 - NOME DO COMBO
