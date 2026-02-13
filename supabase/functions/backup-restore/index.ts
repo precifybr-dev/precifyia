@@ -211,9 +211,8 @@ async function handleImportPreview(body: any, userId: string) {
     }, 400);
   }
 
-  if (body.user_id !== userId) {
-    return jsonResponse({ error: "Este backup pertence a outra conta. Não é possível importar dados de outro usuário." }, 403);
-  }
+  // user_id validation removed — backup can be restored by any authenticated user
+  // All imported data will be re-assigned to the current user's user_id
 
   const data = body.data || {};
   const preview = {
@@ -251,9 +250,7 @@ async function handleImportExecute(supabaseAdmin: any, body: any, userId: string
   if (body.schema_version !== SCHEMA_VERSION) {
     return jsonResponse({ error: `Versão incompatível: ${body.schema_version}` }, 400);
   }
-  if (body.user_id !== userId) {
-    return jsonResponse({ error: "Este backup pertence a outra conta." }, 403);
-  }
+  // user_id validation removed — data is always re-assigned to the importing user
 
   const data = body.data || {};
   const storeId = body.store_id || null;
