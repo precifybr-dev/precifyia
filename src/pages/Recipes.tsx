@@ -944,83 +944,88 @@ export default function Recipes() {
       {sidebarOpen && <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <main className="flex-1 lg:ml-64">
-        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
-                <Menu className="w-5 h-5" />
-              </button>
-              <Button variant="ghost" size="sm" onClick={() => {
-                if (showForm) {
-                  resetForm();
-                } else {
-                  navigate("/app");
-                }
-              }} className="gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                {showForm ? "Voltar para lista" : "Voltar"}
-              </Button>
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="font-display text-xl font-bold text-foreground">Fichas Técnicas</h1>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${
-                    recipeLimit !== null && recipes.length >= recipeLimit 
-                      ? "bg-destructive/10 text-destructive" 
-                      : "bg-muted text-muted-foreground"
-                  }`}>
-                    {recipeLimit !== null 
-                      ? `${recipes.length}/${recipeLimit}`
-                      : `${recipes.length} cadastrada${recipes.length !== 1 ? "s" : ""}`
-                    }
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground">Crie e gerencie receitas com cálculo de CMV</p>
+        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+          {/* Row 1: Navigation + Title */}
+          <div className="flex items-center gap-3 mb-2 sm:mb-0">
+            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={() => setSidebarOpen(true)}>
+              <Menu className="w-5 h-5" />
+            </button>
+            <Button variant="ghost" size="sm" onClick={() => {
+              if (showForm) {
+                resetForm();
+              } else {
+                navigate("/app");
+              }
+            }} className="gap-1 px-2 flex-shrink-0">
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">{showForm ? "Voltar para lista" : "Voltar"}</span>
+              <span className="sm:hidden">Voltar</span>
+            </Button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="font-display text-lg sm:text-xl font-bold text-foreground">Fichas Técnicas</h1>
+                <span className={`text-[10px] sm:text-xs px-1.5 py-0.5 rounded-full ${
+                  recipeLimit !== null && recipes.length >= recipeLimit 
+                    ? "bg-destructive/10 text-destructive" 
+                    : "bg-muted text-muted-foreground"
+                }`}>
+                  {recipeLimit !== null 
+                    ? `${recipes.length}/${recipeLimit}`
+                    : `${recipes.length}`
+                  }
+                </span>
               </div>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">Receitas com cálculo de CMV</p>
             </div>
-            <div className="flex items-center gap-2">
-              <SearchAndFilter
-                searchTerm={searchTerm}
-                onSearchChange={handleSearchChange}
-                sortOption={sortOption}
-                onSortChange={setSortOption}
-                selectedColor={selectedColor}
-                onColorChange={setSelectedColor}
-                showCostSort={true}
-                showSellingSort={false}
-                showColorFilter={false}
-              />
+            <div className="hidden sm:flex items-center gap-2">
               <StoreSwitcher />
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => setImportModalOpen(true)}
-                className="gap-2 text-muted-foreground"
-              >
-                <Sparkles className="w-4 h-4" />
-                <span className="hidden sm:inline">Importar do iFood (IA)</span>
-                <span className="sm:hidden">iFood</span>
-              </Button>
-              <Button 
-                className="gap-2" 
-                onClick={handleNewRecipe}
-                disabled={!canCreateRecipe}
-                title={!canCreateRecipe ? `Limite de ${recipeLimit} fichas atingido` : undefined}
-              >
-                <Plus className="w-4 h-4" />
-                Nova Ficha
-              </Button>
             </div>
+          </div>
+          {/* Row 2: Actions */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 -mb-1 scrollbar-none">
+            <SearchAndFilter
+              searchTerm={searchTerm}
+              onSearchChange={handleSearchChange}
+              sortOption={sortOption}
+              onSortChange={setSortOption}
+              selectedColor={selectedColor}
+              onColorChange={setSelectedColor}
+              showCostSort={true}
+              showSellingSort={false}
+              showColorFilter={false}
+            />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setImportModalOpen(true)}
+              className="gap-1.5 text-muted-foreground flex-shrink-0 text-xs sm:text-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Importar (IA)</span>
+              <span className="sm:hidden">iFood</span>
+            </Button>
+            <Button 
+              size="sm"
+              className="gap-1.5 flex-shrink-0 text-xs sm:text-sm" 
+              onClick={handleNewRecipe}
+              disabled={!canCreateRecipe}
+              title={!canCreateRecipe ? `Limite de ${recipeLimit} fichas atingido` : undefined}
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Nova Ficha</span>
+              <span className="sm:hidden">Nova</span>
+            </Button>
           </div>
           
           {/* AI Import microcopy */}
           {canImport && userPlan !== "pro" && (
-            <p className="text-xs text-muted-foreground mt-2 text-right">
-              {remainingUsage} importação{remainingUsage !== 1 ? "ções" : ""} restante{remainingUsage !== 1 ? "s" : ""} este mês
+            <p className="text-xs text-muted-foreground mt-1.5 text-right">
+              {remainingUsage} importação{remainingUsage !== 1 ? "ções" : ""} restante{remainingUsage !== 1 ? "s" : ""}
             </p>
           )}
         </header>
 
-        <div className="p-6">
+        <div className="p-3 sm:p-6">
           {showForm ? (
             <div className="bg-card rounded-xl border border-border p-6 shadow-card">
               <div className="flex items-center justify-between mb-6">

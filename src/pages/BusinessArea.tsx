@@ -344,27 +344,25 @@ export default function BusinessArea() {
       {sidebarOpen && <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
 
       <main className="flex-1 lg:ml-64">
-        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
-                <Menu className="w-5 h-5" />
-              </button>
-              <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-2">
-                <ArrowLeft className="w-4 h-4" />
-                Voltar
-              </Button>
-              <div>
-                <h1 className="font-display text-xl font-bold text-foreground">Área do Negócio</h1>
-                <p className="text-sm text-muted-foreground">Configure as informações do seu negócio</p>
-              </div>
+        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+          <div className="flex items-center gap-3">
+            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={() => setSidebarOpen(true)}>
+              <Menu className="w-5 h-5" />
+            </button>
+            <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-1 px-2 flex-shrink-0">
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">Voltar</span>
+            </Button>
+            <div className="flex-1 min-w-0">
+              <h1 className="font-display text-lg sm:text-xl font-bold text-foreground">Área do Negócio</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">Configure seu negócio</p>
             </div>
-            <div className="flex items-center gap-2">
-              <StoreSwitcher />
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="hidden sm:block"><StoreSwitcher /></div>
               {!isEditing && (
-                <Button onClick={() => setIsEditing(true)} className="gap-2">
-                  <Pencil className="w-4 h-4" />
-                  Editar
+                <Button size="sm" onClick={() => setIsEditing(true)} className="gap-1.5">
+                  <Pencil className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Editar</span>
                 </Button>
               )}
             </div>
