@@ -9,9 +9,10 @@ export function Header() {
   const navigate = useNavigate();
 
   const navLinks = [
-    { href: "#funcionalidades", label: "Funcionalidades" },
-    { href: "#precos", label: "Preços" },
     { href: "#como-funciona", label: "Como funciona" },
+    { href: "#funcionalidades", label: "Benefícios" },
+    { href: "#calculadora", label: "Calculadora" },
+    { href: "#precos", label: "Preços" },
   ];
 
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
