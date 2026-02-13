@@ -2462,6 +2462,7 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_extraction_score: { Args: { p_user: string }; Returns: number }
       can_manage_store: {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
