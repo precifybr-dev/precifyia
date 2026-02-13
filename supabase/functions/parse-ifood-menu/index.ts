@@ -247,6 +247,17 @@ Responda em JSON: { "storeName": "Nome da Loja", "items": [{ "name": "Nome do Pr
     }
 
     const aiData = await aiResponse.json();
+
+    // ─── Strategic Usage Log (feeds anti-fraud system) ───
+    const tokensUsed = (aiData.usage?.total_tokens || aiData.usage?.completion_tokens || 0);
+    await supabase.from("strategic_usage_logs").insert({
+      user_id: user.id,
+      endpoint: "parse-ifood-menu",
+      tokens_used: tokensUsed,
+      ip_address: clientIp,
+      fingerprint_hash: null,
+    });
+
     const aiContent = aiData.choices?.[0]?.message?.content || "";
     
     // Parse AI response

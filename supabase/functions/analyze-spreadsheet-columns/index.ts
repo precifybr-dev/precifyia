@@ -157,6 +157,17 @@ Retorne APENAS o JSON no formato:
     }
 
     const data = await response.json();
+
+    // ─── Strategic Usage Log (feeds anti-fraud system) ───
+    const tokensUsed = (data.usage?.total_tokens || data.usage?.completion_tokens || 0);
+    await supabase.from("strategic_usage_logs").insert({
+      user_id: user.id,
+      endpoint: "analyze-spreadsheet-columns",
+      tokens_used: tokensUsed,
+      ip_address: null,
+      fingerprint_hash: null,
+    });
+
     const content = data.choices?.[0]?.message?.content || "";
     
     // Extract JSON from response
