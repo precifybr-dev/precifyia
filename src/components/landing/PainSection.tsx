@@ -44,13 +44,13 @@ export function PainSection() {
               return (
                 <div
                   key={i}
-                  className="flex items-center gap-3 p-4 rounded-xl bg-card border border-destructive/15 hover:border-destructive/30 hover:bg-destructive/[0.03] transition-all duration-300 group opacity-0 animate-fade-in"
+                  className="flex items-center gap-4 p-5 rounded-xl bg-card border-2 border-destructive/20 hover:border-destructive/40 hover:shadow-md hover:shadow-destructive/5 transition-all duration-300 group opacity-0 animate-fade-in"
                   style={{ animationDelay: `${i * 80}ms`, animationFillMode: "forwards" }}
                 >
-                  <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0 group-hover:bg-destructive/20 transition-colors">
-                    <Icon className="w-4 h-4 text-destructive" />
+                  <div className="w-10 h-10 rounded-xl bg-destructive/15 flex items-center justify-center flex-shrink-0 group-hover:bg-destructive/25 transition-colors">
+                    <Icon className="w-5 h-5 text-destructive" />
                   </div>
-                  <span className="text-sm font-semibold text-foreground">
+                  <span className="text-base font-bold text-foreground leading-snug">
                     {point.text}
                   </span>
                 </div>
