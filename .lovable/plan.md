@@ -1,48 +1,45 @@
 
 
-## Plano: WhatsApp via botao e Central de Ajuda publica
+## Correção: Tela branca na Universidade
 
-### Resumo
+### Problema Identificado
+- O módulo "IFOOD" está publicado, mas a única aula dentro dele está com status **"draft"**
+- Quando o usuário acessa o módulo, nenhuma aula aparece (filtro `status = published`)
+- O código **não tem estado vazio** para a lista de aulas, resultando em tela branca
 
-Duas mudancas principais:
+### Correções
 
-1. **WhatsApp**: Remover o numero visivel do Footer e adicionar um botao flutuante de WhatsApp na Landing Page (e opcionalmente no Footer) que abre o chat diretamente via link `https://wa.me/5547996887776`, sem exibir o numero.
+**1. Adicionar estado vazio na lista de aulas** (`src/pages/University.tsx`)
+- Quando `lessons.length === 0` e `lessonsLoading === false`, exibir uma mensagem amigável como "Novas aulas estão sendo preparadas para este módulo" com ícone ilustrativo
+- Seguir o mesmo padrão já usado na tela de módulos vazios (ícone + título + descrição)
 
-2. **Central de Ajuda (Footer)**: O link "Central de Ajuda" no Footer atualmente mostra um toast dizendo "em breve". Vamos criar uma secao de FAQ publica na Landing Page (ou uma pagina separada acessivel sem login) com perguntas voltadas para visitantes que querem entender o que e a plataforma, como funciona, e conceitos como CMV. Diferente da Central de Ajuda interna (que depende do banco de dados e login), esta sera estatica e publica.
+**2. Adicionar estado vazio na visão de módulos** 
+- Garantir que módulos sem aulas publicadas mostrem indicação visual (ex: "Em breve")
 
----
+**3. Publicar a aula existente via migração**
+- Atualizar o status da aula "Meu iFood caiu os pedidos" de `draft` para `published` no banco de dados para que os usuários possam visualizá-la
 
-### Detalhes Tecnicos
+### Detalhes Técnicos
 
-#### 1. Botao flutuante de WhatsApp
+Arquivo modificado: `src/pages/University.tsx`
+- Na seção de listagem de aulas (após o loading spinner), adicionar verificação:
+```tsx
+lessons.length === 0 ? (
+  <Card>
+    <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+      <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+      <h3 className="font-semibold text-lg mb-2">Em breve</h3>
+      <p className="text-muted-foreground">Novas aulas estão sendo preparadas para este módulo.</p>
+    </CardContent>
+  </Card>
+) : (
+  // grid de aulas existente
+)
+```
 
-- Criar componente `WhatsAppButton` com icone do WhatsApp (usando SVG ou emoji) fixo no canto inferior direito da Landing Page.
-- Link: `https://wa.me/5547996887776` (abre sem mostrar o numero ao usuario).
-- Estilo: botao verde arredondado, posicao `fixed bottom-6 right-6`.
-- Renderizado apenas na Landing Page (dentro do componente `Landing.tsx`).
-
-#### 2. Footer - Remover numero visivel
-
-- No `Footer.tsx`, remover o bloco que exibe "WhatsApp: (47) 99688-7776".
-- Substituir o link "Central de Ajuda" (que mostra toast placeholder) por um link real.
-
-#### 3. Central de Ajuda publica
-
-- Criar pagina `/ajuda` (publica, sem autenticacao) com FAQs estaticas voltadas para visitantes.
-- Conteudo focado em:
-  - O que e o Precify e para quem serve
-  - Como a plataforma funciona (fluxo basico)
-  - O que e CMV e por que importa
-  - Diferenca entre preco de balcao e marketplace
-  - Preciso saber contabilidade para usar?
-  - Funciona para quem nao usa iFood?
-  - Como comecar (trial gratuito)
-- Rota publica no `App.tsx`.
-- Link no Footer apontando para `/ajuda`.
-
-#### Arquivos modificados
-- `src/components/landing/Footer.tsx` - remover numero, atualizar link Central de Ajuda
-- `src/pages/Landing.tsx` - adicionar botao WhatsApp flutuante
-- `src/pages/PublicHelp.tsx` (novo) - pagina publica de FAQ
-- `src/App.tsx` - adicionar rota `/ajuda`
-
+Migração SQL:
+```sql
+UPDATE university_lessons 
+SET status = 'published' 
+WHERE id = 'c49a72cb-318a-4ea4-a74d-1065b16e7842';
+```
