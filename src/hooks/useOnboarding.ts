@@ -13,6 +13,7 @@ export interface Profile {
   business_type: string | null;
   tax_regime: string | null;
   default_cmv: number | null;
+  referral_source: string | null;
   created_at: string;
   updated_at: string;
 }
