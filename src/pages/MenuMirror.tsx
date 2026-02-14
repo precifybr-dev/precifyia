@@ -6,9 +6,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { RefreshCw, Link2, Trash2, UtensilsCrossed } from "lucide-react";
 import { useMenuMirror } from "@/hooks/useMenuMirror";
 import { IfoodMenuView } from "@/components/menu-mirror/IfoodMenuView";
+import { MenuPerformanceDashboard } from "@/components/menu-mirror/MenuPerformanceDashboard";
 
 export default function MenuMirror() {
-  const { menuData, isLoading, isSaving, ifoodUrl, fetchMenu, saveIfoodUrl, clearUrl } = useMenuMirror();
+  const { menuData, isLoading, isSaving, ifoodUrl, fetchMenu, saveIfoodUrl, clearUrl, analysis, isAnalyzing, analyzeMenu } = useMenuMirror();
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
 
@@ -124,6 +125,16 @@ export default function MenuMirror() {
               </CardContent>
             </Card>
           </div>
+        )}
+
+        {/* Performance Dashboard */}
+        {hasUrl && !showUrlInput && (
+          <MenuPerformanceDashboard
+            analysis={analysis}
+            isLoading={isAnalyzing}
+            onAnalyze={analyzeMenu}
+            hasMenu={!!menuData && menuData.items.length > 0}
+          />
         )}
 
         {/* Menu View */}

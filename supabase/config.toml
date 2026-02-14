@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.secure-signup]
 verify_jwt = false
+
+[functions.analyze-menu-performance]
+verify_jwt = false
