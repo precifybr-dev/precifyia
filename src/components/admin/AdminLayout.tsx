@@ -32,6 +32,7 @@ import {
   Sparkles,
   Ticket,
   TrendingUp,
+  GraduationCap,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -65,6 +66,7 @@ const navItems: NavItem[] = [
   { id: "commissions", label: "Comissões", icon: Wallet, section: "commissions", permission: "view_financials", masterOnly: true },
   { id: "monetization", label: "Monetização", icon: TrendingUp, section: "monetization", permission: "view_financials", masterOnly: true },
   { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs" },
+  { id: "university", label: "Universidade", icon: GraduationCap, section: "university", masterOnly: true },
   { id: "system-book", label: "Livro do Sistema", icon: BookOpen, path: "/admin/system-book", masterOnly: true },
 ];
 

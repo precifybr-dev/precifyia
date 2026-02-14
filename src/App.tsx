@@ -43,6 +43,7 @@ import Combos from "./pages/Combos";
 import RecycleBin from "./pages/RecycleBin";
 import UserSupport from "./pages/UserSupport";
 import BackupRestore from "./pages/BackupRestore";
+import University from "./pages/University";
 
 // Admin pages (master/collaborators)
 import AdminDashboard from "./pages/AdminDashboard";
@@ -252,6 +253,14 @@ const App = () => (
               element={
                 <AppRoute>
                   <UserSupport />
+                </AppRoute>
+              }
+            />
+            <Route
+              path="/app/universidade"
+              element={
+                <AppRoute>
+                  <University />
                 </AppRoute>
               }
             />

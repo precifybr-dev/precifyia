@@ -18,6 +18,7 @@ import { AffiliatesDashboard } from "@/components/admin/AffiliatesDashboard";
 import { CommissionConfigPanel } from "@/components/admin/CommissionConfigPanel";
 import { MonetizationPanel } from "@/components/admin/MonetizationPanel";
 import { PlanLimitsTable } from "@/components/admin/PlanLimitsTable";
+import { UniversityDashboard } from "@/components/admin/UniversityDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -64,6 +65,7 @@ import {
   BarChart3,
   LayoutDashboard,
   Ticket,
+  GraduationCap,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -363,6 +365,10 @@ export default function AdminDashboard() {
                   <TrendingUp className="h-4 w-4" />
                   Monetização
                 </TabsTrigger>
+                <TabsTrigger value="university" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <GraduationCap className="h-4 w-4" />
+                  Universidade
+                </TabsTrigger>
                 <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <History className="h-4 w-4" />
                   Logs
@@ -626,6 +632,10 @@ export default function AdminDashboard() {
 
               <TabsContent value="monetization">
                 <MonetizationPanel />
+              </TabsContent>
+
+              <TabsContent value="university">
+                <UniversityDashboard />
               </TabsContent>
 
               <TabsContent value="logs" className="space-y-4">
