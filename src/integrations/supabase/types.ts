@@ -176,6 +176,164 @@ export type Database = {
         }
         Relationships: []
       }
+      architecture_base_checks: {
+        Row: {
+          check_description: string
+          check_name: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+          is_blocking: boolean
+          is_completed: boolean
+          phase: number
+          phase_name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          check_description?: string
+          check_name: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_blocking?: boolean
+          is_completed?: boolean
+          phase: number
+          phase_name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          check_description?: string
+          check_name?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          is_blocking?: boolean
+          is_completed?: boolean
+          phase?: number
+          phase_name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      architecture_history: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          metadata: Json | null
+          new_status: string | null
+          old_status: string | null
+          prompt_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          metadata?: Json | null
+          new_status?: string | null
+          old_status?: string | null
+          prompt_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          metadata?: Json | null
+          new_status?: string | null
+          old_status?: string | null
+          prompt_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "architecture_history_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "architecture_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      architecture_prompts: {
+        Row: {
+          auto_scan_date: string | null
+          auto_scan_result: Json | null
+          category: string
+          created_at: string
+          created_by: string | null
+          criticality: string
+          dependencies: string[] | null
+          description: string
+          id: string
+          impacts: string[] | null
+          implementation_date: string | null
+          name: string
+          prompt_text: string
+          related_edge_functions: string[] | null
+          related_files: string[] | null
+          related_functions: string[] | null
+          related_policies: string[] | null
+          related_tables: string[] | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          auto_scan_date?: string | null
+          auto_scan_result?: Json | null
+          category: string
+          created_at?: string
+          created_by?: string | null
+          criticality?: string
+          dependencies?: string[] | null
+          description: string
+          id?: string
+          impacts?: string[] | null
+          implementation_date?: string | null
+          name: string
+          prompt_text?: string
+          related_edge_functions?: string[] | null
+          related_files?: string[] | null
+          related_functions?: string[] | null
+          related_policies?: string[] | null
+          related_tables?: string[] | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_scan_date?: string | null
+          auto_scan_result?: Json | null
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          criticality?: string
+          dependencies?: string[] | null
+          description?: string
+          id?: string
+          impacts?: string[] | null
+          implementation_date?: string | null
+          name?: string
+          prompt_text?: string
+          related_edge_functions?: string[] | null
+          related_files?: string[] | null
+          related_functions?: string[] | null
+          related_policies?: string[] | null
+          related_tables?: string[] | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       beverages: {
         Row: {
           category: string | null
