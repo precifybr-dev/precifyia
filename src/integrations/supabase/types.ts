@@ -221,6 +221,45 @@ export type Database = {
         }
         Relationships: []
       }
+      architecture_certifications: {
+        Row: {
+          certified_at: string
+          created_by: string | null
+          id: string
+          is_valid: boolean
+          metadata: Json | null
+          overall_score: number
+          revocation_reason: string | null
+          revoked_at: string | null
+          risk_level: string
+          security_score: number
+        }
+        Insert: {
+          certified_at?: string
+          created_by?: string | null
+          id?: string
+          is_valid?: boolean
+          metadata?: Json | null
+          overall_score: number
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          risk_level: string
+          security_score: number
+        }
+        Update: {
+          certified_at?: string
+          created_by?: string | null
+          id?: string
+          is_valid?: boolean
+          metadata?: Json | null
+          overall_score?: number
+          revocation_reason?: string | null
+          revoked_at?: string | null
+          risk_level?: string
+          security_score?: number
+        }
+        Relationships: []
+      }
       architecture_history: {
         Row: {
           action: string
@@ -331,6 +370,54 @@ export type Database = {
           related_tables?: string[] | null
           status?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      architecture_score_history: {
+        Row: {
+          backend_score: number
+          continuity_score: number
+          created_at: string
+          created_by: string | null
+          critical_failures: string[] | null
+          governance_score: number
+          help_score: number
+          id: string
+          metadata: Json | null
+          overall_score: number
+          risk_level: string
+          security_score: number
+          ux_score: number
+        }
+        Insert: {
+          backend_score?: number
+          continuity_score?: number
+          created_at?: string
+          created_by?: string | null
+          critical_failures?: string[] | null
+          governance_score?: number
+          help_score?: number
+          id?: string
+          metadata?: Json | null
+          overall_score?: number
+          risk_level?: string
+          security_score?: number
+          ux_score?: number
+        }
+        Update: {
+          backend_score?: number
+          continuity_score?: number
+          created_at?: string
+          created_by?: string | null
+          critical_failures?: string[] | null
+          governance_score?: number
+          help_score?: number
+          id?: string
+          metadata?: Json | null
+          overall_score?: number
+          risk_level?: string
+          security_score?: number
+          ux_score?: number
         }
         Relationships: []
       }
