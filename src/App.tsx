@@ -7,6 +7,7 @@ import { StoreProvider } from "@/contexts/StoreContext";
 import { AdminRoute, AppRoute, AuthenticatedRoute, PublicOnlyRoute } from "@/components/routes/ProtectedRoutes";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { ReadOnlyModeInterceptor } from "@/components/support/ReadOnlyModeInterceptor";
+import { GoogleAnalyticsTracker } from "@/components/GoogleAnalyticsTracker";
 
 // Public pages
 import Landing from "./pages/Landing";
@@ -62,6 +63,7 @@ const App = () => (
           <ImpersonationBanner />
           <ReadOnlyModeInterceptor />
           <ContextualHelp />
+          <GoogleAnalyticsTracker />
           <Routes>
             {/* ========== PUBLIC ROUTES ========== */}
             <Route path="/" element={<Landing />} />
