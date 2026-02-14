@@ -20,6 +20,7 @@ import { MonetizationPanel } from "@/components/admin/MonetizationPanel";
 import { PlanLimitsTable } from "@/components/admin/PlanLimitsTable";
 import { UniversityDashboard } from "@/components/admin/UniversityDashboard";
 import { FunnelDashboard } from "@/components/admin/FunnelDashboard";
+import { ControllershipDashboard } from "@/components/admin/ControllershipDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -375,6 +376,10 @@ export default function AdminDashboard() {
                   <MousePointerClick className="h-4 w-4" />
                   Funil
                 </TabsTrigger>
+                <TabsTrigger value="controllership" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <TrendingUp className="h-4 w-4" />
+                  Controladoria
+                </TabsTrigger>
                 <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <History className="h-4 w-4" />
                   Logs
@@ -644,8 +649,12 @@ export default function AdminDashboard() {
                 <UniversityDashboard />
               </TabsContent>
 
-              <TabsContent value="funnel">
+               <TabsContent value="funnel">
                 <FunnelDashboard />
+              </TabsContent>
+
+              <TabsContent value="controllership">
+                <ControllershipDashboard />
               </TabsContent>
 
               <TabsContent value="logs" className="space-y-4">

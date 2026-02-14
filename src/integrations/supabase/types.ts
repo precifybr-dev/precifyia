@@ -802,6 +802,33 @@ export type Database = {
         }
         Relationships: []
       }
+      controllership_config: {
+        Row: {
+          config_key: string
+          config_value: number
+          description: string | null
+          id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          config_key: string
+          config_value?: number
+          description?: string | null
+          id?: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          config_key?: string
+          config_value?: number
+          description?: string | null
+          id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: []
+      }
       coupon_uses: {
         Row: {
           applied_discount: number
@@ -1313,6 +1340,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      marketing_campaigns: {
+        Row: {
+          campaign_external_id: string | null
+          created_at: string
+          created_by: string
+          creative_id: string | null
+          end_date: string | null
+          id: string
+          monthly_budget: number
+          name: string
+          notes: string | null
+          platform: string
+          start_date: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_external_id?: string | null
+          created_at?: string
+          created_by: string
+          creative_id?: string | null
+          end_date?: string | null
+          id?: string
+          monthly_budget?: number
+          name: string
+          notes?: string | null
+          platform?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_external_id?: string | null
+          created_at?: string
+          created_by?: string
+          creative_id?: string | null
+          end_date?: string | null
+          id?: string
+          monthly_budget?: number
+          name?: string
+          notes?: string | null
+          platform?: string
+          start_date?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      marketing_monthly_data: {
+        Row: {
+          clicks: number
+          created_at: string
+          created_by: string
+          id: string
+          impressions: number
+          leads_captured: number
+          month: number
+          notes: string | null
+          source: string
+          total_investment: number
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          clicks?: number
+          created_at?: string
+          created_by: string
+          id?: string
+          impressions?: number
+          leads_captured?: number
+          month: number
+          notes?: string | null
+          source?: string
+          total_investment?: number
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          clicks?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          impressions?: number
+          leads_captured?: number
+          month?: number
+          notes?: string | null
+          source?: string
+          total_investment?: number
+          updated_at?: string
+          year?: number
+        }
+        Relationships: []
       }
       monetization_settings: {
         Row: {
@@ -2795,6 +2915,31 @@ export type Database = {
       get_collaborator_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_controllership_metrics: {
+        Args: { p_month?: number; p_year?: number }
+        Returns: {
+          arr_projected: number
+          average_ticket: number
+          cac: number
+          cancelled_clients_month: number
+          churn_rate: number
+          cpl: number
+          ctr: number
+          ltv: number
+          ltv_cac_ratio: number
+          monthly_growth_rate: number
+          mrr: number
+          net_margin_per_client: number
+          net_revenue: number
+          new_clients_month: number
+          payback_months: number
+          total_clicks: number
+          total_impressions: number
+          total_leads: number
+          total_marketing_investment: number
+          total_paying_clients: number
+        }[]
       }
       get_daily_active_users: {
         Args: { days_back?: number }
