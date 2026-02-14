@@ -44,6 +44,18 @@ const taxRegimes = [
   { value: "not_sure", label: "Não sei / Prefiro não informar" },
 ];
 
+const referralSources = [
+  { value: "google", label: "Google / Pesquisa" },
+  { value: "instagram", label: "Instagram" },
+  { value: "facebook", label: "Facebook" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "youtube", label: "YouTube" },
+  { value: "indicacao", label: "Indicação de amigo / colega" },
+  { value: "ifood", label: "Pesquisando sobre iFood" },
+  { value: "blog", label: "Blog / Artigo" },
+  { value: "outro", label: "Outro" },
+];
+
 export function BusinessConfigStep({
   profile,
   onUpdate,
@@ -55,6 +67,7 @@ export function BusinessConfigStep({
   const [cmvTarget, setCmvTarget] = useState(
     profile.default_cmv?.toString() || "30"
   );
+  const [referralSource, setReferralSource] = useState(profile.referral_source || "");
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
@@ -121,6 +134,7 @@ export function BusinessConfigStep({
         business_type: businessType,
         tax_regime: taxRegime || null,
         default_cmv: parseFloat(cmvTarget),
+        referral_source: referralSource || null,
       });
 
       toast({
@@ -229,6 +243,25 @@ export function BusinessConfigStep({
               {taxRegimes.map((regime) => (
                 <SelectItem key={regime.value} value={regime.value}>
                   {regime.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Referral Source */}
+        <div className="space-y-2">
+          <Label htmlFor="referralSource" className="flex items-center gap-2">
+            Como conheceu o Precify?
+          </Label>
+          <Select value={referralSource} onValueChange={setReferralSource}>
+            <SelectTrigger>
+              <SelectValue placeholder="Selecione (opcional)" />
+            </SelectTrigger>
+            <SelectContent>
+              {referralSources.map((source) => (
+                <SelectItem key={source.value} value={source.value}>
+                  {source.label}
                 </SelectItem>
               ))}
             </SelectContent>

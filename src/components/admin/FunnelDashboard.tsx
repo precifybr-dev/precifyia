@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import { MousePointerClick, UserPlus, CreditCard, ShoppingCart, TrendingDown, ArrowDown, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
@@ -46,7 +46,7 @@ const FUNNEL_COLORS = [
 
 export function FunnelDashboard() {
   const [period, setPeriod] = useState("30");
-  const { steps, ctaPerformance, recentEvents, kpis, isLoading, refetch } = useFunnelData(parseInt(period));
+  const { steps, ctaPerformance, recentEvents, referralSources, kpis, isLoading, refetch } = useFunnelData(parseInt(period));
 
   return (
     <div className="space-y-6">
@@ -275,6 +275,66 @@ export function FunnelDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Referral Sources */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Como conheceram o Precify</CardTitle>
+          <CardDescription>Origem dos usuários cadastrados</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {referralSources.length === 0 ? (
+            <p className="text-center text-muted-foreground py-8">Nenhum dado ainda</p>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={referralSources}
+                      dataKey="count"
+                      nameKey="label"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={90}
+                      label={({ label, percentage }) => `${label} ${percentage.toFixed(0)}%`}
+                    >
+                      {referralSources.map((_, index) => (
+                        <Cell key={index} fill={FUNNEL_COLORS[index % FUNNEL_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(value: number) => [value, "Usuários"]}
+                      contentStyle={{
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="space-y-2">
+                {referralSources.map((src, i) => (
+                  <div key={src.source} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: FUNNEL_COLORS[i % FUNNEL_COLORS.length] }}
+                      />
+                      <span>{src.label}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{src.count}</span>
+                      <Badge variant="outline" className="text-xs">{src.percentage.toFixed(1)}%</Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

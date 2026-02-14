@@ -1635,6 +1635,7 @@ export type Database = {
           last_access_at: string | null
           monthly_revenue: number | null
           onboarding_step: string
+          referral_source: string | null
           subscription_expires_at: string | null
           subscription_status: string
           tax_regime: string | null
@@ -1666,6 +1667,7 @@ export type Database = {
           last_access_at?: string | null
           monthly_revenue?: number | null
           onboarding_step?: string
+          referral_source?: string | null
           subscription_expires_at?: string | null
           subscription_status?: string
           tax_regime?: string | null
@@ -1697,6 +1699,7 @@ export type Database = {
           last_access_at?: string | null
           monthly_revenue?: number | null
           onboarding_step?: string
+          referral_source?: string | null
           subscription_expires_at?: string | null
           subscription_status?: string
           tax_regime?: string | null

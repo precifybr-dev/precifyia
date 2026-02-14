@@ -26,10 +26,30 @@ interface FunnelEvent {
   created_at: string;
 }
 
+interface ReferralSourceData {
+  source: string;
+  label: string;
+  count: number;
+  percentage: number;
+}
+
+const REFERRAL_LABELS: Record<string, string> = {
+  google: "Google / Pesquisa",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  tiktok: "TikTok",
+  youtube: "YouTube",
+  indicacao: "Indicação",
+  ifood: "Pesquisa iFood",
+  blog: "Blog / Artigo",
+  outro: "Outro",
+};
+
 export function useFunnelData(periodDays: number = 30) {
   const [steps, setSteps] = useState<FunnelStep[]>([]);
   const [ctaPerformance, setCtaPerformance] = useState<CtaPerformance[]>([]);
   const [recentEvents, setRecentEvents] = useState<FunnelEvent[]>([]);
+  const [referralSources, setReferralSources] = useState<ReferralSourceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [kpis, setKpis] = useState({
     totalCtaClicks: 0,
@@ -129,6 +149,30 @@ export function useFunnelData(periodDays: number = 30) {
 
       // Recent events (last 50)
       setRecentEvents(events.slice(0, 50) as FunnelEvent[]);
+
+      // Fetch referral sources from profiles
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("referral_source")
+        .not("referral_source", "is", null);
+
+      if (profiles) {
+        const srcCounts: Record<string, number> = {};
+        for (const p of profiles) {
+          const src = p.referral_source || "unknown";
+          srcCounts[src] = (srcCounts[src] || 0) + 1;
+        }
+        const total = profiles.length || 1;
+        const srcData = Object.entries(srcCounts)
+          .map(([source, count]) => ({
+            source,
+            label: REFERRAL_LABELS[source] || source,
+            count,
+            percentage: (count / total) * 100,
+          }))
+          .sort((a, b) => b.count - a.count);
+        setReferralSources(srcData);
+      }
     } catch (e) {
       console.error("Error fetching funnel data:", e);
     } finally {
@@ -140,5 +184,5 @@ export function useFunnelData(periodDays: number = 30) {
     fetchData();
   }, [fetchData]);
 
-  return { steps, ctaPerformance, recentEvents, kpis, isLoading, refetch: fetchData };
+  return { steps, ctaPerformance, recentEvents, referralSources, kpis, isLoading, refetch: fetchData };
 }
