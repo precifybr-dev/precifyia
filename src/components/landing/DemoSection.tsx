@@ -4,8 +4,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useFunnelTracking } from "@/hooks/useFunnelTracking";
 
 export function DemoSection() {
+  const { trackEvent } = useFunnelTracking();
   const [cost, setCost] = useState("12.00");
   const [salePrice, setSalePrice] = useState("40.00");
   const [marketplaceTax, setMarketplaceTax] = useState("27");
@@ -263,12 +265,13 @@ export function DemoSection() {
           </p>
 
           <div className="text-center mt-8">
-            <Link to="/register">
+            <Link to="/register" onClick={() => trackEvent("cta_click", "demo_cta")}>
               <Button
                 size="lg"
+                data-cta-id="demo_cta"
                 className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 group"
               >
-                Calcular meu lucro agora
+                Quero calcular tudo automaticamente
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>

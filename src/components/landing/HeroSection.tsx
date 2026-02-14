@@ -1,6 +1,7 @@
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useFunnelTracking } from "@/hooks/useFunnelTracking";
 
 const bullets = [
   "Descubra sua margem real em menos de 1 minuto",
@@ -9,6 +10,7 @@ const bullets = [
 ];
 
 export function HeroSection() {
+  const { trackEvent } = useFunnelTracking();
   return (
     <section className="relative pt-28 lg:pt-36 pb-20 lg:pb-28 bg-gradient-hero overflow-hidden">
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -39,12 +41,13 @@ export function HeroSection() {
               ))}
             </div>
 
-            <Link to="/register">
+            <Link to="/register" onClick={() => trackEvent("cta_click", "hero_cta")}>
               <Button
                 size="xl"
+                data-cta-id="hero_cta"
                 className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 group text-lg px-10"
               >
-                Calcular meu lucro agora
+                Teste grátis por 7 dias
                 <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>

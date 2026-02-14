@@ -1,6 +1,7 @@
 import { Check, X, Sparkles, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useFunnelTracking } from "@/hooks/useFunnelTracking";
 
 const plans = [
   {
@@ -51,6 +52,7 @@ const plans = [
 ];
 
 export function PricingSection() {
+  const { trackEvent } = useFunnelTracking();
   return (
     <section className="py-16 lg:py-24 bg-muted/30" id="precos">
       <div className="container px-4 mx-auto">
@@ -127,9 +129,13 @@ export function PricingSection() {
                 ))}
               </ul>
 
-              <Link to="/register" className="block">
+              <Link to="/register" className="block" onClick={() => {
+                const ctaId = plan.name === "Teste" ? "pricing_free_cta" : plan.name === "Básico" ? "pricing_basic_cta" : "pricing_pro_cta";
+                trackEvent("cta_click", ctaId);
+              }}>
                 <Button
                   size="lg"
+                  data-cta-id={plan.name === "Teste" ? "pricing_free_cta" : plan.name === "Básico" ? "pricing_basic_cta" : "pricing_pro_cta"}
                   className={`w-full group ${
                     plan.popular
                       ? "bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25"
@@ -137,7 +143,7 @@ export function PricingSection() {
                   }`}
                   variant={plan.popular ? "default" : "outline"}
                 >
-                  {plan.name === "Teste" ? "Testar por 7 dias" : "Calcular meu lucro agora"}
+                  {plan.name === "Teste" ? "Testar por 7 dias" : "Começar agora"}
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </Link>

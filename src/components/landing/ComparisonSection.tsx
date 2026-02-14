@@ -1,6 +1,7 @@
 import { Check, X, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useFunnelTracking } from "@/hooks/useFunnelTracking";
 
 const rows = [
   { label: "Processo", planilha: "Manual", precify: "Automático" },
@@ -11,6 +12,7 @@ const rows = [
 ];
 
 export function ComparisonSection() {
+  const { trackEvent } = useFunnelTracking();
   return (
     <section className="py-16 lg:py-24 bg-muted/30">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
@@ -59,12 +61,13 @@ export function ComparisonSection() {
             <p className="text-lg text-muted-foreground mb-8">
               Precify mostra <span className="text-success font-semibold">lucro real.</span>
             </p>
-            <Link to="/register">
+            <Link to="/register" onClick={() => trackEvent("cta_click", "comparison_cta")}>
               <Button
                 size="lg"
+                data-cta-id="comparison_cta"
                 className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 group"
               >
-                Calcular meu lucro agora
+                Experimentar o Precify
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
             </Link>
