@@ -1610,6 +1610,168 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_anchoring_config: {
+        Row: {
+          avg_cac: number
+          avg_retention_months: number
+          gateway_fee_percent: number
+          id: string
+          min_ltv: number
+          min_margin_percent: number
+          psychological_discount_min: number
+          reinvestment_percent: number
+          target_ltv_cac_ratio: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          avg_cac?: number
+          avg_retention_months?: number
+          gateway_fee_percent?: number
+          id?: string
+          min_ltv?: number
+          min_margin_percent?: number
+          psychological_discount_min?: number
+          reinvestment_percent?: number
+          target_ltv_cac_ratio?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          avg_cac?: number
+          avg_retention_months?: number
+          gateway_fee_percent?: number
+          id?: string
+          min_ltv?: number
+          min_margin_percent?: number
+          psychological_discount_min?: number
+          reinvestment_percent?: number
+          target_ltv_cac_ratio?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      pricing_audit_log: {
+        Row: {
+          action: string
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          ip_address: string | null
+          new_value: Json | null
+          old_value: Json | null
+          reason: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          reason?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
+          reason?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pricing_phrases: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          phrase_template: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          phrase_template: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          phrase_template?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pricing_plans: {
+        Row: {
+          anchored_price_monthly: number
+          anchored_price_yearly: number
+          created_at: string
+          description: string | null
+          features: Json
+          id: string
+          is_active: boolean
+          is_popular: boolean
+          name: string
+          real_price_monthly: number
+          real_price_yearly: number
+          sort_order: number
+          updated_at: string
+          yearly_discount_percent: number
+        }
+        Insert: {
+          anchored_price_monthly?: number
+          anchored_price_yearly?: number
+          created_at?: string
+          description?: string | null
+          features?: Json
+          id: string
+          is_active?: boolean
+          is_popular?: boolean
+          name: string
+          real_price_monthly?: number
+          real_price_yearly?: number
+          sort_order?: number
+          updated_at?: string
+          yearly_discount_percent?: number
+        }
+        Update: {
+          anchored_price_monthly?: number
+          anchored_price_yearly?: number
+          created_at?: string
+          description?: string | null
+          features?: Json
+          id?: string
+          is_active?: boolean
+          is_popular?: boolean
+          name?: string
+          real_price_monthly?: number
+          real_price_yearly?: number
+          sort_order?: number
+          updated_at?: string
+          yearly_discount_percent?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           business_name: string | null

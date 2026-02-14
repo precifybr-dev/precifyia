@@ -21,6 +21,7 @@ import { PlanLimitsTable } from "@/components/admin/PlanLimitsTable";
 import { UniversityDashboard } from "@/components/admin/UniversityDashboard";
 import { FunnelDashboard } from "@/components/admin/FunnelDashboard";
 import { ControllershipDashboard } from "@/components/admin/ControllershipDashboard";
+import { StrategicPricingDashboard } from "@/components/admin/StrategicPricingDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -380,6 +381,10 @@ export default function AdminDashboard() {
                   <TrendingUp className="h-4 w-4" />
                   Controladoria
                 </TabsTrigger>
+                <TabsTrigger value="pricing" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <DollarSign className="h-4 w-4" />
+                  Precificação
+                </TabsTrigger>
                 <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <History className="h-4 w-4" />
                   Logs
@@ -655,6 +660,10 @@ export default function AdminDashboard() {
 
               <TabsContent value="controllership">
                 <ControllershipDashboard />
+              </TabsContent>
+
+              <TabsContent value="pricing">
+                <StrategicPricingDashboard />
               </TabsContent>
 
               <TabsContent value="logs" className="space-y-4">
