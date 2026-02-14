@@ -384,6 +384,25 @@ const FEATURES: Feature[] = [
     impacts: ["Painel Admin (aba Governança)", "Replicação de SaaS"],
     dependencies: ["architecture_prompts", "architecture_history", "architecture_base_checks"],
   },
+  {
+    id: "governance-advanced",
+    name: "Governança Avançada – Score, Risco e Certificação",
+    description:
+      "Evolução do módulo de governança com Score de Maturidade SaaS (0-100) ponderado por 6 pilares, Indicador de Risco Estrutural automático (baixo/médio/alto), Selo 'Arquitetura Aprovada' com emissão e revogação automática, e histórico de evolução com gráficos.",
+    date: "2026-02-14",
+    area: "Infraestrutura",
+    status: "implemented",
+    rules: [
+      { description: "Score calculado automaticamente com pesos: Segurança 30%, Backend 20%, Continuidade 20%, Ajuda 10%, UX 10%, Governança 10%.", scope: "backend" },
+      { description: "Certificação emitida apenas se score ≥ 85, segurança ≥ 90 e risco não alto.", scope: "security" },
+      { description: "Certificação revogada automaticamente se condições deixarem de ser atendidas.", scope: "security" },
+      { description: "Snapshots de score armazenados para evolução histórica com gráficos.", scope: "backend" },
+    ],
+    prompt:
+      "Evoluir governança com Score de Maturidade (0-100), Indicador de Risco (baixo/médio/alto), Selo Arquitetura Aprovada com revogação automática, checklist bloqueante para novo SaaS, e dashboard executivo com gauges e gráficos de evolução.",
+    impacts: ["Painel Admin (aba Governança)", "Certificação de SaaS"],
+    dependencies: ["architecture_score_history", "architecture_certifications", "architecture_base_checks"],
+  },
 ];
 
 // ─── Helpers ───
