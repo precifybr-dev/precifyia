@@ -25,6 +25,7 @@ import {
   User,
   ChevronUp,
   RefreshCw,
+  GraduationCap,
 } from "lucide-react";
 import { useStore } from "@/contexts/StoreContext";
 import { CreateStoreModal } from "@/components/store/CreateStoreModal";
@@ -212,6 +213,7 @@ export default function Dashboard() {
       combos: "/app/combos",
       backup: "/app/backup",
       support: "/app/support",
+      universidade: "/app/universidade",
       "recycle-bin": "/app/recycle-bin",
     };
     
@@ -276,6 +278,7 @@ export default function Dashboard() {
     { icon: Wine, label: "Bebidas", path: "beverages" },
     { icon: FileSpreadsheet, label: "Fichas Técnicas", path: "recipes" },
     { icon: Sparkles, label: "Combos (BETA)", path: "combos" },
+    { icon: GraduationCap, label: "Universidade", path: "universidade" },
     { icon: Headphones, label: "Suporte", path: "support" },
   ];
 

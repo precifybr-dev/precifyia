@@ -2250,6 +2250,133 @@ export type Database = {
           },
         ]
       }
+      university_lessons: {
+        Row: {
+          content: string
+          cover_image_url: string | null
+          created_at: string
+          id: string
+          is_featured: boolean
+          level: Database["public"]["Enums"]["university_level"]
+          module_id: string
+          order_position: number
+          reading_time: number
+          short_description: string
+          slug: string
+          status: Database["public"]["Enums"]["university_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          cover_image_url?: string | null
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          level?: Database["public"]["Enums"]["university_level"]
+          module_id: string
+          order_position?: number
+          reading_time?: number
+          short_description?: string
+          slug: string
+          status?: Database["public"]["Enums"]["university_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          cover_image_url?: string | null
+          created_at?: string
+          id?: string
+          is_featured?: boolean
+          level?: Database["public"]["Enums"]["university_level"]
+          module_id?: string
+          order_position?: number
+          reading_time?: number
+          short_description?: string
+          slug?: string
+          status?: Database["public"]["Enums"]["university_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "university_lessons_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "university_modules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      university_modules: {
+        Row: {
+          cover_image_url: string | null
+          created_at: string
+          description: string
+          id: string
+          order_position: number
+          status: Database["public"]["Enums"]["university_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          order_position?: number
+          status?: Database["public"]["Enums"]["university_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          order_position?: number
+          status?: Database["public"]["Enums"]["university_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_lesson_progress: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          id: string
+          last_accessed_at: string
+          lesson_id: string
+          user_id: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          id?: string
+          last_accessed_at?: string
+          lesson_id: string
+          user_id: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          id?: string
+          last_accessed_at?: string
+          lesson_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "university_lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_payments: {
         Row: {
           amount: number
@@ -2855,6 +2982,8 @@ export type Database = {
         | "view_dre"
         | "view_sub_recipes"
       store_role: "owner" | "admin" | "viewer"
+      university_level: "iniciante" | "intermediario" | "avancado"
+      university_status: "draft" | "published" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3012,6 +3141,8 @@ export const Constants = {
         "view_sub_recipes",
       ],
       store_role: ["owner", "admin", "viewer"],
+      university_level: ["iniciante", "intermediario", "avancado"],
+      university_status: ["draft", "published", "archived"],
     },
   },
 } as const
