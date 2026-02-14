@@ -1,45 +1,36 @@
 
 
-## Correção: Tela branca na Universidade
+## Correção: Adicionar Menu Lateral na Página da Universidade
 
-### Problema Identificado
-- O módulo "IFOOD" está publicado, mas a única aula dentro dele está com status **"draft"**
-- Quando o usuário acessa o módulo, nenhuma aula aparece (filtro `status = published`)
-- O código **não tem estado vazio** para a lista de aulas, resultando em tela branca
+### Problema
+A página `/app/universidade` renderiza sem o menu lateral (sidebar) que existe em todas as outras páginas do app (`/app/business`, `/app/ingredients`, `/app/recipes`, etc.). Isso deixa o usuário sem navegação e sem botão de voltar.
 
-### Correções
+### Causa
+Cada página do app possui sua própria sidebar duplicada internamente. A página `University.tsx` foi criada sem replicar esse padrão.
 
-**1. Adicionar estado vazio na lista de aulas** (`src/pages/University.tsx`)
-- Quando `lessons.length === 0` e `lessonsLoading === false`, exibir uma mensagem amigável como "Novas aulas estão sendo preparadas para este módulo" com ícone ilustrativo
-- Seguir o mesmo padrão já usado na tela de módulos vazios (ícone + título + descrição)
+### Solução
+Adicionar a sidebar completa na página `University.tsx`, seguindo o mesmo padrão das demais páginas:
 
-**2. Adicionar estado vazio na visão de módulos** 
-- Garantir que módulos sem aulas publicadas mostrem indicação visual (ex: "Em breve")
+**1. Estado e lógica de autenticação**
+- Adicionar estados: `sidebarOpen`, `user`, `profile`, `theme`
+- Verificar autenticação ao montar (redirecionar para `/login` se não autenticado)
+- Buscar perfil do usuário
 
-**3. Publicar a aula existente via migração**
-- Atualizar o status da aula "Meu iFood caiu os pedidos" de `draft` para `published` no banco de dados para que os usuários possam visualizá-la
+**2. Sidebar com navegação completa**
+- Logo clicável
+- Menu com os mesmos itens das outras páginas (Dashboard, Área do Negócio, Insumos, Bebidas, Fichas Técnicas, Combos, Universidade como ativo, Suporte)
+- Toggle de tema (claro/escuro)
+- Informações do usuário (avatar, nome, email)
+- Botão de logout
+- Overlay mobile para fechar a sidebar
 
-### Detalhes Técnicos
+**3. Header mobile**
+- Botão hamburger (Menu) para abrir a sidebar em telas pequenas
+- Título "Universidade" visível no topo
 
-Arquivo modificado: `src/pages/University.tsx`
-- Na seção de listagem de aulas (após o loading spinner), adicionar verificação:
-```tsx
-lessons.length === 0 ? (
-  <Card>
-    <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-      <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
-      <h3 className="font-semibold text-lg mb-2">Em breve</h3>
-      <p className="text-muted-foreground">Novas aulas estão sendo preparadas para este módulo.</p>
-    </CardContent>
-  </Card>
-) : (
-  // grid de aulas existente
-)
-```
+**4. Layout**
+- Conteúdo principal com `lg:ml-64` para respeitar a largura da sidebar
+- Sidebar fixa com `w-64` e responsiva (escondida em mobile, visível em desktop)
 
-Migração SQL:
-```sql
-UPDATE university_lessons 
-SET status = 'published' 
-WHERE id = 'c49a72cb-318a-4ea4-a74d-1065b16e7842';
-```
+### Arquivo modificado
+- `src/pages/University.tsx` -- reescrever para incluir a sidebar completa, mantendo toda a lógica existente de módulos, aulas e progresso
