@@ -59,6 +59,7 @@ import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
+import { AppSidebar } from "@/components/layout/AppSidebar";
 // Sub-recipe red color constant
 const SUB_RECIPE_COLOR = "#ef4444";
 
@@ -585,91 +586,7 @@ export default function SubRecipes() {
 
   return (
     <div className="min-h-screen bg-background flex">
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r border-border transform transition-transform duration-200 lg:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex flex-col h-full">
-          <div className="p-6 border-b border-border">
-            <button onClick={() => navigate("/")} className="hover:opacity-80 transition-opacity">
-              <Logo size="sm" showText />
-            </button>
-          </div>
-
-          <nav className="flex-1 p-4 space-y-1">
-            <NavLink to="/app" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
-              <LayoutDashboard className="w-5 h-5" />
-              <span>Dashboard</span>
-              <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
-            </NavLink>
-            <NavLink to="/app/business" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
-              <Building2 className="w-5 h-5" />
-              <span>Área do Negócio</span>
-              <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
-            </NavLink>
-            <NavLink to="/app/ingredients" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
-              <Package className="w-5 h-5" />
-              <span>Insumos</span>
-              <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
-            </NavLink>
-            <NavLink to="/app/beverages" className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
-              <Wine className="w-5 h-5" />
-              <span>Bebidas</span>
-              <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
-            </NavLink>
-            
-            {/* Fichas Técnicas with submenu */}
-            <Collapsible open={fichasSubmenuOpen} onOpenChange={setFichasSubmenuOpen}>
-              <CollapsibleTrigger className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors bg-primary/10 text-primary font-medium">
-                <FileSpreadsheet className="w-5 h-5" />
-                <span>Fichas Técnicas</span>
-                <ChevronDown className={`w-4 h-4 ml-auto transition-transform ${fichasSubmenuOpen ? 'rotate-180' : ''}`} />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pl-4 mt-1 space-y-1">
-                <NavLink to="/app/recipes" className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground">
-                  <FileSpreadsheet className="w-4 h-4" />
-                  <span className="text-sm">Produtos</span>
-                </NavLink>
-                <button 
-                  onClick={() => navigate("/app/sub-recipes")}
-                  className="w-full flex items-center gap-3 px-4 py-2 rounded-lg transition-colors bg-primary/10 text-primary font-medium"
-                >
-                  <ChefHat className="w-4 h-4" />
-                  <span className="text-sm">Receitas</span>
-                </button>
-              </CollapsibleContent>
-            </Collapsible>
-          </nav>
-
-          <div className="p-4 border-t border-border space-y-2">
-            {/* Theme Toggle */}
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
-              onClick={toggleTheme}
-            >
-              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              {theme === "dark" ? "Modo Claro" : "Modo Escuro"}
-            </Button>
-
-            {/* User Info */}
-            <div className="flex items-center gap-3 px-4 py-2">
-              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="font-semibold text-primary text-sm">{user?.email?.[0]?.toUpperCase()}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate text-foreground">{profile?.business_name || "Usuário"}</p>
-                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-              </div>
-            </div>
-
-            {/* Logout Button */}
-            <Button variant="ghost" className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive" onClick={handleLogout}>
-              <LogOut className="w-5 h-5" />
-              Sair
-            </Button>
-          </div>
-        </div>
-      </aside>
-
-      {sidebarOpen && <div className="fixed inset-0 bg-foreground/20 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} profile={profile} />
 
       <main className="flex-1 lg:ml-64">
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">

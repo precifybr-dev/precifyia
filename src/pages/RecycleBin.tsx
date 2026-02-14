@@ -9,6 +9,7 @@ import { useDataProtection, ProtectedTable } from "@/hooks/useDataProtection";
 import { DestructiveActionDialog } from "@/components/security/DestructiveActionDialog";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 interface DeletedRecord {
   id: string;
@@ -107,21 +108,8 @@ export default function RecycleBin() {
   }, {} as Record<string, DeletedRecord[]>);
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-6xl">
-      <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => navigate("/app")}>
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div className="p-2 rounded-lg bg-destructive/10">
-          <Trash2 className="w-6 h-6 text-destructive" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Lixeira</h1>
-          <p className="text-muted-foreground">
-            Itens excluídos são mantidos por 30 dias antes de serem removidos permanentemente
-          </p>
-        </div>
-      </div>
+    <AppLayout title="Lixeira" subtitle="Itens excluídos são mantidos por 30 dias">
+      <div className="container mx-auto py-6 px-4 max-w-6xl">
 
       <Tabs value={selectedTab} onValueChange={setSelectedTab}>
         <TabsList className="mb-4 flex-wrap h-auto gap-1">
@@ -231,7 +219,8 @@ export default function RecycleBin() {
         isLoading={isProcessing}
         canRestore={false}
       />
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 
