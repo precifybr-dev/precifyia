@@ -146,7 +146,16 @@ export default function University() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
           ) : (
-            <div className="grid gap-3">
+          {lessons.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+                <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
+                <h3 className="font-semibold text-lg mb-2">Em breve</h3>
+                <p className="text-muted-foreground">Novas aulas estão sendo preparadas para este módulo.</p>
+              </CardContent>
+            </Card>
+          ) : (
+          <div className="grid gap-3">
               {lessons.map((lesson, idx) => {
                 const done = progress.some(p => p.lesson_id === lesson.id && p.completed);
                 return (
