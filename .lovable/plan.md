@@ -1,35 +1,41 @@
 
+## Integrar Google Analytics 4
 
-## Melhorar Design da Seção "Planilha vs Precify"
+### O que sera feito
 
-### Mudancas planejadas no `ComparisonSection.tsx`:
+Adicionar o script do Google Analytics 4 (gtag.js) ao projeto para rastrear automaticamente pageviews, sessoes e eventos de conversao.
 
-1. **Icone de Planilha Excel com X vermelho**
-   - Adicionar um icone SVG inline representando uma planilha (grid com celulas) com um X vermelho sobreposto no header da coluna "Planilha"
-   - Usar icones do Lucide (`FileSpreadsheet` + `X`) compostos para criar o efeito
+### Passos
 
-2. **Icone do Precify na coluna direita**
-   - Adicionar icone de escudo/check (`ShieldCheck`) em verde no header da coluna "Precify"
+1. **Adicionar script gtag.js no `index.html`**
+   - Inserir o script async do Google Tag Manager no `<head>`
+   - Configurar com o ID de medicao fornecido pelo usuario
 
-3. **Animacoes suaves**
-   - Cada linha da tabela entra com `animate-fade-in` escalonado (delay incremental por linha)
-   - Hover nas linhas com leve scale (`hover:scale-[1.01]`) e sombra
-   - Icones de Check pulsam sutilmente ao aparecer
-   - Botao CTA com leve animacao de flutuacao (`animate-float`)
+2. **Criar hook `useGoogleAnalytics.ts`**
+   - Rastrear mudancas de rota automaticamente (pageview em cada navegacao via React Router)
+   - Expor funcao `trackGAEvent()` para eventos customizados
+   - Integrar com os eventos de funil existentes (signup, cta_click, etc.)
 
-4. **Melhorias visuais**
-   - Coluna "Planilha" com fundo levemente avermelhado (`bg-destructive/5`)
-   - Coluna "Precify" com fundo levemente esverdeado (`bg-success/5`)
-   - Headers das colunas maiores e com icones
-   - Borda esquerda colorida nas linhas (vermelho para planilha, verde para precify como accent)
-   - Separador visual mais claro entre as colunas
+3. **Integrar com rotas existentes**
+   - Adicionar listener de navegacao no `App.tsx` que dispara `gtag('event', 'page_view')` a cada mudanca de rota
 
-### Arquivo modificado:
-- `src/components/landing/ComparisonSection.tsx`
+4. **Eventos customizados trackeados**
+   - `signup_started` / `signup_completed`
+   - `cta_click` (com label do CTA)
+   - `login`
+   - `plan_view` (visualizacao da secao de planos)
 
-### Detalhes tecnicos:
-- Usar `FileSpreadsheet` do lucide-react para icone de planilha
-- Aplicar `style={{ animationDelay }}` para escalonamento das animacoes fade-in
-- Classes Tailwind existentes no projeto (`animate-fade-in`, `animate-float`, `hover:shadow-card-hover`)
-- Nenhuma dependencia nova necessaria
+### Detalhes tecnicos
 
+- O ID de medicao (`G-XXXXXXXXXX`) sera colocado diretamente no `index.html` pois e uma chave publica (nao e secret)
+- Nenhuma dependencia nova necessaria - usa o script oficial do Google
+- O hook usa a API `window.gtag()` ja disponivel apos carregar o script
+- Compativel com o sistema de tracking de funil ja existente (`useFunnelTracking`)
+
+### Arquivos modificados
+- `index.html` — adicionar script gtag
+- `src/hooks/useGoogleAnalytics.ts` — novo hook
+- `src/App.tsx` — integrar tracking de rotas
+
+### Pre-requisito do usuario
+- Criar propriedade no Google Analytics 4 e fornecer o ID de medicao (formato `G-XXXXXXXXXX`)
