@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Sparkles, ArrowLeft, AlertTriangle, Crown, Loader2,
+  Sparkles, AlertTriangle, Crown, Loader2,
   Plus, History, LayoutList, Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,27 +12,24 @@ import { useCombos } from "@/hooks/useCombos";
 import { ComboCreationWizard } from "@/components/combos/ComboCreationWizard";
 import { ComboHistoryList } from "@/components/combos/ComboHistoryList";
 import { MenuStrategySection } from "@/components/combos/MenuStrategySection";
+import { AppLayout } from "@/components/layout/AppLayout";
 
 export default function Combos() {
   const navigate = useNavigate();
   const {
-    combos,
-    isLoading,
-    isGenerating,
-    monthlyUsage,
-    usageLimit,
-    canGenerate,
-    isFree,
-    availableRecipes,
-    availableBeverages,
-    generateCombo,
-    generateMenuStrategy,
-    deleteCombo,
-    objectiveLabels,
+    combos, isLoading, isGenerating, monthlyUsage, usageLimit,
+    canGenerate, isFree, availableRecipes, availableBeverages,
+    generateCombo, generateMenuStrategy, deleteCombo, objectiveLabels,
   } = useCombos();
 
   const [activeTab, setActiveTab] = useState("create");
   const [showWizard, setShowWizard] = useState(false);
+
+  const headerActions = (
+    <Badge variant="secondary" className="text-xs sm:text-sm py-1 px-3">
+      {monthlyUsage} / {usageLimit ?? "∞"} este mês
+    </Badge>
+  );
 
   if (isLoading) {
     return (
@@ -43,34 +40,7 @@ export default function Combos() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 sm:px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/app")}>
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="font-display text-lg sm:text-xl font-bold text-foreground">
-                  Combos Inteligentes
-                </h1>
-                <Badge variant="outline" className="text-[10px] font-medium border-warning text-warning">
-                  BETA
-                </Badge>
-              </div>
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Combos + Estratégia de Topo · Delivery & iFood
-              </p>
-            </div>
-          </div>
-          <Badge variant="secondary" className="text-xs sm:text-sm py-1 px-3">
-            {monthlyUsage} / {usageLimit ?? "∞"} este mês
-          </Badge>
-        </div>
-      </header>
-
+    <AppLayout title="Combos Inteligentes" subtitle="Combos + Estratégia de Topo · Delivery & iFood" headerActions={headerActions}>
       <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
         {/* Beta Warning */}
         <Alert className="border-warning/30 bg-warning/5">
@@ -90,32 +60,22 @@ export default function Combos() {
           </Alert>
         )}
 
-        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4 h-auto">
             <TabsTrigger value="create" className="gap-1.5 text-xs sm:text-sm py-2.5">
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Criar Combo</span>
-              <span className="sm:hidden">Criar</span>
+              <Plus className="w-4 h-4" /><span className="hidden sm:inline">Criar Combo</span><span className="sm:hidden">Criar</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm py-2.5">
-              <History className="w-4 h-4" />
-              <span className="hidden sm:inline">Histórico</span>
-              <span className="sm:hidden">Histórico</span>
+              <History className="w-4 h-4" /><span>Histórico</span>
             </TabsTrigger>
             <TabsTrigger value="strategy" className="gap-1.5 text-xs sm:text-sm py-2.5">
-              <LayoutList className="w-4 h-4" />
-              <span className="hidden sm:inline">Topo Cardápio</span>
-              <span className="sm:hidden">Topo</span>
+              <LayoutList className="w-4 h-4" /><span className="hidden sm:inline">Topo Cardápio</span><span className="sm:hidden">Topo</span>
             </TabsTrigger>
             <TabsTrigger value="config" className="gap-1.5 text-xs sm:text-sm py-2.5">
-              <Settings className="w-4 h-4" />
-              <span className="hidden sm:inline">Configurações</span>
-              <span className="sm:hidden">Config</span>
+              <Settings className="w-4 h-4" /><span className="hidden sm:inline">Configurações</span><span className="sm:hidden">Config</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* CREATE TAB */}
           <TabsContent value="create" className="mt-4 space-y-4">
             {!showWizard ? (
               <div className="flex flex-col items-center py-12 space-y-4">
@@ -128,12 +88,7 @@ export default function Combos() {
                     A IA analisará seu cardápio e criará combos lucrativos otimizados para delivery.
                   </p>
                 </div>
-                <Button
-                  size="lg"
-                  onClick={() => setShowWizard(true)}
-                  disabled={!canGenerate}
-                  className="gap-2 text-base px-8"
-                >
+                <Button size="lg" onClick={() => setShowWizard(true)} disabled={!canGenerate} className="gap-2 text-base px-8">
                   <Sparkles className="w-5 h-5" /> Criar Combo com IA
                 </Button>
                 {!canGenerate && (
@@ -144,54 +99,31 @@ export default function Combos() {
               </div>
             ) : (
               <ComboCreationWizard
-                recipes={availableRecipes}
-                beverages={availableBeverages}
-                isGenerating={isGenerating}
-                canGenerate={canGenerate}
-                isFree={isFree}
-                onGenerate={(objective, selectedItems) => {
-                  generateCombo(objective, selectedItems);
-                  setShowWizard(false);
-                  setActiveTab("history");
-                }}
+                recipes={availableRecipes} beverages={availableBeverages}
+                isGenerating={isGenerating} canGenerate={canGenerate} isFree={isFree}
+                onGenerate={(objective, selectedItems) => { generateCombo(objective, selectedItems); setShowWizard(false); setActiveTab("history"); }}
                 onCancel={() => setShowWizard(false)}
               />
             )}
-
-            {/* Loading overlay */}
             {isGenerating && (
               <div className="flex flex-col items-center py-10 gap-4 animate-fade-in">
                 <Loader2 className="w-10 h-10 animate-spin text-primary" />
                 <div className="text-center">
                   <p className="font-medium text-foreground">Analisando seu cardápio...</p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    A IA está criando o combo ideal para delivery
-                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">A IA está criando o combo ideal para delivery</p>
                 </div>
               </div>
             )}
           </TabsContent>
 
-          {/* HISTORY TAB */}
           <TabsContent value="history" className="mt-4">
-            <ComboHistoryList
-              combos={combos}
-              objectiveLabels={objectiveLabels}
-              onDelete={deleteCombo}
-            />
+            <ComboHistoryList combos={combos} objectiveLabels={objectiveLabels} onDelete={deleteCombo} />
           </TabsContent>
 
-          {/* STRATEGY TAB */}
           <TabsContent value="strategy" className="mt-4">
-            <MenuStrategySection
-              canGenerate={canGenerate}
-              isFree={isFree}
-              isGenerating={isGenerating}
-              onGenerate={generateMenuStrategy}
-            />
+            <MenuStrategySection canGenerate={canGenerate} isFree={isFree} isGenerating={isGenerating} onGenerate={generateMenuStrategy} />
           </TabsContent>
 
-          {/* CONFIG TAB */}
           <TabsContent value="config" className="mt-4">
             <div className="space-y-4">
               <div className="p-6 rounded-xl border border-border bg-card">
@@ -211,7 +143,6 @@ export default function Combos() {
                   </div>
                 </div>
               </div>
-
               <div className="p-6 rounded-xl border border-border bg-card">
                 <h3 className="font-semibold text-foreground mb-2">Sobre os Limites</h3>
                 <div className="space-y-2 text-sm text-muted-foreground">
@@ -227,6 +158,6 @@ export default function Combos() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </AppLayout>
   );
 }
