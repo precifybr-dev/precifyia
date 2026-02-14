@@ -1,4 +1,4 @@
-import { Check, X, ArrowRight } from "lucide-react";
+import { Check, X, ArrowRight, FileSpreadsheet, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useFunnelTracking } from "@/hooks/useFunnelTracking";
@@ -24,29 +24,35 @@ export function ComparisonSection() {
 
         <div className="max-w-3xl mx-auto">
           {/* Table header */}
-          <div className="grid grid-cols-3 gap-4 mb-2 px-4">
+          <div className="grid grid-cols-3 gap-4 mb-4 px-4">
             <div />
-            <div className="text-center">
+            <div className="flex flex-col items-center gap-2">
+              <div className="relative">
+                <FileSpreadsheet className="w-8 h-8 text-destructive" />
+                <X className="w-4 h-4 text-destructive absolute -top-1 -right-1 bg-background rounded-full" strokeWidth={3} />
+              </div>
               <span className="text-sm font-semibold text-destructive uppercase tracking-wide">Planilha</span>
             </div>
-            <div className="text-center">
+            <div className="flex flex-col items-center gap-2">
+              <ShieldCheck className="w-8 h-8 text-success" />
               <span className="text-sm font-semibold text-success uppercase tracking-wide">Precify</span>
             </div>
           </div>
 
           {/* Table rows */}
           <div className="space-y-3">
-            {rows.map((row) => (
+            {rows.map((row, index) => (
               <div
                 key={row.label}
-                className="grid grid-cols-3 gap-4 items-center p-4 rounded-xl bg-card border border-border"
+                className="grid grid-cols-3 gap-0 items-center rounded-xl bg-card border border-border overflow-hidden opacity-0 animate-fade-in hover:scale-[1.01] hover:shadow-card-hover transition-all duration-300"
+                style={{ animationDelay: `${index * 100}ms`, animationFillMode: "forwards" }}
               >
-                <span className="text-sm font-medium text-foreground">{row.label}</span>
-                <div className="flex items-center justify-center gap-2">
+                <span className="text-sm font-medium text-foreground p-4">{row.label}</span>
+                <div className="flex items-center justify-center gap-2 p-4 bg-destructive/5 border-l border-r border-border">
                   <X className="w-4 h-4 text-destructive flex-shrink-0" />
                   <span className="text-sm text-muted-foreground">{row.planilha}</span>
                 </div>
-                <div className="flex items-center justify-center gap-2">
+                <div className="flex items-center justify-center gap-2 p-4 bg-success/5">
                   <Check className="w-4 h-4 text-success flex-shrink-0" />
                   <span className="text-sm text-foreground font-medium">{row.precify}</span>
                 </div>
@@ -65,7 +71,7 @@ export function ComparisonSection() {
               <Button
                 size="lg"
                 data-cta-id="comparison_cta"
-                className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 group"
+                className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 group animate-float"
               >
                 Experimentar o Precify
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
