@@ -309,6 +309,61 @@ const FEATURES: Feature[] = [
     impacts: ["Métricas Admin", "Dashboard de Uso"],
     dependencies: ["platform_events", "user_sessions"],
   },
+  {
+    id: "strategic-pricing",
+    name: "Precificação Estratégica + Ancoragem Inteligente",
+    description:
+      "Módulo completo de gestão dinâmica de preços com ancoragem psicológica automática, frases estratégicas editáveis, cálculo de métricas financeiras (LTV, CAC, Payback, ROI) por plano, e atualização automática da landing page.",
+    date: "2026-02-14",
+    area: "Financeiro",
+    status: "implemented",
+    rules: [
+      { description: "Frontend lê preços do banco via usePublicPricing; nunca hardcoda valores.", scope: "frontend" },
+      { description: "Alterações de preço geram registro em pricing_audit_log com motivo obrigatório.", scope: "backend" },
+      { description: "Alterações requerem confirmação de segurança e são restritas ao MASTER.", scope: "security" },
+      { description: "Ancoragem automática calcula valor psicológico com arredondamento premium.", scope: "backend" },
+    ],
+    prompt:
+      "Implementar módulo de precificação estratégica com ancoragem inteligente. Tabelas pricing_plans, pricing_anchoring_config, pricing_phrases e pricing_audit_log. Admin configura preços reais e o sistema calcula ancoragem, desconto e métricas automaticamente. Landing page consome dados do banco.",
+    impacts: ["Landing Page (PricingSection)", "Painel Admin (aba Precificação)", "Checkout futuro"],
+    dependencies: ["pricing_plans", "pricing_anchoring_config", "pricing_phrases", "pricing_audit_log"],
+  },
+  {
+    id: "controllership",
+    name: "Controladoria Financeira + Funil de Crescimento",
+    description:
+      "Módulo avançado de previsibilidade financeira com CAC, CPL, LTV, Payback, MRR Forecast, simulador de crescimento editável e projeções para 3/6/12 meses com cenários otimista/pessimista.",
+    date: "2026-02-14",
+    area: "Financeiro",
+    status: "implemented",
+    rules: [
+      { description: "Frontend exibe dados calculados pela RPC get_controllership_metrics.", scope: "frontend" },
+      { description: "Dados de marketing inseridos manualmente pelo admin até integração com Meta Ads.", scope: "backend" },
+      { description: "Acesso restrito a roles com permissão view_financials.", scope: "security" },
+    ],
+    prompt:
+      "Implementar módulo de controladoria financeira com cálculo automático de CAC, CPL, LTV, Payback, ROI. Simulador editável de crescimento com projeções mensais. Entrada manual de dados de marketing.",
+    impacts: ["Painel Admin (aba Controladoria)", "Projeções financeiras"],
+    dependencies: ["marketing_monthly_data", "marketing_campaigns", "controllership_config", "get_controllership_metrics"],
+  },
+  {
+    id: "referral-tracking",
+    name: "Rastreamento de Origem (Referral Source)",
+    description:
+      "Captura obrigatória de 'Como conheceu o Precify?' no onboarding com análise de conversão por canal no painel administrativo.",
+    date: "2026-02-14",
+    area: "Métricas",
+    status: "implemented",
+    rules: [
+      { description: "Campo referral_source coletado no primeiro passo do onboarding.", scope: "frontend" },
+      { description: "Dados agregados por canal no FunnelDashboard com gráfico de pizza.", scope: "backend" },
+      { description: "Campo indexado para consultas analíticas performáticas.", scope: "security" },
+    ],
+    prompt:
+      "Implementar rastreamento de origem de aquisição no onboarding. Coluna referral_source na tabela profiles. Análise por canal no painel admin.",
+    impacts: ["Onboarding (BusinessConfigStep)", "Painel Admin (aba Funil)"],
+    dependencies: ["profiles.referral_source"],
+  },
 ];
 
 // ─── Helpers ───
