@@ -364,6 +364,26 @@ const FEATURES: Feature[] = [
     impacts: ["Onboarding (BusinessConfigStep)", "Painel Admin (aba Funil)"],
     dependencies: ["profiles.referral_source"],
   },
+  {
+    id: "architecture-governance",
+    name: "Governança de Arquitetura & Prompts",
+    description:
+      "Sistema estrutural para registro, auditoria, comparação e validação de todos os prompts e decisões arquiteturais usados na construção do SaaS. Permite replicação para novos projetos e detecção de falhas estruturais.",
+    date: "2026-02-14",
+    area: "Infraestrutura",
+    status: "implemented",
+    rules: [
+      { description: "Prompts registrados no banco com categoria, criticidade e status rastreáveis.", scope: "backend" },
+      { description: "Checklist de arquitetura base com fases bloqueantes (Segurança e Continuidade).", scope: "security" },
+      { description: "Importação de prompts de outros chats com comparação automática.", scope: "frontend" },
+      { description: "Histórico imutável de alterações estruturais com log automático.", scope: "backend" },
+      { description: "Acesso restrito exclusivamente ao MASTER via RLS.", scope: "security" },
+    ],
+    prompt:
+      "Implementar módulo de Governança de Arquitetura & Prompts no admin. Tabelas architecture_prompts, architecture_history e architecture_base_checks. 5 sub-abas: Prompts Usados, Auditoria Técnica, Arquitetura Base, Novo SaaS e Importação. Checklist com fases bloqueantes.",
+    impacts: ["Painel Admin (aba Governança)", "Replicação de SaaS"],
+    dependencies: ["architecture_prompts", "architecture_history", "architecture_base_checks"],
+  },
 ];
 
 // ─── Helpers ───

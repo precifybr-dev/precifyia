@@ -22,6 +22,7 @@ import { UniversityDashboard } from "@/components/admin/UniversityDashboard";
 import { FunnelDashboard } from "@/components/admin/FunnelDashboard";
 import { ControllershipDashboard } from "@/components/admin/ControllershipDashboard";
 import { StrategicPricingDashboard } from "@/components/admin/StrategicPricingDashboard";
+import { ArchitectureGovernanceDashboard } from "@/components/admin/ArchitectureGovernanceDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -70,6 +71,7 @@ import {
   Ticket,
   GraduationCap,
   MousePointerClick,
+  FileCode2,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -385,6 +387,10 @@ export default function AdminDashboard() {
                   <DollarSign className="h-4 w-4" />
                   Precificação
                 </TabsTrigger>
+                <TabsTrigger value="governance" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <FileCode2 className="h-4 w-4" />
+                  Governança
+                </TabsTrigger>
                 <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <History className="h-4 w-4" />
                   Logs
@@ -664,6 +670,10 @@ export default function AdminDashboard() {
 
               <TabsContent value="pricing">
                 <StrategicPricingDashboard />
+              </TabsContent>
+
+              <TabsContent value="governance">
+                <ArchitectureGovernanceDashboard />
               </TabsContent>
 
               <TabsContent value="logs" className="space-y-4">
