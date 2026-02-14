@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
+import type { MenuAnalysis } from "@/components/menu-mirror/MenuPerformanceDashboard";
 
 export interface FullMenuItem {
   name: string;
@@ -23,6 +24,8 @@ export function useMenuMirror() {
   const [menuData, setMenuData] = useState<MenuMirrorData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [analysis, setAnalysis] = useState<MenuAnalysis | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const ifoodUrl = (activeStore as any)?.ifood_url as string | null;
 
@@ -108,6 +111,34 @@ export function useMenuMirror() {
     }
   }, [activeStore?.id, toast]);
 
+  const analyzeMenu = useCallback(async () => {
+    if (!menuData || menuData.items.length === 0) return;
+
+    setIsAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-menu-performance", {
+        body: { items: menuData.items, storeName: menuData.storeName },
+      });
+
+      if (error) throw error;
+
+      if (data?.success && data.analysis) {
+        setAnalysis(data.analysis);
+      } else {
+        throw new Error(data?.error || "Erro ao analisar cardápio");
+      }
+    } catch (err: any) {
+      console.error("analyzeMenu error:", err);
+      toast({
+        title: "Erro na análise",
+        description: err.message || "Tente novamente em alguns instantes.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [menuData, toast]);
+
   return {
     menuData,
     isLoading,
@@ -116,5 +147,8 @@ export function useMenuMirror() {
     fetchMenu,
     saveIfoodUrl,
     clearUrl,
+    analysis,
+    isAnalyzing,
+    analyzeMenu,
   };
 }
