@@ -2368,6 +2368,7 @@ export type Database = {
           business_type: string | null
           created_at: string
           id: string
+          ifood_url: string | null
           is_default: boolean
           logo_url: string | null
           name: string
@@ -2378,6 +2379,7 @@ export type Database = {
           business_type?: string | null
           created_at?: string
           id?: string
+          ifood_url?: string | null
           is_default?: boolean
           logo_url?: string | null
           name: string
@@ -2388,6 +2390,7 @@ export type Database = {
           business_type?: string | null
           created_at?: string
           id?: string
+          ifood_url?: string | null
           is_default?: boolean
           logo_url?: string | null
           name?: string
