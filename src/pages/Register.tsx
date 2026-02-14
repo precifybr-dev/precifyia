@@ -10,13 +10,16 @@ import { Turnstile } from "react-turnstile";
 import { lovable } from "@/integrations/lovable";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/ui/Logo";
+import { useFunnelTracking } from "@/hooks/useFunnelTracking";
 
 const TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
 
 export default function Register() {
+  const { trackEvent } = useFunnelTracking();
   // Force light mode on public pages - dark mode only for authenticated users
   useEffect(() => {
     document.documentElement.classList.remove("dark");
+    trackEvent("signup_started");
     
     return () => {
       const savedTheme = localStorage.getItem("theme");
@@ -69,6 +72,7 @@ export default function Register() {
           variant: "destructive",
         });
       } else {
+        trackEvent("signup_completed");
         toast({
           title: "Solicitação recebida!",
           description: data.message || "Verifique seu email para confirmar a conta.",

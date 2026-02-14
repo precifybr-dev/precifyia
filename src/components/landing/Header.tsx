@@ -3,10 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/Logo";
+import { useFunnelTracking } from "@/hooks/useFunnelTracking";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const { trackEvent } = useFunnelTracking();
 
   const navLinks = [
     { href: "#calculadora", label: "Calculadora" },
@@ -56,10 +58,14 @@ export function Header() {
             </Button>
             <Button
               size="sm"
+              data-cta-id="header_cta"
               className="bg-success hover:bg-success/90 text-success-foreground group"
-              onClick={() => navigate("/register")}
+              onClick={() => {
+                trackEvent("cta_click", "header_cta");
+                navigate("/register");
+              }}
             >
-              Calcular meu lucro agora
+              Teste grátis por 7 dias
               <ArrowRight className="w-4 h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
             </Button>
           </div>
@@ -105,10 +111,11 @@ export function Header() {
                   className="w-full bg-success hover:bg-success/90 text-success-foreground"
                   onClick={() => {
                     setIsOpen(false);
+                    trackEvent("cta_click", "header_cta");
                     navigate("/register");
                   }}
                 >
-                  Calcular meu lucro agora
+                  Teste grátis por 7 dias
                 </Button>
               </div>
             </nav>

@@ -1125,6 +1125,36 @@ export type Database = {
           },
         ]
       }
+      funnel_events: {
+        Row: {
+          anonymous_id: string
+          created_at: string
+          cta_id: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          anonymous_id: string
+          created_at?: string
+          cta_id?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          anonymous_id?: string
+          created_at?: string
+          cta_id?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       help_content: {
         Row: {
           category: string
