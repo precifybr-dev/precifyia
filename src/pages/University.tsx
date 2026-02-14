@@ -145,8 +145,7 @@ export default function University() {
             <div className="flex justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
             </div>
-          ) : (
-          {lessons.length === 0 ? (
+          ) : lessons.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                 <BookOpen className="h-12 w-12 text-muted-foreground mb-4" />
@@ -155,7 +154,7 @@ export default function University() {
               </CardContent>
             </Card>
           ) : (
-          <div className="grid gap-3">
+            <div className="grid gap-3">
               {lessons.map((lesson, idx) => {
                 const done = progress.some(p => p.lesson_id === lesson.id && p.completed);
                 return (
