@@ -1,14 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/ui/Logo";
 import { useFunnelTracking } from "@/hooks/useFunnelTracking";
+import { supabase } from "@/integrations/supabase/client";
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
   const { trackEvent } = useFunnelTracking();
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsLoggedIn(!!session);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   const navLinks = [
     { href: "#calculadora", label: "Calculadora" },
@@ -30,7 +42,7 @@ export function Header() {
     <header className="fixed top-0 left-0 right-0 z-50 bg-primary">
       <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
         <div className="flex items-center justify-between h-16 lg:h-20">
-          <Link to="/">
+          <Link to={isLoggedIn ? "/app" : "/"}>
             <Logo size="sm" showText variant="white" />
           </Link>
 

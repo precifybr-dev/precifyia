@@ -99,7 +99,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="p-4 border-b border-border">
-            <button onClick={() => navigate("/")} className="hover:opacity-80 transition-opacity">
+            <button onClick={() => navigate("/app")} className="hover:opacity-80 transition-opacity">
               <Logo size="sm" showText />
             </button>
           </div>
