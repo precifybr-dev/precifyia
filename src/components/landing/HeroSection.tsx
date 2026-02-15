@@ -20,7 +20,7 @@ function PricingTableMockup() {
   ];
 
   return (
-    <div className="rounded-xl border border-border bg-card shadow-xl shadow-primary/5 p-3 w-[280px] sm:w-[320px] text-left">
+    <div className="rounded-xl border border-border bg-card shadow-xl shadow-primary/5 p-3 w-full max-w-[320px] text-left">
       <div className="flex items-center gap-2 mb-2 px-1">
         <div className="w-2 h-2 rounded-full bg-destructive" />
         <div className="w-2 h-2 rounded-full bg-warning" />
@@ -55,7 +55,7 @@ function PricingTableMockup() {
 
 function IfoodPriceMockup() {
   return (
-    <div className="rounded-xl border border-border bg-card shadow-xl shadow-primary/5 p-3 w-[200px] text-left">
+    <div className="rounded-xl border border-border bg-card shadow-xl shadow-primary/5 p-3 w-full max-w-[200px] text-left">
       <div className="flex items-center gap-2 mb-2">
         <div className="rounded-md bg-destructive/10 p-1.5">
           <Utensils className="h-3.5 w-3.5 text-destructive" />
@@ -83,7 +83,7 @@ function IfoodPriceMockup() {
 
 function MarginAlertMockup() {
   return (
-    <div className="rounded-xl border border-border bg-card shadow-xl shadow-primary/5 p-3 w-[220px] text-left">
+    <div className="rounded-xl border border-border bg-card shadow-xl shadow-primary/5 p-3 w-full max-w-[220px] text-left">
       <div className="flex items-center gap-2 mb-2">
         <div className="rounded-md bg-success/10 p-1.5">
           <TrendingUp className="h-3.5 w-3.5 text-success" />
@@ -128,7 +128,7 @@ function MarginAlertMockup() {
 
 function PriceTagMockup() {
   return (
-    <div className="rounded-xl border border-border bg-card shadow-xl shadow-primary/5 p-3 w-[180px] text-center">
+    <div className="rounded-xl border border-border bg-card shadow-xl shadow-primary/5 p-3 w-full max-w-[180px] text-center">
       <div className="flex items-center justify-center gap-1.5 mb-1.5">
         <DollarSign className="h-3.5 w-3.5 text-primary" />
         <span className="text-[10px] font-bold text-foreground">Preço Ideal</span>
@@ -222,12 +222,12 @@ export function HeroSection() {
             <IfoodPriceMockup />
           </div>
 
-          {/* Mobile: horizontal scroll */}
-          <div className="sm:hidden -mx-4 px-4 overflow-x-auto pb-4">
-            <div className="flex gap-3 w-max">
-              <PricingTableMockup />
-              <IfoodPriceMockup />
+          {/* Mobile: stacked vertically */}
+          <div className="sm:hidden flex flex-col gap-3 items-center">
+            <PricingTableMockup />
+            <div className="grid grid-cols-2 gap-3 w-full max-w-[320px]">
               <MarginAlertMockup />
+              <PriceTagMockup />
             </div>
           </div>
         </div>
