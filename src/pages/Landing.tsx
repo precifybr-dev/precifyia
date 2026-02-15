@@ -3,6 +3,7 @@ import { Header } from "@/components/landing/Header";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { PainSection } from "@/components/landing/PainSection";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
+import { SolutionSection } from "@/components/landing/SolutionSection";
 import { DemoSection } from "@/components/landing/DemoSection";
 import { BenefitsSection } from "@/components/landing/BenefitsSection";
 import { SocialProofSection } from "@/components/landing/SocialProofSection";
@@ -30,6 +31,7 @@ export default function Landing() {
       <HeroSection />
       <PainSection />
       <ComparisonSection />
+      <SolutionSection />
       <DemoSection />
       <BenefitsSection />
       <SocialProofSection />
