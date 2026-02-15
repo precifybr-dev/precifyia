@@ -29,9 +29,9 @@ export default function Landing() {
     <div className="min-h-screen">
       <Header />
       <HeroSection />
+      <SolutionSection />
       <PainSection />
       <ComparisonSection />
-      <SolutionSection />
       <DemoSection />
       <BenefitsSection />
       <SocialProofSection />
