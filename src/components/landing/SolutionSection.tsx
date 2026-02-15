@@ -181,7 +181,7 @@ export function SolutionSection() {
   }, []);
 
   return (
-    <section className="py-16 sm:py-24 bg-muted/30 overflow-hidden">
+    <section className="py-10 sm:py-16 bg-muted/30 overflow-hidden">
       <div className="container max-w-5xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-10 sm:mb-14">
