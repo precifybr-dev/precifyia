@@ -123,6 +123,9 @@ export function Footer() {
             <Link to="/chargeback" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Chargeback
             </Link>
+            <Link to="/cookies" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              Cookies
+            </Link>
           </div>
         </div>
       </div>
