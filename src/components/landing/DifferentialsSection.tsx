@@ -1,9 +1,14 @@
-import { Receipt, BarChart3, RefreshCw, FileBarChart, Store, ShieldCheck, ArrowRight } from "lucide-react";
+import { Receipt, BarChart3, RefreshCw, FileBarChart, Store, ShieldCheck, ArrowRight, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useFunnelTracking } from "@/hooks/useFunnelTracking";
 
 const differentials = [
+  {
+    icon: UtensilsCrossed,
+    title: "Análise inteligente do cardápio",
+    description: "IA analisa seu cardápio do iFood com score de performance, identifica produtos estrela e sugere melhorias.",
+  },
   {
     icon: Receipt,
     title: "Considera taxa real do iFood",

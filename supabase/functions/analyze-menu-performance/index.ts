@@ -55,7 +55,7 @@ serve(async (req) => {
     // Usage check
     const { data: usageCheck, error: usageError } = await supabase.rpc("check_and_increment_usage", {
       _user_id: user.id,
-      _feature: "ifood_import",
+      _feature: "menu_analysis",
       _endpoint: "analyze-menu-performance",
     });
     const usageInfo = usageCheck?.[0];
