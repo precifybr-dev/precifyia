@@ -25,8 +25,10 @@ import TermsOfUse from "./pages/TermsOfUse";
 import PrivacyPolicy from "./pages/PrivacyPolicy";
 import CancellationPolicy from "./pages/CancellationPolicy";
 import ChargebackPolicy from "./pages/ChargebackPolicy";
+import CookiePolicy from "./pages/CookiePolicy";
 import PublicHelp from "./pages/PublicHelp";
 import { ContextualHelp } from "@/components/help/ContextualHelp";
+import { CookieConsent } from "@/components/CookieConsent";
 
 // Auth/Security pages
 import SecurityCheck from "./pages/SecurityCheck";
@@ -65,6 +67,7 @@ const App = () => (
           <ReadOnlyModeInterceptor />
           <ContextualHelp />
           <GoogleAnalyticsTracker />
+          <CookieConsent />
           <Routes>
             {/* ========== PUBLIC ROUTES ========== */}
             <Route path="/" element={<Landing />} />
@@ -74,6 +77,7 @@ const App = () => (
             <Route path="/politica-antifraude" element={<AntiFraudPolicy />} />
             <Route path="/cancelamento" element={<CancellationPolicy />} />
             <Route path="/chargeback" element={<ChargebackPolicy />} />
+            <Route path="/cookies" element={<CookiePolicy />} />
             <Route path="/ajuda" element={<PublicHelp />} />
             <Route 
               path="/login" 
