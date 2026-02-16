@@ -202,6 +202,17 @@ async function fetchFromMarketplaceAPI(
   return null;
 }
 
+// Normalize iFood image URLs - they often come as relative paths
+const IFOOD_IMAGE_CDN = "https://static-images.ifood.com.br/image/upload/t_medium/pratos/";
+
+function normalizeImageUrl(raw: string): string {
+  if (!raw) return "";
+  // Already a full URL
+  if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
+  // Relative path like "merchant-id/filename.jpg"
+  return `${IFOOD_IMAGE_CDN}${raw}`;
+}
+
 function parseMarketplaceResponse(data: any): { storeName: string; items: FullMenuItem[] } | null {
   const items: FullMenuItem[] = [];
   let storeName = "";
@@ -221,12 +232,13 @@ function parseMarketplaceResponse(data: any): { storeName: string; items: FullMe
         let price = item.unitPrice ?? item.price ?? item.unitOriginalPrice ?? item.unitMinPrice ?? 0;
         if (typeof price === "number" && price > 1000) price = price / 100;
 
+        const rawImg = item.logoUrl || item.imageUrl || item.image || "";
         items.push({
           name: item.description || item.name || item.title || "Item sem nome",
           description: item.details || item.subtitle || item.additionalInfo || "",
           price: typeof price === "number" ? price : parseFloat(String(price)) || 0,
           category: catName,
-          image_url: item.logoUrl || item.imageUrl || item.image || "",
+          image_url: normalizeImageUrl(rawImg),
         });
       }
     }
@@ -243,12 +255,13 @@ function parseMarketplaceResponse(data: any): { storeName: string; items: FullMe
         let price = item.unitPrice ?? item.price ?? item.originalPrice ?? 0;
         if (typeof price === "number" && price > 1000) price = price / 100;
 
+        const rawImg2 = item.logoUrl || item.imageUrl || "";
         items.push({
           name: item.description || item.name || "Item sem nome",
           description: item.details || item.subtitle || "",
           price: typeof price === "number" ? price : parseFloat(String(price)) || 0,
           category: catName,
-          image_url: item.logoUrl || item.imageUrl || "",
+          image_url: normalizeImageUrl(rawImg2),
         });
       }
     }
@@ -260,12 +273,13 @@ function parseMarketplaceResponse(data: any): { storeName: string; items: FullMe
       let price = item.unitPrice ?? item.price ?? 0;
       if (typeof price === "number" && price > 1000) price = price / 100;
 
+      const rawImg3 = item.logoUrl || item.imageUrl || "";
       items.push({
         name: item.description || item.name || "Item sem nome",
         description: item.details || "",
         price: typeof price === "number" ? price : parseFloat(String(price)) || 0,
         category: item.category || "Outros",
-        image_url: item.logoUrl || item.imageUrl || "",
+        image_url: normalizeImageUrl(rawImg3),
       });
     }
   }
@@ -353,12 +367,13 @@ function extractFromNextData(data: any): { storeName: string; items: FullMenuIte
           let price = item.unitPrice ?? item.price ?? item.unitOriginalPrice ?? item.unitMinPrice ?? 0;
           if (typeof price === "number" && price > 1000) price = price / 100;
 
+          const rawImg = item.logoUrl || item.imageUrl || item.image || "";
           items.push({
             name: item.description || item.name || item.title || "Item sem nome",
             description: item.details || item.subtitle || item.additionalInfo || "",
             price: typeof price === "number" ? price : parseFloat(String(price)) || 0,
             category: catName,
-            image_url: item.logoUrl || item.imageUrl || item.image || "",
+            image_url: normalizeImageUrl(rawImg),
           });
         }
       }
