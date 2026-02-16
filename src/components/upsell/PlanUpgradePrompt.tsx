@@ -23,23 +23,22 @@ interface PlanUpgradePromptProps {
 const PLAN_BENEFITS: Record<string, string[]> = {
   basic: [
     "Até 8 fichas técnicas",
+    "5 análises de cardápio/mês",
     "Importação de planilha",
-    "Até 2 lojas",
-    "Suporte prioritário",
+    "Dashboard completo",
   ],
   pro: [
     "Fichas técnicas ilimitadas",
-    "Importação via IA",
-    "Lojas ilimitadas",
-    "Combos inteligentes com IA",
-    "Exportação de dados",
-    "Suporte VIP",
+    "10 análises de cardápio/mês",
+    "Até 3 lojas (limites por conta)",
+    "Combos estratégicos com IA",
+    "Dashboard avançado + DRE",
   ],
 };
 
 const PLAN_PRICES: Record<string, string> = {
-  basic: "R$ 49,90",
-  pro: "R$ 99,90",
+  basic: "R$ 97,00",
+  pro: "R$ 147,00",
 };
 
 const PLAN_LABELS: Record<string, string> = {

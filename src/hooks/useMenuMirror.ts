@@ -18,6 +18,12 @@ export interface MenuMirrorData {
   items: FullMenuItem[];
 }
 
+export interface AnalysisUsage {
+  used: number;
+  limit: number;
+  plan: string;
+}
+
 export function useMenuMirror() {
   const { activeStore, refreshStores } = useStore();
   const { toast } = useToast();
@@ -27,8 +33,55 @@ export function useMenuMirror() {
   const [analysis, setAnalysis] = useState<MenuAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisLoadedFromCache, setAnalysisLoadedFromCache] = useState(false);
+  const [analysisUsage, setAnalysisUsage] = useState<AnalysisUsage | null>(null);
 
   const ifoodUrl = activeStore?.ifood_url ?? null;
+
+  // Fetch analysis usage credits
+  const fetchAnalysisUsage = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get user plan
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_plan")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      const plan = profile?.user_plan || "free";
+
+      // Get plan limit
+      const { data: planFeature } = await supabase
+        .from("plan_features")
+        .select("usage_limit")
+        .eq("plan", plan)
+        .eq("feature", "analyze-menu-performance")
+        .maybeSingle();
+
+      const limit = planFeature?.usage_limit ?? (plan === "free" ? 1 : plan === "basic" ? 5 : 10);
+
+      // Count usage - free = all-time, paid = monthly
+      let query = supabase
+        .from("strategic_usage_logs")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", user.id)
+        .eq("endpoint", "analyze-menu-performance");
+
+      if (plan !== "free") {
+        const monthStart = new Date();
+        monthStart.setDate(1);
+        monthStart.setHours(0, 0, 0, 0);
+        query = query.gte("created_at", monthStart.toISOString());
+      }
+
+      const { count } = await query;
+      setAnalysisUsage({ used: count || 0, limit, plan });
+    } catch {
+      // Non-critical
+    }
+  }, []);
 
   // Load saved analysis from database on mount
   const loadAnalysisFromCache = useCallback(async () => {
@@ -214,6 +267,9 @@ export function useMenuMirror() {
             .update({ menu_analysis: data.analysis, menu_analysis_at: new Date().toISOString() } as any)
             .eq("id", activeStore.id);
         }
+
+        // Refresh usage after successful analysis
+        await fetchAnalysisUsage();
       } else {
         throw new Error(data?.error || "Erro ao analisar cardápio");
       }
@@ -242,5 +298,7 @@ export function useMenuMirror() {
     analyzeMenu,
     loadFromCache,
     loadAnalysisFromCache,
+    analysisUsage,
+    fetchAnalysisUsage,
   };
 }

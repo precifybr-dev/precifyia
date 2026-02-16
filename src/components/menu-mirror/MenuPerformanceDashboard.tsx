@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import type { AnalysisUsage } from "@/hooks/useMenuMirror";
 import {
   Flame, ChevronDown, ChevronUp, Star, Target, AlertTriangle,
   TrendingUp, Lightbulb, PenLine, Sparkles, DollarSign,
@@ -39,6 +40,7 @@ interface Props {
   isLoading: boolean;
   onAnalyze: () => void;
   hasMenu: boolean;
+  analysisUsage: AnalysisUsage | null;
 }
 
 function getScoreColor(score: number): string {
@@ -164,7 +166,31 @@ function PillarCard({ pillar }: { pillar: PillarScore }) {
   );
 }
 
-export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMenu }: Props) {
+function UsageBadge({ usage }: { usage: AnalysisUsage | null }) {
+  if (!usage) return null;
+  const remaining = Math.max(0, usage.limit - usage.used);
+  const percent = (usage.used / usage.limit) * 100;
+  const isNearLimit = percent >= 80;
+  const isAtLimit = usage.used >= usage.limit;
+
+  const label = usage.plan === "free"
+    ? (isAtLimit ? "Análise gratuita utilizada" : `${usage.used} de ${usage.limit} análise (única)`)
+    : `${usage.used} de ${usage.limit} análises usadas este mês`;
+
+  return (
+    <div className="w-full max-w-xs mx-auto mt-2">
+      <p className={`text-xs text-center ${isNearLimit ? "text-orange-500" : "text-muted-foreground"}`}>
+        {label}
+      </p>
+      <Progress
+        value={percent}
+        className={`h-1 mt-1 ${isNearLimit ? "[&>div]:bg-orange-500" : ""}`}
+      />
+    </div>
+  );
+}
+
+export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMenu, analysisUsage }: Props) {
   const [showDetails, setShowDetails] = useState(false);
 
   if (!analysis && !isLoading) {
@@ -181,12 +207,13 @@ export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMe
             </p>
             <Button
               onClick={onAnalyze}
-              disabled={!hasMenu || isLoading}
+              disabled={!hasMenu || isLoading || (analysisUsage ? analysisUsage.used >= analysisUsage.limit : false)}
               className="bg-[#EA1D2C] hover:bg-[#c9151f] text-white gap-2"
             >
               <Sparkles className="w-4 h-4" />
               Analisar Cardápio
             </Button>
+            <UsageBadge usage={analysisUsage} />
           </CardContent>
         </Card>
       </div>
@@ -413,10 +440,13 @@ export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMe
           )}
 
           {/* Re-analyze */}
-          <div className="text-center pb-2">
-            <Button variant="outline" size="sm" onClick={onAnalyze} className="gap-2">
+          <div className="text-center pb-2 space-y-2">
+            <Button variant="outline" size="sm" onClick={onAnalyze} className="gap-2"
+              disabled={analysisUsage ? analysisUsage.used >= analysisUsage.limit : false}
+            >
               <Sparkles className="w-3.5 h-3.5" /> Analisar novamente
             </Button>
+            <UsageBadge usage={analysisUsage} />
           </div>
         </div>
       )}
