@@ -22,27 +22,9 @@ interface FullMenuItem {
 
 // ─── Brazilian city coordinates for iFood API ───
 const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
+  // SP
   "sao-paulo-sp": { lat: -23.5505, lng: -46.6333 },
-  "rio-de-janeiro-rj": { lat: -22.9068, lng: -43.1729 },
-  "belo-horizonte-mg": { lat: -19.9167, lng: -43.9345 },
-  "curitiba-pr": { lat: -25.4284, lng: -49.2733 },
-  "porto-alegre-rs": { lat: -30.0346, lng: -51.2177 },
-  "brasilia-df": { lat: -15.7801, lng: -47.9292 },
-  "salvador-ba": { lat: -12.9714, lng: -38.5124 },
-  "fortaleza-ce": { lat: -3.7172, lng: -38.5433 },
-  "recife-pe": { lat: -8.0476, lng: -34.8770 },
-  "goiania-go": { lat: -16.6869, lng: -49.2648 },
   "campinas-sp": { lat: -22.9099, lng: -47.0626 },
-  "manaus-am": { lat: -3.1190, lng: -60.0217 },
-  "florianopolis-sc": { lat: -27.5954, lng: -48.5480 },
-  "vitoria-es": { lat: -20.3155, lng: -40.3128 },
-  "natal-rn": { lat: -5.7945, lng: -35.2110 },
-  "campo-grande-ms": { lat: -20.4697, lng: -54.6201 },
-  "joao-pessoa-pb": { lat: -7.1195, lng: -34.8450 },
-  "sao-luis-ma": { lat: -2.5297, lng: -44.2825 },
-  "maceio-al": { lat: -9.6658, lng: -35.7353 },
-  "teresina-pi": { lat: -5.0892, lng: -42.8019 },
-  "uberlandia-mg": { lat: -18.9186, lng: -48.2772 },
   "ribeirao-preto-sp": { lat: -21.1704, lng: -47.8103 },
   "sorocaba-sp": { lat: -23.5015, lng: -47.4526 },
   "santos-sp": { lat: -23.9608, lng: -46.3336 },
@@ -50,25 +32,121 @@ const CITY_COORDINATES: Record<string, { lat: number; lng: number }> = {
   "osasco-sp": { lat: -23.5325, lng: -46.7917 },
   "santo-andre-sp": { lat: -23.6737, lng: -46.5432 },
   "sao-bernardo-do-campo-sp": { lat: -23.6914, lng: -46.5646 },
+  "sao-jose-dos-campos-sp": { lat: -23.1896, lng: -45.8841 },
+  "piracicaba-sp": { lat: -22.7338, lng: -47.6476 },
+  "bauru-sp": { lat: -22.3246, lng: -49.0871 },
+  // RJ
+  "rio-de-janeiro-rj": { lat: -22.9068, lng: -43.1729 },
   "niteroi-rj": { lat: -22.8833, lng: -43.1036 },
-  "londrina-pr": { lat: -23.3103, lng: -51.1628 },
-  "joinville-sc": { lat: -26.3045, lng: -48.8487 },
+  "petropolis-rj": { lat: -22.5112, lng: -43.1779 },
+  "volta-redonda-rj": { lat: -22.5232, lng: -44.1042 },
+  // MG
+  "belo-horizonte-mg": { lat: -19.9167, lng: -43.9345 },
+  "uberlandia-mg": { lat: -18.9186, lng: -48.2772 },
   "juiz-de-fora-mg": { lat: -21.7642, lng: -43.3503 },
+  "contagem-mg": { lat: -19.9320, lng: -44.0539 },
+  "betim-mg": { lat: -19.9677, lng: -44.1983 },
+  // PR
+  "curitiba-pr": { lat: -25.4284, lng: -49.2733 },
+  "londrina-pr": { lat: -23.3103, lng: -51.1628 },
+  "maringa-pr": { lat: -23.4205, lng: -51.9333 },
+  "cascavel-pr": { lat: -24.9578, lng: -53.4596 },
+  "ponta-grossa-pr": { lat: -25.0945, lng: -50.1633 },
+  // SC
+  "florianopolis-sc": { lat: -27.5954, lng: -48.5480 },
+  "joinville-sc": { lat: -26.3045, lng: -48.8487 },
+  "itapema-sc": { lat: -27.0906, lng: -48.6155 },
+  "balneario-camboriu-sc": { lat: -26.9909, lng: -48.6353 },
+  "blumenau-sc": { lat: -26.9194, lng: -49.0661 },
+  "chapeco-sc": { lat: -27.1007, lng: -52.6157 },
+  "criciuma-sc": { lat: -28.6775, lng: -49.3697 },
+  "itajai-sc": { lat: -26.9078, lng: -48.6616 },
+  "lages-sc": { lat: -27.8161, lng: -50.3261 },
+  "jaragua-do-sul-sc": { lat: -26.4854, lng: -49.0713 },
+  "sao-jose-sc": { lat: -27.6136, lng: -48.6366 },
+  "palhoca-sc": { lat: -27.6453, lng: -48.6682 },
+  "brusque-sc": { lat: -27.0979, lng: -48.9175 },
+  "navegantes-sc": { lat: -26.8986, lng: -48.6544 },
+  "meia-praia-sc": { lat: -27.0906, lng: -48.6155 },
+  // RS
+  "porto-alegre-rs": { lat: -30.0346, lng: -51.2177 },
+  "caxias-do-sul-rs": { lat: -29.1681, lng: -51.1794 },
+  "pelotas-rs": { lat: -31.7654, lng: -52.3376 },
+  "canoas-rs": { lat: -29.9179, lng: -51.1740 },
+  // Others
+  "brasilia-df": { lat: -15.7801, lng: -47.9292 },
+  "salvador-ba": { lat: -12.9714, lng: -38.5124 },
+  "fortaleza-ce": { lat: -3.7172, lng: -38.5433 },
+  "recife-pe": { lat: -8.0476, lng: -34.8770 },
+  "goiania-go": { lat: -16.6869, lng: -49.2648 },
+  "manaus-am": { lat: -3.1190, lng: -60.0217 },
+  "vitoria-es": { lat: -20.3155, lng: -40.3128 },
+  "natal-rn": { lat: -5.7945, lng: -35.2110 },
+  "campo-grande-ms": { lat: -20.4697, lng: -54.6201 },
+  "joao-pessoa-pb": { lat: -7.1195, lng: -34.8450 },
+  "sao-luis-ma": { lat: -2.5297, lng: -44.2825 },
+  "maceio-al": { lat: -9.6658, lng: -35.7353 },
+  "teresina-pi": { lat: -5.0892, lng: -42.8019 },
   "cuiaba-mt": { lat: -15.6014, lng: -56.0979 },
   "aracaju-se": { lat: -10.9091, lng: -37.0677 },
-  "belém-pa": { lat: -1.4558, lng: -48.5024 },
   "belem-pa": { lat: -1.4558, lng: -48.5024 },
-  "maringa-pr": { lat: -23.4205, lng: -51.9333 },
+  "palmas-to": { lat: -10.1689, lng: -48.3317 },
+  "macapa-ap": { lat: 0.0349, lng: -51.0694 },
+  "boa-vista-rr": { lat: 2.8195, lng: -60.6714 },
+  "porto-velho-ro": { lat: -8.7612, lng: -63.9004 },
+  "rio-branco-ac": { lat: -9.9754, lng: -67.8249 },
+};
+
+// State capital fallback coordinates
+const STATE_CAPITALS: Record<string, { lat: number; lng: number }> = {
+  "sp": { lat: -23.5505, lng: -46.6333 },
+  "rj": { lat: -22.9068, lng: -43.1729 },
+  "mg": { lat: -19.9167, lng: -43.9345 },
+  "pr": { lat: -25.4284, lng: -49.2733 },
+  "sc": { lat: -27.5954, lng: -48.5480 },
+  "rs": { lat: -30.0346, lng: -51.2177 },
+  "df": { lat: -15.7801, lng: -47.9292 },
+  "ba": { lat: -12.9714, lng: -38.5124 },
+  "ce": { lat: -3.7172, lng: -38.5433 },
+  "pe": { lat: -8.0476, lng: -34.8770 },
+  "go": { lat: -16.6869, lng: -49.2648 },
+  "am": { lat: -3.1190, lng: -60.0217 },
+  "es": { lat: -20.3155, lng: -40.3128 },
+  "rn": { lat: -5.7945, lng: -35.2110 },
+  "ms": { lat: -20.4697, lng: -54.6201 },
+  "pb": { lat: -7.1195, lng: -34.8450 },
+  "ma": { lat: -2.5297, lng: -44.2825 },
+  "al": { lat: -9.6658, lng: -35.7353 },
+  "pi": { lat: -5.0892, lng: -42.8019 },
+  "mt": { lat: -15.6014, lng: -56.0979 },
+  "se": { lat: -10.9091, lng: -37.0677 },
+  "pa": { lat: -1.4558, lng: -48.5024 },
+  "to": { lat: -10.1689, lng: -48.3317 },
+  "ap": { lat: 0.0349, lng: -51.0694 },
+  "rr": { lat: 2.8195, lng: -60.6714 },
+  "ro": { lat: -8.7612, lng: -63.9004 },
+  "ac": { lat: -9.9754, lng: -67.8249 },
 };
 
 function getCityCoordinates(citySlug: string): { lat: number; lng: number } {
-  // Try exact match
-  if (CITY_COORDINATES[citySlug]) return CITY_COORDINATES[citySlug];
-  // Try partial match
-  for (const [key, coords] of Object.entries(CITY_COORDINATES)) {
-    if (citySlug.startsWith(key.split("-")[0])) return coords;
+  // 1. Try exact match
+  if (CITY_COORDINATES[citySlug]) {
+    console.log(`Coordinates: exact match for "${citySlug}"`);
+    return CITY_COORDINATES[citySlug];
   }
-  // Default to São Paulo
+
+  // 2. Try state fallback (extract "-xx" suffix)
+  const stateMatch = citySlug.match(/-([a-z]{2})$/);
+  if (stateMatch) {
+    const state = stateMatch[1];
+    if (STATE_CAPITALS[state]) {
+      console.log(`Coordinates: state fallback "${state}" for "${citySlug}"`);
+      return STATE_CAPITALS[state];
+    }
+  }
+
+  // 3. Default to São Paulo
+  console.log(`Coordinates: defaulting to São Paulo for "${citySlug}"`);
   return { lat: -23.5505, lng: -46.6333 };
 }
 
@@ -79,6 +157,9 @@ async function fetchFromMarketplaceAPI(
   lng: number
 ): Promise<{ storeName: string; items: FullMenuItem[] } | null> {
   const endpoints = [
+    // Try without coordinates first (some merchants work with UUID alone)
+    `https://marketplace.ifood.com.br/v1/merchants/${merchantId}/catalog`,
+    // Then try with coordinates
     `https://marketplace.ifood.com.br/v1/merchants/${merchantId}/catalog?latitude=${lat}&longitude=${lng}`,
     `https://marketplace.ifood.com.br/v2/merchants/${merchantId}?latitude=${lat}&longitude=${lng}&channel=IFOOD`,
     `https://wm.ifood.com.br/v1/merchant/${merchantId}/catalog?latitude=${lat}&longitude=${lng}`,
