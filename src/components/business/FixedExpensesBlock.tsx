@@ -33,8 +33,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
       .from("fixed_expenses")
       .select("*")
       .eq("user_id", userId);
-    if (storeId) query = query.eq("store_id", storeId);
-    else query = query.is("store_id", null);
+    if (storeId) query = query.or(`store_id.eq.${storeId},store_id.is.null`);
     const { data, error } = await query.order("created_at", { ascending: true });
 
     if (error) {
