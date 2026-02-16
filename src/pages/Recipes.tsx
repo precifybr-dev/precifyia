@@ -99,6 +99,7 @@ interface RecipeWithIngredients extends Recipe {
 }
 
 export default function Recipes() {
+  const { activeStore } = useStore();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -293,11 +294,8 @@ export default function Recipes() {
       setProfile(profileData);
       // Set iFood real percentage from profile
       setIfoodRealPercentage(profileData.ifood_real_percentage ? Number(profileData.ifood_real_percentage) : null);
-      await Promise.all([
-        fetchIngredients(session.user.id),
-        fetchRecipes(session.user.id),
-        fetchBusinessCosts(session.user.id, profileData.monthly_revenue ? Number(profileData.monthly_revenue) : null),
-      ]);
+      // Only fetch business costs on initial load; ingredients & recipes will be fetched by activeStore effect
+      await fetchBusinessCosts(session.user.id, profileData.monthly_revenue ? Number(profileData.monthly_revenue) : null);
       setIsLoading(false);
     };
 
@@ -329,24 +327,48 @@ export default function Recipes() {
     };
   }, [user?.id, profile?.monthly_revenue]);
 
-  const fetchIngredients = async (userId: string) => {
-    const { data, error } = await supabase
+  // Re-fetch data when activeStore changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchIngredients(user.id, activeStore?.id);
+      fetchRecipes(user.id, activeStore?.id);
+    }
+  }, [user?.id, activeStore?.id]);
+
+  const fetchIngredients = async (userId: string, storeId?: string | null) => {
+    let query = supabase
       .from("ingredients")
       .select("*")
       .eq("user_id", userId)
       .order("code", { ascending: true });
+
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setIngredients(data as IngredientData[]);
     }
   };
 
-  const fetchRecipes = async (userId: string) => {
-    const { data, error } = await supabase
+  const fetchRecipes = async (userId: string, storeId?: string | null) => {
+    let query = supabase
       .from("recipes")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
+
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setRecipes(data);
@@ -544,7 +566,7 @@ export default function Recipes() {
       }
 
       toast({ title: "Sucesso", description: `"${newName}" foi criada!` });
-      await fetchRecipes(user.id);
+      await fetchRecipes(user.id, activeStore?.id);
     } catch (error: any) {
       console.error("Error duplicating recipe:", error);
       toast({
@@ -571,7 +593,7 @@ export default function Recipes() {
       toast({ title: "Erro", description: "Não foi possível excluir a ficha técnica", variant: "destructive" });
     } else {
       toast({ title: "Sucesso", description: "Ficha técnica removida!" });
-      await fetchRecipes(user.id);
+      await fetchRecipes(user.id, activeStore?.id);
     }
 
     setDeleteDialogOpen(false);
@@ -743,6 +765,7 @@ export default function Recipes() {
 
       const recipeData = {
         user_id: user.id,
+        store_id: activeStore?.id || null,
         name: recipeName,
         servings: parseInt(servings) || 1,
         cmv_target: parseFloat(cmvTarget) || 30,
@@ -803,7 +826,7 @@ export default function Recipes() {
         description: `CMV: R$ ${totalCost.toFixed(2)} | Preço sugerido: R$ ${suggestedPrice.toFixed(2)}` 
       });
       
-      await fetchRecipes(user.id);
+      await fetchRecipes(user.id, activeStore?.id);
       resetForm();
     } catch (error: any) {
       toast({ 
@@ -829,6 +852,7 @@ export default function Recipes() {
 
     const newRecipes = items.map((item) => ({
       user_id: user.id,
+      store_id: activeStore?.id || null,
       name: item.name,
       servings: 1,
       cmv_target: profile?.default_cmv || 30,
@@ -1361,7 +1385,7 @@ export default function Recipes() {
         userPlan={userPlan}
         onImportComplete={handleIfoodImport}
         onRefreshData={async () => {
-          await fetchRecipes(user.id);
+          await fetchRecipes(user.id, activeStore?.id);
           await checkUsage();
         }}
       />

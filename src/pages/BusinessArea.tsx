@@ -110,18 +110,22 @@ export default function BusinessArea() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const fetchMetrics = async (userId: string) => {
-    // Fetch ingredients count
-    const { count: ingredientsCount } = await supabase
+  const fetchMetrics = async (userId: string, storeId?: string | null) => {
+    // Fetch ingredients count (filtered by store)
+    let ingQuery = supabase
       .from("ingredients")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId);
+    if (storeId) ingQuery = ingQuery.eq("store_id", storeId);
+    const { count: ingredientsCount } = await ingQuery;
 
-    // Fetch recipes with cmv_target and cost data
-    const { data: recipesData, count: recipesCount } = await supabase
+    // Fetch recipes with cmv_target and cost data (filtered by store)
+    let recQuery = supabase
       .from("recipes")
       .select("cmv_target, cost_per_serving, suggested_price", { count: "exact" })
       .eq("user_id", userId);
+    if (storeId) recQuery = recQuery.eq("store_id", storeId);
+    const { data: recipesData, count: recipesCount } = await recQuery;
 
     let averageMargin: number | null = null;
     let averageCMV: number | null = null;
@@ -187,7 +191,7 @@ export default function BusinessArea() {
         monthly_revenue: profileData.monthly_revenue?.toString() || "",
       });
       
-      await fetchMetrics(session.user.id);
+      await fetchMetrics(session.user.id, activeStore?.id);
       setIsLoading(false);
       // Trigger backend business metrics calculation
       calculateMetrics(activeStore?.id);
@@ -200,6 +204,7 @@ export default function BusinessArea() {
   useEffect(() => {
     if (user) {
       calculateMetrics(activeStore?.id);
+      fetchMetrics(user.id, activeStore?.id);
     }
   }, [activeStore?.id, user, calculateMetrics]);
 
