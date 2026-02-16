@@ -14,10 +14,11 @@ interface FixedCost {
 
 interface FixedCostsBlockProps {
   userId: string;
+  storeId?: string | null;
   onTotalChange?: (total: number) => void;
 }
 
-export default function FixedCostsBlock({ userId, onTotalChange }: FixedCostsBlockProps) {
+export default function FixedCostsBlock({ userId, storeId, onTotalChange }: FixedCostsBlockProps) {
   const [costs, setCosts] = useState<FixedCost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newCost, setNewCost] = useState({ name: "", value: "" });
@@ -27,11 +28,13 @@ export default function FixedCostsBlock({ userId, onTotalChange }: FixedCostsBlo
   const { toast } = useToast();
 
   const fetchCosts = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("fixed_costs")
       .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true });
+      .eq("user_id", userId);
+    if (storeId) query = query.eq("store_id", storeId);
+    else query = query.is("store_id", null);
+    const { data, error } = await query.order("created_at", { ascending: true });
 
     if (error) {
       toast({ title: "Erro", description: "Não foi possível carregar os custos fixos", variant: "destructive" });
@@ -48,7 +51,7 @@ export default function FixedCostsBlock({ userId, onTotalChange }: FixedCostsBlo
     if (userId) {
       fetchCosts();
     }
-  }, [userId]);
+  }, [userId, storeId]);
 
   const totalCosts = costs.reduce((sum, cost) => sum + Number(cost.value_per_item), 0);
 
@@ -70,6 +73,7 @@ export default function FixedCostsBlock({ userId, onTotalChange }: FixedCostsBlo
       .from("fixed_costs")
       .insert({
         user_id: userId,
+        store_id: storeId || null,
         name: newCost.name.trim(),
         value_per_item: value,
       })

@@ -606,10 +606,12 @@ export default function BusinessArea() {
             <div className="grid lg:grid-cols-2 gap-6">
               <FixedCostsBlock 
                 userId={user?.id} 
+                storeId={activeStore?.id}
                 onTotalChange={(v) => { setFixedCostsTotal(v); calculateMetrics(activeStore?.id); }}
               />
               <VariableCostsBlock 
                 userId={user?.id} 
+                storeId={activeStore?.id}
                 onTotalChange={(v) => { setVariableCostsTotal(v); calculateMetrics(activeStore?.id); }}
               />
             </div>
@@ -674,11 +676,13 @@ export default function BusinessArea() {
             <div className="mt-6 grid lg:grid-cols-2 gap-6">
               <FixedExpensesBlock 
                 userId={user?.id} 
+                storeId={activeStore?.id}
                 monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
                 onTotalChange={(v) => { setFixedExpensesTotal(v); calculateMetrics(activeStore?.id); }}
               />
               <VariableExpensesBlock 
                 userId={user?.id} 
+                storeId={activeStore?.id}
                 monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
                 onTotalChange={(v) => { setVariableExpensesTotal(v); calculateMetrics(activeStore?.id); }}
               />
