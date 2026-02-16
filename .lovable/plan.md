@@ -1,130 +1,94 @@
 
-# Nova Aba: Controle de Custos Cloud & IA
+# Correcao: Cardapio Completo + Toggle de Categorias
 
-## Objetivo
-Criar uma aba "Custos Cloud & IA" no painel administrativo que permita visualizar e controlar todos os gastos gerados por interacoes dos usuarios com a plataforma (chamadas de IA, funcoes backend, etc.).
+## Problemas Identificados
 
-## Fonte de Dados
-A tabela `strategic_usage_logs` ja registra todas as chamadas de IA com:
-- `user_id` - quem executou
-- `endpoint` - qual funcao (generate-combo, parse-ifood-menu, analyze-menu-performance, etc.)
-- `tokens_used` - tokens consumidos
-- `created_at` - quando ocorreu
+### 1. Cardapio incompleto
+A Edge Function `parse-ifood-menu` tem duas limitacoes criticas:
+- **HTML truncado**: Envia apenas `pageContent.slice(0, 15000)` (15KB) para a IA, cortando cardapios grandes
+- **Fetch simples**: iFood renderiza conteudo via JavaScript. Um `fetch()` basico nao captura o HTML completo com todos os itens
+- **Sem paginacao**: A IA recebe conteudo parcial e extrai apenas os itens visiveis nesse trecho
 
-## O Que Sera Criado
+### 2. Falta toggle de categorias
+Atualmente os itens ja sao agrupados por categoria no `IfoodMenuView`, mas nao existe opcao de alternar entre visualizacao completa (lista unica) e separada por categorias.
 
-### 1. Funcao SQL para agregar custos
-Uma RPC `get_cloud_cost_metrics` que retorna:
-- Custo total estimado por endpoint (baseado em tokens)
-- Custo por usuario (quanto cada usuario gera de custo)
-- Custo medio de onboarding (novo usuario: cadastro + importacao de cardapio + primeiro combo)
-- Evolucao diaria de custos
-- Top 10 usuarios mais caros
+---
 
-**Tabela de precos estimados por endpoint** (configuravel):
-| Endpoint | Custo estimado por 1K tokens |
-|----------|------------------------------|
-| generate-combo | $0.01 |
-| generate-menu-strategy | $0.01 |
-| parse-ifood-menu | $0.01 |
-| analyze-menu-performance | $0.01 |
-| analyze-spreadsheet-columns | $0.01 |
+## Solucao
 
-### 2. Componente `CloudCostsDashboard.tsx`
-Nova aba no admin com as seguintes secoes:
+### Parte 1: Aumentar captura do cardapio completo
 
-**KPIs principais:**
-- Custo total no periodo (Cloud + IA)
-- Custo medio por usuario
-- Custo medio de aquisicao tecnica (CAC tecnico - quanto custa um novo usuario em infra)
-- Total de chamadas de IA no periodo
+**Arquivo**: `supabase/functions/parse-ifood-menu/index.ts`
 
-**Graficos:**
-- Evolucao diaria de custos (AreaChart)
-- Custo por endpoint (BarChart horizontal - qual feature gasta mais)
-- Distribuicao de custo por tipo (PieChart)
+Mudancas no modo `full_menu`:
 
-**Tabelas:**
-- Top 10 usuarios que mais consomem (com email, plano, total tokens, custo estimado)
-- Detalhamento por endpoint (chamadas, tokens, custo, media por chamada)
-- Custo do onboarding: estimativa de quanto custa cada etapa do novo usuario
+1. **Aumentar limite de HTML** de 15.000 para 60.000 caracteres para capturar cardapios maiores
+2. **Melhorar o prompt da IA** para enfatizar que TODOS os itens devem ser extraidos, mesmo que o HTML seja longo
+3. **Adicionar instrucao de contagem**: pedir a IA para contar quantos itens encontrou e garantir que nenhum foi omitido
+4. **Usar modelo mais capaz**: Trocar para `google/gemini-2.5-pro` no modo full_menu (janela de contexto maior, melhor para HTMLs grandes)
 
-**Filtros:**
-- Periodo (7, 14, 30, 60 dias)
-- Por endpoint especifico
-
-### 3. Hook `useCloudCosts.ts`
-Hook que busca os dados via RPC e calcula metricas derivadas como custos em USD.
-
-### 4. Integracao no AdminDashboard
-- Nova aba "Custos" com icone `Server` no `TabsList`
-- Novo item no sidebar do `AdminLayout` (masterOnly)
-
-## Detalhes Tecnicos
-
-### Migration SQL
-```sql
--- Funcao que agrega metricas de custo
-CREATE OR REPLACE FUNCTION get_cloud_cost_metrics(days_back integer DEFAULT 30)
-RETURNS json AS $$
-DECLARE
-  result json;
-BEGIN
-  SELECT json_build_object(
-    'by_endpoint', (
-      SELECT json_agg(row_to_json(t))
-      FROM (
-        SELECT endpoint, count(*) as calls, sum(tokens_used) as total_tokens,
-               count(distinct user_id) as unique_users
-        FROM strategic_usage_logs
-        WHERE created_at >= now() - (days_back || ' days')::interval
-        GROUP BY endpoint ORDER BY total_tokens DESC
-      ) t
-    ),
-    'by_user', (
-      SELECT json_agg(row_to_json(t))
-      FROM (
-        SELECT s.user_id, p.email, p.business_name, p.user_plan,
-               count(*) as calls, sum(s.tokens_used) as total_tokens
-        FROM strategic_usage_logs s
-        LEFT JOIN profiles p ON p.user_id = s.user_id
-        WHERE s.created_at >= now() - (days_back || ' days')::interval
-        GROUP BY s.user_id, p.email, p.business_name, p.user_plan
-        ORDER BY total_tokens DESC LIMIT 20
-      ) t
-    ),
-    'daily', (
-      SELECT json_agg(row_to_json(t))
-      FROM (
-        SELECT date(created_at) as day, count(*) as calls,
-               sum(tokens_used) as total_tokens
-        FROM strategic_usage_logs
-        WHERE created_at >= now() - (days_back || ' days')::interval
-        GROUP BY date(created_at) ORDER BY day
-      ) t
-    ),
-    'totals', (
-      SELECT row_to_json(t)
-      FROM (
-        SELECT count(*) as total_calls, sum(tokens_used) as total_tokens,
-               count(distinct user_id) as total_users
-        FROM strategic_usage_logs
-        WHERE created_at >= now() - (days_back || ' days')::interval
-      ) t
-    )
-  ) INTO result;
-  RETURN result;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+Prompt atualizado (trecho chave):
+```
+Regras OBRIGATORIAS:
+1. Extraia ABSOLUTAMENTE TODOS os itens do cardapio, sem excecao
+2. Nao pare no meio - percorra TODO o HTML ate o final
+3. Se encontrar mais de 50 itens, inclua TODOS mesmo assim
+4. Conte os itens ao final e confirme que nao omitiu nenhum
 ```
 
-### Arquivos a criar/modificar:
-1. **Criar** `src/hooks/useCloudCosts.ts` - Hook para buscar e processar dados
-2. **Criar** `src/components/admin/CloudCostsDashboard.tsx` - Componente da aba
-3. **Modificar** `src/pages/AdminDashboard.tsx` - Adicionar nova aba "Custos"
-4. **Modificar** `src/components/admin/AdminLayout.tsx` - Adicionar item no sidebar
+### Parte 2: Toggle "Separar itens por categoria"
 
-### Calculo de Custos
-- Preco base: $0.01 por 1K tokens (Gemini Flash - modelo mais usado)
-- Custos Cloud (DB, Functions, Auth): estimativa fixa de ~$0.001 por chamada de funcao
-- O dashboard exibira valores em USD para facilitar comparacao com os limites do Lovable ($25 Cloud + $1 AI)
+**Arquivo**: `src/components/menu-mirror/IfoodMenuView.tsx`
+
+Adicionar um `Switch` (toggle) no topo da lista com o label "Separar itens por categoria":
+
+- **Toggle OFF (padrao)**: Exibe todos os itens em uma lista unica corrida, sem divisao por categoria, na ordem original do cardapio
+- **Toggle ON**: Exibe os itens agrupados por categoria com headers de secao (comportamento atual)
+
+A barra de categorias (pills de navegacao) so aparece quando o toggle esta ON.
+
+### Parte 3: Imagens via link (ja implementado)
+
+O sistema atual JA carrega imagens via URL (`item.image_url` direto do iFood). As imagens nao sao armazenadas na plataforma - sao carregadas sob demanda pelo navegador e desaparecem ao sair da pagina. Nenhuma alteracao necessaria aqui.
+
+---
+
+## Alteracoes Tecnicas
+
+### Arquivo 1: `supabase/functions/parse-ifood-menu/index.ts`
+
+**Linha ~200**: Mudar `pageContent.slice(0, 15000)` para `pageContent.slice(0, 60000)`
+
+**Linha ~169-192**: Atualizar o prompt do sistema para ser mais enfatico sobre extrair TODOS os itens
+
+**Linha ~221**: Usar modelo `google/gemini-2.5-pro` para o modo full_menu (maior contexto)
+
+### Arquivo 2: `src/components/menu-mirror/IfoodMenuView.tsx`
+
+Adicionar estado `separateByCategory` com `useState(true)` (default ON, que e o comportamento atual)
+
+Adicionar um Switch/toggle acima da lista de itens:
+```
+[icon] Separar itens por categoria [toggle]
+```
+
+Quando OFF:
+- Ocultar barra de categorias
+- Renderizar todos os itens em sequencia sem headers de secao
+
+Quando ON:
+- Mostrar barra de categorias (comportamento atual)
+- Mostrar items agrupados com headers
+
+### Arquivo 3: `src/pages/MenuMirror.tsx`
+
+Nenhuma alteracao necessaria - a logica fica contida no componente filho.
+
+---
+
+## Resumo de arquivos
+
+| Arquivo | Acao |
+|---------|------|
+| `supabase/functions/parse-ifood-menu/index.ts` | Aumentar limite HTML, melhorar prompt, usar modelo maior |
+| `src/components/menu-mirror/IfoodMenuView.tsx` | Adicionar toggle separar/juntar categorias |
