@@ -432,24 +432,6 @@ serve(async (req) => {
       );
     }
 
-    // ─── Atomic Usage Check ───
-    const { data: usageCheck, error: usageError } = await supabase.rpc("check_and_increment_usage", {
-      _user_id: user.id,
-      _feature: "ifood_import",
-      _endpoint: "parse-ifood-menu",
-    });
-    const usageInfo = usageCheck?.[0];
-    if (usageError || !usageInfo?.allowed) {
-      return new Response(
-        JSON.stringify({
-          error: usageInfo?.reason || "Funcionalidade não disponível no seu plano.",
-          upgrade_required: true,
-          current_plan: usageInfo?.current_plan || "free",
-        }),
-        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // ─── Shadow Ban Check ───
     const { data: riskFlag } = await supabase
       .from("risk_flags")
@@ -458,11 +440,31 @@ serve(async (req) => {
       .maybeSingle();
     const isShadowBanned = riskFlag?.shadow_banned === true;
 
+    // ─── Parse Body BEFORE usage check ───
     const rawBody = await req.json();
-
     const ifoodUrl = typeof rawBody.ifoodUrl === 'string' ? rawBody.ifoodUrl.trim() : null;
     const importType = typeof rawBody.importType === 'string' ? rawBody.importType : 'ingredients';
     const forceRefresh = rawBody.forceRefresh === true;
+
+    // ─── Atomic Usage Check (only for import modes, NOT full_menu) ───
+    if (importType !== "full_menu") {
+      const { data: usageCheck, error: usageError } = await supabase.rpc("check_and_increment_usage", {
+        _user_id: user.id,
+        _feature: "ifood_import",
+        _endpoint: "parse-ifood-menu",
+      });
+      const usageInfo = usageCheck?.[0];
+      if (usageError || !usageInfo?.allowed) {
+        return new Response(
+          JSON.stringify({
+            error: usageInfo?.reason || "Você já atingiu o limite de importações do seu plano. Faça upgrade para continuar importando.",
+            upgrade_required: true,
+            current_plan: usageInfo?.current_plan || "free",
+          }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
 
     if (!ifoodUrl) {
       return new Response(

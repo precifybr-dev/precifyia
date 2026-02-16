@@ -169,6 +169,15 @@ export function useMenuMirror() {
 
       if (error) throw error;
 
+      if (data?.upgrade_required) {
+        toast({
+          title: "Limite atingido",
+          description: data.error || "Faça upgrade para continuar analisando seu cardápio.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       if (data?.success && data.analysis) {
         setAnalysis(data.analysis);
       } else {

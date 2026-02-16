@@ -60,11 +60,18 @@ serve(async (req) => {
     });
     const usageInfo = usageCheck?.[0];
     if (usageError || !usageInfo?.allowed) {
+      const planName = usageInfo?.current_plan || "free";
+      let errorMessage: string;
+      if (planName === "free") {
+        errorMessage = "Você já usou sua análise gratuita. Faça upgrade para o plano Básico ou Pro para continuar analisando seu cardápio.";
+      } else {
+        errorMessage = usageInfo?.reason || `Você atingiu o limite de análises este mês. Suas análises serão renovadas no próximo mês.`;
+      }
       return new Response(
         JSON.stringify({
-          error: usageInfo?.reason || "Funcionalidade não disponível no seu plano.",
+          error: errorMessage,
           upgrade_required: true,
-          current_plan: usageInfo?.current_plan || "free",
+          current_plan: planName,
         }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
