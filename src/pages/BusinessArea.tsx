@@ -77,6 +77,7 @@ const taxRegimes = [
 ];
 
 export default function BusinessArea() {
+  const { activeStore } = useStore();
   const { result: businessMetrics, isCalculating: isMetricsCalculating, calculate: calculateMetrics } = useBusinessMetrics();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -189,11 +190,18 @@ export default function BusinessArea() {
       await fetchMetrics(session.user.id);
       setIsLoading(false);
       // Trigger backend business metrics calculation
-      calculateMetrics();
+      calculateMetrics(activeStore?.id);
     };
 
     checkAuth();
   }, [navigate, calculateMetrics]);
+
+  // Recalculate when active store changes
+  useEffect(() => {
+    if (user) {
+      calculateMetrics(activeStore?.id);
+    }
+  }, [activeStore?.id, user, calculateMetrics]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -569,7 +577,7 @@ export default function BusinessArea() {
               onAverageChange={(avg) => {
                 setCalculatedMonthlyRevenue(avg);
                 setProfile((prev: any) => prev ? { ...prev, monthly_revenue: avg } : prev);
-                calculateMetrics();
+                calculateMetrics(activeStore?.id);
               }}
             />
           </div>
@@ -580,7 +588,7 @@ export default function BusinessArea() {
               taxPercentage={businessMetrics?.tax_percentage}
               averageCardFee={businessMetrics?.average_card_fee}
               totalDeductions={businessMetrics?.total_deductions}
-              onDataChanged={() => calculateMetrics()}
+              onDataChanged={() => calculateMetrics(activeStore?.id)}
             />
           </div>
 
@@ -598,11 +606,11 @@ export default function BusinessArea() {
             <div className="grid lg:grid-cols-2 gap-6">
               <FixedCostsBlock 
                 userId={user?.id} 
-                onTotalChange={(v) => { setFixedCostsTotal(v); calculateMetrics(); }}
+                onTotalChange={(v) => { setFixedCostsTotal(v); calculateMetrics(activeStore?.id); }}
               />
               <VariableCostsBlock 
                 userId={user?.id} 
-                onTotalChange={(v) => { setVariableCostsTotal(v); calculateMetrics(); }}
+                onTotalChange={(v) => { setVariableCostsTotal(v); calculateMetrics(activeStore?.id); }}
               />
             </div>
             {businessMetrics && businessMetrics.production_costs_total > 0 && (
@@ -657,7 +665,7 @@ export default function BusinessArea() {
                 if (!error) {
                   setProfile({ ...profile, cost_limit_percent: newLimit });
                   toast({ title: "Sucesso!", description: "Limite atualizado" });
-                  calculateMetrics();
+                   calculateMetrics(activeStore?.id);
                 }
               }}
             />
@@ -667,12 +675,12 @@ export default function BusinessArea() {
               <FixedExpensesBlock 
                 userId={user?.id} 
                 monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-                onTotalChange={(v) => { setFixedExpensesTotal(v); calculateMetrics(); }}
+                onTotalChange={(v) => { setFixedExpensesTotal(v); calculateMetrics(activeStore?.id); }}
               />
               <VariableExpensesBlock 
                 userId={user?.id} 
                 monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-                onTotalChange={(v) => { setVariableExpensesTotal(v); calculateMetrics(); }}
+                onTotalChange={(v) => { setVariableExpensesTotal(v); calculateMetrics(activeStore?.id); }}
               />
             </div>
           </div>
