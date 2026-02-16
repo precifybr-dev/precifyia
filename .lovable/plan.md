@@ -1,94 +1,98 @@
 
-# Correcao: Cardapio Completo + Toggle de Categorias
+# Remover IA da Extracao do Cardapio iFood - Extracao Direta via JSON
 
-## Problemas Identificados
+## Objetivo
+Eliminar completamente o uso de IA para o modo `full_menu` do parse-ifood-menu, substituindo por extracao direta do JSON embutido na pagina do iFood (via `__NEXT_DATA__` / `initialState`). Custo de IA na importacao vai a zero.
 
-### 1. Cardapio incompleto
-A Edge Function `parse-ifood-menu` tem duas limitacoes criticas:
-- **HTML truncado**: Envia apenas `pageContent.slice(0, 15000)` (15KB) para a IA, cortando cardapios grandes
-- **Fetch simples**: iFood renderiza conteudo via JavaScript. Um `fetch()` basico nao captura o HTML completo com todos os itens
-- **Sem paginacao**: A IA recebe conteudo parcial e extrai apenas os itens visiveis nesse trecho
+## Como Funciona Hoje (Problema)
+1. Edge Function faz `fetch` do HTML da pagina do iFood
+2. Envia o HTML (ate 60KB) para o Gemini Pro via Lovable AI
+3. IA interpreta e retorna JSON com os itens
+4. Custo: ~$0.17-0.25 por chamada, a cada carregamento da pagina
 
-### 2. Falta toggle de categorias
-Atualmente os itens ja sao agrupados por categoria no `IfoodMenuView`, mas nao existe opcao de alternar entre visualizacao completa (lista unica) e separada por categorias.
+## Como Vai Funcionar (Solucao)
 
----
+### Estrategia de Extracao (sem IA)
+O site do iFood usa Next.js e embute os dados do cardapio completo em uma tag `<script type="application/json">` no HTML. A estrutura e:
 
-## Solucao
-
-### Parte 1: Aumentar captura do cardapio completo
-
-**Arquivo**: `supabase/functions/parse-ifood-menu/index.ts`
-
-Mudancas no modo `full_menu`:
-
-1. **Aumentar limite de HTML** de 15.000 para 60.000 caracteres para capturar cardapios maiores
-2. **Melhorar o prompt da IA** para enfatizar que TODOS os itens devem ser extraidos, mesmo que o HTML seja longo
-3. **Adicionar instrucao de contagem**: pedir a IA para contar quantos itens encontrou e garantir que nenhum foi omitido
-4. **Usar modelo mais capaz**: Trocar para `google/gemini-2.5-pro` no modo full_menu (janela de contexto maior, melhor para HTMLs grandes)
-
-Prompt atualizado (trecho chave):
-```
-Regras OBRIGATORIAS:
-1. Extraia ABSOLUTAMENTE TODOS os itens do cardapio, sem excecao
-2. Nao pare no meio - percorra TODO o HTML ate o final
-3. Se encontrar mais de 50 itens, inclua TODOS mesmo assim
-4. Conte os itens ao final e confirme que nao omitiu nenhum
+```text
+props.initialState.restaurant.details -> nome da loja
+props.initialState.restaurant.menu -> array de categorias
+  cada categoria tem:
+    - name (nome da categoria)
+    - itens (array de itens)
+      cada item tem:
+        - description (nome do produto)
+        - details (descricao)
+        - unitPrice (preco em centavos ou reais)
+        - logoUrl (URL da imagem)
+        - choices (complementos)
 ```
 
-### Parte 2: Toggle "Separar itens por categoria"
+### Fluxo Novo
+1. Fetch do HTML da pagina
+2. Procurar `<script type="application/json">` ou `__NEXT_DATA__`
+3. Fazer parse do JSON e navegar ate `props.initialState.restaurant.menu`
+4. Extrair todos os itens diretamente, sem IA
+5. Se o JSON nao for encontrado (iFood mudou a estrutura), retornar erro claro ao usuario
+6. Salvar resultado no banco (coluna `menu_cache` na tabela `stores`) com timestamp
+7. Ao carregar a pagina, ler do banco primeiro. So refazer fetch quando usuario clicar "Atualizar"
 
-**Arquivo**: `src/components/menu-mirror/IfoodMenuView.tsx`
-
-Adicionar um `Switch` (toggle) no topo da lista com o label "Separar itens por categoria":
-
-- **Toggle OFF (padrao)**: Exibe todos os itens em uma lista unica corrida, sem divisao por categoria, na ordem original do cardapio
-- **Toggle ON**: Exibe os itens agrupados por categoria com headers de secao (comportamento atual)
-
-A barra de categorias (pills de navegacao) so aparece quando o toggle esta ON.
-
-### Parte 3: Imagens via link (ja implementado)
-
-O sistema atual JA carrega imagens via URL (`item.image_url` direto do iFood). As imagens nao sao armazenadas na plataforma - sao carregadas sob demanda pelo navegador e desaparecem ao sair da pagina. Nenhuma alteracao necessaria aqui.
-
----
+### Fallback
+- Se a estrutura do JSON mudou: erro claro "Estrutura do iFood foi alterada. Entre em contato com o suporte."
+- **NAO** chamar IA automaticamente em nenhum cenario
+- Registrar erro no log para monitoramento
 
 ## Alteracoes Tecnicas
 
-### Arquivo 1: `supabase/functions/parse-ifood-menu/index.ts`
-
-**Linha ~200**: Mudar `pageContent.slice(0, 15000)` para `pageContent.slice(0, 60000)`
-
-**Linha ~169-192**: Atualizar o prompt do sistema para ser mais enfatico sobre extrair TODOS os itens
-
-**Linha ~221**: Usar modelo `google/gemini-2.5-pro` para o modo full_menu (maior contexto)
-
-### Arquivo 2: `src/components/menu-mirror/IfoodMenuView.tsx`
-
-Adicionar estado `separateByCategory` com `useState(true)` (default ON, que e o comportamento atual)
-
-Adicionar um Switch/toggle acima da lista de itens:
+### 1. Migration SQL - Adicionar cache na tabela stores
+```sql
+ALTER TABLE public.stores
+  ADD COLUMN IF NOT EXISTS menu_cache jsonb,
+  ADD COLUMN IF NOT EXISTS menu_cached_at timestamptz;
 ```
-[icon] Separar itens por categoria [toggle]
-```
+Armazena o JSON completo do cardapio e quando foi capturado.
 
-Quando OFF:
-- Ocultar barra de categorias
-- Renderizar todos os itens em sequencia sem headers de secao
+### 2. Edge Function `parse-ifood-menu/index.ts` - Modo full_menu
+Reescrever o bloco `full_menu` (linhas 164-293) para:
 
-Quando ON:
-- Mostrar barra de categorias (comportamento atual)
-- Mostrar items agrupados com headers
+- Remover chamada ao Lovable AI Gateway
+- Remover circuit breaker de IA
+- Remover log de tokens
+- Adicionar parser direto do JSON embutido:
+  1. Buscar `<script id="__NEXT_DATA__"` ou `<script type="application/json">`
+  2. JSON.parse do conteudo
+  3. Navegar para `props.initialState.restaurant.menu` ou `props.pageProps`
+  4. Mapear cada categoria e seus itens para o formato interno
+  5. Salvar resultado em `stores.menu_cache` e `stores.menu_cached_at`
+- Manter rate limiting e autenticacao existentes
+- Registrar log em `strategic_usage_logs` com `tokens_used: 0` (para tracking sem custo)
 
-### Arquivo 3: `src/pages/MenuMirror.tsx`
+**O modo `ingredients`/`recipes` (linhas 296-410) CONTINUA usando IA normalmente** - so o full_menu perde IA.
 
-Nenhuma alteracao necessaria - a logica fica contida no componente filho.
+### 3. Hook `useMenuMirror.ts`
+Alterar `fetchMenu` para:
+- Primeiro tentar ler `menu_cache` do banco (da tabela stores)
+- Se existir cache, usar direto (sem chamar Edge Function)
+- Botao "Atualizar" forca nova chamada a Edge Function
+- `saveIfoodUrl` faz fetch e salva cache automaticamente
 
----
+### 4. Pagina `MenuMirror.tsx`
+- Auto-fetch ao montar agora le do cache local (sem custo)
+- Botao "Atualizar" e o unico que dispara nova extracao
 
-## Resumo de arquivos
+## Resumo de Arquivos
 
 | Arquivo | Acao |
 |---------|------|
-| `supabase/functions/parse-ifood-menu/index.ts` | Aumentar limite HTML, melhorar prompt, usar modelo maior |
-| `src/components/menu-mirror/IfoodMenuView.tsx` | Adicionar toggle separar/juntar categorias |
+| Migration SQL | Adicionar `menu_cache` e `menu_cached_at` na tabela `stores` |
+| `supabase/functions/parse-ifood-menu/index.ts` | Reescrever modo full_menu sem IA, parser direto do JSON |
+| `src/hooks/useMenuMirror.ts` | Ler cache do banco, so chamar Edge Function no "Atualizar" |
+| `src/pages/MenuMirror.tsx` | Ajustar auto-fetch para usar cache |
+
+## Resultado Esperado
+- **Custo de IA no full_menu: $0.00** (zero)
+- Cardapio completo com TODOS os itens (dados vem direto do iFood, sem truncamento)
+- Imagens via URL externa (sem armazenamento)
+- Cache no banco evita chamadas repetidas
+- Fallback claro sem IA automatica
