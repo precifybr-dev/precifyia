@@ -14,6 +14,10 @@ export interface Profile {
   tax_regime: string | null;
   default_cmv: number | null;
   referral_source: string | null;
+  monthly_revenue: number | null;
+  ifood_plan_type: string | null;
+  ifood_monthly_orders: number | null;
+  ifood_average_ticket: number | null;
   created_at: string;
   updated_at: string;
 }
