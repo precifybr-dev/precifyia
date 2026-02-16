@@ -34,6 +34,7 @@ import {
   TrendingUp,
   GraduationCap,
   FileCode2,
+  Server,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -69,6 +70,7 @@ const navItems: NavItem[] = [
   { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs" },
   { id: "university", label: "Universidade", icon: GraduationCap, section: "university", masterOnly: true },
   { id: "governance", label: "Governança", icon: FileCode2, section: "governance", masterOnly: true },
+  { id: "cloud-costs", label: "Custos Cloud & IA", icon: Server, section: "cloud-costs", masterOnly: true },
   { id: "system-book", label: "Livro do Sistema", icon: BookOpen, path: "/admin/system-book", masterOnly: true },
 ];
 

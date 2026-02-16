@@ -3325,6 +3325,7 @@ export type Database = {
           user_plan: string
         }[]
       }
+      get_cloud_cost_metrics: { Args: { days_back?: number }; Returns: Json }
       get_collaborator_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

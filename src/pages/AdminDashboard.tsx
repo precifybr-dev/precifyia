@@ -23,6 +23,7 @@ import { FunnelDashboard } from "@/components/admin/FunnelDashboard";
 import { ControllershipDashboard } from "@/components/admin/ControllershipDashboard";
 import { StrategicPricingDashboard } from "@/components/admin/StrategicPricingDashboard";
 import { ArchitectureGovernanceDashboard } from "@/components/admin/ArchitectureGovernanceDashboard";
+import { CloudCostsDashboard } from "@/components/admin/CloudCostsDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,7 @@ import {
 import {
   Users,
   Sparkles,
+  Server,
   TrendingUp,
   DollarSign,
   Activity,
@@ -395,6 +397,10 @@ export default function AdminDashboard() {
                   <History className="h-4 w-4" />
                   Logs
                 </TabsTrigger>
+                <TabsTrigger value="cloud-costs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Server className="h-4 w-4" />
+                  Custos
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
@@ -728,6 +734,10 @@ export default function AdminDashboard() {
                     </ScrollArea>
                   </CardContent>
                 </Card>
+              </TabsContent>
+
+              <TabsContent value="cloud-costs">
+                <CloudCostsDashboard />
               </TabsContent>
             </Tabs>
           </div>
