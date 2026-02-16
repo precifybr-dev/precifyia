@@ -28,7 +28,9 @@ export default function TotalProductCostBlock({
     return value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  if (isCalculating) {
+  const hasData = productionCostsPercent !== null || productionCostsTotal > 0;
+
+  if (isCalculating && !hasData) {
     return (
       <div className="bg-card rounded-xl border border-border p-6 shadow-card">
         <div className="animate-pulse space-y-4">
@@ -43,7 +45,7 @@ export default function TotalProductCostBlock({
   }
 
   return (
-    <div className={`bg-card rounded-xl border p-6 shadow-card transition-colors ${isOverLimit ? 'border-destructive/50 bg-destructive/5' : 'border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10'}`}>
+    <div className={`bg-card rounded-xl border p-6 shadow-card transition-colors ${isCalculating ? 'opacity-60' : ''} ${isOverLimit ? 'border-destructive/50 bg-destructive/5' : 'border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10'}`}>
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isOverLimit ? 'bg-destructive/10' : 'bg-primary/10'}`}>
