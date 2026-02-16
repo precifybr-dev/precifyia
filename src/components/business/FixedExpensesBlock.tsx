@@ -14,11 +14,12 @@ interface FixedExpense {
 
 interface FixedExpensesBlockProps {
   userId: string;
+  storeId?: string | null;
   monthlyRevenue: number | null;
   onTotalChange?: (total: number) => void;
 }
 
-export default function FixedExpensesBlock({ userId, monthlyRevenue, onTotalChange }: FixedExpensesBlockProps) {
+export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, onTotalChange }: FixedExpensesBlockProps) {
   const [expenses, setExpenses] = useState<FixedExpense[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newExpense, setNewExpense] = useState({ name: "", value: "" });
@@ -28,11 +29,13 @@ export default function FixedExpensesBlock({ userId, monthlyRevenue, onTotalChan
   const { toast } = useToast();
 
   const fetchExpenses = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("fixed_expenses")
       .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true });
+      .eq("user_id", userId);
+    if (storeId) query = query.eq("store_id", storeId);
+    else query = query.is("store_id", null);
+    const { data, error } = await query.order("created_at", { ascending: true });
 
     if (error) {
       toast({ title: "Erro", description: "Não foi possível carregar as despesas", variant: "destructive" });
@@ -49,7 +52,7 @@ export default function FixedExpensesBlock({ userId, monthlyRevenue, onTotalChan
     if (userId) {
       fetchExpenses();
     }
-  }, [userId]);
+  }, [userId, storeId]);
 
   const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.monthly_value), 0);
   const percentOfRevenue = monthlyRevenue && monthlyRevenue > 0 
@@ -74,6 +77,7 @@ export default function FixedExpensesBlock({ userId, monthlyRevenue, onTotalChan
       .from("fixed_expenses")
       .insert({
         user_id: userId,
+        store_id: storeId || null,
         name: newExpense.name.trim(),
         monthly_value: value,
       })
