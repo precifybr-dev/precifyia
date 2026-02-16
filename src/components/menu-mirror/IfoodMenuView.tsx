@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Store, ImageOff } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Store, ImageOff, LayoutList } from "lucide-react";
 import type { FullMenuItem } from "@/hooks/useMenuMirror";
 
 interface IfoodMenuViewProps {
@@ -90,6 +91,7 @@ function LoadingSkeleton() {
 
 export function IfoodMenuView({ storeName, items, isLoading }: IfoodMenuViewProps) {
   const [activeCategory, setActiveCategory] = useState<string>("");
+  const [separateByCategory, setSeparateByCategory] = useState(false);
   const categoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const grouped = groupByCategory(items);
@@ -130,8 +132,20 @@ export function IfoodMenuView({ storeName, items, isLoading }: IfoodMenuViewProp
         </div>
       </div>
 
-      {/* Category Bar */}
-      {categories.length > 1 && (
+      {/* Toggle + Category Bar */}
+      <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <LayoutList className="w-4 h-4" />
+          <span>Separar itens por categoria</span>
+        </div>
+        <Switch
+          checked={separateByCategory}
+          onCheckedChange={setSeparateByCategory}
+        />
+      </div>
+
+      {/* Category Navigation Pills (only when toggle ON) */}
+      {separateByCategory && categories.length > 1 && (
         <div className="sticky top-0 z-10 bg-white/95 dark:bg-zinc-950/95 backdrop-blur-sm border-b border-zinc-200 dark:border-zinc-800">
           <div className="flex gap-1 px-4 py-2 overflow-x-auto scrollbar-hide">
             {categories.map((cat) => (
@@ -151,24 +165,34 @@ export function IfoodMenuView({ storeName, items, isLoading }: IfoodMenuViewProp
         </div>
       )}
 
-      {/* Items by Category */}
+      {/* Items */}
       <div className="p-4 space-y-6">
-        {categories.map((cat) => (
-          <div
-            key={cat}
-            ref={(el) => { categoryRefs.current[cat] = el; }}
-          >
-            <h3 className="font-bold text-base text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
-              <span className="w-1 h-5 bg-[#EA1D2C] rounded-full" />
-              {cat}
-            </h3>
-            <div className="space-y-2">
-              {grouped[cat].map((item, idx) => (
-                <MenuItemCard key={`${cat}-${idx}`} item={item} />
-              ))}
+        {separateByCategory ? (
+          // Grouped by category with headers
+          categories.map((cat) => (
+            <div
+              key={cat}
+              ref={(el) => { categoryRefs.current[cat] = el; }}
+            >
+              <h3 className="font-bold text-base text-zinc-900 dark:text-zinc-100 mb-3 flex items-center gap-2">
+                <span className="w-1 h-5 bg-[#EA1D2C] rounded-full" />
+                {cat}
+              </h3>
+              <div className="space-y-2">
+                {grouped[cat].map((item, idx) => (
+                  <MenuItemCard key={`${cat}-${idx}`} item={item} />
+                ))}
+              </div>
             </div>
+          ))
+        ) : (
+          // Flat list - all items in original order
+          <div className="space-y-2">
+            {items.map((item, idx) => (
+              <MenuItemCard key={`flat-${idx}`} item={item} />
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
