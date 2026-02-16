@@ -6,6 +6,27 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ─── Anti-blocking constants ───
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+const USER_AGENTS = [
+  "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+  "Mozilla/5.0 (X11; Linux x86_64; rv:121.0) Gecko/20100101 Firefox/121.0",
+];
+
+function randomUA(): string {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+// Deduplication map for in-flight requests by merchantId
+const pendingRequests = new Map<string, Promise<any>>();
+
 interface ParsedItem {
   name: string;
   description?: string;
@@ -129,13 +150,10 @@ const STATE_CAPITALS: Record<string, { lat: number; lng: number }> = {
 };
 
 function getCityCoordinates(citySlug: string): { lat: number; lng: number } {
-  // 1. Try exact match
   if (CITY_COORDINATES[citySlug]) {
     console.log(`Coordinates: exact match for "${citySlug}"`);
     return CITY_COORDINATES[citySlug];
   }
-
-  // 2. Try state fallback (extract "-xx" suffix)
   const stateMatch = citySlug.match(/-([a-z]{2})$/);
   if (stateMatch) {
     const state = stateMatch[1];
@@ -144,37 +162,42 @@ function getCityCoordinates(citySlug: string): { lat: number; lng: number } {
       return STATE_CAPITALS[state];
     }
   }
-
-  // 3. Default to São Paulo
   console.log(`Coordinates: defaulting to São Paulo for "${citySlug}"`);
   return { lat: -23.5505, lng: -46.6333 };
 }
 
-// ─── Strategy 1: iFood Marketplace API ───
+// ─── Strategy 1: iFood Marketplace API (with jitter + UA rotation) ───
 async function fetchFromMarketplaceAPI(
   merchantId: string,
   lat: number,
   lng: number
 ): Promise<{ storeName: string; items: FullMenuItem[] } | null> {
+  const ua = randomUA();
   const endpoints = [
-    // Try without coordinates first (some merchants work with UUID alone)
     `https://marketplace.ifood.com.br/v1/merchants/${merchantId}/catalog`,
-    // Then try with coordinates
     `https://marketplace.ifood.com.br/v1/merchants/${merchantId}/catalog?latitude=${lat}&longitude=${lng}`,
     `https://marketplace.ifood.com.br/v2/merchants/${merchantId}?latitude=${lat}&longitude=${lng}&channel=IFOOD`,
     `https://wm.ifood.com.br/v1/merchant/${merchantId}/catalog?latitude=${lat}&longitude=${lng}`,
   ];
 
-  for (const url of endpoints) {
+  for (let i = 0; i < endpoints.length; i++) {
+    const url = endpoints[i];
     try {
+      // Jitter between attempts (skip first)
+      if (i > 0) {
+        await sleep(200 + Math.random() * 300);
+      }
+
       console.log("Trying marketplace API:", url);
       const response = await fetch(url, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+          "User-Agent": ua,
           "Accept": "application/json",
           "Accept-Language": "pt-BR,pt;q=0.9",
           "Origin": "https://www.ifood.com.br",
           "Referer": "https://www.ifood.com.br/",
+          "Connection": "keep-alive",
+          "DNT": "1",
           "platform": "Desktop",
           "app_version": "9.0.0",
         },
@@ -188,7 +211,6 @@ async function fetchFromMarketplaceAPI(
       const data = await response.json();
       console.log("Marketplace API response keys:", Object.keys(data));
 
-      // Try to extract menu from various response structures
       const result = parseMarketplaceResponse(data);
       if (result && result.items.length > 0) {
         console.log(`Extracted ${result.items.length} items from marketplace API`);
@@ -202,14 +224,12 @@ async function fetchFromMarketplaceAPI(
   return null;
 }
 
-// Normalize iFood image URLs - they often come as relative paths
+// Normalize iFood image URLs
 const IFOOD_IMAGE_CDN = "https://static-images.ifood.com.br/image/upload/t_medium/pratos/";
 
 function normalizeImageUrl(raw: string): string {
   if (!raw) return "";
-  // Already a full URL
   if (raw.startsWith("http://") || raw.startsWith("https://")) return raw;
-  // Relative path like "merchant-id/filename.jpg"
   return `${IFOOD_IMAGE_CDN}${raw}`;
 }
 
@@ -217,21 +237,17 @@ function parseMarketplaceResponse(data: any): { storeName: string; items: FullMe
   const items: FullMenuItem[] = [];
   let storeName = "";
 
-  // Structure 1: { menu: [...categories] }
   const menu = data?.menu || data?.catalog?.menu || data?.data?.menu;
   const details = data?.details || data?.merchant || data?.data?.merchant || data;
-
   storeName = details?.name || details?.companyName || details?.tradingName || "";
 
   if (Array.isArray(menu)) {
     for (const category of menu) {
       const catName = category.name || category.title || category.categoryName || "Outros";
       const catItems = category.itens || category.items || category.products || [];
-
       for (const item of catItems) {
         let price = item.unitPrice ?? item.price ?? item.unitOriginalPrice ?? item.unitMinPrice ?? 0;
         if (typeof price === "number" && price > 1000) price = price / 100;
-
         const rawImg = item.logoUrl || item.imageUrl || item.image || "";
         items.push({
           name: item.description || item.name || item.title || "Item sem nome",
@@ -244,17 +260,14 @@ function parseMarketplaceResponse(data: any): { storeName: string; items: FullMe
     }
   }
 
-  // Structure 2: { categories: [...] }
   const categories = data?.categories || data?.catalog?.categories;
   if (!items.length && Array.isArray(categories)) {
     for (const category of categories) {
       const catName = category.name || "Outros";
       const catItems = category.items || category.itens || category.products || [];
-
       for (const item of catItems) {
         let price = item.unitPrice ?? item.price ?? item.originalPrice ?? 0;
         if (typeof price === "number" && price > 1000) price = price / 100;
-
         const rawImg2 = item.logoUrl || item.imageUrl || "";
         items.push({
           name: item.description || item.name || "Item sem nome",
@@ -267,12 +280,10 @@ function parseMarketplaceResponse(data: any): { storeName: string; items: FullMe
     }
   }
 
-  // Structure 3: flat items array
   if (!items.length && Array.isArray(data?.items)) {
     for (const item of data.items) {
       let price = item.unitPrice ?? item.price ?? 0;
       if (typeof price === "number" && price > 1000) price = price / 100;
-
       const rawImg3 = item.logoUrl || item.imageUrl || "";
       items.push({
         name: item.description || item.name || "Item sem nome",
@@ -290,7 +301,6 @@ function parseMarketplaceResponse(data: any): { storeName: string; items: FullMe
 
 // ─── Strategy 2: Parse embedded JSON from HTML page ───
 function extractFromPageHTML(pageContent: string): { storeName: string; items: FullMenuItem[] } | null {
-  // Sub-strategy A: __NEXT_DATA__ script tag
   const nextDataMatch = pageContent.match(/<script\s+id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
   if (nextDataMatch) {
     try {
@@ -302,19 +312,15 @@ function extractFromPageHTML(pageContent: string): { storeName: string; items: F
     }
   }
 
-  // Sub-strategy B: application/json script tags
   const jsonScriptMatches = [...pageContent.matchAll(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/gi)];
   for (const match of jsonScriptMatches) {
     try {
       const jsonData = JSON.parse(match[1]);
       const result = extractFromNextData(jsonData);
       if (result && result.items.length > 0) return result;
-    } catch (e) {
-      // Try next
-    }
+    } catch (e) { /* Try next */ }
   }
 
-  // Sub-strategy C: inline state patterns
   const statePatterns = [
     /window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\});/,
     /window\.__NEXT_DATA__\s*=\s*(\{[\s\S]*?\});/,
@@ -327,9 +333,7 @@ function extractFromPageHTML(pageContent: string): { storeName: string; items: F
         const stateData = JSON.parse(match[1]);
         const result = extractFromNextData(stateData);
         if (result && result.items.length > 0) return result;
-      } catch (e) {
-        // Continue
-      }
+      } catch (e) { /* Continue */ }
     }
   }
 
@@ -362,11 +366,9 @@ function extractFromNextData(data: any): { storeName: string; items: FullMenuIte
       for (const category of menu) {
         const catName = category.name || category.title || category.categoryName || "Outros";
         const catItems = category.itens || category.items || category.products || [];
-
         for (const item of catItems) {
           let price = item.unitPrice ?? item.price ?? item.unitOriginalPrice ?? item.unitMinPrice ?? 0;
           if (typeof price === "number" && price > 1000) price = price / 100;
-
           const rawImg = item.logoUrl || item.imageUrl || item.image || "";
           items.push({
             name: item.description || item.name || item.title || "Item sem nome",
@@ -460,6 +462,7 @@ serve(async (req) => {
 
     const ifoodUrl = typeof rawBody.ifoodUrl === 'string' ? rawBody.ifoodUrl.trim() : null;
     const importType = typeof rawBody.importType === 'string' ? rawBody.importType : 'ingredients';
+    const forceRefresh = rawBody.forceRefresh === true;
 
     if (!ifoodUrl) {
       return new Response(
@@ -511,122 +514,251 @@ serve(async (req) => {
     if (importType === "full_menu") {
       const storeIdParam = rawBody.storeId as string | undefined;
 
-      let extractedItems: FullMenuItem[] = [];
-      let extractedStoreName = storeName;
-
-      // ── Strategy 1: iFood Marketplace API (if we have merchant UUID) ──
-      if (merchantId && !isShadowBanned) {
-        console.log(`Strategy 1: Marketplace API for merchant ${merchantId} at ${coords.lat},${coords.lng}`);
-        const apiResult = await fetchFromMarketplaceAPI(merchantId, coords.lat, coords.lng);
-        if (apiResult) {
-          extractedItems = apiResult.items;
-          extractedStoreName = apiResult.storeName || extractedStoreName;
-          console.log(`Strategy 1 SUCCESS: ${extractedItems.length} items`);
-        }
-      }
-
-      // ── Strategy 2: Fetch HTML page and parse embedded JSON ──
-      if (extractedItems.length === 0) {
-        console.log("Strategy 2: Fetching HTML page...");
+      // ── Cache TTL Check (6h) ──
+      if (!forceRefresh && storeIdParam) {
         try {
-          const response = await fetch(ifoodUrl, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-              "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-              "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-              "Accept-Encoding": "gzip, deflate, br",
-              "Cache-Control": "no-cache",
-              "Sec-Ch-Ua": '"Chromium";v="125", "Not=A?Brand";v="8"',
-              "Sec-Ch-Ua-Mobile": "?0",
-              "Sec-Ch-Ua-Platform": '"Windows"',
-              "Sec-Fetch-Dest": "document",
-              "Sec-Fetch-Mode": "navigate",
-              "Sec-Fetch-Site": "none",
-              "Sec-Fetch-User": "?1",
-              "Upgrade-Insecure-Requests": "1",
-              "Cookie": `location={"lat":${coords.lat},"lng":${coords.lng},"address":"","city":"","neighborhood":"","state":"","country":"BR","zipCode":""}`,
-            },
-            redirect: "follow",
-          });
+          const { data: storeData } = await supabase
+            .from("stores")
+            .select("menu_cache, menu_cached_at")
+            .eq("id", storeIdParam)
+            .single();
 
-          if (response.ok) {
-            const pageContent = await response.text();
-            console.log(`Strategy 2: Got HTML, length: ${pageContent.length}`);
+          if (storeData) {
+            const cache = (storeData as any).menu_cache;
+            const cachedAt = (storeData as any).menu_cached_at;
 
-            // Try title extraction
-            const titleMatch = pageContent.match(/<title>([^<]+)<\/title>/i);
-            if (titleMatch) {
-              const title = titleMatch[1].replace(/ - iFood/i, "").replace(/\| iFood/i, "").trim();
-              if (title && title.length > 2 && !title.toLowerCase().includes("ifood")) {
-                extractedStoreName = title;
+            if (cache && cache.items && cache.items.length > 0 && cachedAt) {
+              const cacheAge = Date.now() - new Date(cachedAt).getTime();
+              if (cacheAge < CACHE_TTL_MS) {
+                console.log(`Cache HIT: ${cache.items.length} items, age ${Math.round(cacheAge / 60000)}min`);
+                return new Response(
+                  JSON.stringify({
+                    success: true,
+                    storeName: cache.storeName || storeName,
+                    items: cache.items.map((item: any, index: number) => ({
+                      name: item.name || "Item sem nome",
+                      description: item.description || "",
+                      price: typeof item.price === "number" ? item.price : parseFloat(String(item.price)) || 0,
+                      category: item.category || "Outros",
+                      image_url: item.image_url || "",
+                      position: index,
+                    })),
+                    importType: "full_menu",
+                    cached: true,
+                  }),
+                  { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+                );
               }
-            }
-
-            const htmlResult = extractFromPageHTML(pageContent);
-            if (htmlResult) {
-              extractedItems = htmlResult.items;
-              if (htmlResult.storeName) extractedStoreName = htmlResult.storeName;
-              console.log(`Strategy 2 SUCCESS: ${extractedItems.length} items`);
-            } else {
-              console.log("Strategy 2: No JSON data found in HTML");
-              // Log a sample of HTML for debugging
-              const scriptTags = pageContent.match(/<script[^>]*>/gi) || [];
-              console.log(`Strategy 2: Found ${scriptTags.length} script tags`);
-              const hasNextData = pageContent.includes("__NEXT_DATA__");
-              const hasAppJson = pageContent.includes('application/json');
-              console.log(`Strategy 2: __NEXT_DATA__=${hasNextData}, application/json=${hasAppJson}`);
+              console.log(`Cache EXPIRED: age ${Math.round(cacheAge / 60000)}min > TTL ${CACHE_TTL_MS / 60000}min`);
             }
           }
-        } catch (fetchError) {
-          console.error("Strategy 2 failed:", fetchError);
+        } catch (cacheCheckErr) {
+          console.log("Cache check failed, proceeding to fetch:", cacheCheckErr);
         }
       }
 
-      // ── Strategy 3: Try iFood's Next.js data endpoint ──
-      if (extractedItems.length === 0 && merchantId && citySlug && storeSlug) {
-        console.log("Strategy 3: Trying Next.js data endpoint...");
+      // ── Deduplication: if same merchantId is already being fetched, wait for it ──
+      const dedupeKey = merchantId || storeSlug;
+      if (pendingRequests.has(dedupeKey)) {
+        console.log(`Dedup HIT: waiting for in-flight request for ${dedupeKey}`);
         try {
-          // iFood Next.js pages sometimes expose data via _next/data
-          const nextDataUrl = `https://www.ifood.com.br/delivery/${citySlug}/${storeSlug}/${merchantId}`;
-          const response = await fetch(nextDataUrl, {
-            headers: {
-              "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1",
-              "Accept": "application/json, text/plain, */*",
-              "Accept-Language": "pt-BR,pt;q=0.9",
-              "X-Requested-With": "XMLHttpRequest",
-              "Cookie": `location={"lat":${coords.lat},"lng":${coords.lng}}`,
-            },
-          });
+          const dedupResult = await pendingRequests.get(dedupeKey);
+          if (dedupResult) {
+            return new Response(JSON.stringify(dedupResult), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+        } catch {
+          // In-flight request failed, proceed with our own
+        }
+      }
 
-          if (response.ok) {
-            const contentType = response.headers.get("content-type") || "";
-            if (contentType.includes("json")) {
-              const jsonData = await response.json();
-              const result = extractFromNextData(jsonData);
-              if (result && result.items.length > 0) {
-                extractedItems = result.items;
-                extractedStoreName = result.storeName || extractedStoreName;
-                console.log(`Strategy 3 SUCCESS: ${extractedItems.length} items`);
+      // ── Create the fetch promise and register it for deduplication ──
+      const fetchPromise = (async () => {
+        let extractedItems: FullMenuItem[] = [];
+        let extractedStoreName = storeName;
+
+        // ── Strategy 1: iFood Marketplace API ──
+        if (merchantId && !isShadowBanned) {
+          console.log(`Strategy 1: Marketplace API for merchant ${merchantId} at ${coords.lat},${coords.lng}`);
+          const apiResult = await fetchFromMarketplaceAPI(merchantId, coords.lat, coords.lng);
+          if (apiResult) {
+            extractedItems = apiResult.items;
+            extractedStoreName = apiResult.storeName || extractedStoreName;
+            console.log(`Strategy 1 SUCCESS: ${extractedItems.length} items`);
+          }
+        }
+
+        // ── Strategy 2: Fetch HTML page and parse embedded JSON ──
+        if (extractedItems.length === 0) {
+          console.log("Strategy 2: Fetching HTML page...");
+          try {
+            // Jitter before HTML fetch
+            await sleep(200 + Math.random() * 300);
+
+            const response = await fetch(ifoodUrl, {
+              headers: {
+                "User-Agent": randomUA(),
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+                "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
+                "Accept-Encoding": "gzip, deflate, br",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "DNT": "1",
+                "Sec-Ch-Ua": '"Chromium";v="125", "Not=A?Brand";v="8"',
+                "Sec-Ch-Ua-Mobile": "?0",
+                "Sec-Ch-Ua-Platform": '"Windows"',
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-User": "?1",
+                "Upgrade-Insecure-Requests": "1",
+                "Cookie": `location={"lat":${coords.lat},"lng":${coords.lng},"address":"","city":"","neighborhood":"","state":"","country":"BR","zipCode":""}`,
+              },
+              redirect: "follow",
+            });
+
+            if (response.ok) {
+              const pageContent = await response.text();
+              console.log(`Strategy 2: Got HTML, length: ${pageContent.length}`);
+
+              const titleMatch = pageContent.match(/<title>([^<]+)<\/title>/i);
+              if (titleMatch) {
+                const title = titleMatch[1].replace(/ - iFood/i, "").replace(/\| iFood/i, "").trim();
+                if (title && title.length > 2 && !title.toLowerCase().includes("ifood")) {
+                  extractedStoreName = title;
+                }
               }
-            } else {
-              // It returned HTML, try parsing it
-              const html = await response.text();
-              const result = extractFromPageHTML(html);
-              if (result && result.items.length > 0) {
-                extractedItems = result.items;
-                if (result.storeName) extractedStoreName = result.storeName;
-                console.log(`Strategy 3 (HTML fallback) SUCCESS: ${extractedItems.length} items`);
+
+              const htmlResult = extractFromPageHTML(pageContent);
+              if (htmlResult) {
+                extractedItems = htmlResult.items;
+                if (htmlResult.storeName) extractedStoreName = htmlResult.storeName;
+                console.log(`Strategy 2 SUCCESS: ${extractedItems.length} items`);
+              } else {
+                console.log("Strategy 2: No JSON data found in HTML");
+                const scriptTags = pageContent.match(/<script[^>]*>/gi) || [];
+                console.log(`Strategy 2: Found ${scriptTags.length} script tags`);
               }
             }
+          } catch (fetchError) {
+            console.error("Strategy 2 failed:", fetchError);
           }
-        } catch (e) {
-          console.log("Strategy 3 failed:", e.message);
         }
-      }
 
-      // ── All strategies failed ──
+        // ── Strategy 3: Try iFood's Next.js data endpoint ──
+        if (extractedItems.length === 0 && merchantId && citySlug && storeSlug) {
+          console.log("Strategy 3: Trying Next.js data endpoint...");
+          try {
+            await sleep(200 + Math.random() * 300);
+
+            const nextDataUrl = `https://www.ifood.com.br/delivery/${citySlug}/${storeSlug}/${merchantId}`;
+            const response = await fetch(nextDataUrl, {
+              headers: {
+                "User-Agent": randomUA(),
+                "Accept": "application/json, text/plain, */*",
+                "Accept-Language": "pt-BR,pt;q=0.9",
+                "Connection": "keep-alive",
+                "DNT": "1",
+                "X-Requested-With": "XMLHttpRequest",
+                "Cookie": `location={"lat":${coords.lat},"lng":${coords.lng}}`,
+              },
+            });
+
+            if (response.ok) {
+              const contentType = response.headers.get("content-type") || "";
+              if (contentType.includes("json")) {
+                const jsonData = await response.json();
+                const result = extractFromNextData(jsonData);
+                if (result && result.items.length > 0) {
+                  extractedItems = result.items;
+                  extractedStoreName = result.storeName || extractedStoreName;
+                  console.log(`Strategy 3 SUCCESS: ${extractedItems.length} items`);
+                }
+              } else {
+                const html = await response.text();
+                const result = extractFromPageHTML(html);
+                if (result && result.items.length > 0) {
+                  extractedItems = result.items;
+                  if (result.storeName) extractedStoreName = result.storeName;
+                  console.log(`Strategy 3 (HTML fallback) SUCCESS: ${extractedItems.length} items`);
+                }
+              }
+            }
+          } catch (e) {
+            console.log("Strategy 3 failed:", e.message);
+          }
+        }
+
+        return { extractedItems, extractedStoreName };
+      })();
+
+      // Register for deduplication
+      pendingRequests.set(dedupeKey, fetchPromise.then(r => {
+        if (r.extractedItems.length > 0) {
+          return {
+            success: true,
+            storeName: r.extractedStoreName,
+            items: r.extractedItems.map((item, index) => ({
+              name: item.name || "Item sem nome",
+              description: item.description || "",
+              price: typeof item.price === "number" ? item.price : parseFloat(String(item.price)) || 0,
+              category: item.category || "Outros",
+              image_url: item.image_url || "",
+              position: index,
+            })),
+            importType: "full_menu",
+          };
+        }
+        return null;
+      }));
+
+      // Clean up dedup entry after completion
+      fetchPromise.finally(() => {
+        setTimeout(() => pendingRequests.delete(dedupeKey), 5000);
+      });
+
+      const { extractedItems, extractedStoreName } = await fetchPromise;
+
+      // ── All strategies failed → Stale fallback ──
       if (extractedItems.length === 0) {
         console.error("All extraction strategies failed for:", ifoodUrl);
+
+        // Try stale cache fallback
+        if (storeIdParam) {
+          try {
+            const { data: staleData } = await supabase
+              .from("stores")
+              .select("menu_cache")
+              .eq("id", storeIdParam)
+              .single();
+
+            const staleCache = (staleData as any)?.menu_cache;
+            if (staleCache && staleCache.items && staleCache.items.length > 0) {
+              console.log(`Stale fallback: returning ${staleCache.items.length} cached items`);
+              return new Response(
+                JSON.stringify({
+                  success: true,
+                  storeName: staleCache.storeName || storeName,
+                  items: staleCache.items.map((item: any, index: number) => ({
+                    name: item.name || "Item sem nome",
+                    description: item.description || "",
+                    price: typeof item.price === "number" ? item.price : parseFloat(String(item.price)) || 0,
+                    category: item.category || "Outros",
+                    image_url: item.image_url || "",
+                    position: index,
+                  })),
+                  importType: "full_menu",
+                  stale: true,
+                }),
+                { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+              );
+            }
+          } catch (staleFetchErr) {
+            console.log("Stale fallback failed:", staleFetchErr);
+          }
+        }
+
         await supabase.from("strategic_usage_logs").insert({
           user_id: user.id,
           endpoint: "parse-ifood-menu-extraction-failed",
@@ -688,9 +820,11 @@ serve(async (req) => {
     try {
       const response = await fetch(ifoodUrl, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "User-Agent": randomUA(),
           "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
           "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+          "Connection": "keep-alive",
+          "DNT": "1",
         },
       });
       if (response.ok) {
@@ -711,36 +845,14 @@ serve(async (req) => {
     }
 
     const systemPrompt = isShadowBanned
-      ? `Você é um assistente. Liste 5 itens genéricos para um restaurante brasileiro.
-Responda em JSON: { "storeName": "Loja", "items": [{ "name": "Item", "category": "Geral" }] }`
-      : `Você é um especialista em cardápios de restaurantes brasileiros. 
-Seu trabalho é analisar informações de lojas do iFood e extrair ou sugerir itens realistas.
-
-Regras importantes:
-1. Gere itens que façam sentido para o tipo de estabelecimento (ex: hamburgueria, pizzaria, etc.)
-2. Para INSUMOS: extraia ingredientes mencionados nas descrições ou sugira insumos típicos do segmento
-3. Para PRODUTOS/LANCHES: extraia os nomes dos pratos/itens do cardápio
-4. Máximo de 15 itens por categoria
-5. Nomes devem ser simples e diretos (ex: "Queijo Mussarela", "Hambúrguer Tradicional")
-6. Responda APENAS em formato JSON válido, sem markdown`;
+      ? `Você é um assistente. Liste 5 itens genéricos para um restaurante brasileiro.\nResponda em JSON: { "storeName": "Loja", "items": [{ "name": "Item", "category": "Geral" }] }`
+      : `Você é um especialista em cardápios de restaurantes brasileiros. \nSeu trabalho é analisar informações de lojas do iFood e extrair ou sugerir itens realistas.\n\nRegras importantes:\n1. Gere itens que façam sentido para o tipo de estabelecimento (ex: hamburgueria, pizzaria, etc.)\n2. Para INSUMOS: extraia ingredientes mencionados nas descrições ou sugira insumos típicos do segmento\n3. Para PRODUTOS/LANCHES: extraia os nomes dos pratos/itens do cardápio\n4. Máximo de 15 itens por categoria\n5. Nomes devem ser simples e diretos (ex: "Queijo Mussarela", "Hambúrguer Tradicional")\n6. Responda APENAS em formato JSON válido, sem markdown`;
 
     const userPrompt = isShadowBanned
       ? `Liste itens para: "${storeName}". JSON: { "storeName": "...", "items": [{ "name": "...", "category": "..." }] }`
       : importType === "ingredients"
-      ? `Analise esta loja do iFood: "${storeName}"
-      
-URL: ${ifoodUrl}
-${pageContent ? `\nConteúdo da página (parcial):\n${pageContent.slice(0, 8000)}` : ""}
-
-Extraia ou sugira INSUMOS (ingredientes) típicos para este tipo de estabelecimento.
-Responda em JSON: { "storeName": "Nome da Loja", "items": [{ "name": "Nome do Insumo", "category": "Categoria" }] }`
-      : `Analise esta loja do iFood: "${storeName}"
-      
-URL: ${ifoodUrl}
-${pageContent ? `\nConteúdo da página (parcial):\n${pageContent.slice(0, 8000)}` : ""}
-
-Extraia ou sugira PRODUTOS/LANCHES típicos para este tipo de estabelecimento.
-Responda em JSON: { "storeName": "Nome da Loja", "items": [{ "name": "Nome do Produto", "category": "Categoria" }] }`;
+      ? `Analise esta loja do iFood: "${storeName}"\n      \nURL: ${ifoodUrl}\n${pageContent ? `\nConteúdo da página (parcial):\n${pageContent.slice(0, 8000)}` : ""}\n\nExtraia ou sugira INSUMOS (ingredientes) típicos para este tipo de estabelecimento.\nResponda em JSON: { "storeName": "Nome da Loja", "items": [{ "name": "Nome do Insumo", "category": "Categoria" }] }`
+      : `Analise esta loja do iFood: "${storeName}"\n      \nURL: ${ifoodUrl}\n${pageContent ? `\nConteúdo da página (parcial):\n${pageContent.slice(0, 8000)}` : ""}\n\nExtraia ou sugira PRODUTOS/LANCHES típicos para este tipo de estabelecimento.\nResponda em JSON: { "storeName": "Nome da Loja", "items": [{ "name": "Nome do Produto", "category": "Categoria" }] }`;
 
     const { data: cbAllowed } = await supabase.rpc("check_global_ai_limit", { _endpoint: "parse-ifood-menu" });
     if (cbAllowed === false) {
