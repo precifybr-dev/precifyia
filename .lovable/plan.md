@@ -1,106 +1,116 @@
 
 
-# Corrigir Bloqueio do Cardapio + Ajustar Limites do Menu Performance Score
+# Onboarding Interativo - Configuracao Inicial Guiada
 
-## Problema
+## Objetivo
 
-O modo `full_menu` (espelho do cardapio) esta sendo bloqueado pelo `check_and_increment_usage` na Edge Function `parse-ifood-menu`. Esse check roda ANTES de ler o `importType` do body, entao qualquer request -- seja cardapio ou importacao -- consome a quota de `ifood_import`.
+Transformar o primeiro passo do onboarding (atualmente um formulario unico) em um wizard conversacional de micro-etapas. O usuario responde uma pergunta por vez, de forma limpa e intuitiva, e o sistema preenche automaticamente a Area de Negocio com esses dados.
 
-Alem disso, os limites do **Menu Performance Score** (feature `menu_analysis`) estao incorretos no banco:
-- Free: 1 (correto, mas precisa ser UNICO, nao mensal)
-- Basic: 3 (precisa ser 5/mes)
-- Pro: ilimitado (precisa ser 10/mes)
+## O que sera perguntado (apenas dados basicos)
 
-## Mudancas
+1. **Nome do negocio** - "Como se chama o seu negocio?"
+2. **Tipo de negocio** - "Que tipo de negocio voce tem?" (cards visuais clicaveis)
+3. **Vende no iFood?** - Sim/Nao
+   - Se SIM: "Qual o plano?" (Entrega Propria / Entrega iFood)
+   - Se SIM: "Quantos pedidos por mes?" + "Qual o ticket medio?"
+4. **Faturamento mensal** - "Qual seu faturamento medio mensal?" (com opcao "Nao sei ainda")
+5. **CMV desejado** - "Qual CMV voce deseja alcancar?" (com explicacao simples e valor padrao 30%)
+6. **Como conheceu o Precify?** - Selecao rapida
+7. **Importacao de dados** - Tela final oferecendo:
+   - Importar insumos da planilha
+   - Importar cardapio do iFood
+   - Ou pular e fazer depois
 
-### 1. Edge Function `parse-ifood-menu/index.ts` -- Liberar full_menu
+## O que NAO sera perguntado
 
-- Mover a leitura do `rawBody` (linha 461) para ANTES do bloco de usage check (linha 435)
-- Envolver o `check_and_increment_usage` em condicao: so executar se `importType !== "full_menu"`
-- Melhorar mensagem de erro quando bloqueado: "Voce ja atingiu o limite de importacoes do seu plano. Faca upgrade para continuar importando."
+- Impostos e taxas financeiras
+- Custos de producao (rateio)
+- Despesas fixas e variaveis
+- Regime tributario (sera movido para a Area de Negocio)
 
-### 2. Banco de dados -- Atualizar limites de `menu_analysis`
+## Experiencia do Usuario
 
-Atualizar a tabela `plan_features`:
-- **Free**: `usage_limit = 1` (manter, mas a logica precisa tratar como uso unico/vitalicio)
-- **Basic**: `usage_limit = 5` (era 3)
-- **Pro**: `usage_limit = 10` (era NULL/ilimitado)
-
-### 3. Banco de dados -- Logica de uso unico para Free
-
-O `check_and_increment_usage` atual conta usos no mes corrente (`date_trunc('month', now())`). Para o plano Free, a analise deve ser de uso UNICO (vitalicio, nao reseta no mes). Criar uma funcao alternativa ou ajustar a existente para que, quando `plan = 'free'`, o count ignore a janela mensal e conte TODOS os usos historicos.
-
-### 4. Edge Function `analyze-menu-performance/index.ts` -- Melhorar mensagem de erro
-
-Quando o limite for atingido, retornar mensagem clara:
-- Free: "Voce ja usou sua analise gratuita. Faca upgrade para o plano Basico ou Pro para continuar analisando seu cardapio."
-- Basic/Pro: "Voce atingiu o limite de X analises este mes. Suas analises serao renovadas no proximo mes."
-
-### 5. Frontend `useMenuMirror.ts` -- Tratar erro 403 com mensagem amigavel
-
-No `analyzeMenu`, detectar `upgrade_required` na resposta e mostrar toast com mensagem clara ao inves de erro generico.
+- Uma pergunta por tela (ou agrupamento logico minimo)
+- Transicao suave entre perguntas (animacao slide)
+- Barra de progresso sutil no topo
+- Botao "Pular" discreto em perguntas opcionais
+- Tom conversacional e acolhedor ("Otimo! Agora me conta...")
+- Sem poluicao visual - fundo limpo, foco total na pergunta
 
 ## Secao Tecnica
 
-### Mudanca no `parse-ifood-menu/index.ts`
+### Arquivos Modificados
 
-Reordenar linhas 435-465:
+1. **`src/hooks/useOnboarding.ts`**
+   - Expandir `OnboardingStep` para incluir sub-etapas do wizard: `"welcome" | "business_name" | "business_type" | "ifood_check" | "ifood_details" | "revenue" | "cmv" | "referral" | "import_data" | "ingredients" | "recipe" | "completed"`
+   - Ou manter as 3 etapas macro e gerenciar sub-etapas internamente no componente
+
+2. **`src/components/onboarding/BusinessConfigStep.tsx`** (reescrever)
+   - Substituir o formulario unico por um wizard interno com estado `subStep`
+   - Cada sub-etapa renderiza um card centralizado com a pergunta atual
+   - Ao concluir todas as sub-etapas, salva tudo no profile e cria a loja
+
+3. **`src/components/onboarding/OnboardingStepper.tsx`**
+   - Adaptar para mostrar progresso mais granular (barra de progresso em vez de 3 bolinhas)
+
+4. **`src/pages/Onboarding.tsx`**
+   - Ajustes minimos de layout para acomodar o novo wizard
+
+### Fluxo de Sub-etapas dentro do BusinessConfigStep
 
 ```text
-// ANTES (bugado):
-1. check_and_increment_usage (bloqueia tudo)
-2. ler body (importType)
-
-// DEPOIS (corrigido):
-1. ler body (importType)
-2. SE importType != "full_menu" → check_and_increment_usage
+[Boas-vindas] 
+    |
+[Nome do negocio] -- input texto
+    |
+[Tipo de negocio] -- cards visuais clicaveis
+    |
+[Vende no iFood?] -- Sim / Nao
+    |-- Sim --> [Plano iFood] + [Pedidos/Ticket]
+    |-- Nao --> pula
+    |
+[Faturamento mensal] -- input com opcao "Nao sei"
+    |
+[CMV desejado] -- slider ou input com explicacao
+    |
+[Como conheceu?] -- selecao rapida
+    |
+[Importar dados?] -- 3 opcoes visuais
+    |-- Planilha --> abre SpreadsheetImportModal
+    |-- iFood --> redireciona para import iFood
+    |-- Pular --> avanca
 ```
 
-### SQL Migration
+### Dados salvos no banco
 
-```sql
--- Atualizar limites do menu_analysis
-UPDATE plan_features SET usage_limit = 5 WHERE feature = 'menu_analysis' AND plan = 'basic';
-UPDATE plan_features SET usage_limit = 10 WHERE feature = 'menu_analysis' AND plan = 'pro';
-```
+Todos os dados coletados serao persistidos no `profiles` e na tabela `stores`:
 
-### Ajuste na funcao `check_and_increment_usage`
+- `profiles.business_name`
+- `profiles.business_type`
+- `profiles.default_cmv`
+- `profiles.monthly_revenue`
+- `profiles.referral_source`
+- `profiles.ifood_plan_type`
+- `profiles.ifood_base_rate`
+- `profiles.ifood_monthly_orders`
+- `profiles.ifood_average_ticket`
+- `stores` (criacao da loja padrao com nome e tipo)
 
-Adicionar logica condicional: se o plano for `free`, contar usos desde SEMPRE (sem `>= v_start_of_month`), tornando o limite vitalicio.
+### Design dos Cards de Pergunta
 
-```sql
--- Trecho modificado dentro da funcao:
-IF v_plan = 'free' THEN
-  SELECT count(*) INTO v_count
-  FROM strategic_usage_logs
-  WHERE user_id = _user_id AND endpoint = _endpoint;
-ELSE
-  SELECT count(*) INTO v_count
-  FROM strategic_usage_logs
-  WHERE user_id = _user_id AND endpoint = _endpoint
-    AND created_at >= v_start_of_month;
-END IF;
-```
+Cada sub-etapa segue o padrao:
 
-### Frontend `useMenuMirror.ts` -- analyzeMenu
+- Emoji ou icone no topo
+- Titulo conversacional (ex: "Como se chama o seu negocio?")
+- Subtitulo explicativo curto
+- Campo de entrada (input, cards, toggle)
+- Botao "Continuar" (primario)
+- Link "Pular" (discreto, para opcionais)
+- Animacao `animate-in fade-in slide-in-from-bottom` na transicao
 
-Tratar resposta com `upgrade_required`:
+### Logica Condicional
 
-```typescript
-if (data?.upgrade_required) {
-  toast({
-    title: "Limite atingido",
-    description: data.error || "Faca upgrade para continuar.",
-    variant: "destructive",
-  });
-  return;
-}
-```
-
-## Arquivos Modificados
-
-1. `supabase/functions/parse-ifood-menu/index.ts` -- reordenar body parse, condicionar usage check
-2. `supabase/functions/analyze-menu-performance/index.ts` -- melhorar mensagens de erro
-3. `src/hooks/useMenuMirror.ts` -- tratar erro 403 com mensagem amigavel
-4. Migration SQL -- atualizar `plan_features` e ajustar `check_and_increment_usage`
+- Se usuario responde "Nao" para iFood, pula direto para faturamento
+- Se usuario clica "Nao sei" no faturamento, salva null e segue
+- Na etapa de importacao, se usuario importa da planilha, ao fechar o modal avanca para o step de ingredients ja com dados preenchidos
 
