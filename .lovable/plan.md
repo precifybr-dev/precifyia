@@ -1,44 +1,77 @@
 
+# Correção: Blocos "Despesas Totais" e "Custos de Produção (Rateio)" travados em carregamento
 
-# Correção: Troca de link do iFood mostra cardápio antigo
+## Problema Identificado
 
-## Problema
+Os blocos "Despesas Totais do Negócio" (TotalBusinessCostBlock) e "Custos de Produção - Rateio" (TotalProductCostBlock) ficam exibindo skeletons de carregamento (blocos cinzas pulsando) mesmo quando os dados já foram retornados com sucesso pelo backend.
 
-Quando o usuário troca o link do iFood, o sistema continua mostrando o cardápio da loja anterior. Isso acontece por dois motivos:
+**Causa raiz - dois problemas combinados:**
 
-1. Ao salvar o novo link, o cache antigo (menu_cache) não é limpo no banco
-2. O parâmetro "forceRefresh" nunca é enviado para o backend, então ele sempre retorna o cache antigo (que tem validade de 6 horas)
+1. **Race condition no hook `useBusinessMetrics`**: A função `calculate()` é chamada múltiplas vezes em sequência (no mount da página, quando a store muda, e por cada componente filho via `onTotalChange`). Cada chamada:
+   - Seta `isCalculating = true` imediatamente
+   - Reinicia o timer de debounce de 500ms
+   - Aborta a requisição anterior
+   - Porém, quando uma requisição é abortada, o código faz `return` sem setar `isCalculating = false`, deixando o estado permanentemente travado em `true`
+
+2. **Renderização destrutiva**: Quando `isCalculating` é `true`, os componentes `TotalBusinessCostBlock` e `TotalProductCostBlock` descartam completamente os dados existentes e mostram skeletons, mesmo que já tenham dados válidos de uma chamada anterior.
 
 ## Solução
 
-Duas correções simples:
+### Arquivo 1: `src/hooks/useBusinessMetrics.ts`
 
-### 1. Limpar o cache ao trocar o link (`useMenuMirror.ts`)
+Corrigir o gerenciamento do estado `isCalculating`:
 
-Na função `saveIfoodUrl`, ao fazer o update no banco, incluir `menu_cache: null` e `menu_cached_at: null` junto com o novo `ifood_url`. Isso garante que o cache antigo seja apagado antes de buscar o novo cardápio.
+- Mover o `setIsCalculating(true)` para dentro do callback do debounce (logo antes do fetch), em vez de chamá-lo imediatamente na função `calculate()`
+- Isso evita que chamadas rápidas consecutivas marquem "carregando" antes de realmente iniciar uma requisição
+- Garantir que o `AbortError` também seta `isCalculating = false` (remover o `return` precoce no catch)
 
-### 2. Enviar `forceRefresh` para o backend (`useMenuMirror.ts`)
-
-Na função `fetchMenu`, incluir o parâmetro `forceRefresh` no body da chamada ao backend. Assim, quando o usuário clica "Atualizar" ou troca o link, o backend sabe que deve ignorar qualquer cache residual e buscar dados frescos da API do iFood.
-
-## Seção Técnica
-
-### Arquivo: `src/hooks/useMenuMirror.ts`
-
-**Mudança 1 - `saveIfoodUrl`**: Alterar o `.update()` para incluir limpeza do cache:
+Lógica corrigida:
 ```text
-.update({ ifood_url: url, menu_cache: null, menu_cached_at: null })
+const calculate = useCallback((storeId) => {
+  setError(null);
+  if (debounceRef.current) clearTimeout(debounceRef.current);
+
+  debounceRef.current = setTimeout(async () => {
+    if (abortRef.current) abortRef.current.abort();
+    abortRef.current = new AbortController();
+    setIsCalculating(true);  // Só marca "carregando" quando realmente vai buscar
+
+    try {
+      // ...fetch...
+      setResult(data);
+    } catch (err) {
+      if (err.name === "AbortError") return; // OK: a próxima chamada vai setar isCalculating
+      setError("...");
+    } finally {
+      setIsCalculating(false);
+    }
+  }, DEBOUNCE_MS);
+}, []);
 ```
 
-**Mudança 2 - `fetchMenu`**: Adicionar `forceRefresh` ao body enviado ao Edge Function:
+### Arquivo 2: `src/components/business/TotalBusinessCostBlock.tsx`
+
+Alterar o comportamento de loading: em vez de mostrar skeletons completos quando `isCalculating` é `true`, mostrar os dados existentes com um indicador sutil de atualização (ex: opacidade reduzida ou um pequeno spinner no canto). Os skeletons completos só devem aparecer quando não existe nenhum dado anterior.
+
+Lógica:
 ```text
-body: {
-  ifoodUrl: targetUrl,
-  importType: "full_menu",
-  storeId: activeStore?.id,
-  forceRefresh: forceRefresh,  // NOVO
+// Skeletons só quando não tem dado nenhum
+if (isCalculating && totalExpensesPercent === null && fixedExpensesPercent === null) {
+  return <skeleton />;
 }
+
+// Se tem dados mas está recalculando, mostrar dados com opacidade reduzida
+<div className={isCalculating ? 'opacity-60' : ''}>
+  ...conteúdo normal...
+</div>
 ```
 
-Nenhuma mudança no backend é necessária -- ele já lê `rawBody.forceRefresh` (linha 447 do Edge Function) e pula o cache quando é `true` (linha 520).
+### Arquivo 3: `src/components/business/TotalProductCostBlock.tsx`
 
+Mesma lógica do arquivo 2: mostrar dados existentes com indicador sutil durante recálculo, em vez de destruir a UI com skeletons.
+
+## Resultado Esperado
+
+- Os blocos de despesas e custos de produção carregam os dados na primeira vez e nunca mais mostram skeletons vazios
+- Durante recálculos (ao adicionar/remover itens), os dados existentes continuam visíveis com uma leve opacidade para indicar atualização
+- O estado de carregamento nunca fica "travado" em true
