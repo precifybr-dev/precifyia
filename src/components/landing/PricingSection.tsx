@@ -1,8 +1,10 @@
-import { Check, X, Sparkles, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { Check, X, Sparkles, ArrowRight, ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useFunnelTracking } from "@/hooks/useFunnelTracking";
 import { usePublicPricing, type PricingPlan } from "@/hooks/useStrategicPricing";
+import { PlanComparisonTable } from "./PlanComparisonTable";
 
 function formatPrice(value: number) {
   if (value <= 0) return "Grátis";
@@ -21,9 +23,8 @@ const fallbackPlans: PricingPlan[] = [
       { text: "Até 35 insumos", included: true },
       { text: "Dashboard básico", included: true },
       { text: "1 análise de cardápio (única)", included: true },
-      { text: "Importação de planilha", included: false },
-      { text: "Multi-loja", included: false },
-      { text: "Combos estratégicos", included: false },
+      { text: "1 combo estratégico (único)", included: true },
+      { text: "1 importação iFood (única)", included: true },
     ],
     is_popular: false, is_active: true, sort_order: 0,
   },
@@ -33,13 +34,16 @@ const fallbackPlans: PricingPlan[] = [
     real_price_yearly: 932, anchored_price_yearly: 1411,
     yearly_discount_percent: 20,
     features: [
+      { text: "Tudo do plano Teste, mais:", included: true },
       { text: "Até 8 fichas técnicas", included: true },
       { text: "Até 100 insumos", included: true },
       { text: "Dashboard completo", included: true },
       { text: "5 análises de cardápio/mês", included: true },
-      { text: "Importação de planilha", included: true },
-      { text: "Multi-loja", included: false },
-      { text: "Combos estratégicos", included: false },
+      { text: "3 combos estratégicos/mês", included: true },
+      { text: "5 importações iFood/mês", included: true },
+      { text: "3 importações de planilha/mês", included: true },
+      { text: "Sub-receitas", included: true },
+      { text: "Exportação de dados", included: true },
     ],
     is_popular: false, is_active: true, sort_order: 1,
   },
@@ -49,13 +53,17 @@ const fallbackPlans: PricingPlan[] = [
     real_price_yearly: 1411, anchored_price_yearly: 2851,
     yearly_discount_percent: 20,
     features: [
+      { text: "Tudo do plano Essencial, mais:", included: true },
       { text: "Fichas técnicas ilimitadas", included: true },
       { text: "Insumos ilimitados", included: true },
       { text: "Dashboard avançado + DRE", included: true },
       { text: "10 análises de cardápio/mês", included: true },
-      { text: "Importação de planilha", included: true },
+      { text: "5 combos estratégicos/mês", included: true },
+      { text: "Importação iFood ilimitada", included: true },
+      { text: "Importação de planilha ilimitada", included: true },
       { text: "Até 3 lojas (limites por conta)", included: true },
-      { text: "Combos estratégicos", included: true },
+      { text: "Colaboradores", included: true },
+      { text: "Suporte prioritário", included: true },
     ],
     is_popular: true, is_active: true, sort_order: 2,
   },
@@ -64,6 +72,7 @@ const fallbackPlans: PricingPlan[] = [
 export function PricingSection() {
   const { trackEvent } = useFunnelTracking();
   const { plans: dbPlans, phrases } = usePublicPricing();
+  const [showComparison, setShowComparison] = useState(false);
 
   const plans = dbPlans.length > 0 ? dbPlans : fallbackPlans;
 
@@ -193,6 +202,25 @@ export function PricingSection() {
             );
           })}
         </div>
+
+        {/* Compare plans toggle */}
+        <div className="text-center mt-10">
+          <Button
+            variant="ghost"
+            onClick={() => setShowComparison(!showComparison)}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowDown className={`w-4 h-4 transition-transform ${showComparison ? "rotate-180" : ""}`} />
+            {showComparison ? "Ocultar comparação" : "Comparar todos os planos"}
+          </Button>
+        </div>
+
+        {showComparison && (
+          <div className="max-w-4xl mx-auto mt-6 p-6 rounded-2xl bg-card border border-border shadow-sm animate-in slide-in-from-top-4 duration-300">
+            <h3 className="text-lg font-bold text-foreground text-center mb-6">Comparação detalhada</h3>
+            <PlanComparisonTable />
+          </div>
+        )}
 
         <div className="text-center mt-12">
           <p className="text-muted-foreground mb-3">Prefere falar com alguém?</p>
