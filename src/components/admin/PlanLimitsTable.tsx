@@ -36,19 +36,19 @@ const planLimits: PlanLimit[] = [
   {
     feature: "Lojas/Negócios",
     free: "1",
-    basic: "3",
-    pro: "Ilimitado",
+    basic: "1",
+    pro: "3",
     icon: <Store className="h-4 w-4" />,
   },
   {
-    feature: "Importação IA (iFood)",
-    free: "1/mês",
+    feature: "Análise de Cardápio (IA)",
+    free: "1 (única)",
     basic: "5/mês",
-    pro: "Ilimitado",
+    pro: "10/mês",
     icon: <Sparkles className="h-4 w-4" />,
   },
   {
-    feature: "Análise por Planilha",
+    feature: "Importação de Planilha",
     free: false,
     basic: true,
     pro: true,
@@ -141,6 +141,10 @@ export function PlanLimitsTable({ freeUsers, basicUsers, proUsers }: PlanLimitsT
             ))}
           </TableBody>
         </Table>
+
+        <p className="text-xs text-muted-foreground mt-3 italic">
+          * Limites de análise são por conta, não por loja.
+        </p>
 
         {/* Summary */}
         <div className="mt-4 pt-4 border-t grid grid-cols-3 gap-3">
