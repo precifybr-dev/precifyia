@@ -48,6 +48,7 @@ import UserSupport from "./pages/UserSupport";
 import BackupRestore from "./pages/BackupRestore";
 import University from "./pages/University";
 import MenuMirror from "./pages/MenuMirror";
+import CMVGlobal from "./pages/CMVGlobal";
 
 // Admin pages (master/collaborators)
 import AdminDashboard from "./pages/AdminDashboard";
@@ -276,6 +277,14 @@ const App = () => (
               element={
                 <AppRoute>
                   <University />
+                </AppRoute>
+              }
+            />
+            <Route
+              path="/app/cmv"
+              element={
+                <AppRoute>
+                  <CMVGlobal />
                 </AppRoute>
               }
             />
