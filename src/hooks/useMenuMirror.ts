@@ -74,6 +74,7 @@ export function useMenuMirror() {
           ifoodUrl: targetUrl,
           importType: "full_menu",
           storeId: activeStore?.id,
+          forceRefresh: forceRefresh,
         },
       });
 
@@ -114,7 +115,7 @@ export function useMenuMirror() {
     try {
       const { error } = await supabase
         .from("stores")
-        .update({ ifood_url: url } as any)
+        .update({ ifood_url: url, menu_cache: null, menu_cached_at: null } as any)
         .eq("id", activeStore.id);
 
       if (error) throw error;
