@@ -1,116 +1,55 @@
 
+# Correção: "Conectar Cardápio" não atualiza após salvar link
 
-# Onboarding Interativo - Configuracao Inicial Guiada
+## Problema Identificado
 
-## Objetivo
+Quando o usuário cola o link do iFood e clica "Conectar", o sistema:
+1. Salva o `ifood_url` no banco de dados (funciona OK)
+2. Chama a Edge Function para buscar o cardápio (funciona OK - logs mostram 52 itens extraídos)
+3. **MAS** o `StoreContext` não é notificado da mudança, então `activeStore.ifood_url` continua `null`
+4. A interface continua mostrando o formulário de input como se nada tivesse sido salvo
 
-Transformar o primeiro passo do onboarding (atualmente um formulario unico) em um wizard conversacional de micro-etapas. O usuario responde uma pergunta por vez, de forma limpa e intuitiva, e o sistema preenche automaticamente a Area de Negocio com esses dados.
+O `useMenuMirror` lê o `ifoodUrl` de `(activeStore as any)?.ifood_url`, mas após o update no banco, o `activeStore` no contexto React não é atualizado.
 
-## O que sera perguntado (apenas dados basicos)
+## Solução
 
-1. **Nome do negocio** - "Como se chama o seu negocio?"
-2. **Tipo de negocio** - "Que tipo de negocio voce tem?" (cards visuais clicaveis)
-3. **Vende no iFood?** - Sim/Nao
-   - Se SIM: "Qual o plano?" (Entrega Propria / Entrega iFood)
-   - Se SIM: "Quantos pedidos por mes?" + "Qual o ticket medio?"
-4. **Faturamento mensal** - "Qual seu faturamento medio mensal?" (com opcao "Nao sei ainda")
-5. **CMV desejado** - "Qual CMV voce deseja alcancar?" (com explicacao simples e valor padrao 30%)
-6. **Como conheceu o Precify?** - Selecao rapida
-7. **Importacao de dados** - Tela final oferecendo:
-   - Importar insumos da planilha
-   - Importar cardapio do iFood
-   - Ou pular e fazer depois
+Atualizar o `useMenuMirror.ts` para sincronizar o `StoreContext` após salvar a URL, usando `refreshStores()` do contexto.
 
-## O que NAO sera perguntado
+## Arquivos a Modificar
 
-- Impostos e taxas financeiras
-- Custos de producao (rateio)
-- Despesas fixas e variaveis
-- Regime tributario (sera movido para a Area de Negocio)
+### 1. `src/hooks/useMenuMirror.ts`
+- Importar `refreshStores` do `useStore()`
+- Após o `supabase.from("stores").update(...)` bem-sucedido em `saveIfoodUrl`, chamar `await refreshStores()` para que o contexto reflita o novo `ifood_url`
+- Fazer o mesmo no `clearUrl` para limpar o estado corretamente
 
-## Experiencia do Usuario
+### 2. `src/contexts/StoreContext.tsx`
+- Adicionar `ifood_url` ao interface `Store` para que o TypeScript reconheça o campo sem precisar de `as any`
+- Isso elimina os casts forçados em `useMenuMirror.ts`
 
-- Uma pergunta por tela (ou agrupamento logico minimo)
-- Transicao suave entre perguntas (animacao slide)
-- Barra de progresso sutil no topo
-- Botao "Pular" discreto em perguntas opcionais
-- Tom conversacional e acolhedor ("Otimo! Agora me conta...")
-- Sem poluicao visual - fundo limpo, foco total na pergunta
+## Detalhes Técnicos
 
-## Secao Tecnica
-
-### Arquivos Modificados
-
-1. **`src/hooks/useOnboarding.ts`**
-   - Expandir `OnboardingStep` para incluir sub-etapas do wizard: `"welcome" | "business_name" | "business_type" | "ifood_check" | "ifood_details" | "revenue" | "cmv" | "referral" | "import_data" | "ingredients" | "recipe" | "completed"`
-   - Ou manter as 3 etapas macro e gerenciar sub-etapas internamente no componente
-
-2. **`src/components/onboarding/BusinessConfigStep.tsx`** (reescrever)
-   - Substituir o formulario unico por um wizard interno com estado `subStep`
-   - Cada sub-etapa renderiza um card centralizado com a pergunta atual
-   - Ao concluir todas as sub-etapas, salva tudo no profile e cria a loja
-
-3. **`src/components/onboarding/OnboardingStepper.tsx`**
-   - Adaptar para mostrar progresso mais granular (barra de progresso em vez de 3 bolinhas)
-
-4. **`src/pages/Onboarding.tsx`**
-   - Ajustes minimos de layout para acomodar o novo wizard
-
-### Fluxo de Sub-etapas dentro do BusinessConfigStep
-
+**StoreContext.tsx** - Adicionar campo ao interface:
 ```text
-[Boas-vindas] 
-    |
-[Nome do negocio] -- input texto
-    |
-[Tipo de negocio] -- cards visuais clicaveis
-    |
-[Vende no iFood?] -- Sim / Nao
-    |-- Sim --> [Plano iFood] + [Pedidos/Ticket]
-    |-- Nao --> pula
-    |
-[Faturamento mensal] -- input com opcao "Nao sei"
-    |
-[CMV desejado] -- slider ou input com explicacao
-    |
-[Como conheceu?] -- selecao rapida
-    |
-[Importar dados?] -- 3 opcoes visuais
-    |-- Planilha --> abre SpreadsheetImportModal
-    |-- iFood --> redireciona para import iFood
-    |-- Pular --> avanca
+export interface Store {
+  ...campos existentes...
+  ifood_url: string | null;   // NOVO
+}
 ```
 
-### Dados salvos no banco
+**useMenuMirror.ts** - Após salvar URL com sucesso:
+```text
+const { activeStore, refreshStores } = useStore();
 
-Todos os dados coletados serao persistidos no `profiles` e na tabela `stores`:
+const saveIfoodUrl = async (url: string) => {
+  // ...update no banco...
+  await refreshStores();  // Sincroniza o contexto
+  await fetchMenu(url, true);
+};
 
-- `profiles.business_name`
-- `profiles.business_type`
-- `profiles.default_cmv`
-- `profiles.monthly_revenue`
-- `profiles.referral_source`
-- `profiles.ifood_plan_type`
-- `profiles.ifood_base_rate`
-- `profiles.ifood_monthly_orders`
-- `profiles.ifood_average_ticket`
-- `stores` (criacao da loja padrao com nome e tipo)
+const clearUrl = async () => {
+  // ...update no banco...
+  await refreshStores();  // Sincroniza o contexto
+};
+```
 
-### Design dos Cards de Pergunta
-
-Cada sub-etapa segue o padrao:
-
-- Emoji ou icone no topo
-- Titulo conversacional (ex: "Como se chama o seu negocio?")
-- Subtitulo explicativo curto
-- Campo de entrada (input, cards, toggle)
-- Botao "Continuar" (primario)
-- Link "Pular" (discreto, para opcionais)
-- Animacao `animate-in fade-in slide-in-from-bottom` na transicao
-
-### Logica Condicional
-
-- Se usuario responde "Nao" para iFood, pula direto para faturamento
-- Se usuario clica "Nao sei" no faturamento, salva null e segue
-- Na etapa de importacao, se usuario importa da planilha, ao fechar o modal avanca para o step de ingredients ja com dados preenchidos
-
+Isso resolve o ciclo onde a URL era salva no banco mas o React nao sabia, mantendo a interface travada no formulário de input.
