@@ -1,97 +1,62 @@
 
-# Exibir plano do usuario na sidebar e criar pagina "Meu Plano"
+# Corrigir erro ao excluir loja — Foreign Key sem CASCADE
 
-## Resumo
+## Problema
 
-Tres mudancas:
-1. Mostrar o plano atual do usuario no perfil da sidebar, com botao "Fazer upgrade" para planos Free e Essencial
-2. Adicionar item "Meu Plano" no menu popover do usuario (entre Lixeira e Backup)
-3. Criar pagina `/app/plan` com mini dashboard do plano: limites, uso atual e proximo vencimento
+Ao tentar excluir uma loja secundaria, o banco de dados retorna o erro:
+`update or delete on table "stores" violates foreign key constraint "calculation_history_store_id_fkey"`
 
-## O que muda para o usuario
+Isso acontece porque 5 tabelas possuem foreign keys para `stores` sem `ON DELETE CASCADE`, impedindo a exclusao.
 
-- Na sidebar, abaixo do nome do usuario, aparece uma badge com o nome do plano (ex: "Plano Teste", "Plano Essencial", "Plano Pro")
-- Para planos Free e Essencial, ao lado da badge aparece um botao "Fazer upgrade" que abre o PlanUpgradePrompt
-- No menu popover (clicando no perfil), entre "Lixeira" e "Backup", aparece o item "Meu Plano" com icone de coroa
-- A pagina "Meu Plano" mostra:
-  - Nome do plano atual com badge colorida
-  - Data do proximo vencimento (campo `subscription_expires_at` do profiles)
-  - Cards de uso: fichas tecnicas, insumos, analises de cardapio, combos, importacoes -- cada um com barra de progresso mostrando "X de Y usados"
-  - Botao de upgrade (para Free e Essencial)
+## Tabelas afetadas
+
+| Tabela | Constraint | Status atual |
+|---|---|---|
+| calculation_history | calculation_history_store_id_fkey | SEM cascade |
+| cmv_periodos | cmv_periodos_store_id_fkey | SEM cascade |
+| combo_generation_usage | combo_generation_usage_store_id_fkey | SEM cascade |
+| combos | combos_store_id_fkey | SEM cascade |
+| topo_cardapio_simulacoes | topo_cardapio_simulacoes_store_id_fkey | SEM cascade |
+
+As demais tabelas (recipes, ingredients, fixed_costs, etc.) ja possuem `ON DELETE CASCADE` e funcionam corretamente.
+
+## Solucao
+
+Uma unica migracao SQL que, para cada uma das 5 tabelas:
+1. Remove a foreign key existente
+2. Recria a mesma foreign key com `ON DELETE CASCADE`
+
+Isso garante que ao excluir uma loja, todos os registros associados nessas tabelas sejam removidos automaticamente pelo banco.
 
 ## Secao Tecnica
 
-### Arquivo 1: `src/components/layout/AppSidebar.tsx`
+Migracao SQL a ser executada:
 
-No bloco do perfil do usuario (linhas 195-208), adicionar:
-- Importar `Crown` e `Badge` (Crown ja importado)
-- Abaixo do email do usuario (`<p className="text-xs ...">`) adicionar uma linha com badge do plano:
-  - Free: badge cinza "Plano Teste"
-  - Basic: badge azul "Plano Essencial"  
-  - Pro: badge dourada "Plano Pro"
-- Para Free e Basic, ao lado da badge, texto clicavel "Upgrade" que abre o PlanUpgradePrompt
-- Usar `userPlan` que ja vem do `useStore()`
-
-No popover do usuario (linhas 210-238), adicionar entre o botao "Lixeira" e "Backup":
-- Novo botao "Meu Plano" com icone `Crown`, navegando para `/app/plan`
-
-Estado adicional:
-- `const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);`
-- Renderizar `<PlanUpgradePrompt>` no final do componente
-
-### Arquivo 2: `src/pages/MyPlan.tsx` (novo)
-
-Nova pagina com `AppLayout` wrapper contendo:
-- Titulo: "Meu Plano"
-- Card principal com nome do plano, status da assinatura e data de vencimento
-- Grid de cards de uso (cada recurso com barra de progresso):
-  - Fichas tecnicas: conta de `recipes` do usuario vs limite do plano
-  - Insumos: conta de `ingredients` do usuario vs limite
-  - Analises de cardapio: conta de `strategic_usage_logs` (endpoint `analyze-menu-performance`) vs limite
-  - Combos estrategicos: conta de `strategic_usage_logs` (endpoint `generate-combo`) vs limite
-  - Importacoes de planilha: conta de `strategic_usage_logs` (endpoint `analyze-spreadsheet-columns`) vs limite
-- Para contagem mensal (basic/pro), filtra pelo mes atual
-- Para free, contagem vitalicia
-- Botao "Fazer Upgrade" no rodape (para Free e Essencial)
-- Nota: "Limites sao por conta, independente do numero de lojas"
-
-Dados carregados:
-- `profiles` -> `user_plan`, `subscription_status`, `subscription_expires_at`
-- `plan_features` -> limites de cada recurso
-- `recipes` -> count
-- `ingredients` -> count  
-- `strategic_usage_logs` -> count por endpoint
-
-### Arquivo 3: `src/App.tsx`
-
-Adicionar rota:
 ```text
-/app/plan -> <AppRoute><MyPlan /></AppRoute>
+ALTER TABLE calculation_history
+  DROP CONSTRAINT calculation_history_store_id_fkey,
+  ADD CONSTRAINT calculation_history_store_id_fkey
+    FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE;
+
+ALTER TABLE cmv_periodos
+  DROP CONSTRAINT cmv_periodos_store_id_fkey,
+  ADD CONSTRAINT cmv_periodos_store_id_fkey
+    FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE;
+
+ALTER TABLE combo_generation_usage
+  DROP CONSTRAINT combo_generation_usage_store_id_fkey,
+  ADD CONSTRAINT combo_generation_usage_store_id_fkey
+    FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE;
+
+ALTER TABLE combos
+  DROP CONSTRAINT combos_store_id_fkey,
+  ADD CONSTRAINT combos_store_id_fkey
+    FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE;
+
+ALTER TABLE topo_cardapio_simulacoes
+  DROP CONSTRAINT topo_cardapio_simulacoes_store_id_fkey,
+  ADD CONSTRAINT topo_cardapio_simulacoes_store_id_fkey
+    FOREIGN KEY (store_id) REFERENCES stores(id) ON DELETE CASCADE;
 ```
 
-Importar `MyPlan` de `./pages/MyPlan`
-
-### Mapeamento de dados do plano
-
-| Recurso | Feature key (plan_features) | Tabela de contagem | Filtro |
-|---|---|---|---|
-| Fichas tecnicas | recipes | recipes (count) | user_id |
-| Insumos | ingredients | ingredients (count) | user_id via store |
-| Analise cardapio | analyze-menu | strategic_usage_logs | endpoint = analyze-menu-performance |
-| Combos IA | generate-combo | strategic_usage_logs | endpoint = generate-combo |
-| Import planilha | spreadsheet-import | strategic_usage_logs | endpoint = analyze-spreadsheet-columns |
-
-### Labels dos planos
-
-| Plano | Label | Cor da badge |
-|---|---|---|
-| free | Plano Teste | Cinza (secondary) |
-| basic | Plano Essencial | Azul (default) |
-| pro | Plano Pro | Dourada (outline com bg-yellow) |
-
-### Vencimento
-
-- Exibir `subscription_expires_at` formatado com `date-fns` no formato "dd/MM/yyyy"
-- Se nulo ou plano free: "Sem vencimento (plano gratuito)"
-- Se `subscription_status === "active"`: "Ativo - Renova em dd/MM/yyyy"
-- Se `subscription_status === "canceled"`: "Cancelado - Expira em dd/MM/yyyy"
+Nenhum arquivo de codigo precisa ser alterado — o problema e exclusivamente no banco de dados.
