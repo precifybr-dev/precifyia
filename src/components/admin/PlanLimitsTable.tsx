@@ -27,9 +27,16 @@ interface PlanLimit {
 
 const planLimits: PlanLimit[] = [
   {
-    feature: "Fichas Técnicas",
-    free: "3",
+    feature: "Fichas Técnicas (Receitas)",
+    free: "2",
     basic: "8",
+    pro: "Ilimitado",
+    icon: <FileSpreadsheet className="h-4 w-4" />,
+  },
+  {
+    feature: "Insumos",
+    free: "35",
+    basic: "100",
     pro: "Ilimitado",
     icon: <FileSpreadsheet className="h-4 w-4" />,
   },
@@ -48,17 +55,24 @@ const planLimits: PlanLimit[] = [
     icon: <Sparkles className="h-4 w-4" />,
   },
   {
+    feature: "Combos Estratégicos (IA)",
+    free: "1 (único)",
+    basic: "3/mês",
+    pro: "5/mês",
+    icon: <Sparkles className="h-4 w-4" />,
+  },
+  {
     feature: "Importação de Planilha",
-    free: false,
-    basic: true,
-    pro: true,
+    free: "1 (até 35 insumos)",
+    basic: "3/mês",
+    pro: "Ilimitada",
     icon: <Settings2 className="h-4 w-4" />,
   },
   {
-    feature: "Suporte Prioritário",
-    free: false,
-    basic: false,
-    pro: true,
+    feature: "Suporte",
+    free: "Padrão",
+    basic: "Padrão",
+    pro: "Via WhatsApp",
     icon: <Crown className="h-4 w-4" />,
   },
 ];
