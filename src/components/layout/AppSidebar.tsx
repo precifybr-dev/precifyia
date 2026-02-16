@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, FileSpreadsheet, Package, Wine, Building2,
   LogOut, ChevronRight, Plus, Store, Crown, Sun, Moon,
-  Sparkles, Headphones, HardDrive, Trash2, ChevronUp, GraduationCap, UtensilsCrossed, BarChart3,
+  Sparkles, Headphones, HardDrive, Trash2, ChevronUp, GraduationCap, UtensilsCrossed, BarChart3, ArrowUpRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/contexts/StoreContext";
 import { Logo } from "@/components/ui/Logo";
 import { CreateStoreModal } from "@/components/store/CreateStoreModal";
+import { Badge } from "@/components/ui/badge";
+import { PlanUpgradePrompt } from "@/components/upsell/PlanUpgradePrompt";
 
 type NavItem = {
   icon: typeof LayoutDashboard;
@@ -52,6 +54,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
   const { activeStore, userPlan, canCreateStore, storeCount, maxStores } = useStore();
   const isPro = userPlan === "pro";
   const [showCreateStoreModal, setShowCreateStoreModal] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
@@ -203,12 +206,35 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
                       {profile?.business_name || user?.user_metadata?.full_name || "Usuário"}
                     </p>
                     <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Badge
+                        variant={userPlan === "pro" ? "outline" : userPlan === "basic" ? "default" : "secondary"}
+                        className={`text-[10px] px-1.5 py-0 h-4 ${userPlan === "pro" ? "bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700" : ""}`}
+                      >
+                        {userPlan === "pro" ? "Plano Pro" : userPlan === "basic" ? "Plano Essencial" : "Plano Teste"}
+                      </Badge>
+                      {userPlan !== "pro" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setShowUpgradePrompt(true); }}
+                          className="text-[10px] text-primary font-medium hover:underline flex items-center gap-0.5"
+                        >
+                          Upgrade <ArrowUpRight className="w-2.5 h-2.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <ChevronUp className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                 </button>
               </PopoverTrigger>
               <PopoverContent side="top" align="start" className="w-56 p-2" sideOffset={8}>
                 <div className="space-y-1">
+                  <button
+                    onClick={() => { onClose(); navigate("/app/plan"); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
+                  >
+                    <Crown className="w-4 h-4 text-amber-500" />
+                    <span className="font-medium">Meu Plano</span>
+                  </button>
                   <button
                     onClick={() => { onClose(); navigate("/app/recycle-bin"); }}
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-foreground hover:bg-muted transition-colors"
@@ -256,6 +282,14 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
         onStoreCreated={(storeId) => {
           navigate(`/store-onboarding/${storeId}`);
         }}
+      />
+
+      {/* Upgrade Prompt */}
+      <PlanUpgradePrompt
+        open={showUpgradePrompt}
+        onOpenChange={setShowUpgradePrompt}
+        currentPlan={userPlan}
+        feature="upgrade"
       />
     </>
   );
