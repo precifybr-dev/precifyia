@@ -612,6 +612,124 @@ export type Database = {
           },
         ]
       }
+      cmv_categorias: {
+        Row: {
+          ajustes: number | null
+          categoria: string
+          cmv_categoria: number | null
+          cmv_percentual_categoria: number | null
+          compras: number | null
+          created_at: string
+          estoque_final: number | null
+          estoque_inicial: number | null
+          id: string
+          periodo_id: string
+        }
+        Insert: {
+          ajustes?: number | null
+          categoria: string
+          cmv_categoria?: number | null
+          cmv_percentual_categoria?: number | null
+          compras?: number | null
+          created_at?: string
+          estoque_final?: number | null
+          estoque_inicial?: number | null
+          id?: string
+          periodo_id: string
+        }
+        Update: {
+          ajustes?: number | null
+          categoria?: string
+          cmv_categoria?: number | null
+          cmv_percentual_categoria?: number | null
+          compras?: number | null
+          created_at?: string
+          estoque_final?: number | null
+          estoque_inicial?: number | null
+          id?: string
+          periodo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cmv_categorias_periodo_id_fkey"
+            columns: ["periodo_id"]
+            isOneToOne: false
+            referencedRelation: "cmv_periodos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cmv_periodos: {
+        Row: {
+          ajustes: number | null
+          ano: number
+          cmv_calculado: number | null
+          cmv_percentual: number | null
+          compras: number | null
+          created_at: string
+          estoque_final: number | null
+          estoque_inicial: number | null
+          faturamento_liquido: number | null
+          id: string
+          mes: number
+          meta_automatica: number | null
+          meta_definida: number | null
+          modo: string
+          onboarding_concluido: boolean | null
+          store_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ajustes?: number | null
+          ano: number
+          cmv_calculado?: number | null
+          cmv_percentual?: number | null
+          compras?: number | null
+          created_at?: string
+          estoque_final?: number | null
+          estoque_inicial?: number | null
+          faturamento_liquido?: number | null
+          id?: string
+          mes: number
+          meta_automatica?: number | null
+          meta_definida?: number | null
+          modo?: string
+          onboarding_concluido?: boolean | null
+          store_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ajustes?: number | null
+          ano?: number
+          cmv_calculado?: number | null
+          cmv_percentual?: number | null
+          compras?: number | null
+          created_at?: string
+          estoque_final?: number | null
+          estoque_inicial?: number | null
+          faturamento_liquido?: number | null
+          id?: string
+          mes?: number
+          meta_automatica?: number | null
+          meta_definida?: number | null
+          modo?: string
+          onboarding_concluido?: boolean | null
+          store_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cmv_periodos_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       collaborators: {
         Row: {
           created_at: string
