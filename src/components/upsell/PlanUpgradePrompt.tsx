@@ -35,7 +35,8 @@ const PLAN_BENEFITS: Record<string, string[]> = {
     "10 análises de cardápio/mês",
     "5 combos estratégicos/mês",
     "Até 3 lojas (limites por conta)",
-    "Colaboradores e suporte prioritário",
+    "Colaboradores",
+    "Suporte via WhatsApp",
   ],
 };
 
