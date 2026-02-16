@@ -26,8 +26,30 @@ export function useMenuMirror() {
   const [isSaving, setIsSaving] = useState(false);
   const [analysis, setAnalysis] = useState<MenuAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisLoadedFromCache, setAnalysisLoadedFromCache] = useState(false);
 
   const ifoodUrl = activeStore?.ifood_url ?? null;
+
+  // Load saved analysis from database on mount
+  const loadAnalysisFromCache = useCallback(async () => {
+    if (!activeStore?.id || analysisLoadedFromCache) return;
+    try {
+      const { data } = await supabase
+        .from("stores")
+        .select("menu_analysis, menu_analysis_at")
+        .eq("id", activeStore.id)
+        .single();
+
+      const saved = (data as any)?.menu_analysis;
+      if (saved && saved.totalScore !== undefined) {
+        setAnalysis(saved);
+      }
+    } catch {
+      // Not critical
+    } finally {
+      setAnalysisLoadedFromCache(true);
+    }
+  }, [activeStore?.id, analysisLoadedFromCache]);
 
   // Load menu from database cache (no Edge Function call)
   const loadFromCache = useCallback(async () => {
@@ -184,6 +206,14 @@ export function useMenuMirror() {
 
       if (data?.success && data.analysis) {
         setAnalysis(data.analysis);
+
+        // Persist analysis to database
+        if (activeStore?.id) {
+          await supabase
+            .from("stores")
+            .update({ menu_analysis: data.analysis, menu_analysis_at: new Date().toISOString() } as any)
+            .eq("id", activeStore.id);
+        }
       } else {
         throw new Error(data?.error || "Erro ao analisar cardápio");
       }
@@ -197,7 +227,7 @@ export function useMenuMirror() {
     } finally {
       setIsAnalyzing(false);
     }
-  }, [menuData, toast]);
+  }, [menuData, activeStore?.id, toast]);
 
   return {
     menuData,
@@ -211,5 +241,6 @@ export function useMenuMirror() {
     isAnalyzing,
     analyzeMenu,
     loadFromCache,
+    loadAnalysisFromCache,
   };
 }

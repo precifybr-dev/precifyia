@@ -9,7 +9,7 @@ import { IfoodMenuView } from "@/components/menu-mirror/IfoodMenuView";
 import { MenuPerformanceDashboard } from "@/components/menu-mirror/MenuPerformanceDashboard";
 
 export default function MenuMirror() {
-  const { menuData, isLoading, isSaving, ifoodUrl, fetchMenu, saveIfoodUrl, clearUrl, analysis, isAnalyzing, analyzeMenu, loadFromCache } = useMenuMirror();
+  const { menuData, isLoading, isSaving, ifoodUrl, fetchMenu, saveIfoodUrl, clearUrl, analysis, isAnalyzing, analyzeMenu, loadFromCache, loadAnalysisFromCache } = useMenuMirror();
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
 
@@ -18,6 +18,7 @@ export default function MenuMirror() {
     if (ifoodUrl && !menuData && !isLoading) {
       loadFromCache();
     }
+    loadAnalysisFromCache();
   }, [ifoodUrl]);
 
   const handleSaveUrl = () => {
