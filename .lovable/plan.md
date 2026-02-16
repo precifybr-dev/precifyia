@@ -1,55 +1,44 @@
 
-# Correção: "Conectar Cardápio" não atualiza após salvar link
 
-## Problema Identificado
+# Correção: Troca de link do iFood mostra cardápio antigo
 
-Quando o usuário cola o link do iFood e clica "Conectar", o sistema:
-1. Salva o `ifood_url` no banco de dados (funciona OK)
-2. Chama a Edge Function para buscar o cardápio (funciona OK - logs mostram 52 itens extraídos)
-3. **MAS** o `StoreContext` não é notificado da mudança, então `activeStore.ifood_url` continua `null`
-4. A interface continua mostrando o formulário de input como se nada tivesse sido salvo
+## Problema
 
-O `useMenuMirror` lê o `ifoodUrl` de `(activeStore as any)?.ifood_url`, mas após o update no banco, o `activeStore` no contexto React não é atualizado.
+Quando o usuário troca o link do iFood, o sistema continua mostrando o cardápio da loja anterior. Isso acontece por dois motivos:
+
+1. Ao salvar o novo link, o cache antigo (menu_cache) não é limpo no banco
+2. O parâmetro "forceRefresh" nunca é enviado para o backend, então ele sempre retorna o cache antigo (que tem validade de 6 horas)
 
 ## Solução
 
-Atualizar o `useMenuMirror.ts` para sincronizar o `StoreContext` após salvar a URL, usando `refreshStores()` do contexto.
+Duas correções simples:
 
-## Arquivos a Modificar
+### 1. Limpar o cache ao trocar o link (`useMenuMirror.ts`)
 
-### 1. `src/hooks/useMenuMirror.ts`
-- Importar `refreshStores` do `useStore()`
-- Após o `supabase.from("stores").update(...)` bem-sucedido em `saveIfoodUrl`, chamar `await refreshStores()` para que o contexto reflita o novo `ifood_url`
-- Fazer o mesmo no `clearUrl` para limpar o estado corretamente
+Na função `saveIfoodUrl`, ao fazer o update no banco, incluir `menu_cache: null` e `menu_cached_at: null` junto com o novo `ifood_url`. Isso garante que o cache antigo seja apagado antes de buscar o novo cardápio.
 
-### 2. `src/contexts/StoreContext.tsx`
-- Adicionar `ifood_url` ao interface `Store` para que o TypeScript reconheça o campo sem precisar de `as any`
-- Isso elimina os casts forçados em `useMenuMirror.ts`
+### 2. Enviar `forceRefresh` para o backend (`useMenuMirror.ts`)
 
-## Detalhes Técnicos
+Na função `fetchMenu`, incluir o parâmetro `forceRefresh` no body da chamada ao backend. Assim, quando o usuário clica "Atualizar" ou troca o link, o backend sabe que deve ignorar qualquer cache residual e buscar dados frescos da API do iFood.
 
-**StoreContext.tsx** - Adicionar campo ao interface:
+## Seção Técnica
+
+### Arquivo: `src/hooks/useMenuMirror.ts`
+
+**Mudança 1 - `saveIfoodUrl`**: Alterar o `.update()` para incluir limpeza do cache:
 ```text
-export interface Store {
-  ...campos existentes...
-  ifood_url: string | null;   // NOVO
+.update({ ifood_url: url, menu_cache: null, menu_cached_at: null })
+```
+
+**Mudança 2 - `fetchMenu`**: Adicionar `forceRefresh` ao body enviado ao Edge Function:
+```text
+body: {
+  ifoodUrl: targetUrl,
+  importType: "full_menu",
+  storeId: activeStore?.id,
+  forceRefresh: forceRefresh,  // NOVO
 }
 ```
 
-**useMenuMirror.ts** - Após salvar URL com sucesso:
-```text
-const { activeStore, refreshStores } = useStore();
+Nenhuma mudança no backend é necessária -- ele já lê `rawBody.forceRefresh` (linha 447 do Edge Function) e pula o cache quando é `true` (linha 520).
 
-const saveIfoodUrl = async (url: string) => {
-  // ...update no banco...
-  await refreshStores();  // Sincroniza o contexto
-  await fetchMenu(url, true);
-};
-
-const clearUrl = async () => {
-  // ...update no banco...
-  await refreshStores();  // Sincroniza o contexto
-};
-```
-
-Isso resolve o ciclo onde a URL era salva no banco mas o React nao sabia, mantendo a interface travada no formulário de input.
