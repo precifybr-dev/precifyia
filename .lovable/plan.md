@@ -1,54 +1,132 @@
 
 
-# Ajuste Final: Coordenadas de Itapema e Fallback por Estado
+# Blindagem Anti-Bloqueio do iFood Marketplace API
 
-## Situacao Atual
+## Contexto
 
-A extracao direta (sem IA) ja esta **funcionando**. O teste com Burger King Itapema retornou **74 itens** com sucesso via Marketplace API, custo zero.
+A Edge Function `parse-ifood-menu` ja funciona com extracao direta (custo zero), mas nao possui protecoes contra bloqueio por comportamento automatizado. O risco real e frequencia alta, burst simultaneo e falta de cache server-side inteligente.
 
-O unico risco restante: se a API do iFood for mais restritiva com coordenadas distantes, lojas de cidades menores podem falhar. Preciso blindar isso.
+## O Que Ja Existe
+
+- Cache no banco (`menu_cache` / `menu_cached_at` na tabela `stores`) -- mas sem TTL enforcement no backend
+- Rate limit por usuario/IP (5 req/min, 10 req/min) -- protege contra abuso, mas nao contra burst real na API do iFood
+- Headers basicos no fetch -- ja tem User-Agent, Accept, Accept-Language
 
 ## O Que Precisa Mudar
 
-### Arquivo: `supabase/functions/parse-ifood-menu/index.ts`
+### 1. Cache Server-Side com TTL (6h) -- Impacto: -90% chamadas
 
-**1. Adicionar cidades ao mapa de coordenadas** (linha ~24-62):
-- itapema-sc (-27.0906, -48.6155)
-- balneario-camboriu-sc (-26.9909, -48.6353)
-- blumenau-sc (-26.9194, -49.0661)
-- chapeco-sc (-27.1007, -52.6157)
-- criciuma-sc (-28.6775, -49.3697)
-- itajai-sc (-26.9078, -48.6616)
-- mais ~15 cidades frequentes de SC, PR, RS, MG, RJ, SP
+**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
 
-**2. Adicionar fallback por estado** na funcao `getCityCoordinates` (linha ~64-73):
+No bloco `full_menu` (linha ~511), ANTES de chamar `fetchFromMarketplaceAPI`:
+- Verificar se `menu_cached_at` existe e e menor que 6 horas atras
+- Se cache valido: retornar direto sem tocar na API do iFood
+- Se `forceRefresh` vier no body: ignorar cache (para o botao "Atualizar")
+- Se API falhar: retornar cache antigo mesmo expirado (stale fallback)
 
-Logica nova:
-1. Tentar match exato no mapa (ex: "itapema-sc")
-2. Se nao encontrar, extrair o sufixo do estado (ex: "-sc")
-3. Usar coordenadas da capital do estado como fallback
-4. Ultimo recurso: Sao Paulo
-
-Mapa de estados:
-```
-sc -> Florianopolis (-27.5954, -48.5480)
-pr -> Curitiba (-25.4284, -49.2733)
-rs -> Porto Alegre (-30.0346, -51.2177)
-mg -> BH (-19.9167, -43.9345)
-rj -> Rio (-22.9068, -43.1729)
-... (todos os 26 estados + DF)
+```text
+Fluxo:
+  Request chega
+       |
+  forceRefresh? --sim--> pula cache
+       |no
+  cache < 6h? --sim--> retorna cache direto
+       |no
+  chama API iFood
+       |
+  sucesso? --sim--> salva cache + retorna
+       |no
+  tem cache antigo? --sim--> retorna stale
+       |no
+  erro 422
 ```
 
-**3. Tentar API sem coordenadas como primeira tentativa** (linha ~81-122):
+### 2. Deduplicacao por merchantId (anti-burst) -- Impacto: elimina requests duplicados
 
-Adicionar um endpoint extra no array de URLs da funcao `fetchFromMarketplaceAPI`:
-- Tentar primeiro SEM latitude/longitude
-- Se falhar, tentar COM coordenadas (fluxo atual)
+**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
 
-Isso cobre o caso onde a API aceita merchant ID sozinho.
+Usar um Map em memoria (`pendingRequests`) para deduplicar chamadas simultaneas ao mesmo merchant:
+- Se ja existe um fetch em andamento para o mesmo merchantId, aguardar o resultado dele
+- Isso evita que 5 usuarios clicando ao mesmo tempo gerem 5 requests reais
 
-## Resultado
+### 3. Jitter de Timing (anti-padrao robotico)
 
-- Qualquer cidade brasileira funciona (fallback por estado)
+**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
+
+Na funcao `fetchFromMarketplaceAPI`, entre cada tentativa de endpoint:
+- Adicionar `await sleep(200 + Math.random() * 300)` (200-500ms aleatorios)
+- Quebra padrao matematico detectavel
+
+### 4. Headers Mais Realistas
+
+**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
+
+Rotacionar User-Agents entre 3-4 opcoes reais (Chrome, Firefox, Safari) para nao repetir sempre o mesmo. Adicionar `Connection: keep-alive` e `DNT: 1`.
+
+### 5. Stale Fallback (resiliencia)
+
+**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
+
+Se TODAS as strategies falharem (bloco linha ~628):
+- Antes de retornar erro 422, verificar se existe `menu_cache` antigo no banco
+- Se existir, retornar com flag `stale: true` para o frontend saber que e cache antigo
+
+### 6. Frontend: Respeitar Cache TTL + Indicador Stale
+
+**Arquivo:** `src/hooks/useMenuMirror.ts`
+
+- No `fetchMenu`, passar `forceRefresh` no body quando o usuario clica "Atualizar"
+- Tratar resposta com `stale: true` mostrando toast informativo
+
+**Arquivo:** `src/pages/MenuMirror.tsx`
+
+- Nenhuma mudanca necessaria (ja passa `forceRefresh` corretamente)
+
+## Secao Tecnica
+
+### Mudancas no Edge Function (`parse-ifood-menu/index.ts`)
+
+**Constantes novas:**
+```
+CACHE_TTL_MS = 6 * 60 * 60 * 1000 (6 horas)
+USER_AGENTS = array com 4 User-Agents reais
+pendingRequests = new Map() para deduplicacao
+```
+
+**Funcao sleep:**
+```
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+```
+
+**Bloco full_menu (linha ~511-684) -- reestruturacao:**
+1. Ler `forceRefresh` do body
+2. Se nao forceRefresh: consultar `menu_cached_at` da store
+3. Se cache valido (< 6h): retornar `menu_cache` direto
+4. Se forceRefresh ou cache expirado: seguir fluxo atual
+5. Wrap do fluxo de fetch em try/catch com stale fallback
+6. Entre endpoints no `fetchFromMarketplaceAPI`: adicionar jitter
+
+**fetchFromMarketplaceAPI -- ajustes:**
+- Rotacao de User-Agent (random do array)
+- Jitter entre tentativas (200-500ms)
+- Headers extras (Connection, DNT)
+
+### Mudancas no Hook (`useMenuMirror.ts`)
+
+- `fetchMenu` ja recebe `forceRefresh` e ja passa para o Edge Function
+- Adicionar tratamento de `data.stale === true` com toast informativo
+
+## Resultado Final
+
+- 90%+ reducao de chamadas reais a API do iFood
+- Zero burst (deduplicacao em memoria)
+- Padrao nao-robotico (jitter + rotacao de UA)
+- Resiliencia total (stale fallback)
 - Custo continua $0.00
 - Sem IA em nenhum cenario do full_menu
+
+## Arquivos Modificados
+
+1. `supabase/functions/parse-ifood-menu/index.ts` -- cache TTL, deduplicacao, jitter, headers, stale fallback
+2. `src/hooks/useMenuMirror.ts` -- tratamento de resposta stale
+
