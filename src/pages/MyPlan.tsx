@@ -4,11 +4,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Crown, ArrowRight, FileSpreadsheet, Package, BarChart3, Sparkles, Upload, Info } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Crown, ArrowRight, FileSpreadsheet, Package, BarChart3, Sparkles, Upload, Info, Store, Trash2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import { useStore } from "@/contexts/StoreContext";
 import { PlanUpgradePrompt } from "@/components/upsell/PlanUpgradePrompt";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface UsageItem {
   label: string;
@@ -26,10 +39,14 @@ const PLAN_LABELS: Record<string, string> = {
 
 export default function MyPlan() {
   const { features, userPlan, loading: planLoading, getFeatureLimit } = usePlanFeatures();
+  const { stores, deleteStore, activeStore, setActiveStore, refreshStores } = useStore();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [usageItems, setUsageItems] = useState<UsageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [storeToDelete, setStoreToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   useEffect(() => {
     async function loadUsage() {
@@ -205,7 +222,122 @@ export default function MyPlan() {
             {userPlan !== "free" && " Limites de uso são renovados mensalmente."}
           </p>
         </div>
+
+        {/* Store Management */}
+        {stores.length > 1 && (
+          <div className="space-y-3">
+            <h2 className="text-sm font-semibold text-foreground">Minhas Lojas</h2>
+            <div className="grid gap-3">
+              {stores.map((store) => {
+                const isPrimary = store.is_default;
+                return (
+                  <Card key={store.id}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                          {store.logo_url ? (
+                            <img src={store.logo_url} alt={store.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Store className="h-4 w-4 text-primary" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-foreground truncate">{store.name}</span>
+                            {isPrimary && (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Principal</Badge>
+                            )}
+                            {activeStore?.id === store.id && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-primary text-primary">Ativa</Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground">
+                            {store.business_type
+                              ? store.business_type.charAt(0).toUpperCase() + store.business_type.slice(1).replace(/_/g, " ")
+                              : "Negócio"}
+                          </p>
+                        </div>
+                        {!isPrimary && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
+                            onClick={() => {
+                              setStoreToDelete({ id: store.id, name: store.name });
+                              setDeleteConfirmText("");
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span className="hidden sm:inline">Excluir</span>
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Delete Store Confirmation Dialog */}
+      <AlertDialog open={!!storeToDelete} onOpenChange={(open) => { if (!open) { setStoreToDelete(null); setDeleteConfirmText(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-2 text-destructive mb-2">
+              <AlertTriangle className="h-5 w-5" />
+              <AlertDialogTitle>Excluir loja permanentemente</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Você está prestes a excluir a loja <strong>"{storeToDelete?.name}"</strong>. Esta ação é <strong>irreversível</strong>.
+              </p>
+              <p className="text-destructive font-medium">
+                Todos os dados desta loja serão perdidos permanentemente, incluindo:
+              </p>
+              <ul className="list-disc list-inside text-sm space-y-1 text-muted-foreground">
+                <li>Fichas técnicas e sub-receitas</li>
+                <li>Insumos e bebidas</li>
+                <li>Custos fixos e variáveis</li>
+                <li>Histórico de CMV</li>
+                <li>Combos e análises</li>
+              </ul>
+              <div className="pt-2">
+                <p className="text-sm font-medium text-foreground mb-2">
+                  Para confirmar, digite <strong>excluir</strong> abaixo:
+                </p>
+                <Input
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value.toLowerCase())}
+                  placeholder="Digite 'excluir' para confirmar"
+                  className="text-sm"
+                  autoFocus
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirmText !== "excluir"}
+              onClick={async () => {
+                if (!storeToDelete || deleteConfirmText !== "excluir") return;
+                const success = await deleteStore(storeToDelete.id);
+                if (success) {
+                  await refreshStores();
+                  toast({ title: "Loja excluída", description: `"${storeToDelete.name}" foi removida permanentemente.` });
+                }
+                setStoreToDelete(null);
+                setDeleteConfirmText("");
+              }}
+            >
+              Excluir permanentemente
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <PlanUpgradePrompt
         open={showUpgrade}
