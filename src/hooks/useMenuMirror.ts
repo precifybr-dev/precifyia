@@ -84,6 +84,14 @@ export function useMenuMirror() {
           storeName: data.storeName || "Minha Loja",
           items: data.items,
         });
+
+        // Inform user if data is stale (from expired cache fallback)
+        if (data.stale) {
+          toast({
+            title: "Cardápio pode estar desatualizado",
+            description: "Não foi possível atualizar agora. Mostrando última versão salva.",
+          });
+        }
       } else {
         throw new Error(data?.error || "Erro ao buscar cardápio");
       }
