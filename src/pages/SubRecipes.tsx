@@ -99,6 +99,7 @@ const units = [
 ];
 
 export default function SubRecipes() {
+  const { activeStore } = useStore();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -191,35 +192,55 @@ export default function SubRecipes() {
       }
 
       setProfile(profileData);
-      await Promise.all([
-        fetchIngredients(session.user.id),
-        fetchSubRecipes(session.user.id),
-      ]);
       setIsLoading(false);
     };
 
     checkAuth();
   }, [navigate]);
 
-  const fetchIngredients = async (userId: string) => {
-    const { data, error } = await supabase
+  // Re-fetch when activeStore changes
+  useEffect(() => {
+    if (user?.id) {
+      fetchIngredients(user.id, activeStore?.id);
+      fetchSubRecipes(user.id, activeStore?.id);
+    }
+  }, [user?.id, activeStore?.id]);
+
+  const fetchIngredients = async (userId: string, storeId?: string | null) => {
+    let query = supabase
       .from("ingredients")
       .select("*")
       .eq("user_id", userId)
-      .eq("is_sub_recipe", false) // Only fetch regular ingredients, not sub-recipes
+      .eq("is_sub_recipe", false)
       .order("code", { ascending: true });
+
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setIngredients(data as IngredientData[]);
     }
   };
 
-  const fetchSubRecipes = async (userId: string) => {
-    const { data, error } = await supabase
+  const fetchSubRecipes = async (userId: string, storeId?: string | null) => {
+    let query = supabase
       .from("sub_recipes")
       .select("*")
       .eq("user_id", userId)
       .order("code", { ascending: true });
+
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data, error } = await query;
 
     if (!error && data) {
       setSubRecipes(data as SubRecipe[]);
@@ -359,7 +380,7 @@ export default function SubRecipes() {
       toast({ title: "Erro", description: "Não foi possível excluir a receita", variant: "destructive" });
     } else {
       toast({ title: "Sucesso", description: "Receita removida!" });
-      await fetchSubRecipes(user.id);
+      await fetchSubRecipes(user.id, activeStore?.id);
     }
 
     setDeleteDialogOpen(false);
@@ -463,6 +484,7 @@ export default function SubRecipes() {
     try {
       const subRecipeData = {
         user_id: user.id,
+        store_id: activeStore?.id || null,
         name: recipeName,
         unit: yieldUnit,
         yield_quantity: yieldQty,
@@ -522,6 +544,7 @@ export default function SubRecipes() {
           .from("ingredients")
           .insert({
             user_id: user.id,
+            store_id: activeStore?.id || null,
             code: subRecipeCode, // Same code as the sub-recipe
             name: `[RECEITA] ${recipeName}`,
             unit: yieldUnit,
@@ -556,7 +579,7 @@ export default function SubRecipes() {
         description: `Código ${subRecipeCode} - Custo: R$ ${unitCost.toFixed(2)}/${yieldUnit}` 
       });
       
-      await fetchSubRecipes(user.id);
+      await fetchSubRecipes(user.id, activeStore?.id);
       resetForm();
     } catch (error: any) {
       toast({ 
