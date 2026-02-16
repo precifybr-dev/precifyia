@@ -55,7 +55,6 @@ export function useBusinessMetrics() {
   }, []);
 
   const calculate = useCallback((storeId?: string | null) => {
-    setIsCalculating(true);
     setError(null);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -63,6 +62,7 @@ export function useBusinessMetrics() {
     debounceRef.current = setTimeout(async () => {
       if (abortRef.current) abortRef.current.abort();
       abortRef.current = new AbortController();
+      setIsCalculating(true);
 
       try {
         const { data: { session } } = await supabase.auth.getSession();

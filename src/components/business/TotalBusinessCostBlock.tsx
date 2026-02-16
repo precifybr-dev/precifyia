@@ -45,7 +45,9 @@ export default function TotalBusinessCostBlock({
     setIsEditingLimit(false);
   };
 
-  if (isCalculating) {
+  const hasData = totalExpensesPercent !== null || fixedExpensesPercent !== null || variableExpensesPercent !== null;
+
+  if (isCalculating && !hasData) {
     return (
       <div className="bg-card rounded-xl border border-border p-6 shadow-card">
         <div className="animate-pulse space-y-4">
@@ -61,7 +63,7 @@ export default function TotalBusinessCostBlock({
   }
 
   return (
-    <div className={`bg-card rounded-xl border p-6 shadow-card transition-colors ${isOverLimit ? 'border-destructive/50 bg-destructive/5' : 'border-border'}`}>
+    <div className={`bg-card rounded-xl border p-6 shadow-card transition-colors ${isCalculating ? 'opacity-60' : ''} ${isOverLimit ? 'border-destructive/50 bg-destructive/5' : 'border-border'}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
