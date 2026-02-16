@@ -20,6 +20,64 @@ interface FullMenuItem {
   image_url?: string;
 }
 
+// ─── Helper: Extract menu items from iFood's embedded JSON ───
+function extractFromNextData(data: any): { storeName: string; items: FullMenuItem[] } | null {
+  // Navigate common iFood JSON structures
+  const paths = [
+    () => data?.props?.initialState?.restaurant,
+    () => data?.props?.pageProps?.restaurant,
+    () => data?.props?.pageProps?.content?.restaurant,
+    () => data?.initialState?.restaurant,
+    () => data?.restaurant,
+    () => data?.props?.pageProps,
+  ];
+
+  for (const pathFn of paths) {
+    try {
+      const restaurant = pathFn();
+      if (!restaurant) continue;
+
+      // Try to find menu data
+      const menu = restaurant.menu || restaurant.catalog?.menu || restaurant.categories;
+      const details = restaurant.details || restaurant.header || restaurant;
+
+      if (!menu || !Array.isArray(menu)) continue;
+
+      const storeName = details?.name || details?.title || details?.storeName || "";
+      const items: FullMenuItem[] = [];
+
+      for (const category of menu) {
+        const catName = category.name || category.title || category.categoryName || "Outros";
+        const catItems = category.itens || category.items || category.products || [];
+
+        for (const item of catItems) {
+          // Handle price: iFood sometimes uses centavos (integer) or reais (float)
+          let price = item.unitPrice ?? item.price ?? item.unitOriginalPrice ?? item.unitMinPrice ?? 0;
+          if (typeof price === "number" && price > 1000) {
+            price = price / 100; // Convert centavos to reais
+          }
+
+          items.push({
+            name: item.description || item.name || item.title || "Item sem nome",
+            description: item.details || item.subtitle || item.additionalInfo || "",
+            price: typeof price === "number" ? price : parseFloat(String(price)) || 0,
+            category: catName,
+            image_url: item.logoUrl || item.imageUrl || item.image || "",
+          });
+        }
+      }
+
+      if (items.length > 0) {
+        return { storeName, items };
+      }
+    } catch (e) {
+      continue;
+    }
+  }
+
+  return null;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -155,134 +213,136 @@ serve(async (req) => {
       console.log("Could not fetch page directly, using AI to generate realistic data based on store name");
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
-    // ─── Full Menu Mode ───
+    // ─── Full Menu Mode (Direct JSON extraction, NO AI) ───
     if (importType === "full_menu") {
-      const fullMenuSystemPrompt = isShadowBanned
-        ? `Você é um assistente. Liste 5 itens genéricos para um restaurante brasileiro com preços.
-Responda em JSON: { "storeName": "Loja", "items": [{ "name": "Item", "description": "", "price": 10.00, "category": "Geral", "image_url": "" }] }`
-      : `Você é um especialista em cardápios de restaurantes brasileiros do iFood.
-Seu trabalho é analisar o HTML de uma página do iFood e extrair ABSOLUTAMENTE TODOS os itens do cardápio com máxima fidelidade.
+      const storeIdParam = rawBody.storeId as string | undefined;
 
-Regras OBRIGATÓRIAS - LEIA COM ATENÇÃO:
-1. Extraia ABSOLUTAMENTE TODOS os itens do cardápio, sem exceção. NÃO PARE NO MEIO.
-2. Percorra TODO o HTML do início ao fim. Se o cardápio tiver 10, 50 ou 200 itens, TODOS devem ser incluídos.
-3. Para cada item extraia: nome exato, descrição completa, preço numérico (ex: 25.90), categoria/seção
-4. Para imagens: procure URLs que contenham "static-images.ifood.com.br" ou "img.ifood.com.br" no HTML. Se encontrar, inclua a URL completa. Se não encontrar, deixe vazio.
-5. Preços devem ser números (não strings). Ex: 25.90, não "R$ 25,90"
-6. Categorias devem refletir as seções do cardápio (ex: "Lanches", "Bebidas", "Sobremesas", "Combos")
-7. Mantenha a ordem original do cardápio
-8. NÃO OMITA NENHUM ITEM. Mesmo que o HTML seja muito longo, extraia TODOS.
-9. Ao final, conte quantos itens extraiu. Se o HTML mencionar mais itens do que você listou, VOLTE e adicione os que faltam.
-10. Responda APENAS em formato JSON válido, sem markdown, sem backticks
+      if (!pageContent) {
+        return new Response(
+          JSON.stringify({ error: "Não foi possível acessar a página do iFood. Verifique o link e tente novamente." }),
+          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
-Formato de resposta:
-{
-  "storeName": "Nome Exato da Loja",
-  "items": [
-    {
-      "name": "Nome do Produto",
-      "description": "Descrição completa do produto",
-      "price": 25.90,
-      "category": "Categoria/Seção",
-      "image_url": "https://static-images.ifood.com.br/..."
-    }
-  ]
-}`;
+      let extractedItems: FullMenuItem[] = [];
+      let extractedStoreName = storeName;
 
-      const fullMenuUserPrompt = isShadowBanned
-        ? `Liste itens para: "${storeName}". JSON com preços.`
-        : `Analise o cardápio completo desta loja do iFood: "${storeName}"
+      // Strategy 1: __NEXT_DATA__ script tag
+      const nextDataMatch = pageContent.match(/<script\s+id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+      // Strategy 2: generic application/json script tags
+      const jsonScriptMatches = [...pageContent.matchAll(/<script[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/gi)];
 
-URL: ${ifoodUrl}
+      let parsed = false;
 
-${pageContent ? `Conteúdo HTML da página (analise com atenção para extrair ABSOLUTAMENTE TODOS os itens, preços e imagens - NÃO OMITA NENHUM):\n${pageContent.slice(0, 60000)}` : "Não foi possível acessar o HTML. Gere um cardápio realista baseado no nome da loja."}
+      // Try __NEXT_DATA__ first
+      if (nextDataMatch) {
+        try {
+          const nextData = JSON.parse(nextDataMatch[1]);
+          const result = extractFromNextData(nextData);
+          if (result) {
+            extractedItems = result.items;
+            extractedStoreName = result.storeName || extractedStoreName;
+            parsed = true;
+          }
+        } catch (e) {
+          console.error("Failed to parse __NEXT_DATA__:", e);
+        }
+      }
 
-Extraia TODOS os itens do cardápio com nome, descrição, preço, categoria e URL da imagem.
-Responda em JSON válido conforme o formato especificado.`;
+      // Try application/json script tags
+      if (!parsed && jsonScriptMatches.length > 0) {
+        for (const match of jsonScriptMatches) {
+          try {
+            const jsonData = JSON.parse(match[1]);
+            const result = extractFromNextData(jsonData);
+            if (result && result.items.length > 0) {
+              extractedItems = result.items;
+              extractedStoreName = result.storeName || extractedStoreName;
+              parsed = true;
+              break;
+            }
+          } catch (e) {
+            // Try next script tag
+          }
+        }
+      }
 
-      // ─── Circuit Breaker ───
-      const { data: cbAllowed } = await supabase.rpc("check_global_ai_limit", { _endpoint: "parse-ifood-menu" });
-      if (cbAllowed === false) {
-        await supabase.from("strategic_usage_logs").insert({ user_id: user.id, endpoint: "parse-ifood-menu-circuit-break", tokens_used: 0 });
-        return new Response(JSON.stringify({ error: "Sistema de IA temporariamente indisponível. Tente novamente em alguns minutos." }), {
-          status: 503, headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "60" },
+      // Strategy 3: Search for initialState or catalog patterns anywhere in the HTML
+      if (!parsed) {
+        const statePatterns = [
+          /window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\});/,
+          /window\.__NEXT_DATA__\s*=\s*(\{[\s\S]*?\});/,
+          /"initialState"\s*:\s*(\{[\s\S]*?"menu"[\s\S]*?\})\s*[,}]/,
+        ];
+        for (const pattern of statePatterns) {
+          const match = pageContent.match(pattern);
+          if (match) {
+            try {
+              const stateData = JSON.parse(match[1]);
+              const result = extractFromNextData(stateData);
+              if (result && result.items.length > 0) {
+                extractedItems = result.items;
+                extractedStoreName = result.storeName || extractedStoreName;
+                parsed = true;
+                break;
+              }
+            } catch (e) {
+              // Continue
+            }
+          }
+        }
+      }
+
+      if (!parsed || extractedItems.length === 0) {
+        console.error("Could not extract menu from iFood page. HTML length:", pageContent.length);
+        // Log for monitoring
+        await supabase.from("strategic_usage_logs").insert({
+          user_id: user.id,
+          endpoint: "parse-ifood-menu-extraction-failed",
+          tokens_used: 0,
+          ip_address: clientIp,
         });
+
+        return new Response(
+          JSON.stringify({
+            error: "Não foi possível extrair o cardápio automaticamente. A estrutura da página do iFood pode ter mudado. Entre em contato com o suporte.",
+            extraction_failed: true,
+          }),
+          { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: isShadowBanned ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-pro",
-          messages: [
-            { role: "system", content: fullMenuSystemPrompt },
-            { role: "user", content: fullMenuUserPrompt },
-          ],
-          temperature: 0.2,
-        }),
-      });
-
-      if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        console.error("AI API error:", aiResponse.status, errorText);
-        
-        if (aiResponse.status === 429) {
-          return new Response(
-            JSON.stringify({ error: "Muitas requisições. Aguarde um momento e tente novamente." }),
-            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+      // Save to cache in stores table
+      if (storeIdParam) {
+        try {
+          await supabase
+            .from("stores")
+            .update({
+              menu_cache: { storeName: extractedStoreName, items: extractedItems },
+              menu_cached_at: new Date().toISOString(),
+            } as any)
+            .eq("id", storeIdParam);
+        } catch (cacheErr) {
+          console.error("Failed to save menu cache:", cacheErr);
         }
-        if (aiResponse.status === 402) {
-          return new Response(
-            JSON.stringify({ error: "Limite de uso da IA atingido. Entre em contato com o suporte." }),
-            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        throw new Error("Erro ao processar com IA");
       }
 
-      const aiData = await aiResponse.json();
-      const tokensUsed = (aiData.usage?.total_tokens || aiData.usage?.completion_tokens || 0);
+      // Log usage with zero tokens
       await supabase.from("strategic_usage_logs").insert({
         user_id: user.id,
         endpoint: "parse-ifood-menu-full",
-        tokens_used: tokensUsed,
+        tokens_used: 0,
         ip_address: clientIp,
-        fingerprint_hash: null,
       });
-
-      const aiContent = aiData.choices?.[0]?.message?.content || "";
-      
-      let parsedResult: { storeName: string; items: FullMenuItem[] };
-      try {
-        const jsonMatch = aiContent.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          parsedResult = JSON.parse(jsonMatch[0]);
-        } else {
-          throw new Error("No JSON found in response");
-        }
-      } catch (parseError) {
-        console.error("Failed to parse AI response:", aiContent);
-        parsedResult = { storeName: storeName, items: [] };
-      }
 
       return new Response(
         JSON.stringify({
           success: true,
-          storeName: parsedResult.storeName || storeName,
-          items: (parsedResult.items || []).map((item, index) => ({
+          storeName: extractedStoreName,
+          items: extractedItems.map((item, index) => ({
             name: item.name || "Item sem nome",
             description: item.description || "",
-            price: typeof item.price === 'number' ? item.price : parseFloat(String(item.price)) || 0,
+            price: typeof item.price === "number" ? item.price : parseFloat(String(item.price)) || 0,
             category: item.category || "Outros",
             image_url: item.image_url || "",
             position: index,
@@ -291,6 +351,11 @@ Responda em JSON válido conforme o formato especificado.`;
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     // ─── Original ingredients/products mode ───

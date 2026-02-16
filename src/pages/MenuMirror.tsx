@@ -9,14 +9,14 @@ import { IfoodMenuView } from "@/components/menu-mirror/IfoodMenuView";
 import { MenuPerformanceDashboard } from "@/components/menu-mirror/MenuPerformanceDashboard";
 
 export default function MenuMirror() {
-  const { menuData, isLoading, isSaving, ifoodUrl, fetchMenu, saveIfoodUrl, clearUrl, analysis, isAnalyzing, analyzeMenu } = useMenuMirror();
+  const { menuData, isLoading, isSaving, ifoodUrl, fetchMenu, saveIfoodUrl, clearUrl, analysis, isAnalyzing, analyzeMenu, loadFromCache } = useMenuMirror();
   const [urlInput, setUrlInput] = useState("");
   const [showUrlInput, setShowUrlInput] = useState(false);
 
-  // Auto-fetch on mount if URL exists
+  // Auto-load from cache on mount (no Edge Function call, zero cost)
   useEffect(() => {
     if (ifoodUrl && !menuData && !isLoading) {
-      fetchMenu();
+      loadFromCache();
     }
   }, [ifoodUrl]);
 
@@ -51,7 +51,7 @@ export default function MenuMirror() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => fetchMenu()}
+                  onClick={() => fetchMenu(undefined, true)}
                   disabled={isLoading}
                   className="gap-1.5"
                 >
