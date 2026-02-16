@@ -61,16 +61,19 @@ export function IfoodImportModal({
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
 
-  // Plan limits
+  // Recipe imports are free (no AI cost, like Meu Cardápio)
+  const isRecipeImport = importType === "recipes";
+
+  // Plan limits - only apply to ingredient imports
   const planLimits: Record<string, number> = {
     free: 1,
     basic: 2,
     pro: Infinity,
   };
 
-  const maxUsage = planLimits[userPlan] ?? 0;
+  const maxUsage = isRecipeImport ? Infinity : (planLimits[userPlan] ?? 0);
   const remainingUsage = Math.max(0, maxUsage - usageCount);
-  const canImport = userPlan === "pro" || remainingUsage > 0;
+  const canImport = isRecipeImport || userPlan === "pro" || remainingUsage > 0;
 
   // Check usage on mount
   useEffect(() => {
@@ -151,14 +154,16 @@ export function IfoodImportModal({
       // Save items via callback
       await onImportComplete(parsedItems);
 
-      // Record usage
-      await supabase.from("ifood_import_usage").insert({
-        user_id: userId,
-        import_type: importType,
-        imported_count: parsedItems.length,
-        store_name: storeName,
-        store_url: ifoodUrl,
-      });
+      // Record usage only for ingredient imports (recipe imports are free)
+      if (!isRecipeImport) {
+        await supabase.from("ifood_import_usage").insert({
+          user_id: userId,
+          import_type: importType,
+          imported_count: parsedItems.length,
+          store_name: storeName,
+          store_url: ifoodUrl,
+        });
+      }
 
       setStep("result");
       await onRefreshData();
@@ -234,16 +239,18 @@ export function IfoodImportModal({
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary" />
-                Importar {typeLabel} do iFood (IA)
+                Importar {typeLabel} do iFood{!isRecipeImport ? " (IA)" : ""}
               </DialogTitle>
               <DialogDescription className="text-left">
-                A IA vai ler o cardápio da sua loja no iFood e criar automaticamente os {typeLabel} com base nos nomes encontrados.
+                {isRecipeImport
+                  ? `O sistema vai ler o cardápio da sua loja no iFood e criar automaticamente as ${typeLabel} com base nos nomes encontrados. Esta importação é gratuita e ilimitada.`
+                  : `A IA vai ler o cardápio da sua loja no iFood e criar automaticamente os ${typeLabel} com base nos nomes encontrados.`}
                 <br /><br />
                 <strong>Você poderá revisar e completar as informações depois.</strong>
               </DialogDescription>
             </DialogHeader>
             
-            {userPlan === "basic" && (
+            {!isRecipeImport && userPlan === "basic" && (
               <div className="bg-muted/50 rounded-lg p-3 text-sm">
                 <p className="text-muted-foreground">
                   Você ainda pode usar esta função <strong>{remainingUsage} {remainingUsage === 1 ? "vez" : "vezes"}</strong> este mês.
@@ -314,7 +321,9 @@ export function IfoodImportModal({
             <div className="py-8 space-y-4">
               <Progress value={progress} className="h-2" />
               <p className="text-sm text-center text-muted-foreground">
-                A IA está analisando os itens do cardápio...
+                {isRecipeImport
+                  ? "Lendo os itens do cardápio..."
+                  : "A IA está analisando os itens do cardápio..."}
               </p>
             </div>
           </>
@@ -374,7 +383,7 @@ export function IfoodImportModal({
                 <strong>{parsedItems.length}</strong> {typeLabel} foram criados automaticamente.
               </p>
               
-              {userPlan === "basic" && (
+              {!isRecipeImport && userPlan === "basic" && (
                 <p className="text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
                   Seu plano possui limite de importações. Após esse uso, não será possível repetir este processo.
                 </p>
