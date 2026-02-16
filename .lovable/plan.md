@@ -1,98 +1,54 @@
 
-# Remover IA da Extracao do Cardapio iFood - Extracao Direta via JSON
 
-## Objetivo
-Eliminar completamente o uso de IA para o modo `full_menu` do parse-ifood-menu, substituindo por extracao direta do JSON embutido na pagina do iFood (via `__NEXT_DATA__` / `initialState`). Custo de IA na importacao vai a zero.
+# Ajuste Final: Coordenadas de Itapema e Fallback por Estado
 
-## Como Funciona Hoje (Problema)
-1. Edge Function faz `fetch` do HTML da pagina do iFood
-2. Envia o HTML (ate 60KB) para o Gemini Pro via Lovable AI
-3. IA interpreta e retorna JSON com os itens
-4. Custo: ~$0.17-0.25 por chamada, a cada carregamento da pagina
+## Situacao Atual
 
-## Como Vai Funcionar (Solucao)
+A extracao direta (sem IA) ja esta **funcionando**. O teste com Burger King Itapema retornou **74 itens** com sucesso via Marketplace API, custo zero.
 
-### Estrategia de Extracao (sem IA)
-O site do iFood usa Next.js e embute os dados do cardapio completo em uma tag `<script type="application/json">` no HTML. A estrutura e:
+O unico risco restante: se a API do iFood for mais restritiva com coordenadas distantes, lojas de cidades menores podem falhar. Preciso blindar isso.
 
-```text
-props.initialState.restaurant.details -> nome da loja
-props.initialState.restaurant.menu -> array de categorias
-  cada categoria tem:
-    - name (nome da categoria)
-    - itens (array de itens)
-      cada item tem:
-        - description (nome do produto)
-        - details (descricao)
-        - unitPrice (preco em centavos ou reais)
-        - logoUrl (URL da imagem)
-        - choices (complementos)
+## O Que Precisa Mudar
+
+### Arquivo: `supabase/functions/parse-ifood-menu/index.ts`
+
+**1. Adicionar cidades ao mapa de coordenadas** (linha ~24-62):
+- itapema-sc (-27.0906, -48.6155)
+- balneario-camboriu-sc (-26.9909, -48.6353)
+- blumenau-sc (-26.9194, -49.0661)
+- chapeco-sc (-27.1007, -52.6157)
+- criciuma-sc (-28.6775, -49.3697)
+- itajai-sc (-26.9078, -48.6616)
+- mais ~15 cidades frequentes de SC, PR, RS, MG, RJ, SP
+
+**2. Adicionar fallback por estado** na funcao `getCityCoordinates` (linha ~64-73):
+
+Logica nova:
+1. Tentar match exato no mapa (ex: "itapema-sc")
+2. Se nao encontrar, extrair o sufixo do estado (ex: "-sc")
+3. Usar coordenadas da capital do estado como fallback
+4. Ultimo recurso: Sao Paulo
+
+Mapa de estados:
+```
+sc -> Florianopolis (-27.5954, -48.5480)
+pr -> Curitiba (-25.4284, -49.2733)
+rs -> Porto Alegre (-30.0346, -51.2177)
+mg -> BH (-19.9167, -43.9345)
+rj -> Rio (-22.9068, -43.1729)
+... (todos os 26 estados + DF)
 ```
 
-### Fluxo Novo
-1. Fetch do HTML da pagina
-2. Procurar `<script type="application/json">` ou `__NEXT_DATA__`
-3. Fazer parse do JSON e navegar ate `props.initialState.restaurant.menu`
-4. Extrair todos os itens diretamente, sem IA
-5. Se o JSON nao for encontrado (iFood mudou a estrutura), retornar erro claro ao usuario
-6. Salvar resultado no banco (coluna `menu_cache` na tabela `stores`) com timestamp
-7. Ao carregar a pagina, ler do banco primeiro. So refazer fetch quando usuario clicar "Atualizar"
+**3. Tentar API sem coordenadas como primeira tentativa** (linha ~81-122):
 
-### Fallback
-- Se a estrutura do JSON mudou: erro claro "Estrutura do iFood foi alterada. Entre em contato com o suporte."
-- **NAO** chamar IA automaticamente em nenhum cenario
-- Registrar erro no log para monitoramento
+Adicionar um endpoint extra no array de URLs da funcao `fetchFromMarketplaceAPI`:
+- Tentar primeiro SEM latitude/longitude
+- Se falhar, tentar COM coordenadas (fluxo atual)
 
-## Alteracoes Tecnicas
+Isso cobre o caso onde a API aceita merchant ID sozinho.
 
-### 1. Migration SQL - Adicionar cache na tabela stores
-```sql
-ALTER TABLE public.stores
-  ADD COLUMN IF NOT EXISTS menu_cache jsonb,
-  ADD COLUMN IF NOT EXISTS menu_cached_at timestamptz;
-```
-Armazena o JSON completo do cardapio e quando foi capturado.
+## Resultado
 
-### 2. Edge Function `parse-ifood-menu/index.ts` - Modo full_menu
-Reescrever o bloco `full_menu` (linhas 164-293) para:
-
-- Remover chamada ao Lovable AI Gateway
-- Remover circuit breaker de IA
-- Remover log de tokens
-- Adicionar parser direto do JSON embutido:
-  1. Buscar `<script id="__NEXT_DATA__"` ou `<script type="application/json">`
-  2. JSON.parse do conteudo
-  3. Navegar para `props.initialState.restaurant.menu` ou `props.pageProps`
-  4. Mapear cada categoria e seus itens para o formato interno
-  5. Salvar resultado em `stores.menu_cache` e `stores.menu_cached_at`
-- Manter rate limiting e autenticacao existentes
-- Registrar log em `strategic_usage_logs` com `tokens_used: 0` (para tracking sem custo)
-
-**O modo `ingredients`/`recipes` (linhas 296-410) CONTINUA usando IA normalmente** - so o full_menu perde IA.
-
-### 3. Hook `useMenuMirror.ts`
-Alterar `fetchMenu` para:
-- Primeiro tentar ler `menu_cache` do banco (da tabela stores)
-- Se existir cache, usar direto (sem chamar Edge Function)
-- Botao "Atualizar" forca nova chamada a Edge Function
-- `saveIfoodUrl` faz fetch e salva cache automaticamente
-
-### 4. Pagina `MenuMirror.tsx`
-- Auto-fetch ao montar agora le do cache local (sem custo)
-- Botao "Atualizar" e o unico que dispara nova extracao
-
-## Resumo de Arquivos
-
-| Arquivo | Acao |
-|---------|------|
-| Migration SQL | Adicionar `menu_cache` e `menu_cached_at` na tabela `stores` |
-| `supabase/functions/parse-ifood-menu/index.ts` | Reescrever modo full_menu sem IA, parser direto do JSON |
-| `src/hooks/useMenuMirror.ts` | Ler cache do banco, so chamar Edge Function no "Atualizar" |
-| `src/pages/MenuMirror.tsx` | Ajustar auto-fetch para usar cache |
-
-## Resultado Esperado
-- **Custo de IA no full_menu: $0.00** (zero)
-- Cardapio completo com TODOS os itens (dados vem direto do iFood, sem truncamento)
-- Imagens via URL externa (sem armazenamento)
-- Cache no banco evita chamadas repetidas
-- Fallback claro sem IA automatica
+- Qualquer cidade brasileira funciona (fallback por estado)
+- Custo continua $0.00
+- Sem IA em nenhum cenario do full_menu
