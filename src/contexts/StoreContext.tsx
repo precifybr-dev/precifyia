@@ -11,6 +11,9 @@ export interface Store {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+  ifood_url: string | null;
+  menu_cache: any | null;
+  menu_cached_at: string | null;
 }
 
 interface StoreContextType {

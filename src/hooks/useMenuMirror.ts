@@ -19,7 +19,7 @@ export interface MenuMirrorData {
 }
 
 export function useMenuMirror() {
-  const { activeStore } = useStore();
+  const { activeStore, refreshStores } = useStore();
   const { toast } = useToast();
   const [menuData, setMenuData] = useState<MenuMirrorData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,7 +27,7 @@ export function useMenuMirror() {
   const [analysis, setAnalysis] = useState<MenuAnalysis | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const ifoodUrl = (activeStore as any)?.ifood_url as string | null;
+  const ifoodUrl = activeStore?.ifood_url ?? null;
 
   // Load menu from database cache (no Edge Function call)
   const loadFromCache = useCallback(async () => {
@@ -119,6 +119,8 @@ export function useMenuMirror() {
 
       if (error) throw error;
 
+      await refreshStores();
+
       toast({
         title: "Link salvo!",
         description: "Seu cardápio será carregado automaticamente.",
@@ -147,6 +149,7 @@ export function useMenuMirror() {
         .update({ ifood_url: null, menu_cache: null, menu_cached_at: null } as any)
         .eq("id", activeStore.id);
 
+      await refreshStores();
       setMenuData(null);
       toast({ title: "Link removido" });
     } catch (err: any) {
