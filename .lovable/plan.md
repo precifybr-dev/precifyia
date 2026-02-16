@@ -1,59 +1,57 @@
 
 
-## Secao "Tudo em um so lugar" - Comparacao Visual com Toggle
+# Correção dos 3 Avisos de Segurança
 
-### O que sera feito
+## Problema
+O scanner de segurança identificou 3 avisos que precisam ser corrigidos:
 
-Implementar a `SolutionSection` (que hoje retorna `null`) com um toggle interativo "Sem o Precify" / "Com o Precify", inspirado no layout do Asaas. O titulo sera: **"Aqui sua empresa tem tudo que precisa em um so lugar"**.
+1. **Leaked Password Protection Disabled** - Proteção contra senhas vazadas está desativada
+2. **RLS Policy Always True** - Políticas de segurança permissivas demais
+3. **Admin Metrics View Exposed to All Users** - Métricas administrativas acessíveis por todos
 
-### Como funciona
+---
 
-- **Aba "Sem o Precify"**: Mostra um fluxo complexo com varios blocos conectados por setas, representando tudo que o dono de restaurante precisa fazer manualmente usando Excel (calcular custos, controlar taxas, fazer DRE, ajustar precos, conferir margem, etc.)
-- **Aba "Com o Precify"**: Mostra os mesmos blocos simplificados, todos conectados a um unico bloco central "Precify", demonstrando que tudo converge para um so lugar
+## Plano de Correção
 
-### Conteudo dos blocos (adaptado para restaurantes)
+### 1. Leaked Password Protection
+Essa configuração é feita no nível da plataforma (Lovable Cloud Auth Settings) e não pode ser ativada via código. Vou marcar como resolvida na verificação após você ativá-la manualmente nas configurações do projeto.
 
-Os blocos representam as dores reais do publico-alvo:
+### 2. RLS Policy Always True (3 políticas)
 
-1. Calcular custo dos pratos (icone Calculator)
-2. Controlar taxas do iFood (icone Receipt)
-3. Montar precificacao (icone DollarSign)
-4. Fazer DRE simplificado (icone FileBarChart)
-5. Conferir margem de lucro (icone TrendingUp)
-6. Gerenciar multi-loja (icone Store)
+As seguintes políticas usam `true` de forma permissiva:
 
-**Sem o Precify**: Cada bloco gera sub-blocos extras (planilhas, formulas manuais, erros, retrabalho) dispostos em 3 linhas com setas mostrando complexidade.
+| Tabela | Política | Tipo | Ação |
+|--------|----------|------|------|
+| `funnel_events` | Anyone can insert funnel events | INSERT WITH CHECK (true) | Restringir para usuários autenticados com `auth.uid() IS NOT NULL` |
+| `plan_features` | Authenticated users can read plan features | SELECT USING (true) | SELECT com `true` é aceitável (leitura pública) - será ignorado |
+| `role_permissions` | Authenticated users can view role permissions | SELECT USING (true) | SELECT com `true` é aceitável (leitura pública) - será ignorado |
 
-**Com o Precify**: Os mesmos 4 blocos principais conectam-se diretamente ao bloco central Precify, limpo e organizado.
+Apenas a política de INSERT em `funnel_events` precisa de correção real. As de SELECT são padrões aceitáveis para dados de leitura pública.
 
-### Layout responsivo
+### 3. Admin Metrics View
+Revogar acesso direto à view `admin_metrics` para o role `authenticated`, garantindo que só seja acessível via a função `get_admin_metrics()` que já tem verificação de role master/admin.
 
-- **Desktop**: Grid 3-4 colunas com setas horizontais entre blocos
-- **Mobile**: Blocos empilhados verticalmente com setas para baixo, scroll suave
-- Toggle centralizado no topo da secao
+---
 
-### Implementacao
+## Alterações Técnicas
 
-1. **Reescrever `SolutionSection.tsx`** com:
-   - Estado `activeTab` ("sem" | "com") controlando o toggle
-   - Toggle estilizado com bg-primary para aba ativa
-   - Renderizacao condicional dos dois layouts
-   - Animacao fade na troca de aba
-   - Cards com borda azul (Precify) e borda laranja/vermelha (problemas) no modo "sem"
+### Migration SQL
+```sql
+-- 1. Corrigir política de funnel_events
+DROP POLICY IF EXISTS "Anyone can insert funnel events" ON public.funnel_events;
+CREATE POLICY "Authenticated users can insert funnel events"
+  ON public.funnel_events FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() IS NOT NULL);
 
-2. **Adicionar `<SolutionSection />` no `Landing.tsx`** entre ComparisonSection e DemoSection
+-- 2. Revogar acesso direto à view admin_metrics
+REVOKE ALL ON public.admin_metrics FROM authenticated;
+REVOKE ALL ON public.admin_metrics FROM anon;
+```
 
-3. **CTA** no final: botao "Teste gratis por 7 dias"
+### Marcar avisos resolvidos
+Após aplicar as migrations, atualizar os findings de segurança para refletir as correções.
 
-### Detalhes visuais
+### Sobre o Leaked Password Protection
+Será necessário ativar manualmente nas configurações do Lovable Cloud. Não é possível fazer via código.
 
-- Fundo: `bg-muted/30` (cinza claro)
-- Cards: `bg-card` com borda `border-primary/30` (azul) para itens do usuario, `border-border` para intermediarios
-- Card problema (sem Precify): `border-destructive/30` com icone laranja/vermelho
-- Card Precify central (com Precify): `bg-primary text-primary-foreground` grande e destacado
-- Setas: SVG simples ou caracteres `→` / `↓` em `text-muted-foreground`
-- Mobile: Cards em coluna unica, setas verticais `↓`
-
-### Arquivos modificados
-- **Reescrito**: `src/components/landing/SolutionSection.tsx`
-- **Modificado**: `src/pages/Landing.tsx` (adicionar na ordem correta)
