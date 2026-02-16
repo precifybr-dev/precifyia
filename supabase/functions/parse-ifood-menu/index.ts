@@ -165,17 +165,20 @@ serve(async (req) => {
       const fullMenuSystemPrompt = isShadowBanned
         ? `Você é um assistente. Liste 5 itens genéricos para um restaurante brasileiro com preços.
 Responda em JSON: { "storeName": "Loja", "items": [{ "name": "Item", "description": "", "price": 10.00, "category": "Geral", "image_url": "" }] }`
-        : `Você é um especialista em cardápios de restaurantes brasileiros do iFood.
-Seu trabalho é analisar o HTML de uma página do iFood e extrair TODOS os itens do cardápio com máxima fidelidade.
+      : `Você é um especialista em cardápios de restaurantes brasileiros do iFood.
+Seu trabalho é analisar o HTML de uma página do iFood e extrair ABSOLUTAMENTE TODOS os itens do cardápio com máxima fidelidade.
 
-Regras OBRIGATÓRIAS:
-1. Extraia TODOS os itens visíveis no cardápio, não apenas alguns
-2. Para cada item extraia: nome exato, descrição completa, preço numérico (ex: 25.90), categoria/seção
-3. Para imagens: procure URLs que contenham "static-images.ifood.com.br" ou "img.ifood.com.br" no HTML. Se encontrar, inclua a URL completa. Se não encontrar, deixe vazio.
-4. Preços devem ser números (não strings). Ex: 25.90, não "R$ 25,90"
-5. Categorias devem refletir as seções do cardápio (ex: "Lanches", "Bebidas", "Sobremesas", "Combos")
-6. Mantenha a ordem original do cardápio
-7. Responda APENAS em formato JSON válido, sem markdown, sem backticks
+Regras OBRIGATÓRIAS - LEIA COM ATENÇÃO:
+1. Extraia ABSOLUTAMENTE TODOS os itens do cardápio, sem exceção. NÃO PARE NO MEIO.
+2. Percorra TODO o HTML do início ao fim. Se o cardápio tiver 10, 50 ou 200 itens, TODOS devem ser incluídos.
+3. Para cada item extraia: nome exato, descrição completa, preço numérico (ex: 25.90), categoria/seção
+4. Para imagens: procure URLs que contenham "static-images.ifood.com.br" ou "img.ifood.com.br" no HTML. Se encontrar, inclua a URL completa. Se não encontrar, deixe vazio.
+5. Preços devem ser números (não strings). Ex: 25.90, não "R$ 25,90"
+6. Categorias devem refletir as seções do cardápio (ex: "Lanches", "Bebidas", "Sobremesas", "Combos")
+7. Mantenha a ordem original do cardápio
+8. NÃO OMITA NENHUM ITEM. Mesmo que o HTML seja muito longo, extraia TODOS.
+9. Ao final, conte quantos itens extraiu. Se o HTML mencionar mais itens do que você listou, VOLTE e adicione os que faltam.
+10. Responda APENAS em formato JSON válido, sem markdown, sem backticks
 
 Formato de resposta:
 {
@@ -197,7 +200,7 @@ Formato de resposta:
 
 URL: ${ifoodUrl}
 
-${pageContent ? `Conteúdo HTML da página (analise com atenção para extrair TODOS os itens, preços e imagens):\n${pageContent.slice(0, 15000)}` : "Não foi possível acessar o HTML. Gere um cardápio realista baseado no nome da loja."}
+${pageContent ? `Conteúdo HTML da página (analise com atenção para extrair ABSOLUTAMENTE TODOS os itens, preços e imagens - NÃO OMITA NENHUM):\n${pageContent.slice(0, 60000)}` : "Não foi possível acessar o HTML. Gere um cardápio realista baseado no nome da loja."}
 
 Extraia TODOS os itens do cardápio com nome, descrição, preço, categoria e URL da imagem.
 Responda em JSON válido conforme o formato especificado.`;
@@ -218,12 +221,12 @@ Responda em JSON válido conforme o formato especificado.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: isShadowBanned ? "google/gemini-2.5-flash-lite" : "google/gemini-3-flash-preview",
+          model: isShadowBanned ? "google/gemini-2.5-flash-lite" : "google/gemini-2.5-pro",
           messages: [
             { role: "system", content: fullMenuSystemPrompt },
             { role: "user", content: fullMenuUserPrompt },
           ],
-          temperature: 0.3,
+          temperature: 0.2,
         }),
       });
 
