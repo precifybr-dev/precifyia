@@ -1,132 +1,106 @@
 
 
-# Blindagem Anti-Bloqueio do iFood Marketplace API
+# Corrigir Bloqueio do Cardapio + Ajustar Limites do Menu Performance Score
 
-## Contexto
+## Problema
 
-A Edge Function `parse-ifood-menu` ja funciona com extracao direta (custo zero), mas nao possui protecoes contra bloqueio por comportamento automatizado. O risco real e frequencia alta, burst simultaneo e falta de cache server-side inteligente.
+O modo `full_menu` (espelho do cardapio) esta sendo bloqueado pelo `check_and_increment_usage` na Edge Function `parse-ifood-menu`. Esse check roda ANTES de ler o `importType` do body, entao qualquer request -- seja cardapio ou importacao -- consome a quota de `ifood_import`.
 
-## O Que Ja Existe
+Alem disso, os limites do **Menu Performance Score** (feature `menu_analysis`) estao incorretos no banco:
+- Free: 1 (correto, mas precisa ser UNICO, nao mensal)
+- Basic: 3 (precisa ser 5/mes)
+- Pro: ilimitado (precisa ser 10/mes)
 
-- Cache no banco (`menu_cache` / `menu_cached_at` na tabela `stores`) -- mas sem TTL enforcement no backend
-- Rate limit por usuario/IP (5 req/min, 10 req/min) -- protege contra abuso, mas nao contra burst real na API do iFood
-- Headers basicos no fetch -- ja tem User-Agent, Accept, Accept-Language
+## Mudancas
 
-## O Que Precisa Mudar
+### 1. Edge Function `parse-ifood-menu/index.ts` -- Liberar full_menu
 
-### 1. Cache Server-Side com TTL (6h) -- Impacto: -90% chamadas
+- Mover a leitura do `rawBody` (linha 461) para ANTES do bloco de usage check (linha 435)
+- Envolver o `check_and_increment_usage` em condicao: so executar se `importType !== "full_menu"`
+- Melhorar mensagem de erro quando bloqueado: "Voce ja atingiu o limite de importacoes do seu plano. Faca upgrade para continuar importando."
 
-**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
+### 2. Banco de dados -- Atualizar limites de `menu_analysis`
 
-No bloco `full_menu` (linha ~511), ANTES de chamar `fetchFromMarketplaceAPI`:
-- Verificar se `menu_cached_at` existe e e menor que 6 horas atras
-- Se cache valido: retornar direto sem tocar na API do iFood
-- Se `forceRefresh` vier no body: ignorar cache (para o botao "Atualizar")
-- Se API falhar: retornar cache antigo mesmo expirado (stale fallback)
+Atualizar a tabela `plan_features`:
+- **Free**: `usage_limit = 1` (manter, mas a logica precisa tratar como uso unico/vitalicio)
+- **Basic**: `usage_limit = 5` (era 3)
+- **Pro**: `usage_limit = 10` (era NULL/ilimitado)
 
-```text
-Fluxo:
-  Request chega
-       |
-  forceRefresh? --sim--> pula cache
-       |no
-  cache < 6h? --sim--> retorna cache direto
-       |no
-  chama API iFood
-       |
-  sucesso? --sim--> salva cache + retorna
-       |no
-  tem cache antigo? --sim--> retorna stale
-       |no
-  erro 422
-```
+### 3. Banco de dados -- Logica de uso unico para Free
 
-### 2. Deduplicacao por merchantId (anti-burst) -- Impacto: elimina requests duplicados
+O `check_and_increment_usage` atual conta usos no mes corrente (`date_trunc('month', now())`). Para o plano Free, a analise deve ser de uso UNICO (vitalicio, nao reseta no mes). Criar uma funcao alternativa ou ajustar a existente para que, quando `plan = 'free'`, o count ignore a janela mensal e conte TODOS os usos historicos.
 
-**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
+### 4. Edge Function `analyze-menu-performance/index.ts` -- Melhorar mensagem de erro
 
-Usar um Map em memoria (`pendingRequests`) para deduplicar chamadas simultaneas ao mesmo merchant:
-- Se ja existe um fetch em andamento para o mesmo merchantId, aguardar o resultado dele
-- Isso evita que 5 usuarios clicando ao mesmo tempo gerem 5 requests reais
+Quando o limite for atingido, retornar mensagem clara:
+- Free: "Voce ja usou sua analise gratuita. Faca upgrade para o plano Basico ou Pro para continuar analisando seu cardapio."
+- Basic/Pro: "Voce atingiu o limite de X analises este mes. Suas analises serao renovadas no proximo mes."
 
-### 3. Jitter de Timing (anti-padrao robotico)
+### 5. Frontend `useMenuMirror.ts` -- Tratar erro 403 com mensagem amigavel
 
-**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
-
-Na funcao `fetchFromMarketplaceAPI`, entre cada tentativa de endpoint:
-- Adicionar `await sleep(200 + Math.random() * 300)` (200-500ms aleatorios)
-- Quebra padrao matematico detectavel
-
-### 4. Headers Mais Realistas
-
-**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
-
-Rotacionar User-Agents entre 3-4 opcoes reais (Chrome, Firefox, Safari) para nao repetir sempre o mesmo. Adicionar `Connection: keep-alive` e `DNT: 1`.
-
-### 5. Stale Fallback (resiliencia)
-
-**Arquivo:** `supabase/functions/parse-ifood-menu/index.ts`
-
-Se TODAS as strategies falharem (bloco linha ~628):
-- Antes de retornar erro 422, verificar se existe `menu_cache` antigo no banco
-- Se existir, retornar com flag `stale: true` para o frontend saber que e cache antigo
-
-### 6. Frontend: Respeitar Cache TTL + Indicador Stale
-
-**Arquivo:** `src/hooks/useMenuMirror.ts`
-
-- No `fetchMenu`, passar `forceRefresh` no body quando o usuario clica "Atualizar"
-- Tratar resposta com `stale: true` mostrando toast informativo
-
-**Arquivo:** `src/pages/MenuMirror.tsx`
-
-- Nenhuma mudanca necessaria (ja passa `forceRefresh` corretamente)
+No `analyzeMenu`, detectar `upgrade_required` na resposta e mostrar toast com mensagem clara ao inves de erro generico.
 
 ## Secao Tecnica
 
-### Mudancas no Edge Function (`parse-ifood-menu/index.ts`)
+### Mudanca no `parse-ifood-menu/index.ts`
 
-**Constantes novas:**
+Reordenar linhas 435-465:
+
+```text
+// ANTES (bugado):
+1. check_and_increment_usage (bloqueia tudo)
+2. ler body (importType)
+
+// DEPOIS (corrigido):
+1. ler body (importType)
+2. SE importType != "full_menu" → check_and_increment_usage
 ```
-CACHE_TTL_MS = 6 * 60 * 60 * 1000 (6 horas)
-USER_AGENTS = array com 4 User-Agents reais
-pendingRequests = new Map() para deduplicacao
+
+### SQL Migration
+
+```sql
+-- Atualizar limites do menu_analysis
+UPDATE plan_features SET usage_limit = 5 WHERE feature = 'menu_analysis' AND plan = 'basic';
+UPDATE plan_features SET usage_limit = 10 WHERE feature = 'menu_analysis' AND plan = 'pro';
 ```
 
-**Funcao sleep:**
+### Ajuste na funcao `check_and_increment_usage`
+
+Adicionar logica condicional: se o plano for `free`, contar usos desde SEMPRE (sem `>= v_start_of_month`), tornando o limite vitalicio.
+
+```sql
+-- Trecho modificado dentro da funcao:
+IF v_plan = 'free' THEN
+  SELECT count(*) INTO v_count
+  FROM strategic_usage_logs
+  WHERE user_id = _user_id AND endpoint = _endpoint;
+ELSE
+  SELECT count(*) INTO v_count
+  FROM strategic_usage_logs
+  WHERE user_id = _user_id AND endpoint = _endpoint
+    AND created_at >= v_start_of_month;
+END IF;
 ```
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+### Frontend `useMenuMirror.ts` -- analyzeMenu
+
+Tratar resposta com `upgrade_required`:
+
+```typescript
+if (data?.upgrade_required) {
+  toast({
+    title: "Limite atingido",
+    description: data.error || "Faca upgrade para continuar.",
+    variant: "destructive",
+  });
+  return;
+}
 ```
-
-**Bloco full_menu (linha ~511-684) -- reestruturacao:**
-1. Ler `forceRefresh` do body
-2. Se nao forceRefresh: consultar `menu_cached_at` da store
-3. Se cache valido (< 6h): retornar `menu_cache` direto
-4. Se forceRefresh ou cache expirado: seguir fluxo atual
-5. Wrap do fluxo de fetch em try/catch com stale fallback
-6. Entre endpoints no `fetchFromMarketplaceAPI`: adicionar jitter
-
-**fetchFromMarketplaceAPI -- ajustes:**
-- Rotacao de User-Agent (random do array)
-- Jitter entre tentativas (200-500ms)
-- Headers extras (Connection, DNT)
-
-### Mudancas no Hook (`useMenuMirror.ts`)
-
-- `fetchMenu` ja recebe `forceRefresh` e ja passa para o Edge Function
-- Adicionar tratamento de `data.stale === true` com toast informativo
-
-## Resultado Final
-
-- 90%+ reducao de chamadas reais a API do iFood
-- Zero burst (deduplicacao em memoria)
-- Padrao nao-robotico (jitter + rotacao de UA)
-- Resiliencia total (stale fallback)
-- Custo continua $0.00
-- Sem IA em nenhum cenario do full_menu
 
 ## Arquivos Modificados
 
-1. `supabase/functions/parse-ifood-menu/index.ts` -- cache TTL, deduplicacao, jitter, headers, stale fallback
-2. `src/hooks/useMenuMirror.ts` -- tratamento de resposta stale
+1. `supabase/functions/parse-ifood-menu/index.ts` -- reordenar body parse, condicionar usage check
+2. `supabase/functions/analyze-menu-performance/index.ts` -- melhorar mensagens de erro
+3. `src/hooks/useMenuMirror.ts` -- tratar erro 403 com mensagem amigavel
+4. Migration SQL -- atualizar `plan_features` e ajustar `check_and_increment_usage`
 
