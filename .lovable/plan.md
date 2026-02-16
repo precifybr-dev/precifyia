@@ -1,57 +1,130 @@
 
+# Nova Aba: Controle de Custos Cloud & IA
 
-# Correção dos 3 Avisos de Segurança
+## Objetivo
+Criar uma aba "Custos Cloud & IA" no painel administrativo que permita visualizar e controlar todos os gastos gerados por interacoes dos usuarios com a plataforma (chamadas de IA, funcoes backend, etc.).
 
-## Problema
-O scanner de segurança identificou 3 avisos que precisam ser corrigidos:
+## Fonte de Dados
+A tabela `strategic_usage_logs` ja registra todas as chamadas de IA com:
+- `user_id` - quem executou
+- `endpoint` - qual funcao (generate-combo, parse-ifood-menu, analyze-menu-performance, etc.)
+- `tokens_used` - tokens consumidos
+- `created_at` - quando ocorreu
 
-1. **Leaked Password Protection Disabled** - Proteção contra senhas vazadas está desativada
-2. **RLS Policy Always True** - Políticas de segurança permissivas demais
-3. **Admin Metrics View Exposed to All Users** - Métricas administrativas acessíveis por todos
+## O Que Sera Criado
 
----
+### 1. Funcao SQL para agregar custos
+Uma RPC `get_cloud_cost_metrics` que retorna:
+- Custo total estimado por endpoint (baseado em tokens)
+- Custo por usuario (quanto cada usuario gera de custo)
+- Custo medio de onboarding (novo usuario: cadastro + importacao de cardapio + primeiro combo)
+- Evolucao diaria de custos
+- Top 10 usuarios mais caros
 
-## Plano de Correção
+**Tabela de precos estimados por endpoint** (configuravel):
+| Endpoint | Custo estimado por 1K tokens |
+|----------|------------------------------|
+| generate-combo | $0.01 |
+| generate-menu-strategy | $0.01 |
+| parse-ifood-menu | $0.01 |
+| analyze-menu-performance | $0.01 |
+| analyze-spreadsheet-columns | $0.01 |
 
-### 1. Leaked Password Protection
-Essa configuração é feita no nível da plataforma (Lovable Cloud Auth Settings) e não pode ser ativada via código. Vou marcar como resolvida na verificação após você ativá-la manualmente nas configurações do projeto.
+### 2. Componente `CloudCostsDashboard.tsx`
+Nova aba no admin com as seguintes secoes:
 
-### 2. RLS Policy Always True (3 políticas)
+**KPIs principais:**
+- Custo total no periodo (Cloud + IA)
+- Custo medio por usuario
+- Custo medio de aquisicao tecnica (CAC tecnico - quanto custa um novo usuario em infra)
+- Total de chamadas de IA no periodo
 
-As seguintes políticas usam `true` de forma permissiva:
+**Graficos:**
+- Evolucao diaria de custos (AreaChart)
+- Custo por endpoint (BarChart horizontal - qual feature gasta mais)
+- Distribuicao de custo por tipo (PieChart)
 
-| Tabela | Política | Tipo | Ação |
-|--------|----------|------|------|
-| `funnel_events` | Anyone can insert funnel events | INSERT WITH CHECK (true) | Restringir para usuários autenticados com `auth.uid() IS NOT NULL` |
-| `plan_features` | Authenticated users can read plan features | SELECT USING (true) | SELECT com `true` é aceitável (leitura pública) - será ignorado |
-| `role_permissions` | Authenticated users can view role permissions | SELECT USING (true) | SELECT com `true` é aceitável (leitura pública) - será ignorado |
+**Tabelas:**
+- Top 10 usuarios que mais consomem (com email, plano, total tokens, custo estimado)
+- Detalhamento por endpoint (chamadas, tokens, custo, media por chamada)
+- Custo do onboarding: estimativa de quanto custa cada etapa do novo usuario
 
-Apenas a política de INSERT em `funnel_events` precisa de correção real. As de SELECT são padrões aceitáveis para dados de leitura pública.
+**Filtros:**
+- Periodo (7, 14, 30, 60 dias)
+- Por endpoint especifico
 
-### 3. Admin Metrics View
-Revogar acesso direto à view `admin_metrics` para o role `authenticated`, garantindo que só seja acessível via a função `get_admin_metrics()` que já tem verificação de role master/admin.
+### 3. Hook `useCloudCosts.ts`
+Hook que busca os dados via RPC e calcula metricas derivadas como custos em USD.
 
----
+### 4. Integracao no AdminDashboard
+- Nova aba "Custos" com icone `Server` no `TabsList`
+- Novo item no sidebar do `AdminLayout` (masterOnly)
 
-## Alterações Técnicas
+## Detalhes Tecnicos
 
 ### Migration SQL
 ```sql
--- 1. Corrigir política de funnel_events
-DROP POLICY IF EXISTS "Anyone can insert funnel events" ON public.funnel_events;
-CREATE POLICY "Authenticated users can insert funnel events"
-  ON public.funnel_events FOR INSERT
-  TO authenticated
-  WITH CHECK (auth.uid() IS NOT NULL);
-
--- 2. Revogar acesso direto à view admin_metrics
-REVOKE ALL ON public.admin_metrics FROM authenticated;
-REVOKE ALL ON public.admin_metrics FROM anon;
+-- Funcao que agrega metricas de custo
+CREATE OR REPLACE FUNCTION get_cloud_cost_metrics(days_back integer DEFAULT 30)
+RETURNS json AS $$
+DECLARE
+  result json;
+BEGIN
+  SELECT json_build_object(
+    'by_endpoint', (
+      SELECT json_agg(row_to_json(t))
+      FROM (
+        SELECT endpoint, count(*) as calls, sum(tokens_used) as total_tokens,
+               count(distinct user_id) as unique_users
+        FROM strategic_usage_logs
+        WHERE created_at >= now() - (days_back || ' days')::interval
+        GROUP BY endpoint ORDER BY total_tokens DESC
+      ) t
+    ),
+    'by_user', (
+      SELECT json_agg(row_to_json(t))
+      FROM (
+        SELECT s.user_id, p.email, p.business_name, p.user_plan,
+               count(*) as calls, sum(s.tokens_used) as total_tokens
+        FROM strategic_usage_logs s
+        LEFT JOIN profiles p ON p.user_id = s.user_id
+        WHERE s.created_at >= now() - (days_back || ' days')::interval
+        GROUP BY s.user_id, p.email, p.business_name, p.user_plan
+        ORDER BY total_tokens DESC LIMIT 20
+      ) t
+    ),
+    'daily', (
+      SELECT json_agg(row_to_json(t))
+      FROM (
+        SELECT date(created_at) as day, count(*) as calls,
+               sum(tokens_used) as total_tokens
+        FROM strategic_usage_logs
+        WHERE created_at >= now() - (days_back || ' days')::interval
+        GROUP BY date(created_at) ORDER BY day
+      ) t
+    ),
+    'totals', (
+      SELECT row_to_json(t)
+      FROM (
+        SELECT count(*) as total_calls, sum(tokens_used) as total_tokens,
+               count(distinct user_id) as total_users
+        FROM strategic_usage_logs
+        WHERE created_at >= now() - (days_back || ' days')::interval
+      ) t
+    )
+  ) INTO result;
+  RETURN result;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
-### Marcar avisos resolvidos
-Após aplicar as migrations, atualizar os findings de segurança para refletir as correções.
+### Arquivos a criar/modificar:
+1. **Criar** `src/hooks/useCloudCosts.ts` - Hook para buscar e processar dados
+2. **Criar** `src/components/admin/CloudCostsDashboard.tsx` - Componente da aba
+3. **Modificar** `src/pages/AdminDashboard.tsx` - Adicionar nova aba "Custos"
+4. **Modificar** `src/components/admin/AdminLayout.tsx` - Adicionar item no sidebar
 
-### Sobre o Leaked Password Protection
-Será necessário ativar manualmente nas configurações do Lovable Cloud. Não é possível fazer via código.
-
+### Calculo de Custos
+- Preco base: $0.01 por 1K tokens (Gemini Flash - modelo mais usado)
+- Custos Cloud (DB, Functions, Auth): estimativa fixa de ~$0.001 por chamada de funcao
+- O dashboard exibira valores em USD para facilitar comparacao com os limites do Lovable ($25 Cloud + $1 AI)
