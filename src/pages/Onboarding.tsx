@@ -18,10 +18,7 @@ export default function Onboarding() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    toast({
-      title: "Logout realizado",
-      description: "Até logo!",
-    });
+    toast({ title: "Logout realizado", description: "Até logo!" });
     navigate("/");
   };
 
@@ -47,56 +44,46 @@ export default function Onboarding() {
     );
   }
 
+  const isBusiness = currentStep === "business";
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
+      {/* Header - minimal during business wizard */}
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <Link to="/">
               <Logo size="lg" showText />
             </Link>
-
-            <div className="flex items-center gap-4">
-              <div className="hidden sm:flex items-center gap-2 text-sm">
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                  <span className="font-semibold text-primary text-xs">
-                    {user?.email?.[0]?.toUpperCase()}
-                  </span>
-                </div>
-                <span className="text-muted-foreground max-w-[150px] truncate">
-                  {user?.email}
-                </span>
-              </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground hidden sm:inline max-w-[120px] truncate">
+                {user?.email}
+              </span>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
-                <LogOut className="w-4 h-4 mr-2" />
-                Sair
+                <LogOut className="w-4 h-4" />
               </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-3xl">
-        {/* Welcome Message */}
-        <div className="text-center mb-8">
-          <h1 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2">
-            Bem-vindo ao PRECIFY! 👋
-          </h1>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            Complete os passos abaixo para configurar seu negócio e começar a
-            precificar com precisão.
-          </p>
-        </div>
+        {/* Only show macro stepper for non-business steps */}
+        {!isBusiness && (
+          <>
+            <div className="text-center mb-6">
+              <h1 className="font-display text-2xl font-bold text-foreground mb-1">
+                Continue a configuração 🚀
+              </h1>
+              <p className="text-sm text-muted-foreground">Falta pouco para começar!</p>
+            </div>
+            <div className="mb-8">
+              <OnboardingStepper currentStep={currentStep} />
+            </div>
+          </>
+        )}
 
-        {/* Stepper */}
-        <div className="mb-8">
-          <OnboardingStepper currentStep={currentStep} />
-        </div>
-
-        {/* Current Step Content */}
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="animate-in fade-in duration-300">
           {currentStep === "business" && (
             <BusinessConfigStep
               profile={profile}
@@ -104,11 +91,9 @@ export default function Onboarding() {
               onAdvance={advanceToNextStep}
             />
           )}
-
           {currentStep === "ingredients" && (
             <IngredientsStep onAdvance={advanceToNextStep} />
           )}
-
           {currentStep === "recipe" && (
             <RecipeStep onAdvance={advanceToNextStep} />
           )}
