@@ -2371,6 +2371,8 @@ export type Database = {
           ifood_url: string | null
           is_default: boolean
           logo_url: string | null
+          menu_cache: Json | null
+          menu_cached_at: string | null
           name: string
           updated_at: string
           user_id: string
@@ -2382,6 +2384,8 @@ export type Database = {
           ifood_url?: string | null
           is_default?: boolean
           logo_url?: string | null
+          menu_cache?: Json | null
+          menu_cached_at?: string | null
           name: string
           updated_at?: string
           user_id: string
@@ -2393,6 +2397,8 @@ export type Database = {
           ifood_url?: string | null
           is_default?: boolean
           logo_url?: string | null
+          menu_cache?: Json | null
+          menu_cached_at?: string | null
           name?: string
           updated_at?: string
           user_id?: string

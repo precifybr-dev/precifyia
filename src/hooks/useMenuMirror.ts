@@ -29,14 +29,52 @@ export function useMenuMirror() {
 
   const ifoodUrl = (activeStore as any)?.ifood_url as string | null;
 
-  const fetchMenu = useCallback(async (url?: string) => {
+  // Load menu from database cache (no Edge Function call)
+  const loadFromCache = useCallback(async () => {
+    if (!activeStore?.id) return false;
+
+    try {
+      const { data, error } = await supabase
+        .from("stores")
+        .select("menu_cache, menu_cached_at")
+        .eq("id", activeStore.id)
+        .single();
+
+      if (error || !data) return false;
+
+      const cache = (data as any).menu_cache;
+      if (cache && cache.items && cache.items.length > 0) {
+        setMenuData({
+          storeName: cache.storeName || "Minha Loja",
+          items: cache.items,
+        });
+        return true;
+      }
+    } catch {
+      // Cache miss, not an error
+    }
+    return false;
+  }, [activeStore?.id]);
+
+  // Fetch fresh menu from Edge Function (direct JSON extraction, no AI)
+  const fetchMenu = useCallback(async (url?: string, forceRefresh = false) => {
     const targetUrl = url || ifoodUrl;
     if (!targetUrl) return;
+
+    // Try cache first unless forcing refresh
+    if (!forceRefresh && !url) {
+      const cached = await loadFromCache();
+      if (cached) return;
+    }
 
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("parse-ifood-menu", {
-        body: { ifoodUrl: targetUrl, importType: "full_menu" },
+        body: {
+          ifoodUrl: targetUrl,
+          importType: "full_menu",
+          storeId: activeStore?.id,
+        },
       });
 
       if (error) throw error;
@@ -59,7 +97,7 @@ export function useMenuMirror() {
     } finally {
       setIsLoading(false);
     }
-  }, [ifoodUrl, toast]);
+  }, [ifoodUrl, activeStore?.id, loadFromCache, toast]);
 
   const saveIfoodUrl = useCallback(async (url: string) => {
     if (!activeStore?.id) return;
@@ -78,7 +116,8 @@ export function useMenuMirror() {
         description: "Seu cardápio será carregado automaticamente.",
       });
 
-      await fetchMenu(url);
+      // Force fresh fetch when saving new URL
+      await fetchMenu(url, true);
     } catch (err: any) {
       console.error("saveIfoodUrl error:", err);
       toast({
@@ -97,7 +136,7 @@ export function useMenuMirror() {
     try {
       await supabase
         .from("stores")
-        .update({ ifood_url: null } as any)
+        .update({ ifood_url: null, menu_cache: null, menu_cached_at: null } as any)
         .eq("id", activeStore.id);
 
       setMenuData(null);
@@ -150,5 +189,6 @@ export function useMenuMirror() {
     analysis,
     isAnalyzing,
     analyzeMenu,
+    loadFromCache,
   };
 }
