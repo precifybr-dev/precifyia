@@ -27,9 +27,11 @@ type OnboardingStep = {
 type OnboardingProgressProps = {
   profile: any;
   userId: string;
+  storeId?: string;
+  storeName?: string;
 };
 
-export default function OnboardingProgress({ profile, userId }: OnboardingProgressProps) {
+export default function OnboardingProgress({ profile, userId, storeId, storeName }: OnboardingProgressProps) {
   const [ingredientsCount, setIngredientsCount] = useState(0);
   const [recipesCount, setRecipesCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,11 +39,13 @@ export default function OnboardingProgress({ profile, userId }: OnboardingProgre
 
   useEffect(() => {
     const fetchCounts = async () => {
-      // Fetch ingredients count
-      const { count: ingCount } = await supabase
+      // Fetch ingredients count (filtered by store)
+      let ingQuery = supabase
         .from("ingredients")
         .select("*", { count: "exact", head: true })
         .eq("user_id", userId);
+      if (storeId) ingQuery = ingQuery.eq("store_id", storeId);
+      const { count: ingCount } = await ingQuery;
 
       setIngredientsCount(ingCount || 0);
 
@@ -54,7 +58,7 @@ export default function OnboardingProgress({ profile, userId }: OnboardingProgre
     if (userId) {
       fetchCounts();
     }
-  }, [userId]);
+  }, [userId, storeId]);
 
   const getBusinessStatus = (): StepStatus => {
     if (profile?.business_name && profile?.business_type) {
@@ -80,7 +84,7 @@ export default function OnboardingProgress({ profile, userId }: OnboardingProgre
       icon: Building2,
       title: "Configurar Negócio",
       description: getBusinessStatus() === "completed" 
-        ? `${profile?.business_name} configurado` 
+        ? `${storeName || profile?.business_name} configurado` 
         : "Configure os dados do seu negócio",
       status: getBusinessStatus(),
       path: "/business",

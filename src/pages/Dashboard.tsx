@@ -111,11 +111,10 @@ export default function Dashboard() {
 
       setProfile(profileData);
       
-      // Fetch existing ingredients for import modal
-      const { data: ingData } = await supabase
-        .from("ingredients")
-        .select("name")
-        .eq("user_id", session.user.id);
+      // Fetch existing ingredients for import modal (filtered by store)
+      let ingListQuery = supabase.from("ingredients").select("name").eq("user_id", session.user.id);
+      if (activeStore?.id) ingListQuery = ingListQuery.eq("store_id", activeStore.id);
+      const { data: ingData } = await ingListQuery;
       if (ingData) setExistingIngredients(ingData);
       
       // Fetch real metrics
@@ -142,10 +141,18 @@ export default function Dashboard() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Re-fetch metrics when store changes
+  // Re-fetch metrics and ingredients when store changes
   useEffect(() => {
     if (user?.id && profile) {
       fetchMetrics(user.id, profile);
+      // Re-fetch existing ingredients for the active store
+      const refetchIngredients = async () => {
+        let ingListQuery = supabase.from("ingredients").select("name").eq("user_id", user.id);
+        if (activeStore?.id) ingListQuery = ingListQuery.eq("store_id", activeStore.id);
+        const { data: ingData } = await ingListQuery;
+        if (ingData) setExistingIngredients(ingData);
+      };
+      refetchIngredients();
     }
   }, [activeStore?.id]);
 
@@ -188,8 +195,17 @@ export default function Dashboard() {
       }
     }
 
-    // Monthly revenue from profile
-    setMonthlyRevenue(profileData?.monthly_revenue || 0);
+    // Monthly revenue from store (per-store) or profile fallback
+    if (storeId) {
+      const { data: storeData } = await supabase
+        .from("stores")
+        .select("monthly_revenue")
+        .eq("id", storeId)
+        .maybeSingle();
+      setMonthlyRevenue(storeData?.monthly_revenue ? Number(storeData.monthly_revenue) : 0);
+    } else {
+      setMonthlyRevenue(profileData?.monthly_revenue || 0);
+    }
   };
 
   const handleLogout = async () => {
@@ -578,7 +594,7 @@ export default function Dashboard() {
           {/* Onboarding Progress - only when not complete */}
           {!isOnboardingComplete && (
             <div className="mb-6">
-              <OnboardingProgress profile={profile} userId={user?.id} />
+              <OnboardingProgress profile={profile} userId={user?.id} storeId={activeStore?.id} storeName={activeStore?.name} />
             </div>
           )}
 
@@ -698,7 +714,9 @@ export default function Dashboard() {
         storeId={activeStore?.id || null}
         existingIngredients={existingIngredients}
         onImportComplete={async () => {
-          const { data } = await supabase.from("ingredients").select("name").eq("user_id", user?.id);
+          let refetchQuery = supabase.from("ingredients").select("name").eq("user_id", user?.id);
+          if (activeStore?.id) refetchQuery = refetchQuery.eq("store_id", activeStore.id);
+          const { data } = await refetchQuery;
           if (data) setExistingIngredients(data);
         }}
       />
