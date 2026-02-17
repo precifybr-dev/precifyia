@@ -243,9 +243,50 @@ export default function SimplifiedDREBlock({
       )}
 
       {hasRevenue && netResult !== null && (
-        <p className="text-xs text-muted-foreground mt-4 text-center p-3 bg-muted/30 rounded-lg">
-          Despesas do negócio são pagas com o faturamento total do mês, não por produto individual.
-        </p>
+        <>
+          {/* Ponto de Equilíbrio */}
+          {(() => {
+            const breakEvenRevenue = variableExpensesPercent !== null && variableExpensesPercent < 100
+              ? fixedExpensesTotal / (1 - variableExpensesPercent / 100)
+              : null;
+
+            if (breakEvenRevenue === null || breakEvenRevenue <= 0) return null;
+
+            const isAboveBreakEven = monthlyRevenue !== null && monthlyRevenue >= breakEvenRevenue;
+
+            return (
+              <div className={`mt-4 p-4 rounded-lg border ${
+                isAboveBreakEven
+                  ? 'bg-success/5 border-success/20'
+                  : 'bg-warning/5 border-warning/20'
+              }`}>
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className={`w-4 h-4 ${isAboveBreakEven ? 'text-success' : 'text-warning'}`} />
+                  <span className="font-medium text-sm text-foreground">Ponto de Equilíbrio</span>
+                </div>
+                <p className="font-display text-lg font-bold text-foreground">
+                  R$ {formatCurrency(breakEvenRevenue)}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Faturamento mínimo para cobrir todas as despesas do negócio
+                </p>
+                {isAboveBreakEven ? (
+                  <p className="text-xs text-success mt-1">
+                    ✓ Seu faturamento está acima do ponto de equilíbrio
+                  </p>
+                ) : (
+                  <p className="text-xs text-warning mt-1">
+                    ⚠ Seu faturamento está abaixo do ponto de equilíbrio
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
+          <p className="text-xs text-muted-foreground mt-4 text-center p-3 bg-muted/30 rounded-lg">
+            Despesas do negócio são pagas com o faturamento total do mês, não por produto individual.
+          </p>
+        </>
       )}
 
       {!hasRevenue && (

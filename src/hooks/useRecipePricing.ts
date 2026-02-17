@@ -51,6 +51,8 @@ export interface RecipePricingResult {
   // Net Profit - Loja
   production_costs_percent: number | null;
   tax_percentage: number;
+  average_card_fee: number;
+  card_fee_value_loja: number;
   production_cost_value_loja: number;
   tax_value_loja: number;
   net_profit_loja: number;
