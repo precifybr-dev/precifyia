@@ -1,56 +1,52 @@
 
+# Corrigir contador de lojas e layout mobile dos numeros
 
-# Corrigir isolamento de dados entre lojas e onboarding passo-a-passo
+## Problema 1: Contador 3/3 apos exclusao
 
-## Problemas identificados
+O banco de dados ainda contem 3 lojas para o usuario porque as exclusoes anteriores falhavam (trigger bloqueava CASCADE). Agora que o trigger foi corrigido, a exclusao funciona, mas o sidebar so exibe o contador `(3/3)` quando `canCreateStore` e falso (ou seja, ja no limite). A logica ja e reativa -- ao excluir com sucesso, `stores.length` diminui e o botao volta a funcionar.
 
-### 1. Dados da Loja 1 aparecendo na Loja 2
-Os blocos de custos/despesas na Area de Negocio usam um filtro inclusivo que puxa registros com `store_id` nulo, fazendo dados antigos aparecerem em todas as lojas. Cada loja nova deve comecar com base zerada.
+Porem, ha um problema sutil: o botao "Nova Loja" no sidebar fica **totalmente desabilitado** quando `!canCreateStore`, sem oferecer feedback claro sobre o que fazer. Vou adicionar uma melhoria: sempre mostrar o contador `(atual/max)` para dar transparencia, e garantir que apos exclusao o estado atualize corretamente.
 
-### 2. Onboarding sem sequencia
-Todos os 4 passos ficam disponiveis ao mesmo tempo. O correto e liberar um por um, conforme o anterior e concluido.
+## Problema 2: Numeros sobrepostos no mobile
+
+Os 3 cards de resumo (Total Anual, Media Mensal, Projecao Anual) usam `grid-cols-3` fixo com `text-xl` para valores monetarios grandes como "R$ 180.000,00". Em telas pequenas, os valores ultrapassam o limite do card.
 
 ---
 
 ## Solucao
 
-### Parte 1 — Isolamento estrito de dados por loja
+### Arquivo 1: `src/components/layout/AppSidebar.tsx`
+- Sempre exibir o contador `(storeCount/maxStores)` no botao "Nova Loja", nao apenas quando no limite
+- Isso da transparencia ao usuario sobre quantas lojas restam
 
-Trocar o filtro inclusivo pelo filtro estrito em 5 locais:
+### Arquivo 2: `src/components/business/MonthlyRevenueBlock.tsx`
+- Trocar `grid-cols-3` por `grid-cols-1 sm:grid-cols-3` nos summary cards
+- Reduzir o tamanho da fonte dos valores de `text-xl` para `text-base sm:text-xl`
+- Adicionar `truncate` ou `text-ellipsis overflow-hidden` nos valores para evitar sobreposicao
+- Reduzir o padding em telas pequenas
 
-| Arquivo | Alteracao |
-|---|---|
-| `src/components/business/FixedCostsBlock.tsx` | Filtro estrito por store_id |
-| `src/components/business/VariableCostsBlock.tsx` | Filtro estrito por store_id |
-| `src/components/business/FixedExpensesBlock.tsx` | Filtro estrito por store_id |
-| `src/components/business/VariableExpensesBlock.tsx` | Filtro estrito por store_id |
-| `supabase/functions/calculate-business-metrics/index.ts` | Filtro estrito na edge function |
-
-**Antes:**
-```text
-if (storeId) query = query.or(`store_id.eq.${storeId},store_id.is.null`)
-```
-
-**Depois:**
-```text
-if (storeId) query = query.eq("store_id", storeId);
-else query = query.is("store_id", null);
-```
-
-### Parte 2 — Onboarding sequencial (passo a passo)
-
-Modificar `src/pages/StoreOnboarding.tsx`:
-- Cada passo so fica habilitado quando o anterior esta concluido
-- Passos bloqueados ficam com opacidade reduzida, sem clique, e com icone de cadeado
-- Primeiro passo sempre disponivel
-
----
+### Arquivo 3: `src/components/store/StoreSwitcher.tsx`
+- Mesma correcao no contador: sempre mostrar `(storeCount/maxStores)`
 
 ## Secao Tecnica
 
-**Blocos de custos (4 arquivos):** Substituir a linha do filtro `.or(...)` por `.eq("store_id", storeId)` quando storeId existe, e `.is("store_id", null)` quando nao existe.
+**AppSidebar.tsx (linha 145):**
+Antes: so mostra contador quando `!canCreateStore`
+Depois: sempre mostra `(storeCount/maxStores)` ao lado do botao
 
-**Edge function `calculate-business-metrics`:** Aplicar a mesma logica no `storeFilter` interno.
+**MonthlyRevenueBlock.tsx (linhas 230-277):**
+Alterar o grid dos summary cards:
+```text
+grid grid-cols-3 gap-3
+-->
+grid grid-cols-1 sm:grid-cols-3 gap-3
+```
 
-**StoreOnboarding.tsx:** Adicionar propriedade `isLocked` a cada step, calculada com base no `isCompleted` do step anterior. Steps com `isLocked = true` nao navegam e exibem visual desabilitado.
+Alterar o tamanho da fonte dos valores:
+```text
+text-xl font-bold
+-->
+text-base sm:text-xl font-bold truncate
+```
 
+**StoreSwitcher.tsx:** Atualizar label do contador para ser consistente.
