@@ -1,47 +1,22 @@
 
+
 # Corrigir isolamento de dados entre lojas e onboarding passo-a-passo
 
 ## Problemas identificados
 
 ### 1. Dados da Loja 1 aparecendo na Loja 2
-Os blocos de custos/despesas na Area de Negocio (FixedCostsBlock, VariableCostsBlock, FixedExpensesBlock, VariableExpensesBlock) usam um filtro inclusivo:
-```text
-store_id.eq.${storeId},store_id.is.null
-```
-Isso faz com que registros antigos (com store_id nulo) aparecam em TODAS as lojas. Para lojas novas, os dados devem ser completamente isolados.
-
-A edge function `calculate-business-metrics` tambem usa o mesmo filtro inclusivo.
+Os blocos de custos/despesas na Area de Negocio usam um filtro inclusivo que puxa registros com `store_id` nulo, fazendo dados antigos aparecerem em todas as lojas. Cada loja nova deve comecar com base zerada.
 
 ### 2. Onboarding sem sequencia
-Todos os 4 passos do onboarding da nova loja estao disponiveis simultaneamente. O usuario quer que seja passo-a-passo: so pode iniciar o proximo quando o anterior estiver concluido.
+Todos os 4 passos ficam disponiveis ao mesmo tempo. O correto e liberar um por um, conforme o anterior e concluido.
+
+---
 
 ## Solucao
 
-### Parte 1 — Isolamento de dados por loja
+### Parte 1 — Isolamento estrito de dados por loja
 
-Alterar a logica de filtragem nos 4 blocos de custos/despesas e na edge function para usar filtro **estrito** quando o `storeId` estiver definido:
-
-**Antes:** `query.or(\`store_id.eq.${storeId},store_id.is.null\`)`  
-**Depois:** `query.eq("store_id", storeId)`
-
-Arquivos a modificar:
-- `src/components/business/FixedCostsBlock.tsx` (linha 35)
-- `src/components/business/VariableCostsBlock.tsx` (linha 35)
-- `src/components/business/FixedExpensesBlock.tsx` (linha 36)
-- `src/components/business/VariableExpensesBlock.tsx` (linha 36)
-- `supabase/functions/calculate-business-metrics/index.ts` (linha 109)
-
-### Parte 2 — Onboarding sequencial (passo a passo)
-
-Modificar `src/pages/StoreOnboarding.tsx` para:
-- Adicionar logica de "desbloqueio" sequencial: cada passo so fica habilitado quando o anterior esta concluido
-- Passos bloqueados ficam com visual desabilitado (opacidade reduzida, sem cursor pointer)
-- O botao muda de "Iniciar" para um icone de cadeado nos passos bloqueados
-- Manter o primeiro passo sempre disponivel
-
-## Secao Tecnica
-
-### Arquivos modificados
+Trocar o filtro inclusivo pelo filtro estrito em 5 locais:
 
 | Arquivo | Alteracao |
 |---|---|
@@ -49,27 +24,33 @@ Modificar `src/pages/StoreOnboarding.tsx` para:
 | `src/components/business/VariableCostsBlock.tsx` | Filtro estrito por store_id |
 | `src/components/business/FixedExpensesBlock.tsx` | Filtro estrito por store_id |
 | `src/components/business/VariableExpensesBlock.tsx` | Filtro estrito por store_id |
-| `supabase/functions/calculate-business-metrics/index.ts` | Filtro estrito por store_id |
-| `src/pages/StoreOnboarding.tsx` | Logica sequencial de passos |
+| `supabase/functions/calculate-business-metrics/index.ts` | Filtro estrito na edge function |
 
-### Detalhe das mudancas
-
-**Blocos de custos (4 arquivos):** Trocar a linha do filtro de:
-```typescript
-if (storeId) query = query.or(`store_id.eq.${storeId},store_id.is.null`);
+**Antes:**
+```text
+if (storeId) query = query.or(`store_id.eq.${storeId},store_id.is.null`)
 ```
-Para:
-```typescript
+
+**Depois:**
+```text
 if (storeId) query = query.eq("store_id", storeId);
 else query = query.is("store_id", null);
 ```
 
-**Edge function:** Mesma alteracao no `storeFilter`:
-```typescript
-const storeFilter = (query: any) => {
-  if (storeId) return query.eq("store_id", storeId);
-  return query.is("store_id", null);
-};
-```
+### Parte 2 — Onboarding sequencial (passo a passo)
 
-**StoreOnboarding.tsx:** Adicionar propriedade `isLocked` aos steps baseado no passo anterior nao estar concluido. Steps bloqueados nao navegam e mostram visual desabilitado com icone de cadeado.
+Modificar `src/pages/StoreOnboarding.tsx`:
+- Cada passo so fica habilitado quando o anterior esta concluido
+- Passos bloqueados ficam com opacidade reduzida, sem clique, e com icone de cadeado
+- Primeiro passo sempre disponivel
+
+---
+
+## Secao Tecnica
+
+**Blocos de custos (4 arquivos):** Substituir a linha do filtro `.or(...)` por `.eq("store_id", storeId)` quando storeId existe, e `.is("store_id", null)` quando nao existe.
+
+**Edge function `calculate-business-metrics`:** Aplicar a mesma logica no `storeFilter` interno.
+
+**StoreOnboarding.tsx:** Adicionar propriedade `isLocked` a cada step, calculada com base no `isCompleted` do step anterior. Steps com `isLocked = true` nao navegam e exibem visual desabilitado.
+
