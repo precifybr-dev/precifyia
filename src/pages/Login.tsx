@@ -270,9 +270,11 @@ export default function Login() {
 
       {/* Right Side - Decorative */}
       <div className="hidden lg:flex flex-1 bg-primary/5 items-center justify-center p-12 border-l border-border">
-        <div className="max-w-md text-center">
-          <Logo size="xl" showText={false} className="mx-auto mb-8" />
-          <h2 className="font-display text-2xl font-bold mb-4 text-foreground">
+        <div className="max-w-md text-center space-y-6">
+          <div className="flex justify-center">
+            <Logo size="xl" showText={false} />
+          </div>
+          <h2 className="font-display text-2xl font-bold text-foreground">
             Precifique com precisão
           </h2>
           <p className="text-muted-foreground leading-relaxed">
