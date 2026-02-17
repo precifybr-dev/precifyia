@@ -17,6 +17,27 @@ interface AdminAction {
 
 // Rate limit config removed - now using DB-based check_rate_limit
 const MAX_SESSIONS_PER_ADMIN_PER_DAY = 10;
+const MAX_SESSION_DURATION_MINUTES = 30;
+
+// Helper function to create abuse alerts
+async function createAbuseAlert(
+  db: any,
+  adminId: string,
+  alertType: string,
+  message: string,
+  metadata: Record<string, any>
+) {
+  try {
+    await db.from('support_abuse_alerts').insert({
+      admin_id: adminId,
+      alert_type: alertType,
+      message,
+      metadata,
+    });
+  } catch (error) {
+    console.error('[ABUSE_ALERT] Failed to create alert:', error);
+  }
+}
 
 // Enhanced device fingerprint
 function getDeviceFingerprint(req: Request): Record<string, string | null> {
