@@ -142,7 +142,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
               >
                 <Plus className="w-4 h-4" />
                 <span>Nova Loja</span>
-                {!canCreateStore && <span className="ml-auto text-xs">({storeCount}/{maxStores})</span>}
+                <span className="ml-auto text-xs text-muted-foreground">({storeCount}/{maxStores})</span>
               </button>
             ) : (
               <button

@@ -227,13 +227,13 @@ export default function MonthlyRevenueBlock({ userId, onAverageChange }: Monthly
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg p-4 border border-primary/20">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-lg p-3 sm:p-4 border border-primary/20">
           <div className="flex items-center gap-2 mb-1">
             <TrendingUp className="w-4 h-4 text-primary" />
             <span className="text-xs text-muted-foreground">Total Anual</span>
           </div>
-          <p className="font-display text-xl font-bold text-foreground">
+          <p className="font-display text-base sm:text-xl font-bold text-foreground truncate">
             R$ {formatCurrency(totalAnnual)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -241,7 +241,7 @@ export default function MonthlyRevenueBlock({ userId, onAverageChange }: Monthly
           </p>
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 rounded-lg p-4 border border-emerald-500/20">
+        <div className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 rounded-lg p-3 sm:p-4 border border-emerald-500/20">
           <div className="flex items-center gap-2 mb-1">
             <Calculator className="w-4 h-4 text-emerald-500" />
             <span className="text-xs text-muted-foreground">Média Mensal</span>
@@ -256,7 +256,7 @@ export default function MonthlyRevenueBlock({ userId, onAverageChange }: Monthly
               </Tooltip>
             </TooltipProvider>
           </div>
-          <p className="font-display text-xl font-bold text-emerald-600">
+          <p className="font-display text-base sm:text-xl font-bold text-emerald-600 truncate">
             {effectiveAverage !== null ? `R$ ${formatCurrency(effectiveAverage)}` : "—"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -264,12 +264,12 @@ export default function MonthlyRevenueBlock({ userId, onAverageChange }: Monthly
           </p>
         </div>
 
-        <div className="bg-muted/50 rounded-lg p-4 border border-border">
+        <div className="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border">
           <div className="flex items-center gap-2 mb-1">
             <Calendar className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Projeção Anual</span>
           </div>
-          <p className="font-display text-xl font-bold text-foreground">
+          <p className="font-display text-base sm:text-xl font-bold text-foreground truncate">
             {effectiveAverage !== null ? `R$ ${formatCurrency(effectiveAverage * 12)}` : "—"}
           </p>
           <p className="text-xs text-muted-foreground mt-1">com base na média</p>
