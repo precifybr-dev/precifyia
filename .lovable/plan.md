@@ -1,88 +1,122 @@
 
-# Corrigir vazamento de dados no Dashboard entre lojas
 
-## Problema
+# Melhorias no Modulo de Combos Inteligentes
 
-O Dashboard da loja 2 e 3 mostra dados da loja 1 porque varias queries nao filtram por `storeId`:
+## Resumo das Mudancas
 
-1. **Faturamento Mensal (linha 192)**: busca de `profileData.monthly_revenue` (global) em vez de `stores.monthly_revenue` (por loja)
-2. **OnboardingProgress (linhas 41-44)**: contagem de insumos nao filtra por `store_id`, mostrando "66 insumos" da loja 1 em todas as lojas
-3. **Existing ingredients (linhas 116-118)**: busca para o modal de importacao tambem nao filtra por `store_id`
-4. **Business name no onboarding**: usa `profile.business_name` (global) em vez de `activeStore.name`
+O combo gerado pela IA passara a incluir informacoes mais detalhadas e uteis: precos separados (balcao e iFood), custos discriminados por item, ingredientes do item principal na descricao, e taxas/impostos ja aplicados automaticamente.
 
-## Solucao
+---
 
-### Arquivo 1: `src/pages/Dashboard.tsx`
+## 1. Precos de Venda Separados (Balcao + iFood)
 
-**Linha 192** - Buscar faturamento da loja ativa:
-```
-// Antes:
-setMonthlyRevenue(profileData?.monthly_revenue || 0);
+Atualmente o combo mostra apenas um "Preco Combo". A mudanca adicionara:
+- **Preco Balcao**: preco sugerido para venda direta
+- **Preco iFood**: preco ajustado com as taxas do iFood (comissao + repasse) ja embutidas
 
-// Depois:
-if (storeId) {
-  const { data: storeData } = await supabase
-    .from("stores")
-    .select("monthly_revenue")
-    .eq("id", storeId)
-    .maybeSingle();
-  setMonthlyRevenue(storeData?.monthly_revenue ? Number(storeData.monthly_revenue) : 0);
-} else {
-  setMonthlyRevenue(profileData?.monthly_revenue || 0);
-}
-```
+A IA recebera os dados de taxas/percentuais do iFood configurados na area de negocio do usuario para calcular o preco iFood automaticamente.
 
-**Linhas 116-118** - Filtrar ingredients existentes por loja:
-```
-let ingListQuery = supabase.from("ingredients").select("name").eq("user_id", session.user.id);
-if (activeStore?.id) ingListQuery = ingListQuery.eq("store_id", activeStore.id);
-const { data: ingData } = await ingListQuery;
-```
+## 2. Custos Detalhados por Item
 
-**Linha 581** - Passar `storeId` para OnboardingProgress:
-```
-<OnboardingProgress profile={profile} userId={user?.id} storeId={activeStore?.id} />
-```
+Atualmente o "Custo Total" mostra apenas a soma (ex: R$ 3,19). A mudanca:
+- Cada item do combo passara a mostrar seu custo individual visivel
+- O card expandido mostrara "Custo: R$ X,XX" ao lado de cada item
+- O resumo financeiro tera breakdown: custo do principal, custo da isca, etc.
 
-**Linha 83** - Usar nome da loja ativa no onboarding progress description:
-Isso sera feito passando o `activeStore` para que o nome correto apareca.
+## 3. Descricao com Ingredientes do Item Principal
 
-### Arquivo 2: `src/components/dashboard/OnboardingProgress.tsx`
+A IA passara a receber os ingredientes de cada receita e criara descricoes que incluam os componentes reais. Exemplo:
+- Antes: "Sua fome nao tem chance! Um Xis Bacon suculento com Coca-Cola gelada"
+- Depois: "Xis Bacon com hamburguer artesanal 180g, bacon crocante, queijo cheddar, alface, tomate e molho especial + Coca-Cola 310ml gelada. Combo irresistivel pro seu delivery!"
 
-- Aceitar prop `storeId` opcional
-- Filtrar contagem de insumos por `store_id` quando disponivel
-- Usar o nome da loja ativa (via prop) em vez de `profile.business_name`
+## 4. Custo por Geracao (Confirmacao)
 
-```
-// Antes:
-const { count: ingCount } = await supabase
-  .from("ingredients")
-  .select("*", { count: "exact", head: true })
-  .eq("user_id", userId);
-
-// Depois:
-let ingQuery = supabase
-  .from("ingredients")
-  .select("*", { count: "exact", head: true })
-  .eq("user_id", userId);
-if (storeId) ingQuery = ingQuery.eq("store_id", storeId);
-const { count: ingCount } = await ingQuery;
-```
+- **Combo (generate-combo)**: ~R$ 0,005 por geracao (Gemini 2.5 Flash, ~1500 tokens)
+- **Estrategia de Topo (generate-menu-strategy)**: ~R$ 0,005 por geracao (Gemini 2.5 Flash)
+- Total estimado ate o momento: desprezivel (~centavos)
 
 ---
 
 ## Secao Tecnica
 
-### Dashboard.tsx - Alteracoes
+### Arquivo 1: `supabase/functions/generate-combo/index.ts`
 
-1. **fetchMetrics (linha 152-193)**: Substituir `profileData?.monthly_revenue` por query em `stores.monthly_revenue` quando `storeId` existir
-2. **checkAuthAndOnboarding (linhas 115-119)**: Adicionar filtro `store_id` na busca de ingredientes existentes
-3. **OnboardingProgress (linha 581)**: Passar `storeId={activeStore?.id}` e `storeName={activeStore?.name}`
-4. **useEffect de re-fetch (linhas 146-150)**: Tambem re-fetch `existingIngredients` quando loja mudar
+**Mudanca 1 - Buscar ingredientes das receitas (apos linha 116)**:
+```typescript
+// Buscar ingredientes de cada receita para contexto da descricao
+const recipeIds = recipes.map(r => r.id);
+const { data: recipeIngredientsData } = await supabaseAdmin
+  .from("recipe_ingredients")
+  .select("recipe_id, ingredient_id, quantity, unit, cost, ingredients(name)")
+  .in("recipe_id", recipeIds);
+```
 
-### OnboardingProgress.tsx - Alteracoes
+**Mudanca 2 - Buscar taxas/fees do usuario (apos profileRes)**:
+```typescript
+// Buscar taxas e fees do iFood configuradas
+const [taxesRes, cardFeesRes] = await Promise.all([
+  supabaseAdmin.from("taxes").select("*").eq("user_id", user.id),
+  supabaseAdmin.from("card_fees").select("*").eq("user_id", user.id),
+]);
+```
 
-1. Adicionar `storeId?: string` e `storeName?: string` ao tipo `OnboardingProgressProps`
-2. Filtrar `ingredients` por `store_id` no `fetchCounts`
-3. Adicionar `storeId` como dependencia do `useEffect`
-4. Usar `storeName || profile?.business_name` na descricao do passo "Configurar Negocio"
+**Mudanca 3 - Incluir ingredientes no contexto de receitas para a IA**:
+```typescript
+const recipesContext = filteredRecipes.map((r) => ({
+  name: r.name,
+  cost: r.cost_per_serving ?? r.total_cost,
+  sellingPrice: r.selling_price || r.suggested_price,
+  ifoodPrice: r.ifood_selling_price,
+  servings: r.servings,
+  ingredients: recipeIngredientsData
+    ?.filter(ri => ri.recipe_id === r.id)
+    .map(ri => `${ri.ingredients?.name} (${ri.quantity}${ri.unit})`) || [],
+}));
+```
+
+**Mudanca 4 - Atualizar prompt da IA** para:
+- Incluir ingredientes na descricao do combo
+- Gerar dois precos: `combo_price_counter` (balcao) e `combo_price_ifood` (iFood)
+- Informar as taxas do iFood configuradas pelo usuario
+- Pedir breakdown de custos por item
+
+**Mudanca 5 - Atualizar tool schema** adicionando campos:
+```typescript
+combo_price_counter: { type: "number", description: "Preco de venda no balcao" },
+combo_price_ifood: { type: "number", description: "Preco de venda no iFood (com taxas embutidas)" },
+```
+
+**Mudanca 6 - Salvar novos campos no banco** (combo_price se mantém como o balcão, adiciona campo ifood).
+
+### Arquivo 2: Migracao SQL
+
+Adicionar colunas a tabela `combos`:
+```sql
+ALTER TABLE combos ADD COLUMN IF NOT EXISTS combo_price_ifood numeric DEFAULT 0;
+ALTER TABLE combos ADD COLUMN IF NOT EXISTS ingredients_description text;
+```
+
+### Arquivo 3: `src/hooks/useCombos.ts`
+
+- Adicionar `combo_price_ifood` e `ingredients_description` ao tipo `Combo`
+- Incluir esses campos no select
+
+### Arquivo 4: `src/components/combos/ComboHistoryList.tsx`
+
+**Mudanca 1 - Mostrar custo individual por item**:
+Adicionar `formatCurrency(item.cost)` ao lado de cada item na lista expandida.
+
+**Mudanca 2 - Grid financeiro expandido**:
+Substituir o grid de 4 colunas por 5-6 cards:
+- Individual | Preco Balcao | Preco iFood | Custo Total | Lucro | Margem
+
+**Mudanca 3 - Exibir ingredientes na descricao**:
+Se `combo.ingredients_description` existir, mostrar abaixo da descricao principal.
+
+### Resumo de Arquivos Editados
+
+1. `supabase/functions/generate-combo/index.ts` - Buscar ingredientes + taxas, atualizar prompt, novos campos
+2. `src/hooks/useCombos.ts` - Tipos e select atualizados
+3. `src/components/combos/ComboHistoryList.tsx` - UI com custos por item, precos balcao/iFood, descricao com ingredientes
+4. Migracao SQL - Novas colunas na tabela `combos`
+
