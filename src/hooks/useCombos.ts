@@ -21,6 +21,8 @@ export interface Combo {
   status: string;
   individual_total_price: number;
   combo_price: number;
+  combo_price_ifood: number;
+  ingredients_description: string | null;
   total_cost: number;
   estimated_profit: number;
   margin_percent: number;

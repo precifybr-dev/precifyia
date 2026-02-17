@@ -895,11 +895,13 @@ export type Database = {
         Row: {
           ai_raw_response: Json | null
           combo_price: number
+          combo_price_ifood: number | null
           created_at: string
           description: string | null
           estimated_profit: number
           id: string
           individual_total_price: number
+          ingredients_description: string | null
           margin_percent: number
           name: string
           objective: string
@@ -913,11 +915,13 @@ export type Database = {
         Insert: {
           ai_raw_response?: Json | null
           combo_price?: number
+          combo_price_ifood?: number | null
           created_at?: string
           description?: string | null
           estimated_profit?: number
           id?: string
           individual_total_price?: number
+          ingredients_description?: string | null
           margin_percent?: number
           name: string
           objective: string
@@ -931,11 +935,13 @@ export type Database = {
         Update: {
           ai_raw_response?: Json | null
           combo_price?: number
+          combo_price_ifood?: number | null
           created_at?: string
           description?: string | null
           estimated_profit?: number
           id?: string
           individual_total_price?: number
+          ingredients_description?: string | null
           margin_percent?: number
           name?: string
           objective?: string

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import {
   ChevronDown, ChevronUp, Trash2, DollarSign, Target,
-  FlaskConical, Sparkles,
+  FlaskConical, Sparkles, ShoppingBag, Smartphone,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,7 @@ export function ComboHistoryList({ combos, objectiveLabels, onDelete }: ComboHis
         <p className="text-sm text-muted-foreground">{combos.length} combo(s) criado(s)</p>
         {combos.map(combo => {
           const isExpanded = expandedCombo === combo.id;
+          const hasIfoodPrice = combo.combo_price_ifood > 0 && combo.combo_price_ifood !== combo.combo_price;
           return (
             <Card key={combo.id} className="overflow-hidden">
               <div
@@ -79,7 +80,16 @@ export function ComboHistoryList({ combos, objectiveLabels, onDelete }: ComboHis
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="text-right">
-                      <p className="font-bold text-foreground text-sm">{formatCurrency(combo.combo_price)}</p>
+                      <div className="flex items-center gap-1.5 justify-end">
+                        <ShoppingBag className="w-3 h-3 text-muted-foreground" />
+                        <p className="font-bold text-foreground text-sm">{formatCurrency(combo.combo_price)}</p>
+                      </div>
+                      {hasIfoodPrice && (
+                        <div className="flex items-center gap-1.5 justify-end">
+                          <Smartphone className="w-3 h-3 text-destructive" />
+                          <p className="font-bold text-destructive text-xs">{formatCurrency(combo.combo_price_ifood)}</p>
+                        </div>
+                      )}
                       <p className="text-[11px] text-success font-medium">Margem: {combo.margin_percent.toFixed(1)}%</p>
                     </div>
                     {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
@@ -89,7 +99,15 @@ export function ComboHistoryList({ combos, objectiveLabels, onDelete }: ComboHis
 
               {isExpanded && (
                 <div className="border-t border-border p-4 bg-muted/10 space-y-4">
-                  {/* Items */}
+                  {/* Ingredients description */}
+                  {combo.ingredients_description && (
+                    <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                      <p className="text-xs font-medium text-accent-foreground mb-1">🧾 Ingredientes do item principal</p>
+                      <p className="text-sm text-foreground">{combo.ingredients_description}</p>
+                    </div>
+                  )}
+
+                  {/* Items with individual costs */}
                   <div>
                     <h4 className="text-xs font-semibold mb-2 text-foreground uppercase tracking-wider">Itens do Combo</h4>
                     <div className="space-y-1.5">
@@ -100,23 +118,29 @@ export function ComboHistoryList({ combos, objectiveLabels, onDelete }: ComboHis
                             <Badge variant="outline" className="text-[10px]">{ROLE_LABELS[item.role] || item.role}</Badge>
                             {item.is_bait && <Badge className="text-[10px] bg-warning/20 text-warning-foreground border-warning/30">Isca</Badge>}
                           </div>
-                          <span className="text-sm text-muted-foreground">{formatCurrency(item.individual_price)}</span>
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className="text-muted-foreground text-xs">Custo: {formatCurrency(item.cost)}</span>
+                            <span className="text-foreground font-medium">{formatCurrency(item.individual_price)}</span>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  {/* Financial */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {/* Financial grid - expanded with dual pricing */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {[
-                      { label: "Individual", value: combo.individual_total_price, cls: "" },
-                      { label: "Preço Combo", value: combo.combo_price, cls: "bg-primary/5 border-primary/20 text-primary" },
+                      { label: "Soma Individual", value: combo.individual_total_price, cls: "" },
+                      { label: "Preço Balcão", value: combo.combo_price, cls: "bg-primary/5 border-primary/20 text-primary", icon: <ShoppingBag className="w-3 h-3 mx-auto mb-0.5 opacity-60" /> },
+                      ...(hasIfoodPrice ? [{ label: "Preço iFood", value: combo.combo_price_ifood, cls: "bg-destructive/5 border-destructive/20 text-destructive", icon: <Smartphone className="w-3 h-3 mx-auto mb-0.5 opacity-60" /> }] : []),
                       { label: "Custo Total", value: combo.total_cost, cls: "" },
                       { label: "Lucro", value: combo.estimated_profit, cls: "bg-success/5 border-success/20 text-success" },
+                      { label: "Margem", value: null, cls: "", display: `${combo.margin_percent.toFixed(1)}%` },
                     ].map(s => (
                       <div key={s.label} className={cn("p-3 rounded-lg bg-background border border-border text-center", s.cls)}>
+                        {'icon' in s && s.icon}
                         <p className="text-[10px] opacity-70">{s.label}</p>
-                        <p className="font-bold text-sm">{formatCurrency(s.value)}</p>
+                        <p className="font-bold text-sm">{'display' in s && s.display ? s.display : formatCurrency(s.value as number)}</p>
                       </div>
                     ))}
                   </div>
