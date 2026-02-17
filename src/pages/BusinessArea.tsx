@@ -452,9 +452,9 @@ export default function BusinessArea() {
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Faturamento Mensal</p>
-                      <p className="font-display text-2xl font-bold text-foreground">
-                        {profile?.monthly_revenue 
-                          ? `R$ ${Number(profile.monthly_revenue).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
+                       <p className="font-display text-2xl font-bold text-foreground">
+                        {calculatedMonthlyRevenue !== null
+                          ? `R$ ${calculatedMonthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
                           : "Não informado"}
                       </p>
                     </div>
@@ -582,7 +582,6 @@ export default function BusinessArea() {
               storeId={activeStore?.id}
               onAverageChange={(avg) => {
                 setCalculatedMonthlyRevenue(avg);
-                setProfile((prev: any) => prev ? { ...prev, monthly_revenue: avg } : prev);
                 calculateMetrics(activeStore?.id);
               }}
             />
