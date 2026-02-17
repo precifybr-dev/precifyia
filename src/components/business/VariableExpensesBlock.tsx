@@ -33,7 +33,8 @@ export default function VariableExpensesBlock({ userId, storeId, monthlyRevenue,
       .from("variable_expenses")
       .select("*")
       .eq("user_id", userId);
-    if (storeId) query = query.or(`store_id.eq.${storeId},store_id.is.null`);
+    if (storeId) query = query.eq("store_id", storeId);
+    else query = query.is("store_id", null);
     const { data, error } = await query.order("created_at", { ascending: true });
 
     if (error) {
