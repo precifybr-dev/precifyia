@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
 
     // ─── Fetch all data in parallel ───
     const storeFilter = (query: any) => {
-      if (storeId) return query.or(`store_id.eq.${storeId},store_id.is.null`);
+      if (storeId) return query.eq("store_id", storeId);
       return query.is("store_id", null);
     };
 

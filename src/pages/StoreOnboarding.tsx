@@ -9,7 +9,8 @@ import {
   Check, 
   ChevronRight,
   ArrowLeft,
-  Sparkles
+  Sparkles,
+  Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -105,7 +106,7 @@ export default function StoreOnboarding() {
       title: "Configurar Taxas",
       description: "Configure taxas do iFood, delivery e cardápio digital",
       path: "/business",
-      isCompleted: false, // Could be based on profile data
+      isCompleted: false,
     },
     {
       id: "pricing",
@@ -117,10 +118,17 @@ export default function StoreOnboarding() {
     },
   ];
 
+  // Sequential unlock: step is locked if previous step is not completed
+  const stepsWithLock = steps.map((step, index) => ({
+    ...step,
+    isLocked: index > 0 && !steps[index - 1].isCompleted,
+  }));
+
   const completedSteps = steps.filter(s => s.isCompleted).length;
   const progressPercentage = Math.round((completedSteps / steps.length) * 100);
 
-  const handleStepClick = (path: string) => {
+  const handleStepClick = (path: string, isLocked: boolean) => {
+    if (isLocked) return;
     navigate(path);
   };
 
@@ -198,24 +206,30 @@ export default function StoreOnboarding() {
 
         {/* Steps List */}
         <div className="space-y-3">
-          {steps.map((step, index) => (
+          {stepsWithLock.map((step, index) => (
             <div
               key={step.id}
-              className={`flex items-center gap-4 p-4 rounded-xl border transition-all cursor-pointer hover:bg-muted/50 ${
-                step.isCompleted 
-                  ? "border-success/30 bg-success/5" 
-                  : "border-border hover:border-primary/30"
+              className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+                step.isLocked
+                  ? "border-border opacity-50 cursor-not-allowed"
+                  : step.isCompleted 
+                    ? "border-success/30 bg-success/5 cursor-pointer hover:bg-muted/50" 
+                    : "border-border hover:border-primary/30 cursor-pointer hover:bg-muted/50"
               }`}
-              onClick={() => handleStepClick(step.path)}
+              onClick={() => handleStepClick(step.path, step.isLocked)}
             >
               {/* Step Number / Status */}
               <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                 step.isCompleted 
                   ? "bg-success text-success-foreground" 
-                  : "bg-muted text-muted-foreground"
+                  : step.isLocked
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-muted text-muted-foreground"
               }`}>
                 {step.isCompleted ? (
                   <Check className="w-5 h-5" />
+                ) : step.isLocked ? (
+                  <Lock className="w-4 h-4" />
                 ) : (
                   <span className="font-semibold">{index + 1}</span>
                 )}
@@ -224,13 +238,13 @@ export default function StoreOnboarding() {
               {/* Step Content */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <step.icon className={`w-4 h-4 ${step.isCompleted ? "text-success" : "text-primary"}`} />
-                  <h4 className={`font-medium ${step.isCompleted ? "text-success" : "text-foreground"}`}>
+                  <step.icon className={`w-4 h-4 ${step.isCompleted ? "text-success" : step.isLocked ? "text-muted-foreground" : "text-primary"}`} />
+                  <h4 className={`font-medium ${step.isCompleted ? "text-success" : step.isLocked ? "text-muted-foreground" : "text-foreground"}`}>
                     {step.title}
                   </h4>
                 </div>
                 <p className="text-sm text-muted-foreground truncate">
-                  {step.description}
+                  {step.isLocked ? "Complete o passo anterior para desbloquear" : step.description}
                 </p>
               </div>
 
@@ -239,13 +253,19 @@ export default function StoreOnboarding() {
                 variant={step.isCompleted ? "outline" : "default"}
                 size="sm"
                 className="shrink-0"
+                disabled={step.isLocked}
                 onClick={(e) => {
                   e.stopPropagation();
-                  handleStepClick(step.path);
+                  handleStepClick(step.path, step.isLocked);
                 }}
               >
-                {step.isCompleted ? "Ver" : "Iniciar"}
-                <ChevronRight className="w-4 h-4 ml-1" />
+                {step.isLocked ? (
+                  <><Lock className="w-4 h-4 mr-1" /> Bloqueado</>
+                ) : step.isCompleted ? (
+                  <>Ver <ChevronRight className="w-4 h-4 ml-1" /></>
+                ) : (
+                  <>Iniciar <ChevronRight className="w-4 h-4 ml-1" /></>
+                )}
               </Button>
             </div>
           ))}
