@@ -623,9 +623,9 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                   <SelectValue placeholder="Selecione um plano" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="free">Gratuito</SelectItem>
-                  <SelectItem value="basic">Básico - R$ 29,90/mês</SelectItem>
-                  <SelectItem value="pro">Pro - R$ 59,90/mês</SelectItem>
+                  <SelectItem value="teste">Teste - Grátis</SelectItem>
+                  <SelectItem value="essencial">Essencial - R$ 97,00/mês</SelectItem>
+                  <SelectItem value="pro">Pro - R$ 147,00/mês</SelectItem>
                 </SelectContent>
               </Select>
             </div>
