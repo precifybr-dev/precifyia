@@ -98,15 +98,15 @@ export function AppRoute({ children }: AppRouteProps) {
     // Check for impersonation session
     const checkImpersonation = () => {
       try {
-        const stored = sessionStorage.getItem("impersonation");
+        const stored = sessionStorage.getItem("support_session");
         if (stored) {
           const session = JSON.parse(stored);
           const startedAt = new Date(session.startedAt);
           const now = new Date();
-          const hoursDiff = (now.getTime() - startedAt.getTime()) / (1000 * 60 * 60);
+          const minutesDiff = (now.getTime() - startedAt.getTime()) / (1000 * 60);
           
-          // Valid impersonation session (less than 2 hours)
-          if (hoursDiff < 2 && session.targetUser) {
+          // Valid impersonation session (less than maxDurationMinutes)
+          if (minutesDiff < (session.maxDurationMinutes || 30) && session.targetUser) {
             setIsImpersonating(true);
             return;
           }
@@ -127,7 +127,19 @@ export function AppRoute({ children }: AppRouteProps) {
       }
     );
 
-    return () => subscription.unsubscribe();
+    // Listen for storage changes (in case of multi-tab)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === "support_session") {
+        checkImpersonation();
+      }
+    };
+    
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      subscription.unsubscribe();
+      window.removeEventListener("storage", handleStorageChange);
+    };
   }, []);
 
   // Show loading while checking auth status
