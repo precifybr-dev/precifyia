@@ -52,7 +52,7 @@ export default function TotalBusinessCostBlock({
       <div className="bg-card rounded-xl border border-border p-6 shadow-card">
         <div className="animate-pulse space-y-4">
           <div className="h-6 bg-muted rounded w-1/3" />
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="h-20 bg-muted rounded" />
             <div className="h-20 bg-muted rounded" />
             <div className="h-20 bg-muted rounded" />
@@ -134,13 +134,13 @@ export default function TotalBusinessCostBlock({
       )}
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="text-center p-4 bg-rose-500/10 rounded-lg border border-rose-500/20">
           <div className="flex items-center justify-center gap-2 mb-2">
             <Receipt className="w-4 h-4 text-rose-500" />
             <span className="text-sm text-muted-foreground">Desp. Fixas</span>
           </div>
-          <p className={`font-display text-2xl font-bold ${fixedExpensesPercent !== null ? 'text-rose-600' : 'text-muted-foreground'}`}>
+          <p className={`font-display text-xl sm:text-2xl font-bold truncate ${fixedExpensesPercent !== null ? 'text-rose-600' : 'text-muted-foreground'}`}>
             {formatPercent(fixedExpensesPercent)}
           </p>
         </div>
@@ -150,7 +150,7 @@ export default function TotalBusinessCostBlock({
             <TrendingDown className="w-4 h-4 text-orange-500" />
             <span className="text-sm text-muted-foreground">Desp. Variáveis</span>
           </div>
-          <p className={`font-display text-2xl font-bold ${variableExpensesPercent !== null ? 'text-orange-600' : 'text-muted-foreground'}`}>
+          <p className={`font-display text-xl sm:text-2xl font-bold truncate ${variableExpensesPercent !== null ? 'text-orange-600' : 'text-muted-foreground'}`}>
             {formatPercent(variableExpensesPercent)}
           </p>
         </div>
@@ -160,7 +160,7 @@ export default function TotalBusinessCostBlock({
             <PieChart className={`w-4 h-4 ${isOverLimit ? 'text-destructive' : 'text-primary'}`} />
             <span className="text-sm text-muted-foreground">Total</span>
           </div>
-          <p className={`font-display text-2xl font-bold ${totalExpensesPercent !== null ? (isOverLimit ? 'text-destructive' : 'text-primary') : 'text-muted-foreground'}`}>
+          <p className={`font-display text-xl sm:text-2xl font-bold truncate ${totalExpensesPercent !== null ? (isOverLimit ? 'text-destructive' : 'text-primary') : 'text-muted-foreground'}`}>
             {formatPercent(totalExpensesPercent)}
           </p>
         </div>
