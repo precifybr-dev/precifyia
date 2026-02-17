@@ -304,6 +304,17 @@ Deno.serve(async (req) => {
 
     const taxPercentage = taxData?.tax_percentage ? Number(taxData.tax_percentage) : 0;
 
+    // Fetch average card fee
+    const { data: cardFeesData } = await supabase
+      .from("card_fees")
+      .select("fee_percentage")
+      .eq("user_id", user.id);
+
+    let averageCardFee = 0;
+    if (cardFeesData && cardFeesData.length > 0) {
+      averageCardFee = cardFeesData.reduce((s: number, f: any) => s + Number(f.fee_percentage), 0) / cardFeesData.length;
+    }
+
     // ─── 3. Server-side calculations ───
 
     // Calculate ingredient costs using server-side prices
@@ -375,7 +386,8 @@ Deno.serve(async (req) => {
     // ─── Net Profit - LOJA ───
     const productionCostValue = finalSellingPrice * (productionCostsPercent || 0) / 100;
     const taxValue = finalSellingPrice * taxPercentage / 100;
-    const netProfitLoja = finalSellingPrice - costWithLoss - productionCostValue - taxValue;
+    const cardFeeValueLoja = finalSellingPrice * averageCardFee / 100;
+    const netProfitLoja = finalSellingPrice - costWithLoss - productionCostValue - taxValue - cardFeeValueLoja;
     const netProfitLojaPercent = finalSellingPrice > 0 ? (netProfitLoja / finalSellingPrice) * 100 : 0;
 
     // ─── Net Profit - IFOOD ───
@@ -397,7 +409,7 @@ Deno.serve(async (req) => {
       suggestedPrice, finalSellingPrice, actualCMV, grossMargin, grossMarginPercent,
       discountedPrice, ifoodPrice, netProfitLoja, netProfitLojaPercent,
       ifoodNetProfit, ifoodNetProfitPercent, ifoodFeeValue, ifoodNetRevenue,
-      productionCostValue, taxValue, suggestedIfoodPrice, calculatedIfoodPrice,
+      productionCostValue, taxValue, cardFeeValueLoja, suggestedIfoodPrice, calculatedIfoodPrice,
     };
 
     for (const [key, v] of Object.entries(allOutputs)) {
@@ -451,6 +463,8 @@ Deno.serve(async (req) => {
       // Net Profit - Loja
       production_costs_percent: productionCostsPercent !== null ? parseFloat(productionCostsPercent.toFixed(2)) : null,
       tax_percentage: taxPercentage,
+      average_card_fee: parseFloat(averageCardFee.toFixed(2)),
+      card_fee_value_loja: parseFloat(cardFeeValueLoja.toFixed(2)),
       production_cost_value_loja: parseFloat(productionCostValue.toFixed(2)),
       tax_value_loja: parseFloat(taxValue.toFixed(2)),
       net_profit_loja: parseFloat(netProfitLoja.toFixed(2)),
@@ -500,6 +514,7 @@ Deno.serve(async (req) => {
         global_ifood_rate: globalIfoodRate,
         production_costs_percent: productionCostsPercent,
         tax_percentage: taxPercentage,
+        average_card_fee: averageCardFee,
       },
       output_snapshot: result,
     }).then(({ error }) => {

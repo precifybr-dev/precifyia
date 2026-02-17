@@ -100,9 +100,7 @@ export default function BusinessArea() {
   const [formData, setFormData] = useState({
     business_name: "",
     business_type: "",
-    tax_regime: "",
     default_cmv: "",
-    monthly_revenue: "",
   });
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
@@ -186,9 +184,7 @@ export default function BusinessArea() {
       setFormData({
         business_name: profileData.business_name || "",
         business_type: profileData.business_type || "",
-        tax_regime: profileData.tax_regime || "",
         default_cmv: profileData.default_cmv?.toString() || "",
-        monthly_revenue: profileData.monthly_revenue?.toString() || "",
       });
       
       await fetchMetrics(session.user.id, activeStore?.id);
@@ -227,9 +223,7 @@ export default function BusinessArea() {
       .update({
         business_name: formData.business_name,
         business_type: formData.business_type,
-        tax_regime: formData.tax_regime,
         default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
-        monthly_revenue: formData.monthly_revenue ? parseFloat(formData.monthly_revenue) : null,
       })
       .eq("user_id", user.id);
 
@@ -240,9 +234,7 @@ export default function BusinessArea() {
         ...profile,
         business_name: formData.business_name,
         business_type: formData.business_type,
-        tax_regime: formData.tax_regime,
         default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
-        monthly_revenue: formData.monthly_revenue ? parseFloat(formData.monthly_revenue) : null,
       });
       toast({ title: "Sucesso!", description: "Configurações atualizadas" });
       setIsEditing(false);
@@ -255,9 +247,7 @@ export default function BusinessArea() {
     setFormData({
       business_name: profile.business_name || "",
       business_type: profile.business_type || "",
-      tax_regime: profile.tax_regime || "",
       default_cmv: profile.default_cmv?.toString() || "",
-      monthly_revenue: profile.monthly_revenue?.toString() || "",
     });
     setIsEditing(false);
   };
@@ -384,24 +374,6 @@ export default function BusinessArea() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Regime Tributário</Label>
-                  <Select 
-                    value={formData.tax_regime}
-                    onValueChange={(value) => setFormData({ ...formData, tax_regime: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {taxRegimes.map((regime) => (
-                        <SelectItem key={regime.value} value={regime.value}>
-                          {regime.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
                   <Label className="flex items-center gap-1">
                     <Percent className="w-3 h-3" />
                     CMV Desejado (Padrão)
@@ -419,27 +391,6 @@ export default function BusinessArea() {
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">%</span>
                   </div>
                   <p className="text-xs text-muted-foreground">Percentual do custo sobre o preço de venda</p>
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label className="flex items-center gap-1">
-                    <Wallet className="w-3 h-3" />
-                    Faturamento Mensal Médio
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
-                    <Input 
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.monthly_revenue}
-                      onChange={(e) => setFormData({ ...formData, monthly_revenue: e.target.value })}
-                      placeholder="10000.00"
-                      className="pl-10"
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Base para cálculo de percentuais de despesas fixas e variáveis (não interfere no preço de venda)
-                  </p>
                 </div>
               </div>
             ) : (
@@ -620,26 +571,6 @@ export default function BusinessArea() {
                 onTotalChange={(v) => { setVariableCostsTotal(v); calculateMetrics(activeStore?.id); }}
               />
             </div>
-            {businessMetrics && businessMetrics.production_costs_total > 0 && (
-              <div className="mt-4 p-4 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 rounded-lg border border-blue-500/20">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">Total Custos de Produção:</span>
-                  <div className="text-right">
-                    <span className="font-display text-xl font-bold text-foreground">
-                      {businessMetrics.production_costs_percent !== null ? `${businessMetrics.production_costs_percent.toFixed(2)}%` : '—'}
-                    </span>
-                    <span className="text-sm text-muted-foreground ml-2">
-                      (R$ {businessMetrics.production_costs_total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/mês)
-                    </span>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {businessMetrics.production_costs_percent !== null
-                    ? 'Percentual rateado sobre o faturamento mensal — aplicado sobre o preço de venda nas fichas técnicas'
-                    : 'Informe o faturamento mensal para calcular o percentual de rateio'}
-                </p>
-              </div>
-            )}
           </div>
 
           {/* ========== SECTION: Business Expenses (monthly) ========== */}

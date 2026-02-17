@@ -595,7 +595,9 @@ export default function PricingSummaryPanel({
         const effectivePrice = pricingResult?.final_selling_price ?? (parseFloat(sellingPrice) || suggestedPrice);
         const productionCostValue = pricingResult?.production_cost_value_loja ?? (effectivePrice * (productionCostsPercent || 0) / 100);
         const taxValue = pricingResult?.tax_value_loja ?? (effectivePrice * (taxPercentage || 0) / 100);
-        const netProfit = pricingResult?.net_profit_loja ?? (effectivePrice - costWithLoss - productionCostValue - taxValue);
+        const cardFeeValue = pricingResult?.card_fee_value_loja ?? 0;
+        const cardFeePercent = pricingResult?.average_card_fee ?? 0;
+        const netProfit = pricingResult?.net_profit_loja ?? (effectivePrice - costWithLoss - productionCostValue - taxValue - cardFeeValue);
         const netProfitPercent = pricingResult?.net_profit_loja_percent ?? (effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0);
         const costPercent = effectivePrice > 0 ? (costWithLoss / effectivePrice) * 100 : 0;
         const taxPercent = pricingResult?.tax_percentage ?? (taxPercentage || 0);
@@ -658,13 +660,24 @@ export default function PricingSummaryPanel({
                   
                   
                   
-                  {/* NEW: Taxes Line */}
+                  {/* Taxes Line */}
                   {taxPercentage !== null && taxPercentage !== undefined && taxPercentage > 0 && (
                     <div className="flex justify-between items-center py-1 text-amber-600">
                       <span>(-) Impostos</span>
                       <div className="flex items-center gap-2">
                         <span className="font-mono">{formatCurrency(taxValue)}</span>
                         <span className="text-xs text-muted-foreground">{taxPercent.toFixed(0)}%</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Card Fee Line - Loja only */}
+                  {cardFeePercent > 0 && (
+                    <div className="flex justify-between items-center py-1 text-violet-600">
+                      <span>(-) Taxa Cartão</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">{formatCurrency(cardFeeValue)}</span>
+                        <span className="text-xs text-muted-foreground">{cardFeePercent.toFixed(1)}%</span>
                       </div>
                     </div>
                   )}
@@ -697,7 +710,8 @@ export default function PricingSummaryPanel({
                           <p>O lucro líquido mostrado aqui já considera:</p>
                           <ul className="list-disc pl-3 mt-1 space-y-0.5">
                             <li>Custos de produção rateados</li>
-                            <li>Taxas (iFood, cartões, impostos)</li>
+                            <li>Impostos sobre a venda</li>
+                            <li>Taxas de cartão (média cadastrada)</li>
                           </ul>
                           <p className="mt-1">As despesas do negócio são abatidas apenas do faturamento mensal, não por produto.</p>
                         </TooltipContent>
@@ -767,7 +781,7 @@ export default function PricingSummaryPanel({
                   
                   
                   
-                  {/* NEW: Taxes Line for iFood */}
+                  {/* Taxes Line for iFood */}
                   {taxPercentage !== null && taxPercentage !== undefined && taxPercentage > 0 && (
                     <div className="flex justify-between items-center py-1 text-amber-600">
                       <span>(-) Impostos</span>
@@ -776,6 +790,26 @@ export default function PricingSummaryPanel({
                         <span className="text-xs text-muted-foreground">{ifoodTaxPercent.toFixed(0)}%</span>
                       </div>
                     </div>
+                  )}
+
+                  {/* Card fee info for iFood */}
+                  {cardFeePercent > 0 && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="flex justify-between items-center py-1 text-violet-400/60 cursor-help">
+                            <span className="flex items-center gap-1">
+                              <Info className="w-3 h-3" />
+                              Taxa Cartão
+                            </span>
+                            <span className="text-xs italic">já inclusa na taxa iFood</span>
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-[280px] text-xs">
+                          <p>A taxa de cartão (3,2%) já está embutida na taxa real do iFood, por isso não é descontada novamente aqui.</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   )}
                   
                   <div className="border-t border-destructive/30 pt-2 mt-2">
