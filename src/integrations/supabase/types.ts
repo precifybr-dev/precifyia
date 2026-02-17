@@ -2493,6 +2493,7 @@ export type Database = {
           menu_analysis_at: string | null
           menu_cache: Json | null
           menu_cached_at: string | null
+          monthly_revenue: number | null
           name: string
           updated_at: string
           user_id: string
@@ -2508,6 +2509,7 @@ export type Database = {
           menu_analysis_at?: string | null
           menu_cache?: Json | null
           menu_cached_at?: string | null
+          monthly_revenue?: number | null
           name: string
           updated_at?: string
           user_id: string
@@ -2523,6 +2525,7 @@ export type Database = {
           menu_analysis_at?: string | null
           menu_cache?: Json | null
           menu_cached_at?: string | null
+          monthly_revenue?: number | null
           name?: string
           updated_at?: string
           user_id?: string

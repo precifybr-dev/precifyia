@@ -66,14 +66,20 @@ export default function MonthlyRevenueBlock({ userId, storeId, onAverageChange }
   };
 
   const fetchManualAverage = async () => {
-    const { data } = await supabase
-      .from("profiles")
-      .select("monthly_revenue")
-      .eq("user_id", userId)
-      .maybeSingle();
-    
-    if (data?.monthly_revenue) {
-      setManualAverage(Number(data.monthly_revenue));
+    if (storeId) {
+      const { data } = await supabase
+        .from("stores")
+        .select("monthly_revenue")
+        .eq("id", storeId)
+        .maybeSingle();
+      setManualAverage(data?.monthly_revenue ? Number(data.monthly_revenue) : null);
+    } else {
+      const { data } = await supabase
+        .from("profiles")
+        .select("monthly_revenue")
+        .eq("user_id", userId)
+        .maybeSingle();
+      setManualAverage(data?.monthly_revenue ? Number(data.monthly_revenue) : null);
     }
   };
 
@@ -159,10 +165,9 @@ export default function MonthlyRevenueBlock({ userId, storeId, onAverageChange }
       return;
     }
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({ monthly_revenue: value })
-      .eq("user_id", userId);
+    const { error } = storeId
+      ? await supabase.from("stores").update({ monthly_revenue: value }).eq("id", storeId)
+      : await supabase.from("profiles").update({ monthly_revenue: value }).eq("user_id", userId);
 
     if (error) {
       toast({ title: "Erro", description: "Não foi possível salvar", variant: "destructive" });
