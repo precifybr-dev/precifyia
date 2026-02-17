@@ -154,7 +154,7 @@ export function HeroSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="max-w-3xl mx-auto text-center animate-slide-up">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-foreground leading-tight mb-6">
-            Você pode estar perdendo até 20% de lucro no iFood{" "}
+            Você pode estar perdendo até 20% de lucro no <span className="text-[#EA1D2C]">iFood</span>{" "}
             <span className="text-gradient">sem perceber.</span>
           </h1>
 
