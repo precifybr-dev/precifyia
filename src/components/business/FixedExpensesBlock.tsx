@@ -180,29 +180,29 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
-        <div className="bg-gradient-to-br from-rose-500/10 to-rose-500/5 rounded-lg p-4 border border-rose-500/20">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+        <div className="bg-gradient-to-br from-rose-500/10 to-rose-500/5 rounded-lg p-3 sm:p-4 border border-rose-500/20">
           <div className="flex items-center gap-2 mb-1">
             <DollarSign className="w-4 h-4 text-rose-500" />
             <span className="text-xs text-muted-foreground">Total</span>
           </div>
-          <p className="font-display text-xl font-bold text-foreground">
+          <p className="font-display text-base sm:text-xl font-bold text-foreground truncate">
             R$ {formatCurrency(totalExpenses)}
           </p>
         </div>
-        <div className="bg-muted/50 rounded-lg p-4 border border-border">
+        <div className="bg-muted/50 rounded-lg p-3 sm:p-4 border border-border">
           <div className="flex items-center gap-2 mb-1">
             <Percent className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">Do Total</span>
           </div>
-          <p className="font-display text-xl font-bold text-foreground">100%</p>
+          <p className="font-display text-base sm:text-xl font-bold text-foreground">100%</p>
         </div>
-        <div className={`rounded-lg p-4 border ${percentOfRevenue !== null ? 'bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20' : 'bg-muted/50 border-border'}`}>
+        <div className={`rounded-lg p-3 sm:p-4 border ${percentOfRevenue !== null ? 'bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20' : 'bg-muted/50 border-border'}`}>
           <div className="flex items-center gap-2 mb-1">
             <Percent className="w-4 h-4 text-amber-500" />
             <span className="text-xs text-muted-foreground">Do Faturamento</span>
           </div>
-          <p className={`font-display text-xl font-bold ${percentOfRevenue !== null ? 'text-amber-600' : 'text-muted-foreground'}`}>
+          <p className={`font-display text-base sm:text-xl font-bold truncate ${percentOfRevenue !== null ? 'text-amber-600' : 'text-muted-foreground'}`}>
             {percentOfRevenue !== null ? `${percentOfRevenue.toFixed(1)}%` : "—"}
           </p>
           {percentOfRevenue === null && (

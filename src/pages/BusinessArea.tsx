@@ -579,6 +579,7 @@ export default function BusinessArea() {
           <div className="mt-8">
             <MonthlyRevenueBlock 
               userId={user?.id}
+              storeId={activeStore?.id}
               onAverageChange={(avg) => {
                 setCalculatedMonthlyRevenue(avg);
                 setProfile((prev: any) => prev ? { ...prev, monthly_revenue: avg } : prev);

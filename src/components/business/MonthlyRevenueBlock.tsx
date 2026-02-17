@@ -20,6 +20,7 @@ interface MonthlyRevenue {
 
 interface MonthlyRevenueBlockProps {
   userId: string;
+  storeId?: string | null;
   onAverageChange?: (average: number) => void;
 }
 
@@ -33,7 +34,7 @@ const MONTH_ABBREVIATIONS = [
   "Jul", "Ago", "Set", "Out", "Nov", "Dez"
 ];
 
-export default function MonthlyRevenueBlock({ userId, onAverageChange }: MonthlyRevenueBlockProps) {
+export default function MonthlyRevenueBlock({ userId, storeId, onAverageChange }: MonthlyRevenueBlockProps) {
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [revenues, setRevenues] = useState<MonthlyRevenue[]>([]);
@@ -47,12 +48,14 @@ export default function MonthlyRevenueBlock({ userId, onAverageChange }: Monthly
   const { toast } = useToast();
 
   const fetchRevenues = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from("monthly_revenues")
       .select("*")
       .eq("user_id", userId)
-      .eq("year", selectedYear)
-      .order("month", { ascending: true });
+      .eq("year", selectedYear);
+    if (storeId) query = query.eq("store_id", storeId);
+    else query = query.is("store_id", null);
+    const { data, error } = await query.order("month", { ascending: true });
 
     if (error) {
       toast({ title: "Erro", description: "Não foi possível carregar os faturamentos", variant: "destructive" });
@@ -79,7 +82,7 @@ export default function MonthlyRevenueBlock({ userId, onAverageChange }: Monthly
       fetchRevenues();
       fetchManualAverage();
     }
-  }, [userId, selectedYear]);
+  }, [userId, selectedYear, storeId]);
 
   // Calculate totals
   const filledMonths = revenues.filter(r => r.value > 0);
@@ -128,6 +131,7 @@ export default function MonthlyRevenueBlock({ userId, onAverageChange }: Monthly
         .from("monthly_revenues")
         .insert({
           user_id: userId,
+          store_id: storeId || null,
           year: selectedYear,
           month,
           value,
