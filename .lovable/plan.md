@@ -1,122 +1,101 @@
 
 
-# Melhorias no Modulo de Combos Inteligentes
+# Vincular Taxa de Cartao a Ficha Tecnica (Somente Loja)
 
-## Resumo das Mudancas
+## Contexto
 
-O combo gerado pela IA passara a incluir informacoes mais detalhadas e uteis: precos separados (balcao e iFood), custos discriminados por item, ingredientes do item principal na descricao, e taxas/impostos ja aplicados automaticamente.
-
----
-
-## 1. Precos de Venda Separados (Balcao + iFood)
-
-Atualmente o combo mostra apenas um "Preco Combo". A mudanca adicionara:
-- **Preco Balcao**: preco sugerido para venda direta
-- **Preco iFood**: preco ajustado com as taxas do iFood (comissao + repasse) ja embutidas
-
-A IA recebera os dados de taxas/percentuais do iFood configurados na area de negocio do usuario para calcular o preco iFood automaticamente.
-
-## 2. Custos Detalhados por Item
-
-Atualmente o "Custo Total" mostra apenas a soma (ex: R$ 3,19). A mudanca:
-- Cada item do combo passara a mostrar seu custo individual visivel
-- O card expandido mostrara "Custo: R$ X,XX" ao lado de cada item
-- O resumo financeiro tera breakdown: custo do principal, custo da isca, etc.
-
-## 3. Descricao com Ingredientes do Item Principal
-
-A IA passara a receber os ingredientes de cada receita e criara descricoes que incluam os componentes reais. Exemplo:
-- Antes: "Sua fome nao tem chance! Um Xis Bacon suculento com Coca-Cola gelada"
-- Depois: "Xis Bacon com hamburguer artesanal 180g, bacon crocante, queijo cheddar, alface, tomate e molho especial + Coca-Cola 310ml gelada. Combo irresistivel pro seu delivery!"
-
-## 4. Custo por Geracao (Confirmacao)
-
-- **Combo (generate-combo)**: ~R$ 0,005 por geracao (Gemini 2.5 Flash, ~1500 tokens)
-- **Estrategia de Topo (generate-menu-strategy)**: ~R$ 0,005 por geracao (Gemini 2.5 Flash)
-- Total estimado ate o momento: desprezivel (~centavos)
+A taxa de cartao (media das taxas cadastradas em `card_fees`) deve ser descontada do lucro liquido **apenas na venda pela Loja**. No iFood, a taxa de 3,2% do cartao ja esta embutida na taxa real do iFood (comissao + pagamento + antecipacao), portanto **nao deve ser descontada novamente**.
 
 ---
 
-## Secao Tecnica
+## Mudancas
 
-### Arquivo 1: `supabase/functions/generate-combo/index.ts`
+### 1. Backend: `supabase/functions/calculate-recipe-pricing/index.ts`
 
-**Mudanca 1 - Buscar ingredientes das receitas (apos linha 116)**:
-```typescript
-// Buscar ingredientes de cada receita para contexto da descricao
-const recipeIds = recipes.map(r => r.id);
-const { data: recipeIngredientsData } = await supabaseAdmin
-  .from("recipe_ingredients")
-  .select("recipe_id, ingredient_id, quantity, unit, cost, ingredients(name)")
-  .in("recipe_id", recipeIds);
+**Buscar taxa media de cartao** (apos buscar taxData, ~linha 305):
+- Consultar tabela `card_fees` filtrando por `user_id`
+- Calcular a media das `fee_percentage`
+
+**Aplicar taxa de cartao SOMENTE na Loja** (linha 378):
+```
+Antes:  netProfitLoja = finalSellingPrice - costWithLoss - productionCost - taxes
+Depois: netProfitLoja = finalSellingPrice - costWithLoss - productionCost - taxes - cardFeeValue
 ```
 
-**Mudanca 2 - Buscar taxas/fees do usuario (apos profileRes)**:
-```typescript
-// Buscar taxas e fees do iFood configuradas
-const [taxesRes, cardFeesRes] = await Promise.all([
-  supabaseAdmin.from("taxes").select("*").eq("user_id", user.id),
-  supabaseAdmin.from("card_fees").select("*").eq("user_id", user.id),
-]);
+**iFood permanece inalterado** (linha 386):
+```
+ifoodNetProfit = ifoodNetRevenue - costWithLoss - ifoodProductionCost - ifoodTaxValue
+(sem taxa de cartao - ja esta embutida na taxa iFood)
 ```
 
-**Mudanca 3 - Incluir ingredientes no contexto de receitas para a IA**:
-```typescript
-const recipesContext = filteredRecipes.map((r) => ({
-  name: r.name,
-  cost: r.cost_per_serving ?? r.total_cost,
-  sellingPrice: r.selling_price || r.suggested_price,
-  ifoodPrice: r.ifood_selling_price,
-  servings: r.servings,
-  ingredients: recipeIngredientsData
-    ?.filter(ri => ri.recipe_id === r.id)
-    .map(ri => `${ri.ingredients?.name} (${ri.quantity}${ri.unit})`) || [],
-}));
+**Novos campos no response**:
+- `average_card_fee` (percentual medio)
+- `card_fee_value_loja` (valor em R$ descontado)
+
+**Adicionar ao fail-safe gate** para validacao.
+
+**Adicionar ao input_snapshot** do calculation_history.
+
+### 2. Frontend: `src/hooks/useRecipePricing.ts`
+
+Adicionar ao tipo `RecipePricingResult`:
+- `average_card_fee: number`
+- `card_fee_value_loja: number`
+
+### 3. Frontend: `src/components/recipes/PricingSummaryPanel.tsx`
+
+**Loja - nova linha "(-) Taxa Cartao"**:
+- Exibir entre Impostos e Lucro Liquido
+- Mostrar valor em R$ e percentual
+- Cor: roxo/violet para diferenciar visualmente
+
+**iFood - sem mudanca**:
+- Manter calculo atual (taxa de cartao ja embutida no iFood)
+- Adicionar tooltip explicativo: "A taxa de cartao ja esta incluida na taxa iFood"
+
+**Atualizar tooltip "Como o lucro e calculado"** na Loja:
+- Incluir "Taxas de cartao" na lista de deducoes
+
+### 4. Area de Negocio: `src/pages/BusinessArea.tsx`
+
+- Remover campo `tax_regime` duplicado do formulario de Configuracoes (ja existe no bloco de Impostos)
+- Remover campo `monthly_revenue` duplicado do formulario (ja existe no MonthlyRevenueBlock)
+- Remover subtotal inline duplicado de custos de producao (~linhas 623-642)
+
+### 5. DRE: `src/components/business/SimplifiedDREBlock.tsx`
+
+Adicionar **Ponto de Equilibrio** apos o Lucro Mensal:
+- Formula: `PE = Despesas Fixas / (1 - Despesas Variaveis%/100)`
+- Exibir: "Faturamento minimo para cobrir custos: R$ X.XXX"
+
+---
+
+## Secao Tecnica - Formulas Finais
+
+```text
+LOJA:
+  Preco Venda ........................ R$ 30,00
+  (-) Custo c/ Perda ................. R$ 9,00   (CMV)
+  (-) Custos Producao (rateio) ....... R$ 1,50   (5%)
+  (-) Impostos ....................... R$ 1,80   (6%)
+  (-) Taxa Cartao .................... R$ 0,60   (2%)  << NOVO
+  (=) Lucro Liquido .................. R$ 17,10
+
+IFOOD:
+  Preco iFood ........................ R$ 41,00
+  (-) Taxa iFood ..................... R$ 11,19  (27,29% - JA INCLUI CARTAO)
+  (-) Custo c/ Perda ................. R$ 9,00
+  (-) Custos Producao ................ R$ 1,49
+  (-) Impostos ....................... R$ 1,79
+  (=) Lucro Liquido .................. R$ 17,53
+  * Taxa de cartao NAO descontada (ja embutida no iFood)
 ```
 
-**Mudanca 4 - Atualizar prompt da IA** para:
-- Incluir ingredientes na descricao do combo
-- Gerar dois precos: `combo_price_counter` (balcao) e `combo_price_ifood` (iFood)
-- Informar as taxas do iFood configuradas pelo usuario
-- Pedir breakdown de custos por item
+## Arquivos Editados
 
-**Mudanca 5 - Atualizar tool schema** adicionando campos:
-```typescript
-combo_price_counter: { type: "number", description: "Preco de venda no balcao" },
-combo_price_ifood: { type: "number", description: "Preco de venda no iFood (com taxas embutidas)" },
-```
-
-**Mudanca 6 - Salvar novos campos no banco** (combo_price se mantém como o balcão, adiciona campo ifood).
-
-### Arquivo 2: Migracao SQL
-
-Adicionar colunas a tabela `combos`:
-```sql
-ALTER TABLE combos ADD COLUMN IF NOT EXISTS combo_price_ifood numeric DEFAULT 0;
-ALTER TABLE combos ADD COLUMN IF NOT EXISTS ingredients_description text;
-```
-
-### Arquivo 3: `src/hooks/useCombos.ts`
-
-- Adicionar `combo_price_ifood` e `ingredients_description` ao tipo `Combo`
-- Incluir esses campos no select
-
-### Arquivo 4: `src/components/combos/ComboHistoryList.tsx`
-
-**Mudanca 1 - Mostrar custo individual por item**:
-Adicionar `formatCurrency(item.cost)` ao lado de cada item na lista expandida.
-
-**Mudanca 2 - Grid financeiro expandido**:
-Substituir o grid de 4 colunas por 5-6 cards:
-- Individual | Preco Balcao | Preco iFood | Custo Total | Lucro | Margem
-
-**Mudanca 3 - Exibir ingredientes na descricao**:
-Se `combo.ingredients_description` existir, mostrar abaixo da descricao principal.
-
-### Resumo de Arquivos Editados
-
-1. `supabase/functions/generate-combo/index.ts` - Buscar ingredientes + taxas, atualizar prompt, novos campos
-2. `src/hooks/useCombos.ts` - Tipos e select atualizados
-3. `src/components/combos/ComboHistoryList.tsx` - UI com custos por item, precos balcao/iFood, descricao com ingredientes
-4. Migracao SQL - Novas colunas na tabela `combos`
+1. `supabase/functions/calculate-recipe-pricing/index.ts` - Buscar e aplicar taxa cartao (somente Loja)
+2. `src/hooks/useRecipePricing.ts` - Novos campos no tipo
+3. `src/components/recipes/PricingSummaryPanel.tsx` - Exibir taxa cartao na Loja + tooltip iFood
+4. `src/pages/BusinessArea.tsx` - Remover duplicatas
+5. `src/components/business/SimplifiedDREBlock.tsx` - Ponto de equilibrio
 
