@@ -215,9 +215,9 @@ export default function BusinessArea() {
   useEffect(() => {
     if (user) {
       initialLoadDone.current = false;
+      // Reset stale metrics immediately so DRE doesn't show old store data
       calculateMetrics(activeStore?.id);
       fetchMetrics(user.id, activeStore?.id);
-      // Mark initial load done after a delay so child mount callbacks are ignored
       const timer = setTimeout(() => { initialLoadDone.current = true; }, 3000);
       return () => clearTimeout(timer);
     }

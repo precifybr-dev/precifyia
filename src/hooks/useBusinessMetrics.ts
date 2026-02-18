@@ -65,9 +65,15 @@ export function useBusinessMetrics() {
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
+    // Cancel any in-flight request for the previous store
+    if (abortRef.current) {
+      abortRef.current.abort();
+      inflightRef.current = false;
+    }
+
     debounceRef.current = setTimeout(async () => {
       if (inflightRef.current) {
-        return; // Let the current request finish; the caller can re-invoke later
+        return;
       }
 
       inflightRef.current = true;
@@ -97,6 +103,13 @@ export function useBusinessMetrics() {
           }
         );
 
+        // If store changed while request was in-flight, discard result
+        if (lastStoreRef.current !== resolvedStoreId) {
+          inflightRef.current = false;
+          setIsCalculating(false);
+          return;
+        }
+
         const data = await response.json();
 
         if (!response.ok) {
@@ -109,7 +122,6 @@ export function useBusinessMetrics() {
               debounceRef.current = setTimeout(() => calculate(lastStoreRef.current), retryAfter);
               return;
             }
-            // Max retries exceeded — stop retrying
             setError("Servidor ocupado. Aguarde alguns segundos e recarregue a página.");
             setIsCalculating(false);
             inflightRef.current = false;
@@ -121,7 +133,7 @@ export function useBusinessMetrics() {
           return;
         }
 
-        retryCountRef.current = 0; // Reset on success
+        retryCountRef.current = 0;
         setResult(data as BusinessMetricsResult);
         setError(null);
       } catch (err: any) {
