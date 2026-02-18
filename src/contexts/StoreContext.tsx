@@ -26,7 +26,7 @@ interface StoreContextType {
   canCreateStore: boolean;
   storeCount: number;
   maxStores: number;
-  setActiveStore: (store: Store | null) => void;
+  setActiveStore: (store: Store | null) => Promise<void>;
   fetchStores: (userId: string) => Promise<void>;
   createStore: (name: string, logoUrl?: string, businessType?: string) => Promise<Store | null>;
   updateStore: (storeId: string, data: Partial<Pick<Store, "name" | "logo_url" | "business_type" | "default_cmv">>) => Promise<boolean>;
@@ -122,12 +122,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, fetchStores]);
 
-  const setActiveStore = useCallback((store: Store | null) => {
-    setActiveStoreState(store);
+  const setActiveStore = useCallback(async (store: Store | null) => {
     if (store) {
       localStorage.setItem(ACTIVE_STORE_KEY, store.id);
+      setIsLoading(true);
+
+      const { data: freshStore } = await supabase
+        .from("stores")
+        .select("*")
+        .eq("id", store.id)
+        .single();
+
+      setActiveStoreState(freshStore ? (freshStore as Store) : store);
+      setIsLoading(false);
     } else {
       localStorage.removeItem(ACTIVE_STORE_KEY);
+      setActiveStoreState(null);
     }
   }, []);
 
