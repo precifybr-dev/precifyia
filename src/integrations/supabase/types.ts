@@ -1198,6 +1198,54 @@ export type Database = {
         }
         Relationships: []
       }
+      cost_allocations: {
+        Row: {
+          allocated_amount: number
+          created_at: string
+          division_type: string
+          expense_id: string
+          id: string
+          reference_month: string
+          store_id: string
+          total_stores: number
+        }
+        Insert: {
+          allocated_amount?: number
+          created_at?: string
+          division_type?: string
+          expense_id: string
+          id?: string
+          reference_month: string
+          store_id: string
+          total_stores?: number
+        }
+        Update: {
+          allocated_amount?: number
+          created_at?: string
+          division_type?: string
+          expense_id?: string
+          id?: string
+          reference_month?: string
+          store_id?: string
+          total_stores?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cost_allocations_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "fixed_expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cost_allocations_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupon_uses: {
         Row: {
           applied_discount: number
@@ -1422,33 +1470,46 @@ export type Database = {
       }
       fixed_expenses: {
         Row: {
+          cost_type: string
           created_at: string
           id: string
           monthly_value: number
           name: string
+          sharing_group_id: string | null
           store_id: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          cost_type?: string
           created_at?: string
           id?: string
           monthly_value?: number
           name: string
+          sharing_group_id?: string | null
           store_id?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          cost_type?: string
           created_at?: string
           id?: string
           monthly_value?: number
           name?: string
+          sharing_group_id?: string | null
           store_id?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "fixed_expenses_sharing_group_id_fkey"
+            columns: ["sharing_group_id"]
+            isOneToOne: false
+            referencedRelation: "sharing_groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "fixed_expenses_store_id_fkey"
             columns: ["store_id"]
@@ -2443,6 +2504,69 @@ export type Database = {
         }
         Relationships: []
       }
+      sharing_group_stores: {
+        Row: {
+          created_at: string
+          id: string
+          percentage: number | null
+          sharing_group_id: string
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          percentage?: number | null
+          sharing_group_id: string
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          percentage?: number | null
+          sharing_group_id?: string
+          store_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sharing_group_stores_sharing_group_id_fkey"
+            columns: ["sharing_group_id"]
+            isOneToOne: false
+            referencedRelation: "sharing_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sharing_group_stores_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sharing_groups: {
+        Row: {
+          created_at: string
+          division_type: string
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          division_type?: string
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          division_type?: string
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       store_members: {
         Row: {
           created_at: string
@@ -2501,6 +2625,7 @@ export type Database = {
           menu_cached_at: string | null
           monthly_revenue: number | null
           name: string
+          sharing_group_id: string | null
           updated_at: string
           user_id: string
         }
@@ -2517,6 +2642,7 @@ export type Database = {
           menu_cached_at?: string | null
           monthly_revenue?: number | null
           name: string
+          sharing_group_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -2533,10 +2659,19 @@ export type Database = {
           menu_cached_at?: string | null
           monthly_revenue?: number | null
           name?: string
+          sharing_group_id?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "stores_sharing_group_id_fkey"
+            columns: ["sharing_group_id"]
+            isOneToOne: false
+            referencedRelation: "sharing_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       strategic_usage_logs: {
         Row: {
@@ -3658,6 +3793,10 @@ export type Database = {
       }
       is_collaborator: { Args: { _user_id: string }; Returns: boolean }
       is_master: { Args: { _user_id: string }; Returns: boolean }
+      recalculate_shared_costs: {
+        Args: { p_group_id: string; p_ref_month?: string }
+        Returns: undefined
+      }
       update_collaborator_atomic: {
         Args: {
           _collaborator_id: string

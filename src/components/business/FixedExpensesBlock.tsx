@@ -32,7 +32,8 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
     let query = supabase
       .from("fixed_expenses")
       .select("*")
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .eq("cost_type", "exclusive");
     if (storeId) query = query.eq("store_id", storeId);
     else query = query.is("store_id", null);
     const { data, error } = await query.order("created_at", { ascending: true });
