@@ -24,16 +24,11 @@ import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/contexts/StoreContext";
 import { Logo } from "@/components/ui/Logo";
 import { CreateStoreModal } from "@/components/store/CreateStoreModal";
+import DOMPurify from "dompurify";
 
 const LEVEL_LABELS = { iniciante: "Iniciante", intermediario: "Intermediário", avancado: "Avançado" };
 const LEVEL_COLORS = { iniciante: "bg-emerald-500/10 text-emerald-600", intermediario: "bg-amber-500/10 text-amber-600", avancado: "bg-red-500/10 text-red-600" };
 
-function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/on\w+="[^"]*"/gi, "")
-    .replace(/on\w+='[^']*'/gi, "");
-}
 
 function isNewLesson(createdAt: string): boolean {
   const diff = Date.now() - new Date(createdAt).getTime();
@@ -189,7 +184,7 @@ export default function University() {
 
         <Card className="mb-8">
           <CardContent className="p-6 md:p-8 prose prose-sm max-w-none dark:prose-invert">
-            <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedLesson.content) }} />
+            <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedLesson.content) }} />
           </CardContent>
         </Card>
 
