@@ -1,83 +1,78 @@
 
 
-# Recarregar dados frescos ao trocar de loja
+# Corrigir DRE para carregar dados corretos por loja
 
-## Problema atual
+## Problema encontrado
 
-Quando o usuario troca de loja no StoreSwitcher, o sistema apenas atualiza o ponteiro local (`activeStore`) sem buscar dados atualizados do banco. Isso causa problemas como:
-- `sharing_group_id` desatualizado (causa raiz do bug de compartilhamento)
-- Dados em cache de uma loja "vazando" para outra
-- Necessidade de workarounds como `refreshStores()` em varios pontos do codigo
+A causa raiz do DRE exibir dados da loja 1 na loja 2 esta na **edge function `calculate-business-metrics`**: ela le o `monthly_revenue` da tabela `profiles` (valor unico do usuario), e nao da tabela `stores` (que tem `monthly_revenue` por loja).
+
+Dados no banco confirmam:
+- Tabela `stores`: "Lanches Parana" tem R$15.833, outras lojas tem R$0
+- Tabela `profiles`: R$15.833 (valor unico para todas as lojas)
+- A edge function sempre usa o valor do `profiles`, ignorando a coluna `monthly_revenue` da loja
+
+Alem disso, despesas legadas (sem `store_id`) nao aparecem em nenhuma loja quando filtradas por `store_id`.
 
 ## Solucao
 
-Transformar a troca de loja em uma operacao que sempre busca dados frescos do banco, garantindo isolamento total entre lojas.
+### 1. Corrigir edge function `calculate-business-metrics`
 
-### 1. Atualizar `setActiveStore` no StoreContext
+Alterar a query de `monthly_revenue` para:
+- Se `storeId` foi informado: ler `monthly_revenue` da tabela `stores`
+- Senao: ler da tabela `profiles` (compatibilidade)
 
-Modificar para que, ao trocar de loja, o sistema:
-1. Marque `isLoading = true` (mostra loading na UI)
-2. Busque os dados frescos da loja selecionada no banco (`stores` table)
-3. Atualize o estado com dados frescos
-4. Marque `isLoading = false`
+```text
+// ANTES (errado):
+supabase.from("profiles").select("monthly_revenue, cost_limit_percent").eq("user_id", user.id)
 
-Isso garante que `sharing_group_id`, `default_cmv`, e outros campos estejam sempre atualizados.
+// DEPOIS (correto):
+// 1. Sempre buscar cost_limit_percent do profiles
+// 2. Se storeId, buscar monthly_revenue da stores
+```
 
-### 2. Emitir evento de troca de loja
+### 2. Melhorar o hook `useBusinessMetrics`
 
-Criar um contador `storeVersion` no contexto que incrementa a cada troca. Componentes filhos (FixedExpensesBlock, TaxesAndFeesBlock, etc.) ja reagem a mudancas em `activeStore?.id` nos seus `useEffect`/`useCallback`, entao ao receber dados frescos eles naturalmente refazem suas queries.
+Remover o guard `inflightRef` que pode bloquear requisicoes legitimas apos abort, e garantir que a troca de loja cancele e substitua a requisicao anterior de forma limpa.
 
-### 3. Remover `refreshStores()` do fluxo de compartilhamento
+### 3. Deploy da edge function
 
-Com a troca de loja sempre buscando dados frescos, o `refreshStores()` no `confirmShare` se torna redundante para o problema de isolamento (mas pode ser mantido para atualizar a lista de lojas no StoreSwitcher imediatamente).
+Apos alterar o codigo, fazer deploy da funcao `calculate-business-metrics`.
 
 ## Detalhes tecnicos
 
-### Arquivo: `src/contexts/StoreContext.tsx`
+### Arquivo: `supabase/functions/calculate-business-metrics/index.ts`
 
-Modificar `setActiveStore`:
-
-```text
-const setActiveStore = useCallback(async (store: Store | null) => {
-  if (store) {
-    localStorage.setItem(ACTIVE_STORE_KEY, store.id);
-    setIsLoading(true);
-
-    // Buscar dados frescos desta loja no banco
-    const { data: freshStore } = await supabase
-      .from("stores")
-      .select("*")
-      .eq("id", store.id)
-      .single();
-
-    setActiveStoreState(freshStore ? (freshStore as Store) : store);
-    setIsLoading(false);
-  } else {
-    localStorage.removeItem(ACTIVE_STORE_KEY);
-    setActiveStoreState(null);
-  }
-}, []);
-```
-
-### Arquivo: `src/components/store/StoreSwitcher.tsx`
-
-Tornar `handleStoreSelect` async para aguardar a troca:
+Modificar o bloco de fetch paralelo (linhas 113-129) para buscar `monthly_revenue` da tabela correta:
 
 ```text
-const handleStoreSelect = async (store: typeof activeStore) => {
-  if (!store) return;
-  if (!isPro && stores.indexOf(store) > 0) return;
-  await setActiveStore(store);
-};
+// Buscar monthly_revenue da loja (se storeId) ou do perfil
+const revenuePromise = storeId
+  ? supabase.from("stores").select("monthly_revenue").eq("id", storeId).maybeSingle()
+  : supabase.from("profiles").select("monthly_revenue").eq("user_id", user.id).maybeSingle();
+
+const [
+  { data: profile },
+  { data: revenueSource },
+  { data: fixedCosts },
+  // ... demais queries
+] = await Promise.all([
+  supabase.from("profiles").select("cost_limit_percent").eq("user_id", user.id).maybeSingle(),
+  revenuePromise,
+  // ... demais queries com storeFilter
+]);
+
+const monthlyRevenue = revenueSource?.monthly_revenue ? Number(revenueSource.monthly_revenue) : null;
+const costLimitPercent = profile?.cost_limit_percent ?? 40;
 ```
 
-### Assinatura no contexto
+### Arquivo: `src/hooks/useBusinessMetrics.ts`
 
-Atualizar o tipo de `setActiveStore` de `(store: Store | null) => void` para `(store: Store | null) => Promise<void>` na interface `StoreContextType`.
+Simplificar o controle de concorrencia: remover `inflightRef` guard no inicio do setTimeout callback (que pode impedir chamadas validas apos abort), e confiar apenas no `AbortController` + `lastStoreRef` para evitar dados obsoletos.
 
 ## Resultado esperado
 
-- Ao trocar de loja, o usuario ve um breve loading (milissegundos) enquanto dados frescos sao carregados
-- `sharing_group_id` e todos os campos da loja estao sempre atualizados
-- Elimina a classe inteira de bugs causados por dados em cache entre lojas
-- Nao altera nenhuma logica de negocio ou componente UI existente
+- Cada loja mostra seu proprio faturamento no DRE
+- Lojas sem faturamento configurado mostram "---" ao inves do faturamento de outra loja
+- Troca de loja e rapida (300ms debounce) e sem dados cruzados
+- Sem reload de pagina necessario
+
