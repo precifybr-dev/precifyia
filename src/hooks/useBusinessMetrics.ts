@@ -47,7 +47,6 @@ export function useBusinessMetrics() {
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const inflightRef = useRef(false);
   const lastStoreRef = useRef<string | null>(null);
   const retryCountRef = useRef(0);
 
@@ -74,18 +73,12 @@ export function useBusinessMetrics() {
     // Cancel any in-flight request for the previous store
     if (abortRef.current) {
       abortRef.current.abort();
-      inflightRef.current = false;
     }
 
     // Use shorter debounce on store change for faster feedback
     const delay = storeChanged ? 300 : DEBOUNCE_MS;
 
     debounceRef.current = setTimeout(async () => {
-      if (inflightRef.current) {
-        return;
-      }
-
-      inflightRef.current = true;
       abortRef.current = new AbortController();
       setIsCalculating(true);
 
@@ -94,7 +87,6 @@ export function useBusinessMetrics() {
         if (!session?.access_token) {
           setError("Sessão expirada. Faça login novamente.");
           setIsCalculating(false);
-          inflightRef.current = false;
           return;
         }
 
@@ -114,7 +106,6 @@ export function useBusinessMetrics() {
 
         // If store changed while request was in-flight, discard result
         if (lastStoreRef.current !== resolvedStoreId) {
-          inflightRef.current = false;
           setIsCalculating(false);
           return;
         }
@@ -126,19 +117,16 @@ export function useBusinessMetrics() {
             retryCountRef.current += 1;
             if (retryCountRef.current <= MAX_429_RETRIES) {
               const retryAfter = Math.min(retryCountRef.current * 5000, 15000);
-              inflightRef.current = false;
               setIsCalculating(false);
               debounceRef.current = setTimeout(() => calculate(lastStoreRef.current), retryAfter);
               return;
             }
             setError("Servidor ocupado. Aguarde alguns segundos e recarregue a página.");
             setIsCalculating(false);
-            inflightRef.current = false;
             return;
           }
           setError(data.error || "Erro ao calcular métricas do negócio.");
           setIsCalculating(false);
-          inflightRef.current = false;
           return;
         }
 
@@ -151,7 +139,6 @@ export function useBusinessMetrics() {
         setError("Não foi possível calcular as métricas do negócio.");
       } finally {
         setIsCalculating(false);
-        inflightRef.current = false;
       }
     }, delay);
   }, []);
