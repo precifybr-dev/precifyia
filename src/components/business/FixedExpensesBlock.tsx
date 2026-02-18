@@ -57,6 +57,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
   const [isDeletingShared, setIsDeletingShared] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const [selectedShareStores, setSelectedShareStores] = useState<string[]>([]);
+  const [availableStores, setAvailableStores] = useState<{id: string; name: string}[]>([]);
   const { toast } = useToast();
   const { activeStore, stores } = useStore();
   const { group, groupStores, hasGroup, storeCount, refreshGroup } = useSharingGroup();
@@ -261,8 +262,16 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
 
   const handleToggleShare = async (expense: FixedExpense) => {
     if (expense.cost_type === "exclusive") {
-      // Pre-select all user stores
-      setSelectedShareStores(stores.map(s => s.id));
+      // Buscar lojas frescas do banco para evitar estado desatualizado
+      const { data: freshStores } = await supabase
+        .from("stores")
+        .select("id, name")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: true });
+      
+      const storesList = freshStores || [];
+      setAvailableStores(storesList);
+      setSelectedShareStores(storesList.map(s => s.id));
       setShareConfirmExpense(expense);
     } else {
       setUnshareConfirmExpense(expense);
@@ -337,7 +346,20 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
     } else {
       // Recalculate shared costs
       await supabase.rpc("recalculate_shared_costs", { p_group_id: groupId });
-      toast({ title: "Sucesso!", description: `Despesa compartilhada entre ${selectedShareStores.length} lojas` });
+      
+      // Validação pós-salvamento
+      const { data: saved } = await supabase
+        .from("fixed_expenses")
+        .select("shared_store_ids")
+        .eq("id", shareConfirmExpense.id)
+        .single();
+      
+      if (saved?.shared_store_ids?.length !== selectedShareStores.length) {
+        toast({ title: "Atenção", description: "Verifique se todas as lojas foram incluídas no compartilhamento", variant: "destructive" });
+      } else {
+        toast({ title: "Sucesso!", description: `Despesa compartilhada entre ${selectedShareStores.length} lojas` });
+      }
+      
       await fetchExpenses();
       await refreshGroup();
     }
@@ -661,7 +683,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
           {/* Store selection */}
           <div className="space-y-2">
             <p className="text-sm font-medium text-foreground">Lojas que irão dividir:</p>
-            {stores.map((store) => {
+            {availableStores.map((store) => {
               const isSelected = selectedShareStores.includes(store.id);
               const isCurrentStore = store.id === activeStore?.id;
               return (
