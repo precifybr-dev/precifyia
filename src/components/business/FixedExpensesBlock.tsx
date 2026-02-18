@@ -59,7 +59,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
   const [selectedShareStores, setSelectedShareStores] = useState<string[]>([]);
   const [availableStores, setAvailableStores] = useState<{id: string; name: string}[]>([]);
   const { toast } = useToast();
-  const { activeStore, stores } = useStore();
+  const { activeStore, stores, refreshStores } = useStore();
   const { group, groupStores, hasGroup, storeCount, refreshGroup } = useSharingGroup();
   const { softDelete } = useDataProtection();
 
@@ -360,6 +360,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
         toast({ title: "Sucesso!", description: `Despesa compartilhada entre ${selectedShareStores.length} lojas` });
       }
       
+      await refreshStores();
       await fetchExpenses();
       await refreshGroup();
     }
