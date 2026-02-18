@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
   Building2, 
@@ -79,6 +79,19 @@ const taxRegimes = [
 export default function BusinessArea() {
   const { activeStore } = useStore();
   const { result: businessMetrics, isCalculating: isMetricsCalculating, calculate: calculateMetrics } = useBusinessMetrics();
+  const recalcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Single debounced recalc — all child callbacks funnel here
+  const scheduleRecalc = useCallback(() => {
+    if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
+    recalcTimerRef.current = setTimeout(() => {
+      calculateMetrics(activeStore?.id);
+    }, 800);
+  }, [activeStore?.id, calculateMetrics]);
+
+  useEffect(() => {
+    return () => { if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current); };
+  }, []);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -509,7 +522,7 @@ export default function BusinessArea() {
               storeId={activeStore?.id}
               onAverageChange={(avg) => {
                 setCalculatedMonthlyRevenue(avg);
-                calculateMetrics(activeStore?.id);
+                scheduleRecalc();
               }}
             />
           </div>
@@ -520,7 +533,7 @@ export default function BusinessArea() {
               taxPercentage={businessMetrics?.tax_percentage}
               averageCardFee={businessMetrics?.average_card_fee}
               totalDeductions={businessMetrics?.total_deductions}
-              onDataChanged={() => calculateMetrics(activeStore?.id)}
+              onDataChanged={() => scheduleRecalc()}
             />
           </div>
 
@@ -539,12 +552,12 @@ export default function BusinessArea() {
               <FixedCostsBlock 
                 userId={user?.id} 
                 storeId={activeStore?.id}
-                onTotalChange={(v) => { setFixedCostsTotal(v); calculateMetrics(activeStore?.id); }}
+                onTotalChange={(v) => { setFixedCostsTotal(v); scheduleRecalc(); }}
               />
               <VariableCostsBlock 
                 userId={user?.id} 
                 storeId={activeStore?.id}
-                onTotalChange={(v) => { setVariableCostsTotal(v); calculateMetrics(activeStore?.id); }}
+                onTotalChange={(v) => { setVariableCostsTotal(v); scheduleRecalc(); }}
               />
             </div>
           </div>
@@ -579,7 +592,7 @@ export default function BusinessArea() {
                 if (!error) {
                   setProfile({ ...profile, cost_limit_percent: newLimit });
                   toast({ title: "Sucesso!", description: "Limite atualizado" });
-                   calculateMetrics(activeStore?.id);
+                   scheduleRecalc();
                 }
               }}
             />
@@ -590,14 +603,14 @@ export default function BusinessArea() {
                 userId={user?.id} 
                 storeId={activeStore?.id}
                 monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-                onTotalChange={(v) => { setFixedExpensesTotal(v); calculateMetrics(activeStore?.id); }}
-                onSharedTotalChange={(v) => { setSharedExpensesTotal(v); calculateMetrics(activeStore?.id); }}
+                onTotalChange={(v) => { setFixedExpensesTotal(v); scheduleRecalc(); }}
+                onSharedTotalChange={(v) => { setSharedExpensesTotal(v); scheduleRecalc(); }}
               />
               <VariableExpensesBlock 
                 userId={user?.id} 
                 storeId={activeStore?.id}
                 monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-                onTotalChange={(v) => { setVariableExpensesTotal(v); calculateMetrics(activeStore?.id); }}
+                onTotalChange={(v) => { setVariableExpensesTotal(v); scheduleRecalc(); }}
               />
             </div>
           </div>
