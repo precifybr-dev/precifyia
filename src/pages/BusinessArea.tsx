@@ -77,7 +77,7 @@ const taxRegimes = [
 ];
 
 export default function BusinessArea() {
-  const { activeStore } = useStore();
+  const { activeStore, updateStore } = useStore();
   const { result: businessMetrics, isCalculating: isMetricsCalculating, calculate: calculateMetrics } = useBusinessMetrics();
   const recalcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadDone = useRef(false);
@@ -199,9 +199,9 @@ export default function BusinessArea() {
 
       setProfile(profileData);
       setFormData({
-        business_name: profileData.business_name || "",
-        business_type: profileData.business_type || "",
-        default_cmv: profileData.default_cmv?.toString() || "",
+        business_name: activeStore?.name || profileData.business_name || "",
+        business_type: activeStore?.business_type || profileData.business_type || "",
+        default_cmv: (activeStore as any)?.default_cmv?.toString() || profileData.default_cmv?.toString() || "",
       });
       
       await fetchMetrics(session.user.id, activeStore?.id);
@@ -236,26 +236,19 @@ export default function BusinessArea() {
       return;
     }
 
+    if (!activeStore) return;
+
     setIsSaving(true);
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
-        business_name: formData.business_name,
-        business_type: formData.business_type,
-        default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
-      })
-      .eq("user_id", user.id);
+    const storeUpdateData: any = {
+      name: formData.business_name,
+      business_type: formData.business_type,
+      default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
+    };
 
-    if (error) {
-      toast({ title: "Erro", description: "Não foi possível salvar as alterações", variant: "destructive" });
-    } else {
-      setProfile({
-        ...profile,
-        business_name: formData.business_name,
-        business_type: formData.business_type,
-        default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
-      });
+    const success = await updateStore(activeStore.id, storeUpdateData);
+
+    if (success) {
       toast({ title: "Sucesso!", description: "Configurações atualizadas" });
       setIsEditing(false);
     }
@@ -265,12 +258,24 @@ export default function BusinessArea() {
 
   const handleCancel = () => {
     setFormData({
-      business_name: profile.business_name || "",
-      business_type: profile.business_type || "",
-      default_cmv: profile.default_cmv?.toString() || "",
+      business_name: activeStore?.name || "",
+      business_type: activeStore?.business_type || "",
+      default_cmv: activeStore?.default_cmv?.toString() || "",
     });
     setIsEditing(false);
   };
+
+  // Sync form data when activeStore changes
+  useEffect(() => {
+    if (activeStore) {
+      setFormData({
+        business_name: activeStore.name || "",
+        business_type: activeStore.business_type || "",
+        default_cmv: activeStore.default_cmv?.toString() || "",
+      });
+      setIsEditing(false);
+    }
+  }, [activeStore?.id]);
 
   const navItems = [
     { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
@@ -418,16 +423,16 @@ export default function BusinessArea() {
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm text-muted-foreground mb-1">Nome do Negócio</p>
-                    <p className="font-semibold text-foreground text-lg">{profile?.business_name || "—"}</p>
+                    <p className="font-semibold text-foreground text-lg">{activeStore?.name || "—"}</p>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm text-muted-foreground mb-1">Tipo</p>
-                    <p className="font-semibold text-foreground text-lg">{getBusinessTypeLabel(profile?.business_type)}</p>
+                    <p className="font-semibold text-foreground text-lg">{getBusinessTypeLabel(activeStore?.business_type || "")}</p>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm text-muted-foreground mb-1">CMV Padrão</p>
                     <p className="font-semibold text-foreground text-lg">
-                      {profile?.default_cmv ? `${profile.default_cmv}%` : "—"}
+                      {activeStore?.default_cmv ? `${activeStore.default_cmv}%` : "—"}
                     </p>
                   </div>
                 </div>

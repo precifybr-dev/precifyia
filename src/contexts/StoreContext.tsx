@@ -15,6 +15,7 @@ export interface Store {
   menu_cache: any | null;
   menu_cached_at: string | null;
   sharing_group_id: string | null;
+  default_cmv: number | null;
 }
 
 interface StoreContextType {
@@ -28,7 +29,7 @@ interface StoreContextType {
   setActiveStore: (store: Store | null) => void;
   fetchStores: (userId: string) => Promise<void>;
   createStore: (name: string, logoUrl?: string, businessType?: string) => Promise<Store | null>;
-  updateStore: (storeId: string, data: Partial<Pick<Store, "name" | "logo_url">>) => Promise<boolean>;
+  updateStore: (storeId: string, data: Partial<Pick<Store, "name" | "logo_url" | "business_type" | "default_cmv">>) => Promise<boolean>;
   deleteStore: (storeId: string) => Promise<boolean>;
   refreshStores: () => Promise<void>;
 }
@@ -190,7 +191,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return newStore;
   }, [userId, isPro, storeCount, stores.length, activeStore, setActiveStore, toast]);
 
-  const updateStore = useCallback(async (storeId: string, data: Partial<Pick<Store, "name" | "logo_url">>): Promise<boolean> => {
+  const updateStore = useCallback(async (storeId: string, data: Partial<Pick<Store, "name" | "logo_url" | "business_type" | "default_cmv">>): Promise<boolean> => {
     const { error } = await supabase
       .from("stores")
       .update(data)
