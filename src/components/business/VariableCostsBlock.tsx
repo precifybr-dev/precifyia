@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useDataProtection } from "@/hooks/useDataProtection";
 
 interface VariableCost {
   id: string;
@@ -26,6 +27,7 @@ export default function VariableCostsBlock({ userId, storeId, onTotalChange }: V
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState({ name: "", value: "" });
   const { toast } = useToast();
+  const { softDelete } = useDataProtection();
 
   const fetchCosts = async () => {
     let query = supabase
@@ -125,17 +127,15 @@ export default function VariableCostsBlock({ userId, storeId, onTotalChange }: V
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase
-      .from("variable_costs")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
-      toast({ title: "Erro", description: "Não foi possível remover o custo", variant: "destructive" });
-    } else {
+    const { data: record } = await supabase.from("variable_costs").select("*").eq("id", id).single();
+    if (!record) {
+      toast({ title: "Erro", description: "Não foi possível encontrar o custo", variant: "destructive" });
+      return;
+    }
+    const success = await softDelete({ table: "variable_costs", id, data: record, storeId: storeId || null });
+    if (success) {
       const filteredCosts = costs.filter(cost => cost.id !== id);
       setCosts(filteredCosts);
-      toast({ title: "Sucesso!", description: "Custo removido" });
       const total = filteredCosts.reduce((sum, cost) => sum + Number(cost.value_per_item), 0);
       onTotalChange?.(total);
     }

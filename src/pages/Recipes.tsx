@@ -60,6 +60,7 @@ import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useDataProtection } from "@/hooks/useDataProtection";
 
 type Recipe = Tables<"recipes">;
 
@@ -156,6 +157,7 @@ export default function Recipes() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { softDelete } = useDataProtection();
   
   // Backend pricing hook
   const { result: pricingResult, isCalculating, error: pricingError, calculate: calculatePricing, reset: resetPricing } = useRecipePricing();
@@ -584,16 +586,14 @@ export default function Recipes() {
   const handleConfirmDelete = async () => {
     if (!recipeToDelete) return;
 
-    const { error } = await supabase
-      .from("recipes")
-      .delete()
-      .eq("id", recipeToDelete.id);
-
-    if (error) {
-      toast({ title: "Erro", description: "Não foi possível excluir a ficha técnica", variant: "destructive" });
+    const { data: record } = await supabase.from("recipes").select("*").eq("id", recipeToDelete.id).single();
+    if (record) {
+      const success = await softDelete({ table: "recipes", id: recipeToDelete.id, data: record, storeId: activeStore?.id || null });
+      if (success) {
+        await fetchRecipes(user.id, activeStore?.id);
+      }
     } else {
-      toast({ title: "Sucesso", description: "Ficha técnica removida!" });
-      await fetchRecipes(user.id, activeStore?.id);
+      toast({ title: "Erro", description: "Não foi possível encontrar a ficha técnica", variant: "destructive" });
     }
 
     setDeleteDialogOpen(false);

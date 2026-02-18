@@ -23,6 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/contexts/StoreContext";
 import { useSharingGroup } from "@/hooks/useSharingGroup";
+import { useDataProtection } from "@/hooks/useDataProtection";
 
 interface FixedExpense {
   id: string;
@@ -55,6 +56,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
   const { toast } = useToast();
   const { activeStore, stores } = useStore();
   const { group, groupStores, hasGroup, storeCount, refreshGroup } = useSharingGroup();
+  const { softDelete } = useDataProtection();
 
   const fetchExpenses = useCallback(async () => {
     // Fetch exclusive expenses for current store
@@ -161,11 +163,13 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await supabase.from("fixed_expenses").delete().eq("id", id);
-    if (error) {
-      toast({ title: "Erro", description: "Não foi possível remover a despesa", variant: "destructive" });
-    } else {
-      toast({ title: "Sucesso!", description: "Despesa removida" });
+    const { data: record } = await supabase.from("fixed_expenses").select("*").eq("id", id).single();
+    if (!record) {
+      toast({ title: "Erro", description: "Não foi possível encontrar a despesa", variant: "destructive" });
+      return;
+    }
+    const success = await softDelete({ table: "fixed_expenses", id, data: record, storeId: storeId || null });
+    if (success) {
       await fetchExpenses();
       if (hasGroup) await refreshGroup();
     }
