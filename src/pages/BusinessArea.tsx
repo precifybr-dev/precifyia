@@ -80,9 +80,12 @@ export default function BusinessArea() {
   const { activeStore } = useStore();
   const { result: businessMetrics, isCalculating: isMetricsCalculating, calculate: calculateMetrics } = useBusinessMetrics();
   const recalcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadDone = useRef(false);
   
   // Single debounced recalc — all child callbacks funnel here
+  // Ignores calls during initial load to prevent request storm
   const scheduleRecalc = useCallback(() => {
+    if (!initialLoadDone.current) return;
     if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
     recalcTimerRef.current = setTimeout(() => {
       calculateMetrics(activeStore?.id);
@@ -208,11 +211,15 @@ export default function BusinessArea() {
     checkAuth();
   }, [navigate]);
 
-  // Recalculate when active store changes
+  // Recalculate when active store changes — single call, no cascade
   useEffect(() => {
     if (user) {
-      scheduleRecalc();
+      initialLoadDone.current = false;
+      calculateMetrics(activeStore?.id);
       fetchMetrics(user.id, activeStore?.id);
+      // Mark initial load done after a delay so child mount callbacks are ignored
+      const timer = setTimeout(() => { initialLoadDone.current = true; }, 3000);
+      return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeStore?.id, user]);

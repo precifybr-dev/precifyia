@@ -38,7 +38,7 @@ export interface BusinessMetricsResult {
   warnings: string[];
 }
 
-const DEBOUNCE_MS = 2000;
+const DEBOUNCE_MS = 3000;
 const MAX_429_RETRIES = 2;
 
 export function useBusinessMetrics() {
