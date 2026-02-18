@@ -71,3 +71,23 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+
+## Environment variables and secret hygiene
+
+This project uses environment variables for backend configuration. **Never commit real secrets to the repository.**
+
+### Local setup
+
+```sh
+# Copy the example file
+cp .env.example .env
+
+# Then fill in your real values in .env
+```
+
+### Rules
+
+- `.env` and `.env.*` are git-ignored and must **never** be committed.
+- Only `.env.example` (with placeholder values) is tracked in the repo.
+- If you suspect a key has been leaked (e.g. committed by accident), **rotate it immediately** in your backend dashboard and update your local `.env`.
+- Publishable/anon keys are safe to expose in client-side code; **secret/service-role keys must only be used in backend functions**.
