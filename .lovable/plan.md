@@ -1,23 +1,45 @@
 
+# Correcao XSS: Substituir regex por DOMPurify
 
-# Melhorias Recomendadas para o Precify — STATUS
+## Resumo
+Substituir a funcao `sanitizeHtml` baseada em regex por **DOMPurify**, biblioteca padrao da industria para sanitizacao segura de HTML.
 
-## ✅ 1. Dashboard Duplica Sidebar → RESOLVIDO
-Sidebar inline removida (~170 linhas). Dashboard agora usa `<AppSidebar />`.
+## Mudancas
 
-## ✅ 2. Trial Dinâmico → RESOLVIDO
-Badge calcula dias restantes via `profile.created_at + 7 dias`. Oculto para planos pagos.
+### 1. Instalar dependencia
+- `dompurify` (runtime)
+- `@types/dompurify` (tipos TypeScript)
 
-## ✅ 3. BusinessArea Duplicatas → RESOLVIDO
-Removidos card "Regime Tributário" e bloco "Faturamento Mensal" do modo visualização.
+### 2. Editar `src/pages/University.tsx`
 
-## ⏳ 4. Leaked Password Protection → PENDENTE (config de auth)
+**Adicionar import** (apos linha 26):
+```typescript
+import DOMPurify from "dompurify";
+```
 
-## ✅ 5. PricingSummaryPanel Refatorado → RESOLVIDO
-864 linhas → ~160 linhas orquestradora + 5 subcomponentes:
-- `PricingInputsCard`
-- `PricingMarginsCard`
-- `PricingIfoodCard`
-- `PricingPromotionCard`
-- `PricingProductionCostCard`
-- `PricingProfitCard`
+**Remover** a funcao `sanitizeHtml` (linhas 31-36):
+```typescript
+// REMOVER INTEIRO
+function sanitizeHtml(html: string): string {
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/on\w+="[^"]*"/gi, "")
+    .replace(/on\w+='[^']*'/gi, "");
+}
+```
+
+**Atualizar** linha 192:
+```typescript
+// Antes
+<div dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedLesson.content) }} />
+
+// Depois
+<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedLesson.content) }} />
+```
+
+### Nota sobre `chart.tsx`
+O `dangerouslySetInnerHTML` em `chart.tsx` usa dados internos gerados pelo codigo (cores de tema CSS), sem input de usuario. Nao precisa de mudanca.
+
+## Resultado
+- Zero mudanca visual
+- Protecao completa contra XSS (scripts, event handlers, protocolos javascript, tags SVG maliciosas, codificacao HTML)
