@@ -38,7 +38,8 @@ export interface BusinessMetricsResult {
   warnings: string[];
 }
 
-const DEBOUNCE_MS = 1500;
+const DEBOUNCE_MS = 2000;
+const MAX_429_RETRIES = 2;
 
 export function useBusinessMetrics() {
   const [result, setResult] = useState<BusinessMetricsResult | null>(null);
@@ -48,6 +49,7 @@ export function useBusinessMetrics() {
   const abortRef = useRef<AbortController | null>(null);
   const inflightRef = useRef(false);
   const lastStoreRef = useRef<string | null>(null);
+  const retryCountRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -64,11 +66,8 @@ export function useBusinessMetrics() {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
-      // If a request is already in-flight, don't abort it — just wait for the next debounce
       if (inflightRef.current) {
-        // Schedule another attempt after current one finishes
-        debounceRef.current = setTimeout(() => calculate(lastStoreRef.current), DEBOUNCE_MS);
-        return;
+        return; // Let the current request finish; the caller can re-invoke later
       }
 
       inflightRef.current = true;
@@ -102,10 +101,18 @@ export function useBusinessMetrics() {
 
         if (!response.ok) {
           if (response.status === 429) {
-            // Rate limited — retry after a longer delay
-            inflightRef.current = false;
+            retryCountRef.current += 1;
+            if (retryCountRef.current <= MAX_429_RETRIES) {
+              const retryAfter = Math.min(retryCountRef.current * 5000, 15000);
+              inflightRef.current = false;
+              setIsCalculating(false);
+              debounceRef.current = setTimeout(() => calculate(lastStoreRef.current), retryAfter);
+              return;
+            }
+            // Max retries exceeded — stop retrying
+            setError("Servidor ocupado. Aguarde alguns segundos e recarregue a página.");
             setIsCalculating(false);
-            debounceRef.current = setTimeout(() => calculate(lastStoreRef.current), 3000);
+            inflightRef.current = false;
             return;
           }
           setError(data.error || "Erro ao calcular métricas do negócio.");
@@ -114,6 +121,7 @@ export function useBusinessMetrics() {
           return;
         }
 
+        retryCountRef.current = 0; // Reset on success
         setResult(data as BusinessMetricsResult);
         setError(null);
       } catch (err: any) {
