@@ -1475,6 +1475,7 @@ export type Database = {
           id: string
           monthly_value: number
           name: string
+          shared_store_ids: string[] | null
           sharing_group_id: string | null
           store_id: string | null
           updated_at: string
@@ -1486,6 +1487,7 @@ export type Database = {
           id?: string
           monthly_value?: number
           name: string
+          shared_store_ids?: string[] | null
           sharing_group_id?: string | null
           store_id?: string | null
           updated_at?: string
@@ -1497,6 +1499,7 @@ export type Database = {
           id?: string
           monthly_value?: number
           name?: string
+          shared_store_ids?: string[] | null
           sharing_group_id?: string | null
           store_id?: string | null
           updated_at?: string
