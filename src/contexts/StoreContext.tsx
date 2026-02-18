@@ -258,11 +258,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       return false;
     }
 
-    const remainingStores = stores.filter((s) => s.id !== storeId);
-    setStores(remainingStores);
+    // Refresh stores from DB to get updated sharing_group_id and other changes from trigger
+    await refreshStores();
 
     // If deleted store was active, switch to another
     if (activeStore?.id === storeId) {
+      const remainingStores = stores.filter((s) => s.id !== storeId);
       const newActive = remainingStores.find((s) => s.is_default) || remainingStores[0];
       setActiveStore(newActive || null);
     }
