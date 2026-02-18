@@ -285,7 +285,7 @@ REGRAS:
   } catch (error) {
     console.error("generate-menu-strategy error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno" }),
+      JSON.stringify({ error: "Erro ao gerar estratégia. Tente novamente." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
