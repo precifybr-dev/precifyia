@@ -2615,6 +2615,7 @@ export type Database = {
         Row: {
           business_type: string | null
           created_at: string
+          default_cmv: number | null
           id: string
           ifood_url: string | null
           is_default: boolean
@@ -2632,6 +2633,7 @@ export type Database = {
         Insert: {
           business_type?: string | null
           created_at?: string
+          default_cmv?: number | null
           id?: string
           ifood_url?: string | null
           is_default?: boolean
@@ -2649,6 +2651,7 @@ export type Database = {
         Update: {
           business_type?: string | null
           created_at?: string
+          default_cmv?: number | null
           id?: string
           ifood_url?: string | null
           is_default?: boolean
