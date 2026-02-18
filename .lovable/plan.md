@@ -1,99 +1,83 @@
 
-# Corrigir Compartilhamento de Despesas - Loja Nao Recebe Divisao
 
-## Problema Identificado
+# Recarregar dados frescos ao trocar de loja
 
-Ao investigar o banco de dados, encontrei que as despesas "PARCELA IFOOD" e "TESTE" tem `shared_store_ids` com apenas 2 das 3 lojas (faltando FRITTO BOX). Isso acontece porque o codigo usa `stores` do contexto React, que pode estar desatualizado no momento do compartilhamento. Alem disso, despesas antigas com `shared_store_ids = NULL` funcionam corretamente porque o banco faz fallback para todas as lojas do grupo.
+## Problema atual
+
+Quando o usuario troca de loja no StoreSwitcher, o sistema apenas atualiza o ponteiro local (`activeStore`) sem buscar dados atualizados do banco. Isso causa problemas como:
+- `sharing_group_id` desatualizado (causa raiz do bug de compartilhamento)
+- Dados em cache de uma loja "vazando" para outra
+- Necessidade de workarounds como `refreshStores()` em varios pontos do codigo
 
 ## Solucao
 
-### 1. Corrigir dados existentes no banco (Migration SQL)
+Transformar a troca de loja em uma operacao que sempre busca dados frescos do banco, garantindo isolamento total entre lojas.
 
-Atualizar as despesas compartilhadas que tem `shared_store_ids` incompleto para incluir todas as lojas do grupo:
+### 1. Atualizar `setActiveStore` no StoreContext
+
+Modificar para que, ao trocar de loja, o sistema:
+1. Marque `isLoading = true` (mostra loading na UI)
+2. Busque os dados frescos da loja selecionada no banco (`stores` table)
+3. Atualize o estado com dados frescos
+4. Marque `isLoading = false`
+
+Isso garante que `sharing_group_id`, `default_cmv`, e outros campos estejam sempre atualizados.
+
+### 2. Emitir evento de troca de loja
+
+Criar um contador `storeVersion` no contexto que incrementa a cada troca. Componentes filhos (FixedExpensesBlock, TaxesAndFeesBlock, etc.) ja reagem a mudancas em `activeStore?.id` nos seus `useEffect`/`useCallback`, entao ao receber dados frescos eles naturalmente refazem suas queries.
+
+### 3. Remover `refreshStores()` do fluxo de compartilhamento
+
+Com a troca de loja sempre buscando dados frescos, o `refreshStores()` no `confirmShare` se torna redundante para o problema de isolamento (mas pode ser mantido para atualizar a lista de lojas no StoreSwitcher imediatamente).
+
+## Detalhes tecnicos
+
+### Arquivo: `src/contexts/StoreContext.tsx`
+
+Modificar `setActiveStore`:
 
 ```text
-UPDATE fixed_expenses 
-SET shared_store_ids = (
-  SELECT array_agg(sgs.store_id)
-  FROM sharing_group_stores sgs
-  WHERE sgs.sharing_group_id = fixed_expenses.sharing_group_id
-)
-WHERE cost_type = 'shared' 
-  AND sharing_group_id IS NOT NULL;
-```
+const setActiveStore = useCallback(async (store: Store | null) => {
+  if (store) {
+    localStorage.setItem(ACTIVE_STORE_KEY, store.id);
+    setIsLoading(true);
 
-Isso corrige tanto despesas com `shared_store_ids` parcial quanto as com NULL.
-
-### 2. Buscar lojas frescas do banco ao abrir o dialog de compartilhamento
-
-No `FixedExpensesBlock.tsx`, em vez de usar `stores.map(s => s.id)` do contexto (que pode estar desatualizado), buscar as lojas diretamente do banco de dados:
-
-**Mudanca em `handleToggleShare`:**
-- Antes de abrir o dialog, fazer um `supabase.from("stores").select("id, name").eq("user_id", userId)` para garantir a lista completa
-- Usar essa lista fresca para pre-selecionar todas as lojas
-- Armazenar essa lista fresca em um estado local para renderizar no dialog
-
-### 3. Garantir que o dialog use a lista fresca
-
-Criar um novo estado `availableStores` que e populado com dados frescos do banco cada vez que o dialog abre. O dialog usara `availableStores` em vez de `stores` do contexto para renderizar as opcoes.
-
-### 4. Adicionar validacao pos-salvamento
-
-Apos o `confirmShare` salvar, verificar que `shared_store_ids` foi salvo corretamente fazendo uma leitura do registro atualizado e comparando com `selectedShareStores`.
-
-## Detalhes Tecnicos
-
-### Arquivo: `src/components/business/FixedExpensesBlock.tsx`
-
-1. Adicionar estado `availableStores`:
-```text
-const [availableStores, setAvailableStores] = useState<{id: string; name: string}[]>([]);
-```
-
-2. Modificar `handleToggleShare` para buscar lojas frescas:
-```text
-const handleToggleShare = async (expense) => {
-  if (expense.cost_type === "exclusive") {
-    // Buscar lojas frescas do banco
-    const { data: freshStores } = await supabase
+    // Buscar dados frescos desta loja no banco
+    const { data: freshStore } = await supabase
       .from("stores")
-      .select("id, name")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: true });
-    
-    const storesList = freshStores || [];
-    setAvailableStores(storesList);
-    setSelectedShareStores(storesList.map(s => s.id));
-    setShareConfirmExpense(expense);
+      .select("*")
+      .eq("id", store.id)
+      .single();
+
+    setActiveStoreState(freshStore ? (freshStore as Store) : store);
+    setIsLoading(false);
   } else {
-    setUnshareConfirmExpense(expense);
+    localStorage.removeItem(ACTIVE_STORE_KEY);
+    setActiveStoreState(null);
   }
+}, []);
+```
+
+### Arquivo: `src/components/store/StoreSwitcher.tsx`
+
+Tornar `handleStoreSelect` async para aguardar a troca:
+
+```text
+const handleStoreSelect = async (store: typeof activeStore) => {
+  if (!store) return;
+  if (!isPro && stores.indexOf(store) > 0) return;
+  await setActiveStore(store);
 };
 ```
 
-3. No dialog de selecao de lojas, trocar `stores.map((store) => ...)` por `availableStores.map((store) => ...)` para usar a lista fresca
+### Assinatura no contexto
 
-4. Adicionar validacao no `confirmShare` apos salvar:
-```text
-// Verificar se salvou corretamente
-const { data: saved } = await supabase
-  .from("fixed_expenses")
-  .select("shared_store_ids")
-  .eq("id", shareConfirmExpense.id)
-  .single();
+Atualizar o tipo de `setActiveStore` de `(store: Store | null) => void` para `(store: Store | null) => Promise<void>` na interface `StoreContextType`.
 
-if (saved?.shared_store_ids?.length !== selectedShareStores.length) {
-  toast({ title: "Atenção", description: "Verifique se todas as lojas foram incluidas", variant: "destructive" });
-}
-```
+## Resultado esperado
 
-### Arquivo: Migration SQL
-
-Uma unica migration para normalizar os dados existentes, garantindo que toda despesa compartilhada tenha `shared_store_ids` completo com todas as lojas do grupo.
-
-## Resultado Esperado
-
-- Todas as 3 lojas aparecerao corretamente no dialog de compartilhamento
-- Ao compartilhar, todas as lojas selecionadas serao salvas no banco
-- Despesas existentes serao corrigidas para incluir todas as lojas
-- Recalculo automatico garantira que a divisao reflita o numero correto de lojas
+- Ao trocar de loja, o usuario ve um breve loading (milissegundos) enquanto dados frescos sao carregados
+- `sharing_group_id` e todos os campos da loja estao sempre atualizados
+- Elimina a classe inteira de bugs causados por dados em cache entre lojas
+- Nao altera nenhuma logica de negocio ou componente UI existente
