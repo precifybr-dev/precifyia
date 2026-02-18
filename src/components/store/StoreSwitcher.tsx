@@ -35,7 +35,7 @@ export function StoreSwitcher() {
     navigate(`/store-onboarding/${storeId}`);
   };
 
-  const handleStoreSelect = (store: typeof activeStore) => {
+  const handleStoreSelect = async (store: typeof activeStore) => {
     if (!store) return;
     
     // Check if user can access this store (PRO downgrade protection)
@@ -43,7 +43,7 @@ export function StoreSwitcher() {
       return; // Block access to non-first store for non-PRO users
     }
     
-    setActiveStore(store);
+    await setActiveStore(store);
   };
 
   // If no stores exist (compatibility mode), don't render
