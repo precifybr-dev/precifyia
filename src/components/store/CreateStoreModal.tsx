@@ -45,7 +45,7 @@ interface CreateStoreModalProps {
 }
 
 export function CreateStoreModal({ open, onOpenChange, onStoreCreated }: CreateStoreModalProps) {
-  const { createStore, storeCount, maxStores, stores } = useStore();
+  const { createStore, storeCount, maxStores, stores, refreshStores } = useStore();
   const { createGroupAndLink } = useSharingGroup();
 
   const [storeName, setStoreName] = useState("");
@@ -84,6 +84,8 @@ export function CreateStoreModal({ open, onOpenChange, onStoreCreated }: CreateS
         const baseStore = stores.find((s) => s.id === baseStoreId);
         const groupName = `Grupo ${baseStore?.name || "Compartilhado"}`;
         await createGroupAndLink(baseStoreId, result.id, groupName);
+        // Refresh stores so activeStore reflects the new sharing_group_id
+        await refreshStores();
       }
 
       resetForm();

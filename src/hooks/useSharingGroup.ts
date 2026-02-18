@@ -147,6 +147,9 @@ export function useSharingGroup() {
           .update({ sharing_group_id: groupId })
           .eq("id", newStoreId);
 
+        // Force recalculation of shared costs for all stores in the group
+        await supabase.rpc("recalculate_shared_costs", { p_group_id: groupId });
+
         return groupId;
       }
 
@@ -176,6 +179,9 @@ export function useSharingGroup() {
       // Update stores with group reference
       await supabase.from("stores").update({ sharing_group_id: groupId }).eq("id", baseStoreId);
       await supabase.from("stores").update({ sharing_group_id: groupId }).eq("id", newStoreId);
+
+      // Force recalculation of shared costs for the new group
+      await supabase.rpc("recalculate_shared_costs", { p_group_id: groupId });
 
       return groupId;
     },
