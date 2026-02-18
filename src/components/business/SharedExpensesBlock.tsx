@@ -11,6 +11,7 @@ import {
 import { useSharingGroup } from "@/hooks/useSharingGroup";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useStore } from "@/contexts/StoreContext";
 
 interface SharedExpensesBlockProps {
   onTotalChange?: (total: number) => void;
@@ -32,6 +33,7 @@ export default function SharedExpensesBlock({ onTotalChange }: SharedExpensesBlo
   } = useSharingGroup();
 
   const { toast } = useToast();
+  const { stores } = useStore();
   const [newExpense, setNewExpense] = useState({ name: "", value: "" });
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -48,7 +50,7 @@ export default function SharedExpensesBlock({ onTotalChange }: SharedExpensesBlo
     // Use effect-like pattern via key comparison is avoided; parent reads via prop callback
   }
 
-  if (!hasGroup) return null;
+  if (!hasGroup || stores.length <= 1) return null;
 
   const formatCurrency = (value: number) =>
     value.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
