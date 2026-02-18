@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Trash2, Receipt, Percent, DollarSign, Share2, Users, Eye, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, Receipt, Percent, DollarSign, Share2, Users, Eye, AlertTriangle, Check } from "lucide-react";
 import CategoryMismatchAlert from "@/components/business/CategoryMismatchAlert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ interface FixedExpense {
   cost_type: string;
   sharing_group_id: string | null;
   store_id: string | null;
+  shared_store_ids: string[] | null;
 }
 
 interface FixedExpensesBlockProps {
@@ -55,6 +56,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
   const [deleteSharedConfirm, setDeleteSharedConfirm] = useState<FixedExpense | null>(null);
   const [isDeletingShared, setIsDeletingShared] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
+  const [selectedShareStores, setSelectedShareStores] = useState<string[]>([]);
   const { toast } = useToast();
   const { activeStore, stores } = useStore();
   const { group, groupStores, hasGroup, storeCount, refreshGroup } = useSharingGroup();
@@ -64,7 +66,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
     // Fetch exclusive expenses for current store
     let exclusiveQuery = supabase
       .from("fixed_expenses")
-      .select("id, name, monthly_value, cost_type, sharing_group_id, store_id")
+      .select("id, name, monthly_value, cost_type, sharing_group_id, store_id, shared_store_ids")
       .eq("user_id", userId)
       .eq("cost_type", "exclusive");
     if (storeId) exclusiveQuery = exclusiveQuery.eq("store_id", storeId);
@@ -77,11 +79,16 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
     if (activeStore?.sharing_group_id) {
       const { data } = await supabase
         .from("fixed_expenses")
-        .select("id, name, monthly_value, cost_type, sharing_group_id, store_id")
+        .select("id, name, monthly_value, cost_type, sharing_group_id, store_id, shared_store_ids")
         .eq("sharing_group_id", activeStore.sharing_group_id)
         .eq("cost_type", "shared")
         .order("created_at", { ascending: true });
-      sharedData = (data || []) as FixedExpense[];
+      // Filter: only show shared expenses where this store is included (or no filter = all stores)
+      const filteredShared = (data || []).filter((exp: any) => {
+        if (!exp.shared_store_ids || exp.shared_store_ids.length === 0) return true; // legacy: all stores
+        return exp.shared_store_ids.includes(storeId || activeStore?.id);
+      });
+      sharedData = filteredShared as FixedExpense[];
     }
 
     if (exclusiveError) {
@@ -95,13 +102,12 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
     const exclusiveTotal = (exclusiveData || []).reduce((sum, exp) => sum + Number(exp.monthly_value), 0);
     onTotalChange?.(exclusiveTotal);
 
-    // Shared parcela total
-    if (storeCount > 0) {
-      const sharedParcela = sharedData.reduce((sum, exp) => sum + Number(exp.monthly_value) / storeCount, 0);
-      onSharedTotalChange?.(sharedParcela);
-    } else {
-      onSharedTotalChange?.(0);
-    }
+    // Shared parcela total - use per-expense store count
+    const sharedParcela = sharedData.reduce((sum, exp) => {
+      const count = exp.shared_store_ids?.length || storeCount;
+      return sum + (count > 0 ? Number(exp.monthly_value) / count : 0);
+    }, 0);
+    onSharedTotalChange?.(sharedParcela);
 
     setIsLoading(false);
   }, [userId, storeId, activeStore?.sharing_group_id, storeCount]);
@@ -203,34 +209,50 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
         }
       }
     } else {
-      // Secondary store: remove this store from the sharing group (expense continues for other stores)
-      const { error } = await supabase
-        .from("sharing_group_stores")
-        .delete()
-        .eq("sharing_group_id", activeStore.sharing_group_id)
-        .eq("store_id", activeStore.id);
+      // Secondary store: remove this store from this expense's shared_store_ids
+      const currentIds = deleteSharedConfirm.shared_store_ids || [];
+      const newIds = currentIds.filter(id => id !== activeStore.id);
 
-      if (error) {
-        toast({ title: "Erro", description: "Não foi possível remover a loja do compartilhamento", variant: "destructive" });
-      } else {
-        // Remove group reference from this store
-        await supabase
-          .from("stores")
-          .update({ sharing_group_id: null })
-          .eq("id", activeStore.id);
+      if (newIds.length < 2) {
+        // If only 1 store left, convert back to exclusive for that store
+        const remainingStoreId = newIds[0] || null;
+        const { error } = await supabase
+          .from("fixed_expenses")
+          .update({ 
+            cost_type: "exclusive", 
+            sharing_group_id: null, 
+            store_id: remainingStoreId,
+            shared_store_ids: null
+          })
+          .eq("id", deleteSharedConfirm.id);
 
-        // Trigger recalculation for remaining stores
-        if (activeStore.sharing_group_id) {
-          await supabase.rpc("recalculate_shared_costs", { p_group_id: activeStore.sharing_group_id });
+        if (error) {
+          toast({ title: "Erro", description: "Não foi possível atualizar a despesa", variant: "destructive" });
+        } else {
+          toast({ title: "Sucesso!", description: "Despesa removida do compartilhamento desta loja. Como restou apenas 1 loja, a despesa voltou a ser exclusiva." });
         }
+      } else {
+        // Update shared_store_ids removing current store
+        const { error } = await supabase
+          .from("fixed_expenses")
+          .update({ shared_store_ids: newIds })
+          .eq("id", deleteSharedConfirm.id);
 
-        toast({ 
-          title: "Sucesso!", 
-          description: "Esta loja foi removida do compartilhamento. A despesa continua dividida entre as demais lojas." 
-        });
-        await fetchExpenses();
-        await refreshGroup();
+        if (error) {
+          toast({ title: "Erro", description: "Não foi possível remover a loja do compartilhamento", variant: "destructive" });
+        } else {
+          // Trigger recalculation
+          if (activeStore.sharing_group_id) {
+            await supabase.rpc("recalculate_shared_costs", { p_group_id: activeStore.sharing_group_id });
+          }
+          toast({ 
+            title: "Sucesso!", 
+            description: `Esta loja foi removida. A despesa continua dividida entre ${newIds.length} lojas.`
+          });
+        }
       }
+      await fetchExpenses();
+      await refreshGroup();
     }
 
     setDeleteSharedConfirm(null);
@@ -239,27 +261,46 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
 
   const handleToggleShare = async (expense: FixedExpense) => {
     if (expense.cost_type === "exclusive") {
+      // Pre-select all group stores
+      setSelectedShareStores(groupStores.map(gs => gs.store_id));
       setShareConfirmExpense(expense);
     } else {
       setUnshareConfirmExpense(expense);
     }
   };
 
+  const toggleStoreSelection = (storeId: string) => {
+    setSelectedShareStores(prev => 
+      prev.includes(storeId) 
+        ? prev.filter(id => id !== storeId)
+        : [...prev, storeId]
+    );
+  };
+
   const confirmShare = async () => {
-    if (!shareConfirmExpense || !group) return;
+    if (!shareConfirmExpense || !group || selectedShareStores.length < 2) {
+      toast({ title: "Atenção", description: "Selecione pelo menos 2 lojas para compartilhar", variant: "destructive" });
+      return;
+    }
     setIsToggling(true);
     const { error } = await supabase
       .from("fixed_expenses")
-      .update({ cost_type: "shared", sharing_group_id: group.id, store_id: null })
+      .update({ 
+        cost_type: "shared", 
+        sharing_group_id: group.id, 
+        store_id: null,
+        shared_store_ids: selectedShareStores
+      })
       .eq("id", shareConfirmExpense.id);
     if (error) {
       toast({ title: "Erro", description: "Não foi possível compartilhar a despesa", variant: "destructive" });
     } else {
-      toast({ title: "Sucesso!", description: "Despesa agora é compartilhada entre as lojas do grupo" });
+      toast({ title: "Sucesso!", description: `Despesa compartilhada entre ${selectedShareStores.length} lojas` });
       await fetchExpenses();
       await refreshGroup();
     }
     setShareConfirmExpense(null);
+    setSelectedShareStores([]);
     setIsToggling(false);
   };
 
@@ -372,7 +413,8 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
           ) : (
             expenses.map((expense) => {
               const isShared = expense.cost_type === "shared";
-              const parcela = isShared && storeCount > 0 ? expense.monthly_value / storeCount : expense.monthly_value;
+              const expenseStoreCount = isShared && expense.shared_store_ids?.length ? expense.shared_store_ids.length : storeCount;
+              const parcela = isShared && expenseStoreCount > 0 ? expense.monthly_value / expenseStoreCount : expense.monthly_value;
 
               return (
                 <div
@@ -418,7 +460,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
                           {isShared && (
                             <Badge variant="secondary" className="bg-violet-500/10 text-violet-600 dark:text-violet-400 text-[10px] gap-0.5 flex-shrink-0">
                               <Share2 className="w-2.5 h-2.5" />
-                              {storeCount} lojas
+                              {expenseStoreCount} lojas
                             </Badge>
                           )}
                         </div>
@@ -451,7 +493,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
                       </div>
 
                       {/* Shared details line */}
-                      {isShared && storeCount > 0 && (
+                      {isShared && expenseStoreCount > 0 && (
                         <div className="flex items-center gap-3 mt-1.5 text-sm">
                           <span className="text-muted-foreground">Total: R$ {formatCurrency(expense.monthly_value)}</span>
                           <span className="text-violet-600 dark:text-violet-400 font-medium">
@@ -559,32 +601,73 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
       </div>
 
       {/* ─── Confirm Share Dialog ─── */}
-      <Dialog open={!!shareConfirmExpense} onOpenChange={(open) => !open && setShareConfirmExpense(null)}>
+      <Dialog open={!!shareConfirmExpense} onOpenChange={(open) => { if (!open) { setShareConfirmExpense(null); setSelectedShareStores([]); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Dividir essa despesa?</DialogTitle>
             <DialogDescription>
-              Essa despesa passará a ser compartilhada entre as lojas que utilizam a mesma estrutura física.
+              Selecione as lojas que irão compartilhar esta despesa.
             </DialogDescription>
           </DialogHeader>
           <div className="p-3 bg-muted/50 rounded-lg">
             <p className="text-sm font-medium text-foreground">{shareConfirmExpense?.name}</p>
             <p className="text-sm text-muted-foreground">
-              Valor total: R$ {formatCurrency(shareConfirmExpense?.monthly_value || 0)} ÷ {storeCount} lojas = R$ {formatCurrency((shareConfirmExpense?.monthly_value || 0) / Math.max(storeCount, 1))}/loja
+              Valor total: R$ {formatCurrency(shareConfirmExpense?.monthly_value || 0)}
             </p>
           </div>
-          <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-            <p className="text-xs text-muted-foreground">
-              <strong>Divisão automática igualitária:</strong> o valor será dividido igualmente entre todas as lojas do grupo.
-            </p>
+
+          {/* Store selection */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-foreground">Lojas que irão dividir:</p>
+            {groupStores.map((gs) => {
+              const storeName = stores.find(s => s.id === gs.store_id)?.name || "Loja";
+              const isSelected = selectedShareStores.includes(gs.store_id);
+              const isCurrentStore = gs.store_id === activeStore?.id;
+              return (
+                <div
+                  key={gs.id}
+                  onClick={() => toggleStoreSelection(gs.store_id)}
+                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors border ${
+                    isSelected 
+                      ? "bg-violet-500/10 border-violet-500/30" 
+                      : "bg-muted/30 border-transparent hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-5 h-5 rounded flex items-center justify-center border transition-colors ${
+                      isSelected ? "bg-violet-600 border-violet-600" : "border-muted-foreground/30"
+                    }`}>
+                      {isSelected && <Check className="w-3 h-3 text-white" />}
+                    </div>
+                    <span className="text-sm text-foreground">{storeName}</span>
+                    {isCurrentStore && (
+                      <Badge variant="secondary" className="text-[10px]">Atual</Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
+
+          {selectedShareStores.length >= 2 && (
+            <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+              <p className="text-xs text-muted-foreground">
+                <strong>Divisão igualitária:</strong> R$ {formatCurrency(shareConfirmExpense?.monthly_value || 0)} ÷ {selectedShareStores.length} lojas = <strong className="text-foreground">R$ {formatCurrency((shareConfirmExpense?.monthly_value || 0) / selectedShareStores.length)}/loja</strong>
+              </p>
+            </div>
+          )}
+
+          {selectedShareStores.length < 2 && (
+            <p className="text-xs text-amber-600">Selecione pelo menos 2 lojas para compartilhar.</p>
+          )}
+
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setShareConfirmExpense(null)} disabled={isToggling}>
+            <Button variant="outline" onClick={() => { setShareConfirmExpense(null); setSelectedShareStores([]); }} disabled={isToggling}>
               Cancelar
             </Button>
-            <Button onClick={confirmShare} disabled={isToggling} className="gap-2 bg-violet-600 hover:bg-violet-700">
+            <Button onClick={confirmShare} disabled={isToggling || selectedShareStores.length < 2} className="gap-2 bg-violet-600 hover:bg-violet-700">
               {isToggling && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-              Confirmar divisão
+              Confirmar divisão ({selectedShareStores.length} lojas)
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -690,18 +773,26 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
               Valor total: R$ {formatCurrency(deleteSharedConfirm?.monthly_value || 0)}
             </p>
           </div>
-          {!isPrimaryStore && (
-            <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
-              <p className="text-xs text-foreground">
-                <strong>O que vai acontecer:</strong>
-              </p>
-              <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
-                <li>Esta loja será removida do grupo de compartilhamento</li>
-                <li>A despesa continuará dividida entre as {storeCount - 1} lojas restantes (R$ {formatCurrency((deleteSharedConfirm?.monthly_value || 0) / Math.max(storeCount - 1, 1))}/loja)</li>
-                <li>Para reativar o compartilhamento, acesse a loja principal e compartilhe novamente</li>
-              </ul>
-            </div>
-          )}
+          {!isPrimaryStore && (() => {
+            const sharedCount = deleteSharedConfirm?.shared_store_ids?.length || storeCount;
+            const remainingCount = sharedCount - 1;
+            return (
+              <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+                <p className="text-xs text-foreground">
+                  <strong>O que vai acontecer:</strong>
+                </p>
+                <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
+                  <li>Esta loja será removida do compartilhamento desta despesa</li>
+                  {remainingCount >= 2 ? (
+                    <li>A despesa continuará dividida entre as {remainingCount} lojas restantes (R$ {formatCurrency((deleteSharedConfirm?.monthly_value || 0) / Math.max(remainingCount, 1))}/loja)</li>
+                  ) : (
+                    <li>Como restará apenas 1 loja, a despesa voltará a ser exclusiva dela</li>
+                  )}
+                  <li>Para reativar, acesse a loja principal e compartilhe novamente</li>
+                </ul>
+              </div>
+            );
+          })()}
           {isPrimaryStore && (
             <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
               <p className="text-xs text-foreground">
