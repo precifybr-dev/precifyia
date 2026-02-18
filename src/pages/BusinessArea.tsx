@@ -211,7 +211,7 @@ export default function BusinessArea() {
   // Recalculate when active store changes
   useEffect(() => {
     if (user) {
-      calculateMetrics(activeStore?.id);
+      scheduleRecalc();
       fetchMetrics(user.id, activeStore?.id);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
