@@ -1,60 +1,82 @@
 
-# Individualizar Configuracao de Negocio por Loja
+# Corrigir Exclusao — Todos os Itens Devem Ir para a Lixeira
 
 ## Problema
 
-Ao trocar de loja (Loja 2, Loja 3), a pagina "Area do Negocio" continua exibindo o nome, tipo e CMV da primeira loja. Isso ocorre porque esses dados sao carregados da tabela `profiles` (que e global por usuario), e nao da tabela `stores` (que e individual por loja).
+Atualmente, apenas os **insumos** usam o `softDelete` (lixeira). Todos os outros itens sao deletados permanentemente com `supabase.from("tabela").delete()`, sem passar pela lixeira. Isso significa que despesas fixas, custos fixos, custos variaveis, despesas variaveis, fichas tecnicas, sub-receitas e bebidas sao perdidos permanentemente ao serem excluidos.
+
+## Itens Afetados
+
+| Componente | Tabela | Status Atual |
+|---|---|---|
+| `DeleteIngredientDialog.tsx` | `ingredients` | Usa softDelete (OK) |
+| `FixedExpensesBlock.tsx` | `fixed_expenses` | Delete direto (CORRIGIR) |
+| `VariableExpensesBlock.tsx` | `variable_expenses` | Delete direto (CORRIGIR) |
+| `FixedCostsBlock.tsx` | `fixed_costs` | Delete direto (CORRIGIR) |
+| `VariableCostsBlock.tsx` | `variable_costs` | Delete direto (CORRIGIR) |
+| `Recipes.tsx` | `recipes` | Delete direto (CORRIGIR) |
+| `SubRecipes.tsx` | `sub_recipes` | Delete direto (CORRIGIR) |
+| `Beverages.tsx` | `beverages` | Delete direto (CORRIGIR) |
 
 ## Solucao
 
-Usar os dados da loja ativa (`activeStore`) em vez dos dados do perfil, e adicionar o campo `default_cmv` a tabela `stores` para que cada loja tenha seu proprio CMV configuravel.
+Substituir todas as chamadas diretas de `.delete()` pelo `softDelete` do hook `useDataProtection` em cada componente. O fluxo sera:
 
-## Mudancas
+1. O usuario clica em excluir
+2. O sistema busca os dados completos do registro
+3. Chama `softDelete({ table, id, data, storeId })` que:
+   - Copia os dados para `deleted_records` (lixeira)
+   - Deleta o registro original
+   - Exibe toast "Item movido para lixeira"
+4. O item aparece na pagina Lixeira por 30 dias e pode ser restaurado
 
-### 1. Migracao de banco de dados
+### Mudancas por Arquivo
 
-Adicionar coluna `default_cmv` na tabela `stores` (tipo numeric, nullable, default null). Migrar o valor existente do `profiles.default_cmv` para a loja padrao de cada usuario:
+**1. `src/components/business/FixedExpensesBlock.tsx`**
+- Importar `useDataProtection`
+- No `handleDelete`: buscar dados do registro, chamar `softDelete({ table: "fixed_expenses", id, data, storeId })`
 
-```sql
-ALTER TABLE public.stores ADD COLUMN IF NOT EXISTS default_cmv numeric;
+**2. `src/components/business/VariableExpensesBlock.tsx`**
+- Importar `useDataProtection`
+- No `handleDelete`: buscar dados do registro, chamar `softDelete({ table: "variable_expenses", id, data, storeId })`
 
-UPDATE public.stores s
-SET default_cmv = p.default_cmv
-FROM public.profiles p
-WHERE s.user_id = p.user_id AND s.is_default = true AND p.default_cmv IS NOT NULL;
-```
+**3. `src/components/business/FixedCostsBlock.tsx`**
+- Importar `useDataProtection`
+- No `handleDelete`: buscar dados do registro, chamar `softDelete({ table: "fixed_costs", id, data, storeId })`
 
-### 2. `src/pages/BusinessArea.tsx`
+**4. `src/components/business/VariableCostsBlock.tsx`**
+- Importar `useDataProtection`
+- No `handleDelete`: buscar dados do registro, chamar `softDelete({ table: "variable_costs", id, data, storeId })`
 
-Atualmente o componente carrega `business_name`, `business_type` e `default_cmv` de `profile`. Mudar para:
+**5. `src/pages/Recipes.tsx`**
+- Importar `useDataProtection`
+- No `handleConfirmDelete`: buscar dados completos da receita, chamar `softDelete({ table: "recipes", id, data, storeId })`
 
-- **Leitura**: Usar `activeStore.name` para nome, `activeStore.business_type` para tipo, e `activeStore.default_cmv` para CMV
-- **Formulario de edicao**: Os campos editam diretamente a loja ativa via `supabase.from("stores").update(...)` em vez de atualizar `profiles`
-- **Reatividade**: Quando `activeStore` muda, o formulario recarrega os dados da nova loja automaticamente
-- **Save**: Atualizar a store via `updateStore()` do contexto (ou query direta) em vez de atualizar o perfil
+**6. `src/pages/SubRecipes.tsx`**
+- Importar `useDataProtection`
+- No `handleConfirmDelete`: softDelete da sub-receita e do insumo vinculado (ambos vao para a lixeira)
 
-O `formData` passara a ser inicializado assim:
+**7. `src/pages/Beverages.tsx`**
+- Importar `useDataProtection`
+- No `handleConfirmDelete`: buscar dados da bebida, chamar `softDelete({ table: "beverages", id, data, storeId })`
+
+### Padrao de Implementacao
+
+Cada `handleDelete` seguira este padrao:
 
 ```text
-business_name = activeStore?.name
-business_type = activeStore?.business_type
-default_cmv   = activeStore?.default_cmv
+1. Buscar dados completos do registro via supabase.from(tabela).select("*").eq("id", id).single()
+2. Se encontrou dados:
+   - Chamar softDelete({ table: "tabela", id, data, storeId })
+   - Se sucesso: atualizar lista local (fetchExpenses, fetchRecipes, etc.)
+3. Se erro: exibir toast de erro
 ```
 
-E o save atualizara a tabela `stores` (nao `profiles`).
+Nao ha necessidade de mudancas no banco de dados — a tabela `deleted_records` ja existe e suporta todas as tabelas listadas no tipo `ProtectedTable`.
 
-### 3. `src/contexts/StoreContext.tsx`
+### Resultado
 
-Adicionar `default_cmv` a interface `Store` para que o TypeScript reconheca o novo campo. Incluir `default_cmv` no Partial do `updateStore` para permitir atualizacao.
-
-### 4. Nao necessario
-
-- Nenhuma mudanca em edge functions
-- Nenhuma mudanca em RLS (a tabela stores ja tem policies adequadas)
-- O campo CNPJ nao existe na aplicacao atualmente, entao nao sera adicionado neste escopo
-
-## Resultado
-
-- Cada loja tera seu proprio nome, tipo de negocio e CMV independentes
-- Ao trocar de loja, os dados exibidos e editados serao os da loja selecionada
-- Dados existentes serao migrados automaticamente para a loja padrao
+- Todos os 8 tipos de itens irao para a lixeira ao serem excluidos
+- Todos poderao ser restaurados em ate 30 dias
+- A pagina Lixeira mostrara todos os itens corretamente (ja esta preparada para isso)
+- O fluxo sera consistente em toda a aplicacao
