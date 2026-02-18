@@ -14,7 +14,7 @@ function isValidNumber(v: unknown): v is number {
 }
 
 const IFOOD_PAYMENT_FEE = 3.2;
-const ANTICIPATION_WEEKLY = 1.59;
+const ANTICIPATION_WEEKLY = 1.99;
 const ANTICIPATION_MONTHLY = 0;
 const AUTO_RATE_OWN_DELIVERY = 12;
 const AUTO_RATE_IFOOD_DELIVERY = 23;
