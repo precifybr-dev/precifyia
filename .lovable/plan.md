@@ -1,83 +1,60 @@
 
-# Sincronizar Despesas Compartilhadas ao Criar Nova Loja no Grupo
+# Individualizar Configuracao de Negocio por Loja
 
 ## Problema
 
-Quando a terceira loja e criada e vinculada ao grupo existente (ex: Dark Kitchen), as despesas compartilhadas da loja base nao aparecem automaticamente na nova loja e a divisao nao e atualizada para /3 em todas as lojas do grupo. Isso acontece porque:
-
-1. O `createGroupAndLink` adiciona a loja ao grupo corretamente, mas o front-end da nova loja pode nao recarregar os dados do grupo apos a criacao
-2. Falta um prompt visual na Area de Negocio para lojas novas que entraram em um grupo, confirmando que as despesas serao divididas
+Ao trocar de loja (Loja 2, Loja 3), a pagina "Area do Negocio" continua exibindo o nome, tipo e CMV da primeira loja. Isso ocorre porque esses dados sao carregados da tabela `profiles` (que e global por usuario), e nao da tabela `stores` (que e individual por loja).
 
 ## Solucao
 
-Dois ajustes: (A) garantir que o recalculo funcione corretamente no backend ao adicionar uma loja ao grupo, e (B) adicionar um banner informativo na Area de Negocio para lojas recentemente adicionadas a um grupo.
+Usar os dados da loja ativa (`activeStore`) em vez dos dados do perfil, e adicionar o campo `default_cmv` a tabela `stores` para que cada loja tenha seu proprio CMV configuravel.
 
-### Mudancas Tecnicas
+## Mudancas
 
-**1. `src/hooks/useSharingGroup.ts` — Forcar recalculo ao adicionar loja ao grupo existente**
+### 1. Migracao de banco de dados
 
-Apos inserir a nova loja no `sharing_group_stores` e atualizar o `sharing_group_id` da store, chamar explicitamente a funcao `recalculate_shared_costs` via RPC para garantir que as alocacoes sejam redistribuidas para todas as lojas (incluindo a nova).
+Adicionar coluna `default_cmv` na tabela `stores` (tipo numeric, nullable, default null). Migrar o valor existente do `profiles.default_cmv` para a loja padrao de cada usuario:
 
-```typescript
-// Dentro de createGroupAndLink, apos adicionar ao grupo existente:
-await supabase.rpc("recalculate_shared_costs", { p_group_id: groupId });
+```sql
+ALTER TABLE public.stores ADD COLUMN IF NOT EXISTS default_cmv numeric;
+
+UPDATE public.stores s
+SET default_cmv = p.default_cmv
+FROM public.profiles p
+WHERE s.user_id = p.user_id AND s.is_default = true AND p.default_cmv IS NOT NULL;
 ```
 
-Tambem chamar `recalculate_shared_costs` ao criar um grupo novo com duas lojas.
+### 2. `src/pages/BusinessArea.tsx`
 
-**2. `src/components/business/FixedExpensesBlock.tsx` — Banner de boas-vindas ao grupo**
+Atualmente o componente carrega `business_name`, `business_type` e `default_cmv` de `profile`. Mudar para:
 
-Adicionar um banner que aparece quando:
-- A loja pertence a um grupo (`hasGroup === true`)
-- A loja nao tem despesas compartilhadas listadas ainda
-- Existem despesas compartilhadas no grupo (vindas de outras lojas)
+- **Leitura**: Usar `activeStore.name` para nome, `activeStore.business_type` para tipo, e `activeStore.default_cmv` para CMV
+- **Formulario de edicao**: Os campos editam diretamente a loja ativa via `supabase.from("stores").update(...)` em vez de atualizar `profiles`
+- **Reatividade**: Quando `activeStore` muda, o formulario recarrega os dados da nova loja automaticamente
+- **Save**: Atualizar a store via `updateStore()` do contexto (ou query direta) em vez de atualizar o perfil
 
-O banner informara:
-> "Esta loja faz parte do grupo [nome]. As despesas compartilhadas estao sendo divididas entre [N] lojas."
-
-Nao precisa de botao de acao — as despesas compartilhadas ja aparecerao automaticamente na lista apos o fix do item 1. O banner serve apenas como contexto visual.
-
-**3. `src/contexts/StoreContext.tsx` — Refresh apos criacao de loja**
-
-No `CreateStoreModal`, apos criar a loja e vincular ao grupo, chamar `refreshStores()` para que o `activeStore` atualizado (com `sharing_group_id`) seja propagado para todos os componentes que dependem dele.
-
-**4. `src/components/store/CreateStoreModal.tsx` — Chamar refreshStores apos criacao**
-
-Adicionar chamada a `refreshStores()` apos a criacao e vinculacao da loja ao grupo, garantindo que o contexto global reflita o `sharing_group_id` da nova loja.
-
-### Fluxo Corrigido
+O `formData` passara a ser inicializado assim:
 
 ```text
-Criar Loja 3 (compartilhada com Loja 2)
-  |
-  v
-Loja 2 ja tem grupo? SIM
-  |
-  v
-Inserir Loja 3 em sharing_group_stores
-  |
-  v
-Atualizar stores.sharing_group_id da Loja 3
-  |
-  v
-Chamar recalculate_shared_costs(group_id)
-  |
-  v
-Alocacoes recalculadas: todas as despesas agora divididas por 3
-  |
-  v
-refreshStores() -> activeStore atualizado com sharing_group_id
-  |
-  v
-FixedExpensesBlock carrega despesas compartilhadas do grupo
-  |
-  v
-Divisao exibida como /3 em todas as lojas
+business_name = activeStore?.name
+business_type = activeStore?.business_type
+default_cmv   = activeStore?.default_cmv
 ```
 
-### Resultado Esperado
+E o save atualizara a tabela `stores` (nao `profiles`).
 
-- Ao criar a terceira loja vinculada ao grupo, as despesas compartilhadas aparecem imediatamente na Area de Negocio da nova loja
-- A divisao e atualizada automaticamente para /3 em TODAS as lojas do grupo (1, 2 e 3)
-- Um banner contextual informa que a loja faz parte do grupo e quantas lojas dividem os custos
-- Nenhuma mudanca no esquema do banco de dados — apenas logica de front-end e chamada RPC existente
+### 3. `src/contexts/StoreContext.tsx`
+
+Adicionar `default_cmv` a interface `Store` para que o TypeScript reconheca o novo campo. Incluir `default_cmv` no Partial do `updateStore` para permitir atualizacao.
+
+### 4. Nao necessario
+
+- Nenhuma mudanca em edge functions
+- Nenhuma mudanca em RLS (a tabela stores ja tem policies adequadas)
+- O campo CNPJ nao existe na aplicacao atualmente, entao nao sera adicionado neste escopo
+
+## Resultado
+
+- Cada loja tera seu proprio nome, tipo de negocio e CMV independentes
+- Ao trocar de loja, os dados exibidos e editados serao os da loja selecionada
+- Dados existentes serao migrados automaticamente para a loja padrao
