@@ -38,7 +38,7 @@ export interface BusinessMetricsResult {
   warnings: string[];
 }
 
-const DEBOUNCE_MS = 500;
+const DEBOUNCE_MS = 1500;
 
 export function useBusinessMetrics() {
   const [result, setResult] = useState<BusinessMetricsResult | null>(null);
@@ -46,6 +46,8 @@ export function useBusinessMetrics() {
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const inflightRef = useRef(false);
+  const lastStoreRef = useRef<string | null>(null);
 
   useEffect(() => {
     return () => {
@@ -55,12 +57,21 @@ export function useBusinessMetrics() {
   }, []);
 
   const calculate = useCallback((storeId?: string | null) => {
+    const resolvedStoreId = storeId || null;
+    lastStoreRef.current = resolvedStoreId;
     setError(null);
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     debounceRef.current = setTimeout(async () => {
-      if (abortRef.current) abortRef.current.abort();
+      // If a request is already in-flight, don't abort it — just wait for the next debounce
+      if (inflightRef.current) {
+        // Schedule another attempt after current one finishes
+        debounceRef.current = setTimeout(() => calculate(lastStoreRef.current), DEBOUNCE_MS);
+        return;
+      }
+
+      inflightRef.current = true;
       abortRef.current = new AbortController();
       setIsCalculating(true);
 
@@ -69,6 +80,7 @@ export function useBusinessMetrics() {
         if (!session?.access_token) {
           setError("Sessão expirada. Faça login novamente.");
           setIsCalculating(false);
+          inflightRef.current = false;
           return;
         }
 
@@ -81,7 +93,7 @@ export function useBusinessMetrics() {
               Authorization: `Bearer ${session.access_token}`,
               apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
             },
-            body: JSON.stringify({ store_id: storeId || null }),
+            body: JSON.stringify({ store_id: resolvedStoreId }),
             signal: abortRef.current.signal,
           }
         );
@@ -89,8 +101,16 @@ export function useBusinessMetrics() {
         const data = await response.json();
 
         if (!response.ok) {
+          if (response.status === 429) {
+            // Rate limited — retry after a longer delay
+            inflightRef.current = false;
+            setIsCalculating(false);
+            debounceRef.current = setTimeout(() => calculate(lastStoreRef.current), 3000);
+            return;
+          }
           setError(data.error || "Erro ao calcular métricas do negócio.");
           setIsCalculating(false);
+          inflightRef.current = false;
           return;
         }
 
@@ -102,6 +122,7 @@ export function useBusinessMetrics() {
         setError("Não foi possível calcular as métricas do negócio.");
       } finally {
         setIsCalculating(false);
+        inflightRef.current = false;
       }
     }, DEBOUNCE_MS);
   }, []);
