@@ -201,7 +201,8 @@ export default function BusinessArea() {
       calculateMetrics(activeStore?.id);
       fetchMetrics(user.id, activeStore?.id);
     }
-  }, [activeStore?.id, user, calculateMetrics]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStore?.id, user]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
