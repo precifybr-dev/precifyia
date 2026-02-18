@@ -1,45 +1,31 @@
 
-# Correcao XSS: Substituir regex por DOMPurify
+# Corrigir Erro 429 - Chamadas Excessivas ao Backend
 
-## Resumo
-Substituir a funcao `sanitizeHtml` baseada em regex por **DOMPurify**, biblioteca padrao da industria para sanitizacao segura de HTML.
+## Problema Identificado
 
-## Mudancas
+A pagina "Area do Negocio" tem ~6 componentes filhos que, ao carregar seus dados iniciais, chamam callbacks como `onTotalChange`, `onSharedTotalChange`, `onDataChanged`. Cada callback dispara `scheduleRecalc()`, que agenda uma chamada ao backend com debounce de 800ms. Porem, como os componentes carregam em momentos ligeiramente diferentes, cada um cria uma nova chamada, resultando em **11+ requisicoes por minuto** -- estourando o limite de 30/min do backend.
 
-### 1. Instalar dependencia
-- `dompurify` (runtime)
-- `@types/dompurify` (tipos TypeScript)
+## Solucao
 
-### 2. Editar `src/pages/University.tsx`
+Separar as chamadas de **carregamento inicial** das chamadas de **atualizacao do usuario**. Os callbacks dos componentes filhos so devem disparar recalculo quando o usuario realmente editar dados, nao quando o componente carrega pela primeira vez.
 
-**Adicionar import** (apos linha 26):
-```typescript
-import DOMPurify from "dompurify";
-```
+### Mudancas Tecnicas
 
-**Remover** a funcao `sanitizeHtml` (linhas 31-36):
-```typescript
-// REMOVER INTEIRO
-function sanitizeHtml(html: string): string {
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/on\w+="[^"]*"/gi, "")
-    .replace(/on\w+='[^']*'/gi, "");
-}
-```
+**1. `src/pages/BusinessArea.tsx`**
+- Adicionar um `useRef` chamado `initialLoadDone` que comeca como `false`
+- O `useEffect` de `activeStore` faz UMA unica chamada a `calculateMetrics` e marca `initialLoadDone = true`
+- Modificar `scheduleRecalc` para ignorar chamadas enquanto `initialLoadDone` for `false`
+- Isso elimina todas as chamadas redundantes dos componentes filhos durante o carregamento
 
-**Atualizar** linha 192:
-```typescript
-// Antes
-<div dangerouslySetInnerHTML={{ __html: sanitizeHtml(selectedLesson.content) }} />
+**2. `src/hooks/useBusinessMetrics.ts`**
+- Aumentar `DEBOUNCE_MS` de 2000ms para 3000ms para dar mais folga
+- Manter a logica de retry com backoff ja existente
 
-// Depois
-<div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedLesson.content) }} />
-```
+**3. Limpar bloqueios no banco**
+- Executar `DELETE FROM rate_limit_entries WHERE endpoint = 'business-metrics'` para desbloquear o usuario imediatamente
 
-### Nota sobre `chart.tsx`
-O `dangerouslySetInnerHTML` em `chart.tsx` usa dados internos gerados pelo codigo (cores de tema CSS), sem input de usuario. Nao precisa de mudanca.
+### Resultado Esperado
 
-## Resultado
-- Zero mudanca visual
-- Protecao completa contra XSS (scripts, event handlers, protocolos javascript, tags SVG maliciosas, codificacao HTML)
+- Ao abrir a pagina: **1 unica chamada** ao backend (em vez de 6-8)
+- Ao editar dados: 1 chamada debounced a cada acao do usuario
+- Nunca mais atingir o limite de 30 req/min em uso normal
