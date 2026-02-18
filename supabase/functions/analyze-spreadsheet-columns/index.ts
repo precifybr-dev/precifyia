@@ -191,9 +191,9 @@ Retorne APENAS o JSON no formato:
     );
 
   } catch (err) {
-    console.error("Error:", err);
+    console.error("analyze-spreadsheet-columns error:", err);
     return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Unknown error" }),
+      JSON.stringify({ error: "Erro ao analisar planilha. Tente novamente." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

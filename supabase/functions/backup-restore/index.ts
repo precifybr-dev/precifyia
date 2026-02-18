@@ -300,7 +300,7 @@ async function handleImportExecute(supabaseAdmin: any, body: any, userId: string
     return jsonResponse({ success: true, mode });
   } catch (err: any) {
     console.error("Import error:", err);
-    return jsonResponse({ error: `Erro na importação: ${err.message}` }, 500);
+    return jsonResponse({ error: "Erro na importação. Verifique o arquivo e tente novamente." }, 500);
   }
 }
 
@@ -597,6 +597,6 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "Ação não reconhecida." }, 400);
   } catch (err: any) {
     console.error("Backup-restore error:", err);
-    return jsonResponse({ error: err.message || "Erro interno do servidor." }, 500);
+    return jsonResponse({ error: "Erro interno do servidor." }, 500);
   }
 });

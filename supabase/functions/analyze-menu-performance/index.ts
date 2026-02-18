@@ -232,7 +232,7 @@ Gere a análise completa em JSON conforme o formato especificado. Seja estratég
   } catch (error) {
     console.error("analyze-menu-performance error:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro ao analisar cardápio" }),
+      JSON.stringify({ error: "Erro ao analisar cardápio. Tente novamente." }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
