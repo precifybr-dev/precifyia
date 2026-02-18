@@ -1,31 +1,83 @@
 
-# Corrigir Erro 429 - Chamadas Excessivas ao Backend
+# Sincronizar Despesas Compartilhadas ao Criar Nova Loja no Grupo
 
-## Problema Identificado
+## Problema
 
-A pagina "Area do Negocio" tem ~6 componentes filhos que, ao carregar seus dados iniciais, chamam callbacks como `onTotalChange`, `onSharedTotalChange`, `onDataChanged`. Cada callback dispara `scheduleRecalc()`, que agenda uma chamada ao backend com debounce de 800ms. Porem, como os componentes carregam em momentos ligeiramente diferentes, cada um cria uma nova chamada, resultando em **11+ requisicoes por minuto** -- estourando o limite de 30/min do backend.
+Quando a terceira loja e criada e vinculada ao grupo existente (ex: Dark Kitchen), as despesas compartilhadas da loja base nao aparecem automaticamente na nova loja e a divisao nao e atualizada para /3 em todas as lojas do grupo. Isso acontece porque:
+
+1. O `createGroupAndLink` adiciona a loja ao grupo corretamente, mas o front-end da nova loja pode nao recarregar os dados do grupo apos a criacao
+2. Falta um prompt visual na Area de Negocio para lojas novas que entraram em um grupo, confirmando que as despesas serao divididas
 
 ## Solucao
 
-Separar as chamadas de **carregamento inicial** das chamadas de **atualizacao do usuario**. Os callbacks dos componentes filhos so devem disparar recalculo quando o usuario realmente editar dados, nao quando o componente carrega pela primeira vez.
+Dois ajustes: (A) garantir que o recalculo funcione corretamente no backend ao adicionar uma loja ao grupo, e (B) adicionar um banner informativo na Area de Negocio para lojas recentemente adicionadas a um grupo.
 
 ### Mudancas Tecnicas
 
-**1. `src/pages/BusinessArea.tsx`**
-- Adicionar um `useRef` chamado `initialLoadDone` que comeca como `false`
-- O `useEffect` de `activeStore` faz UMA unica chamada a `calculateMetrics` e marca `initialLoadDone = true`
-- Modificar `scheduleRecalc` para ignorar chamadas enquanto `initialLoadDone` for `false`
-- Isso elimina todas as chamadas redundantes dos componentes filhos durante o carregamento
+**1. `src/hooks/useSharingGroup.ts` — Forcar recalculo ao adicionar loja ao grupo existente**
 
-**2. `src/hooks/useBusinessMetrics.ts`**
-- Aumentar `DEBOUNCE_MS` de 2000ms para 3000ms para dar mais folga
-- Manter a logica de retry com backoff ja existente
+Apos inserir a nova loja no `sharing_group_stores` e atualizar o `sharing_group_id` da store, chamar explicitamente a funcao `recalculate_shared_costs` via RPC para garantir que as alocacoes sejam redistribuidas para todas as lojas (incluindo a nova).
 
-**3. Limpar bloqueios no banco**
-- Executar `DELETE FROM rate_limit_entries WHERE endpoint = 'business-metrics'` para desbloquear o usuario imediatamente
+```typescript
+// Dentro de createGroupAndLink, apos adicionar ao grupo existente:
+await supabase.rpc("recalculate_shared_costs", { p_group_id: groupId });
+```
+
+Tambem chamar `recalculate_shared_costs` ao criar um grupo novo com duas lojas.
+
+**2. `src/components/business/FixedExpensesBlock.tsx` — Banner de boas-vindas ao grupo**
+
+Adicionar um banner que aparece quando:
+- A loja pertence a um grupo (`hasGroup === true`)
+- A loja nao tem despesas compartilhadas listadas ainda
+- Existem despesas compartilhadas no grupo (vindas de outras lojas)
+
+O banner informara:
+> "Esta loja faz parte do grupo [nome]. As despesas compartilhadas estao sendo divididas entre [N] lojas."
+
+Nao precisa de botao de acao — as despesas compartilhadas ja aparecerao automaticamente na lista apos o fix do item 1. O banner serve apenas como contexto visual.
+
+**3. `src/contexts/StoreContext.tsx` — Refresh apos criacao de loja**
+
+No `CreateStoreModal`, apos criar a loja e vincular ao grupo, chamar `refreshStores()` para que o `activeStore` atualizado (com `sharing_group_id`) seja propagado para todos os componentes que dependem dele.
+
+**4. `src/components/store/CreateStoreModal.tsx` — Chamar refreshStores apos criacao**
+
+Adicionar chamada a `refreshStores()` apos a criacao e vinculacao da loja ao grupo, garantindo que o contexto global reflita o `sharing_group_id` da nova loja.
+
+### Fluxo Corrigido
+
+```text
+Criar Loja 3 (compartilhada com Loja 2)
+  |
+  v
+Loja 2 ja tem grupo? SIM
+  |
+  v
+Inserir Loja 3 em sharing_group_stores
+  |
+  v
+Atualizar stores.sharing_group_id da Loja 3
+  |
+  v
+Chamar recalculate_shared_costs(group_id)
+  |
+  v
+Alocacoes recalculadas: todas as despesas agora divididas por 3
+  |
+  v
+refreshStores() -> activeStore atualizado com sharing_group_id
+  |
+  v
+FixedExpensesBlock carrega despesas compartilhadas do grupo
+  |
+  v
+Divisao exibida como /3 em todas as lojas
+```
 
 ### Resultado Esperado
 
-- Ao abrir a pagina: **1 unica chamada** ao backend (em vez de 6-8)
-- Ao editar dados: 1 chamada debounced a cada acao do usuario
-- Nunca mais atingir o limite de 30 req/min em uso normal
+- Ao criar a terceira loja vinculada ao grupo, as despesas compartilhadas aparecem imediatamente na Area de Negocio da nova loja
+- A divisao e atualizada automaticamente para /3 em TODAS as lojas do grupo (1, 2 e 3)
+- Um banner contextual informa que a loja faz parte do grupo e quantas lojas dividem os custos
+- Nenhuma mudanca no esquema do banco de dados — apenas logica de front-end e chamada RPC existente
