@@ -215,7 +215,20 @@ export default function BusinessArea() {
   useEffect(() => {
     if (user) {
       initialLoadDone.current = false;
-      // Reset stale metrics immediately so DRE doesn't show old store data
+      // Reset local totals to prevent stale data flash
+      setFixedCostsTotal(0);
+      setVariableCostsTotal(0);
+      setFixedExpensesTotal(0);
+      setVariableExpensesTotal(0);
+      setSharedExpensesTotal(0);
+      setCalculatedMonthlyRevenue(null);
+      // Update form data for new store
+      setFormData({
+        business_name: activeStore?.name || profile?.business_name || "",
+        business_type: activeStore?.business_type || profile?.business_type || "",
+        default_cmv: (activeStore as any)?.default_cmv?.toString() || profile?.default_cmv?.toString() || "",
+      });
+      // Fetch fresh data
       calculateMetrics(activeStore?.id);
       fetchMetrics(user.id, activeStore?.id);
       const timer = setTimeout(() => { initialLoadDone.current = true; }, 3000);
