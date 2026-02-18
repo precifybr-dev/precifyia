@@ -60,6 +60,7 @@ import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useDataProtection } from "@/hooks/useDataProtection";
 // Sub-recipe red color constant
 const SUB_RECIPE_COLOR = "#ef4444";
 
@@ -131,6 +132,7 @@ export default function SubRecipes() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { softDelete } = useDataProtection();
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
@@ -364,23 +366,26 @@ export default function SubRecipes() {
   const handleConfirmDelete = async () => {
     if (!subRecipeToDelete) return;
 
-    // First delete the auto-created ingredient
-    await supabase
+    // Soft delete the auto-created ingredient first
+    const { data: linkedIngredient } = await supabase
       .from("ingredients")
-      .delete()
-      .eq("sub_recipe_id", subRecipeToDelete.id);
+      .select("*")
+      .eq("sub_recipe_id", subRecipeToDelete.id)
+      .maybeSingle();
 
-    // Then delete the sub-recipe (cascade will delete sub_recipe_ingredients)
-    const { error } = await supabase
-      .from("sub_recipes")
-      .delete()
-      .eq("id", subRecipeToDelete.id);
+    if (linkedIngredient) {
+      await softDelete({ table: "ingredients", id: linkedIngredient.id, data: linkedIngredient, storeId: activeStore?.id || null });
+    }
 
-    if (error) {
-      toast({ title: "Erro", description: "Não foi possível excluir a receita", variant: "destructive" });
+    // Then soft delete the sub-recipe
+    const { data: record } = await supabase.from("sub_recipes").select("*").eq("id", subRecipeToDelete.id).single();
+    if (record) {
+      const success = await softDelete({ table: "sub_recipes", id: subRecipeToDelete.id, data: record, storeId: activeStore?.id || null });
+      if (success) {
+        await fetchSubRecipes(user.id, activeStore?.id);
+      }
     } else {
-      toast({ title: "Sucesso", description: "Receita removida!" });
-      await fetchSubRecipes(user.id, activeStore?.id);
+      toast({ title: "Erro", description: "Não foi possível encontrar a sub-receita", variant: "destructive" });
     }
 
     setDeleteDialogOpen(false);

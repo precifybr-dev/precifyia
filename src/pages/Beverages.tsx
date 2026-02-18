@@ -48,6 +48,7 @@ import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
 import { SearchAndFilter, BEVERAGE_CATEGORIES } from "@/components/ui/SearchAndFilter";
 import { normalizeText } from "@/lib/utils";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useDataProtection } from "@/hooks/useDataProtection";
 
 type Beverage = {
   id: string;
@@ -114,6 +115,7 @@ export default function Beverages() {
   
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { softDelete } = useDataProtection();
   const formRef = useRef<HTMLDivElement>(null);
   const { activeStore } = useStore();
 
@@ -373,13 +375,14 @@ export default function Beverages() {
   const handleConfirmDelete = async () => {
     if (!beverageToDelete) return;
     
-    const { error } = await supabase.from("beverages").delete().eq("id", beverageToDelete.id);
-    
-    if (error) {
-      toast({ title: "Erro", description: "Não foi possível excluir", variant: "destructive" });
+    const { data: record } = await supabase.from("beverages").select("*").eq("id", beverageToDelete.id).single();
+    if (record) {
+      const success = await softDelete({ table: "beverages", id: beverageToDelete.id, data: record, storeId: activeStore?.id || null });
+      if (success) {
+        await fetchBeverages(user.id, activeStore?.id);
+      }
     } else {
-      toast({ title: "Sucesso", description: "Bebida excluída!" });
-      await fetchBeverages(user.id, activeStore?.id);
+      toast({ title: "Erro", description: "Não foi possível encontrar a bebida", variant: "destructive" });
     }
     
     setDeleteDialogOpen(false);
