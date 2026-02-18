@@ -191,12 +191,10 @@ export default function BusinessArea() {
       
       await fetchMetrics(session.user.id, activeStore?.id);
       setIsLoading(false);
-      // Trigger backend business metrics calculation
-      calculateMetrics(activeStore?.id);
+      // Business metrics calculation is triggered by the activeStore effect below
     };
-
     checkAuth();
-  }, [navigate, calculateMetrics]);
+  }, [navigate]);
 
   // Recalculate when active store changes
   useEffect(() => {
