@@ -23,6 +23,7 @@ interface IfoodInput {
   plan_type: string | null;
   base_rate: number | null;
   anticipation_type: string;
+  anticipation_rate: number | null;
   monthly_orders: number | null;
   average_ticket: number | null;
   offers_coupon: boolean;
@@ -80,7 +81,7 @@ Deno.serve(async (req) => {
 
     // ─── MASS ASSIGNMENT PROTECTION: Only allow whitelisted fields ───
     const ALLOWED_FIELDS = [
-      'plan_type', 'base_rate', 'anticipation_type', 'monthly_orders',
+      'plan_type', 'base_rate', 'anticipation_type', 'anticipation_rate', 'monthly_orders',
       'average_ticket', 'offers_coupon', 'orders_with_coupon', 'coupon_value',
       'coupon_type', 'coupon_absorber', 'has_delivery_fee', 'delivery_fee',
       'delivery_absorber', 'store_id',
@@ -147,7 +148,9 @@ Deno.serve(async (req) => {
     }
 
     const anticipationType = body.anticipation_type || "weekly";
-    const anticipationFee = anticipationType === "weekly" ? ANTICIPATION_WEEKLY : ANTICIPATION_MONTHLY;
+    const customRate = isValidNumber(body.anticipation_rate) && body.anticipation_rate >= 0 && body.anticipation_rate <= 5
+      ? body.anticipation_rate : ANTICIPATION_WEEKLY;
+    const anticipationFee = anticipationType === "weekly" ? customRate : ANTICIPATION_MONTHLY;
 
     // Base rate real = plan rate + payment fee + anticipation
     const baseRateReal = baseRate + IFOOD_PAYMENT_FEE + anticipationFee;

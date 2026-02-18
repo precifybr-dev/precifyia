@@ -2213,6 +2213,7 @@ export type Database = {
           created_at: string
           default_cmv: number | null
           id: string
+          ifood_anticipation_rate: number | null
           ifood_average_ticket: number | null
           ifood_base_rate: number | null
           ifood_calculation_version: string | null
@@ -2245,6 +2246,7 @@ export type Database = {
           created_at?: string
           default_cmv?: number | null
           id?: string
+          ifood_anticipation_rate?: number | null
           ifood_average_ticket?: number | null
           ifood_base_rate?: number | null
           ifood_calculation_version?: string | null
@@ -2277,6 +2279,7 @@ export type Database = {
           created_at?: string
           default_cmv?: number | null
           id?: string
+          ifood_anticipation_rate?: number | null
           ifood_average_ticket?: number | null
           ifood_base_rate?: number | null
           ifood_calculation_version?: string | null
