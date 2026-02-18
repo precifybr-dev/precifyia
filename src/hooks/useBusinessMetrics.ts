@@ -39,7 +39,7 @@ export interface BusinessMetricsResult {
 }
 
 const DEBOUNCE_MS = 3000;
-const MAX_429_RETRIES = 2;
+const MAX_429_RETRIES = 1;
 
 export function useBusinessMetrics() {
   const [result, setResult] = useState<BusinessMetricsResult | null>(null);
