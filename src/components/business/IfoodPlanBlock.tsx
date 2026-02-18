@@ -22,6 +22,7 @@ interface IfoodSettings {
   planType: string | null;
   baseRate: number | null;
   anticipationType: string; // "weekly" | "monthly"
+  anticipationRate: number; // editable: 1.49 to 1.99
   // Volume de Vendas
   monthlyOrders: number | null;
   averageTicket: number | null;
@@ -52,6 +53,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
     planType: null,
     baseRate: null,
     anticipationType: "weekly",
+    anticipationRate: 1.99,
     monthlyOrders: null,
     averageTicket: null,
     offersCoupon: false,
@@ -91,6 +93,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
             planType: data.ifood_plan_type,
             baseRate: data.ifood_base_rate,
             anticipationType: (data as any).ifood_anticipation_type || "weekly",
+            anticipationRate: (data as any).ifood_anticipation_rate != null ? Number((data as any).ifood_anticipation_rate) : 1.99,
             monthlyOrders: data.ifood_monthly_orders,
             averageTicket: data.ifood_average_ticket ? Number(data.ifood_average_ticket) : null,
             offersCoupon: data.ifood_offers_coupon || false,
@@ -134,7 +137,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
 
     // Start with REAL base rate (plan rate + iFood payment fee 3.2% + anticipation fee)
     const IFOOD_PAYMENT_FEE = 3.2;
-    const anticipationFee = settings.anticipationType === "weekly" ? 1.99 : 0;
+    const anticipationFee = settings.anticipationType === "weekly" ? settings.anticipationRate : 0;
     let realPercentage = settings.baseRate + IFOOD_PAYMENT_FEE + anticipationFee;
 
     // Calculate coupon impact
@@ -198,6 +201,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
     settings.planType,
     settings.baseRate,
     settings.anticipationType,
+    settings.anticipationRate,
     settings.monthlyOrders,
     settings.averageTicket,
     settings.offersCoupon,
@@ -232,6 +236,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
             ifood_has_delivery_fee: settings.hasDeliveryFee,
             ifood_delivery_fee: settings.deliveryFee,
             ifood_delivery_absorber: settings.deliveryAbsorber,
+            ifood_anticipation_rate: settings.anticipationRate,
             ifood_real_percentage: settings.realPercentage,
           })
           .eq("user_id", userId);
@@ -467,15 +472,46 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                       >
                         <div className={`flex items-center space-x-1.5 border rounded-md px-2 py-1 cursor-pointer text-xs ${settings.anticipationType === "weekly" ? "border-destructive bg-destructive/10" : "border-muted"}`}>
                           <RadioGroupItem value="weekly" id="anticipation_weekly" className="h-3 w-3" />
-                          <Label htmlFor="anticipation_weekly" className="cursor-pointer text-xs">Semanal (1,99%)</Label>
+                          <Label htmlFor="anticipation_weekly" className="cursor-pointer text-xs">Semanal</Label>
                         </div>
                         <div className={`flex items-center space-x-1.5 border rounded-md px-2 py-1 cursor-pointer text-xs ${settings.anticipationType === "monthly" ? "border-success bg-success/10" : "border-muted"}`}>
                           <RadioGroupItem value="monthly" id="anticipation_monthly" className="h-3 w-3" />
                           <Label htmlFor="anticipation_monthly" className="cursor-pointer text-xs">Mensal (0%)</Label>
                         </div>
                       </RadioGroup>
+                      {settings.anticipationType === "weekly" && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="5"
+                            value={settings.anticipationRate}
+                            onChange={(e) => setSettings(prev => ({ ...prev, anticipationRate: parseFloat(e.target.value) || 0 }))}
+                            className="w-16 h-6 text-xs px-1.5 py-0 border-destructive/30 text-center"
+                          />
+                          <span className="text-xs text-muted-foreground">%</span>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <HelpCircle className="w-3 h-3 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-[280px] text-xs">
+                                <p className="font-semibold mb-1">Taxa de Antecipação Semanal</p>
+                                <p>Varia conforme seu perfil no iFood:</p>
+                                <ul className="list-disc pl-3 mt-1 space-y-0.5">
+                                  <li><strong>1,49%</strong> — Conta Digital iFood Pago</li>
+                                  <li><strong>1,59%</strong> — Taxa padrão</li>
+                                  <li><strong>1,99%</strong> — Alguns parceiros</li>
+                                </ul>
+                                <p className="mt-1">Verifique no Portal do Parceiro iFood.</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </div>
+                      )}
                     </div>
-                    <span className="font-mono font-medium">{settings.anticipationType === "weekly" ? "1,99%" : "0%"}</span>
+                    <span className="font-mono font-medium">{settings.anticipationType === "weekly" ? `${settings.anticipationRate.toFixed(2).replace('.', ',')}%` : "0%"}</span>
                   </div>
                   <div className="flex justify-between items-center pt-2">
                     <div className="flex items-center gap-2">
@@ -493,14 +529,14 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                       </TooltipProvider>
                     </div>
                     <span className="font-mono font-bold text-destructive text-lg">
-                      {(settings.baseRate + 3.2 + (settings.anticipationType === "weekly" ? 1.99 : 0)).toFixed(2)}%
+                      {(settings.baseRate + 3.2 + (settings.anticipationType === "weekly" ? settings.anticipationRate : 0)).toFixed(2)}%
                     </span>
                   </div>
                 </div>
 
                 <p className="text-xs text-muted-foreground mt-2">
                   <Info className="h-3 w-3 inline mr-1" />
-                  Além da comissão do plano, o iFood cobra 3,2% sobre pagamentos online{settings.anticipationType === "weekly" ? " e 1,99% de antecipação semanal" : ". Antecipação mensal não possui taxa adicional"}.
+                  Além da comissão do plano, o iFood cobra 3,2% sobre pagamentos online{settings.anticipationType === "weekly" ? ` e ${settings.anticipationRate.toFixed(2).replace('.', ',')}% de antecipação semanal` : ". Antecipação mensal não possui taxa adicional"}.
                 </p>
               </div>
             )}
@@ -755,7 +791,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          {(settings.baseRate + 3.2 + (settings.anticipationType === "weekly" ? 1.99 : 0)).toFixed(2)}%
+                          {(settings.baseRate + 3.2 + (settings.anticipationType === "weekly" ? settings.anticipationRate : 0)).toFixed(2)}%
                         </TableCell>
                       </TableRow>
                       {settings.offersCoupon && settings.couponAbsorber !== "ifood" && metrics.couponImpactPercent > 0 && (
@@ -845,7 +881,7 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
                 <p className="font-medium mb-2 text-foreground">Fórmula de cálculo:</p>
                 <p className="font-mono">% Real = Taxa Base Real (Plano + Pgto + Antecipação) + % Impacto Cupons + % Impacto Entrega</p>
                 <p className="mt-2">
-                  <strong>Taxa Base Real:</strong> Taxa do Plano + 3,2% (pagamento iFood) + {settings.anticipationType === "weekly" ? "1,99% (antecipação semanal)" : "0% (antecipação mensal)"}
+                  <strong>Taxa Base Real:</strong> Taxa do Plano + 3,2% (pagamento iFood) + {settings.anticipationType === "weekly" ? `${settings.anticipationRate.toFixed(2).replace('.', ',')}% (antecipação semanal)` : "0% (antecipação mensal)"}
                 </p>
                 <p>
                   <strong>Impacto Cupom:</strong> (Custo Total Cupons ÷ Faturamento iFood) × 100
