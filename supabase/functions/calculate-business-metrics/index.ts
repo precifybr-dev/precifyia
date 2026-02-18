@@ -110,8 +110,14 @@ Deno.serve(async (req) => {
       return query.is("store_id", null);
     };
 
+    // Buscar monthly_revenue da loja (se storeId) ou do perfil (compatibilidade)
+    const revenuePromise = storeId
+      ? supabase.from("stores").select("monthly_revenue").eq("id", storeId).maybeSingle()
+      : supabase.from("profiles").select("monthly_revenue").eq("user_id", user.id).maybeSingle();
+
     const [
       { data: profile },
+      { data: revenueSource },
       { data: fixedCosts },
       { data: variableCosts },
       { data: fixedExpenses },
@@ -119,7 +125,8 @@ Deno.serve(async (req) => {
       { data: taxData },
       { data: cardFees },
     ] = await Promise.all([
-      supabase.from("profiles").select("monthly_revenue, cost_limit_percent").eq("user_id", user.id).maybeSingle(),
+      supabase.from("profiles").select("cost_limit_percent").eq("user_id", user.id).maybeSingle(),
+      revenuePromise,
       storeFilter(supabase.from("fixed_costs").select("value_per_item").eq("user_id", user.id)),
       storeFilter(supabase.from("variable_costs").select("value_per_item").eq("user_id", user.id)),
       storeFilter(supabase.from("fixed_expenses").select("monthly_value").eq("user_id", user.id)),
@@ -128,7 +135,6 @@ Deno.serve(async (req) => {
       storeFilter(supabase.from("card_fees").select("fee_percentage").eq("user_id", user.id)),
     ]);
 
-    // ─── Calculate totals ───
     const fixedCostsTotal = fixedCosts?.reduce((s: number, c: any) => s + Number(c.value_per_item || 0), 0) || 0;
     const variableCostsTotal = variableCosts?.reduce((s: number, c: any) => s + Number(c.value_per_item || 0), 0) || 0;
     const productionCostsTotal = fixedCostsTotal + variableCostsTotal;
@@ -137,7 +143,7 @@ Deno.serve(async (req) => {
     const variableExpensesTotal = variableExpenses?.reduce((s: number, e: any) => s + Number(e.monthly_value || 0), 0) || 0;
     const totalExpenses = fixedExpensesTotal + variableExpensesTotal;
 
-    const monthlyRevenue = profile?.monthly_revenue ? Number(profile.monthly_revenue) : null;
+    const monthlyRevenue = revenueSource?.monthly_revenue ? Number(revenueSource.monthly_revenue) : null;
     const costLimitPercent = profile?.cost_limit_percent ?? 40;
 
     const taxPercentage = taxData?.tax_percentage ? Number(taxData.tax_percentage) : 0;
