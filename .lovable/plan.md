@@ -1,82 +1,99 @@
 
-# Corrigir Exclusao — Todos os Itens Devem Ir para a Lixeira
+# Corrigir Compartilhamento de Despesas - Loja Nao Recebe Divisao
 
-## Problema
+## Problema Identificado
 
-Atualmente, apenas os **insumos** usam o `softDelete` (lixeira). Todos os outros itens sao deletados permanentemente com `supabase.from("tabela").delete()`, sem passar pela lixeira. Isso significa que despesas fixas, custos fixos, custos variaveis, despesas variaveis, fichas tecnicas, sub-receitas e bebidas sao perdidos permanentemente ao serem excluidos.
-
-## Itens Afetados
-
-| Componente | Tabela | Status Atual |
-|---|---|---|
-| `DeleteIngredientDialog.tsx` | `ingredients` | Usa softDelete (OK) |
-| `FixedExpensesBlock.tsx` | `fixed_expenses` | Delete direto (CORRIGIR) |
-| `VariableExpensesBlock.tsx` | `variable_expenses` | Delete direto (CORRIGIR) |
-| `FixedCostsBlock.tsx` | `fixed_costs` | Delete direto (CORRIGIR) |
-| `VariableCostsBlock.tsx` | `variable_costs` | Delete direto (CORRIGIR) |
-| `Recipes.tsx` | `recipes` | Delete direto (CORRIGIR) |
-| `SubRecipes.tsx` | `sub_recipes` | Delete direto (CORRIGIR) |
-| `Beverages.tsx` | `beverages` | Delete direto (CORRIGIR) |
+Ao investigar o banco de dados, encontrei que as despesas "PARCELA IFOOD" e "TESTE" tem `shared_store_ids` com apenas 2 das 3 lojas (faltando FRITTO BOX). Isso acontece porque o codigo usa `stores` do contexto React, que pode estar desatualizado no momento do compartilhamento. Alem disso, despesas antigas com `shared_store_ids = NULL` funcionam corretamente porque o banco faz fallback para todas as lojas do grupo.
 
 ## Solucao
 
-Substituir todas as chamadas diretas de `.delete()` pelo `softDelete` do hook `useDataProtection` em cada componente. O fluxo sera:
+### 1. Corrigir dados existentes no banco (Migration SQL)
 
-1. O usuario clica em excluir
-2. O sistema busca os dados completos do registro
-3. Chama `softDelete({ table, id, data, storeId })` que:
-   - Copia os dados para `deleted_records` (lixeira)
-   - Deleta o registro original
-   - Exibe toast "Item movido para lixeira"
-4. O item aparece na pagina Lixeira por 30 dias e pode ser restaurado
-
-### Mudancas por Arquivo
-
-**1. `src/components/business/FixedExpensesBlock.tsx`**
-- Importar `useDataProtection`
-- No `handleDelete`: buscar dados do registro, chamar `softDelete({ table: "fixed_expenses", id, data, storeId })`
-
-**2. `src/components/business/VariableExpensesBlock.tsx`**
-- Importar `useDataProtection`
-- No `handleDelete`: buscar dados do registro, chamar `softDelete({ table: "variable_expenses", id, data, storeId })`
-
-**3. `src/components/business/FixedCostsBlock.tsx`**
-- Importar `useDataProtection`
-- No `handleDelete`: buscar dados do registro, chamar `softDelete({ table: "fixed_costs", id, data, storeId })`
-
-**4. `src/components/business/VariableCostsBlock.tsx`**
-- Importar `useDataProtection`
-- No `handleDelete`: buscar dados do registro, chamar `softDelete({ table: "variable_costs", id, data, storeId })`
-
-**5. `src/pages/Recipes.tsx`**
-- Importar `useDataProtection`
-- No `handleConfirmDelete`: buscar dados completos da receita, chamar `softDelete({ table: "recipes", id, data, storeId })`
-
-**6. `src/pages/SubRecipes.tsx`**
-- Importar `useDataProtection`
-- No `handleConfirmDelete`: softDelete da sub-receita e do insumo vinculado (ambos vao para a lixeira)
-
-**7. `src/pages/Beverages.tsx`**
-- Importar `useDataProtection`
-- No `handleConfirmDelete`: buscar dados da bebida, chamar `softDelete({ table: "beverages", id, data, storeId })`
-
-### Padrao de Implementacao
-
-Cada `handleDelete` seguira este padrao:
+Atualizar as despesas compartilhadas que tem `shared_store_ids` incompleto para incluir todas as lojas do grupo:
 
 ```text
-1. Buscar dados completos do registro via supabase.from(tabela).select("*").eq("id", id).single()
-2. Se encontrou dados:
-   - Chamar softDelete({ table: "tabela", id, data, storeId })
-   - Se sucesso: atualizar lista local (fetchExpenses, fetchRecipes, etc.)
-3. Se erro: exibir toast de erro
+UPDATE fixed_expenses 
+SET shared_store_ids = (
+  SELECT array_agg(sgs.store_id)
+  FROM sharing_group_stores sgs
+  WHERE sgs.sharing_group_id = fixed_expenses.sharing_group_id
+)
+WHERE cost_type = 'shared' 
+  AND sharing_group_id IS NOT NULL;
 ```
 
-Nao ha necessidade de mudancas no banco de dados — a tabela `deleted_records` ja existe e suporta todas as tabelas listadas no tipo `ProtectedTable`.
+Isso corrige tanto despesas com `shared_store_ids` parcial quanto as com NULL.
 
-### Resultado
+### 2. Buscar lojas frescas do banco ao abrir o dialog de compartilhamento
 
-- Todos os 8 tipos de itens irao para a lixeira ao serem excluidos
-- Todos poderao ser restaurados em ate 30 dias
-- A pagina Lixeira mostrara todos os itens corretamente (ja esta preparada para isso)
-- O fluxo sera consistente em toda a aplicacao
+No `FixedExpensesBlock.tsx`, em vez de usar `stores.map(s => s.id)` do contexto (que pode estar desatualizado), buscar as lojas diretamente do banco de dados:
+
+**Mudanca em `handleToggleShare`:**
+- Antes de abrir o dialog, fazer um `supabase.from("stores").select("id, name").eq("user_id", userId)` para garantir a lista completa
+- Usar essa lista fresca para pre-selecionar todas as lojas
+- Armazenar essa lista fresca em um estado local para renderizar no dialog
+
+### 3. Garantir que o dialog use a lista fresca
+
+Criar um novo estado `availableStores` que e populado com dados frescos do banco cada vez que o dialog abre. O dialog usara `availableStores` em vez de `stores` do contexto para renderizar as opcoes.
+
+### 4. Adicionar validacao pos-salvamento
+
+Apos o `confirmShare` salvar, verificar que `shared_store_ids` foi salvo corretamente fazendo uma leitura do registro atualizado e comparando com `selectedShareStores`.
+
+## Detalhes Tecnicos
+
+### Arquivo: `src/components/business/FixedExpensesBlock.tsx`
+
+1. Adicionar estado `availableStores`:
+```text
+const [availableStores, setAvailableStores] = useState<{id: string; name: string}[]>([]);
+```
+
+2. Modificar `handleToggleShare` para buscar lojas frescas:
+```text
+const handleToggleShare = async (expense) => {
+  if (expense.cost_type === "exclusive") {
+    // Buscar lojas frescas do banco
+    const { data: freshStores } = await supabase
+      .from("stores")
+      .select("id, name")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: true });
+    
+    const storesList = freshStores || [];
+    setAvailableStores(storesList);
+    setSelectedShareStores(storesList.map(s => s.id));
+    setShareConfirmExpense(expense);
+  } else {
+    setUnshareConfirmExpense(expense);
+  }
+};
+```
+
+3. No dialog de selecao de lojas, trocar `stores.map((store) => ...)` por `availableStores.map((store) => ...)` para usar a lista fresca
+
+4. Adicionar validacao no `confirmShare` apos salvar:
+```text
+// Verificar se salvou corretamente
+const { data: saved } = await supabase
+  .from("fixed_expenses")
+  .select("shared_store_ids")
+  .eq("id", shareConfirmExpense.id)
+  .single();
+
+if (saved?.shared_store_ids?.length !== selectedShareStores.length) {
+  toast({ title: "Atenção", description: "Verifique se todas as lojas foram incluidas", variant: "destructive" });
+}
+```
+
+### Arquivo: Migration SQL
+
+Uma unica migration para normalizar os dados existentes, garantindo que toda despesa compartilhada tenha `shared_store_ids` completo com todas as lojas do grupo.
+
+## Resultado Esperado
+
+- Todas as 3 lojas aparecerao corretamente no dialog de compartilhamento
+- Ao compartilhar, todas as lojas selecionadas serao salvas no banco
+- Despesas existentes serao corrigidas para incluir todas as lojas
+- Recalculo automatico garantira que a divisao reflita o numero correto de lojas
