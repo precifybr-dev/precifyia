@@ -261,8 +261,8 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
 
   const handleToggleShare = async (expense: FixedExpense) => {
     if (expense.cost_type === "exclusive") {
-      // Pre-select all group stores
-      setSelectedShareStores(groupStores.map(gs => gs.store_id));
+      // Pre-select all user stores
+      setSelectedShareStores(stores.map(s => s.id));
       setShareConfirmExpense(expense);
     } else {
       setUnshareConfirmExpense(expense);
@@ -278,16 +278,56 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
   };
 
   const confirmShare = async () => {
-    if (!shareConfirmExpense || !group || selectedShareStores.length < 2) {
+    if (!shareConfirmExpense || selectedShareStores.length < 2) {
       toast({ title: "Atenção", description: "Selecione pelo menos 2 lojas para compartilhar", variant: "destructive" });
       return;
     }
     setIsToggling(true);
+
+    // Ensure all selected stores are in the sharing group
+    let groupId = group?.id;
+    if (!groupId) {
+      // No group yet — create one with the selected stores
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) { setIsToggling(false); return; }
+      const { data: newGroup, error: groupError } = await supabase
+        .from("sharing_groups")
+        .insert({ user_id: session.user.id, name: "Grupo compartilhado" })
+        .select()
+        .single();
+      if (groupError || !newGroup) {
+        toast({ title: "Erro", description: "Não foi possível criar o grupo", variant: "destructive" });
+        setIsToggling(false);
+        return;
+      }
+      groupId = newGroup.id;
+      // Add all selected stores to the group
+      await supabase.from("sharing_group_stores").insert(
+        selectedShareStores.map(sid => ({ sharing_group_id: groupId!, store_id: sid }))
+      );
+      // Update stores with group reference
+      for (const sid of selectedShareStores) {
+        await supabase.from("stores").update({ sharing_group_id: groupId }).eq("id", sid);
+      }
+    } else {
+      // Group exists — add any stores not yet in the group
+      const existingStoreIds = groupStores.map(gs => gs.store_id);
+      const newStoreIds = selectedShareStores.filter(sid => !existingStoreIds.includes(sid));
+      if (newStoreIds.length > 0) {
+        await supabase.from("sharing_group_stores").insert(
+          newStoreIds.map(sid => ({ sharing_group_id: groupId!, store_id: sid }))
+        );
+        for (const sid of newStoreIds) {
+          await supabase.from("stores").update({ sharing_group_id: groupId }).eq("id", sid);
+        }
+      }
+    }
+
     const { error } = await supabase
       .from("fixed_expenses")
       .update({ 
         cost_type: "shared", 
-        sharing_group_id: group.id, 
+        sharing_group_id: groupId, 
         store_id: null,
         shared_store_ids: selectedShareStores
       })
@@ -295,6 +335,8 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
     if (error) {
       toast({ title: "Erro", description: "Não foi possível compartilhar a despesa", variant: "destructive" });
     } else {
+      // Recalculate shared costs
+      await supabase.rpc("recalculate_shared_costs", { p_group_id: groupId });
       toast({ title: "Sucesso!", description: `Despesa compartilhada entre ${selectedShareStores.length} lojas` });
       await fetchExpenses();
       await refreshGroup();
@@ -619,14 +661,13 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
           {/* Store selection */}
           <div className="space-y-2">
             <p className="text-sm font-medium text-foreground">Lojas que irão dividir:</p>
-            {groupStores.map((gs) => {
-              const storeName = stores.find(s => s.id === gs.store_id)?.name || "Loja";
-              const isSelected = selectedShareStores.includes(gs.store_id);
-              const isCurrentStore = gs.store_id === activeStore?.id;
+            {stores.map((store) => {
+              const isSelected = selectedShareStores.includes(store.id);
+              const isCurrentStore = store.id === activeStore?.id;
               return (
                 <div
-                  key={gs.id}
-                  onClick={() => toggleStoreSelection(gs.store_id)}
+                  key={store.id}
+                  onClick={() => toggleStoreSelection(store.id)}
                   className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors border ${
                     isSelected 
                       ? "bg-violet-500/10 border-violet-500/30" 
@@ -639,7 +680,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
                     }`}>
                       {isSelected && <Check className="w-3 h-3 text-white" />}
                     </div>
-                    <span className="text-sm text-foreground">{storeName}</span>
+                    <span className="text-sm text-foreground">{store.name}</span>
                     {isCurrentStore && (
                       <Badge variant="secondary" className="text-[10px]">Atual</Badge>
                     )}
