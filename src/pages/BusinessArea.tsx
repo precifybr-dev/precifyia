@@ -397,26 +397,6 @@ export default function BusinessArea() {
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Faturamento em destaque */}
-                <div className="p-5 bg-gradient-to-r from-primary/10 to-primary/5 rounded-xl border border-primary/20">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                      <Wallet className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Faturamento Mensal</p>
-                       <p className="font-display text-2xl font-bold text-foreground">
-                        {calculatedMonthlyRevenue !== null
-                          ? `R$ ${calculatedMonthlyRevenue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
-                          : "Não informado"}
-                      </p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Base global para cálculo de percentuais de despesas fixas e variáveis
-                  </p>
-                </div>
-
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm text-muted-foreground mb-1">Nome do Negócio</p>
@@ -425,10 +405,6 @@ export default function BusinessArea() {
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm text-muted-foreground mb-1">Tipo</p>
                     <p className="font-semibold text-foreground text-lg">{getBusinessTypeLabel(profile?.business_type)}</p>
-                  </div>
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground mb-1">Regime Tributário</p>
-                    <p className="font-semibold text-foreground text-lg">{getTaxRegimeLabel(profile?.tax_regime)}</p>
                   </div>
                   <div className="p-4 bg-muted/50 rounded-lg">
                     <p className="text-sm text-muted-foreground mb-1">CMV Padrão</p>
