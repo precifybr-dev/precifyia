@@ -60,8 +60,14 @@ export function useBusinessMetrics() {
 
   const calculate = useCallback((storeId?: string | null) => {
     const resolvedStoreId = storeId || null;
+    const storeChanged = lastStoreRef.current !== null && lastStoreRef.current !== resolvedStoreId;
     lastStoreRef.current = resolvedStoreId;
     setError(null);
+
+    // If store changed, clear stale result immediately so UI doesn't show old data
+    if (storeChanged) {
+      setResult(null);
+    }
 
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -70,6 +76,9 @@ export function useBusinessMetrics() {
       abortRef.current.abort();
       inflightRef.current = false;
     }
+
+    // Use shorter debounce on store change for faster feedback
+    const delay = storeChanged ? 300 : DEBOUNCE_MS;
 
     debounceRef.current = setTimeout(async () => {
       if (inflightRef.current) {
@@ -144,7 +153,7 @@ export function useBusinessMetrics() {
         setIsCalculating(false);
         inflightRef.current = false;
       }
-    }, DEBOUNCE_MS);
+    }, delay);
   }, []);
 
   const reset = useCallback(() => {
