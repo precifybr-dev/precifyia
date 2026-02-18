@@ -49,16 +49,20 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ─── Rate Limiting: 30 req/min por usuário, block 30s ───
+    // ─── Rate Limiting: 80 req/min por usuário, block 10s ───
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { data: rlData } = await supabase.rpc("check_rate_limit", {
-      _key: user.id, _endpoint: "business-metrics", _max_requests: 60, _window_seconds: 60, _block_seconds: 15,
+      _key: user.id, _endpoint: "business-metrics", _max_requests: 80, _window_seconds: 60, _block_seconds: 10,
     });
     const rl = rlData?.[0];
     if (rl && !rl.allowed) {
-      return new Response(JSON.stringify({ error: "Muitas requisições. Tente novamente em breve." }), {
+      const retryAfter = rl.retry_after_seconds || 10;
+      return new Response(JSON.stringify({
+        error: "Muitas requisições. Tente novamente em breve.",
+        retry_after_seconds: retryAfter,
+      }), {
         status: 429,
-        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(rl.retry_after_seconds) },
+        headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": String(retryAfter) },
       });
     }
 

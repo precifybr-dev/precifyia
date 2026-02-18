@@ -22,7 +22,8 @@ import {
   Receipt,
   Calculator,
   Sun,
-  Moon
+  Moon,
+  AlertTriangle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -78,7 +79,7 @@ const taxRegimes = [
 
 export default function BusinessArea() {
   const { activeStore, updateStore } = useStore();
-  const { result: businessMetrics, isCalculating: isMetricsCalculating, calculate: calculateMetrics } = useBusinessMetrics();
+  const { result: businessMetrics, isCalculating: isMetricsCalculating, error: metricsError, retryingIn, calculate: calculateMetrics } = useBusinessMetrics();
   const recalcTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadDone = useRef(false);
   
@@ -551,6 +552,39 @@ export default function BusinessArea() {
               }}
             />
           </div>
+
+          {/* ========== Retry / Error Banner ========== */}
+          {(metricsError || retryingIn) && (
+            <div className={`mt-6 p-4 rounded-xl border flex items-center gap-3 ${
+              retryingIn 
+                ? "bg-amber-500/10 border-amber-500/20" 
+                : "bg-destructive/10 border-destructive/20"
+            }`}>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                retryingIn ? "bg-amber-500/20" : "bg-destructive/20"
+              }`}>
+                {retryingIn ? (
+                  <div className="w-4 h-4 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 text-destructive" />
+                )}
+              </div>
+              <div className="flex-1">
+                {retryingIn ? (
+                  <p className="text-sm text-foreground">
+                    Servidor ocupado. Nova tentativa em <strong>{retryingIn}s</strong>...
+                  </p>
+                ) : (
+                  <p className="text-sm text-destructive">{metricsError}</p>
+                )}
+              </div>
+              {metricsError && !retryingIn && (
+                <Button size="sm" variant="outline" onClick={() => calculateMetrics(activeStore?.id)}>
+                  Tentar novamente
+                </Button>
+              )}
+            </div>
+          )}
 
           {/* ========== SECTION: Taxes and Fees ========== */}
           <div className="mt-8">
