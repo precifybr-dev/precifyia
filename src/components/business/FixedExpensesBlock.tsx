@@ -52,6 +52,8 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
   const [shareConfirmExpense, setShareConfirmExpense] = useState<FixedExpense | null>(null);
   const [unshareConfirmExpense, setUnshareConfirmExpense] = useState<FixedExpense | null>(null);
   const [detailExpense, setDetailExpense] = useState<FixedExpense | null>(null);
+  const [deleteSharedConfirm, setDeleteSharedConfirm] = useState<FixedExpense | null>(null);
+  const [isDeletingShared, setIsDeletingShared] = useState(false);
   const [isToggling, setIsToggling] = useState(false);
   const { toast } = useToast();
   const { activeStore, stores } = useStore();
@@ -162,7 +164,18 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
     }
   };
 
+  const isPrimaryStore = activeStore?.is_default === true;
+
   const handleDelete = async (id: string) => {
+    const expense = expenses.find(e => e.id === id);
+    
+    // If it's a shared expense, show confirmation dialog instead of deleting directly
+    if (expense?.cost_type === "shared") {
+      setDeleteSharedConfirm(expense);
+      return;
+    }
+
+    // Exclusive expense: softDelete normally
     const { data: record } = await supabase.from("fixed_expenses").select("*").eq("id", id).single();
     if (!record) {
       toast({ title: "Erro", description: "Não foi possível encontrar a despesa", variant: "destructive" });
@@ -173,6 +186,55 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
       await fetchExpenses();
       if (hasGroup) await refreshGroup();
     }
+  };
+
+  const handleConfirmDeleteShared = async () => {
+    if (!deleteSharedConfirm || !activeStore) return;
+    setIsDeletingShared(true);
+
+    if (isPrimaryStore) {
+      // Primary store: actually delete the shared expense (affects all stores)
+      const { data: record } = await supabase.from("fixed_expenses").select("*").eq("id", deleteSharedConfirm.id).single();
+      if (record) {
+        const success = await softDelete({ table: "fixed_expenses", id: deleteSharedConfirm.id, data: record, storeId: null });
+        if (success) {
+          await fetchExpenses();
+          await refreshGroup();
+        }
+      }
+    } else {
+      // Secondary store: remove this store from the sharing group (expense continues for other stores)
+      const { error } = await supabase
+        .from("sharing_group_stores")
+        .delete()
+        .eq("sharing_group_id", activeStore.sharing_group_id)
+        .eq("store_id", activeStore.id);
+
+      if (error) {
+        toast({ title: "Erro", description: "Não foi possível remover a loja do compartilhamento", variant: "destructive" });
+      } else {
+        // Remove group reference from this store
+        await supabase
+          .from("stores")
+          .update({ sharing_group_id: null })
+          .eq("id", activeStore.id);
+
+        // Trigger recalculation for remaining stores
+        if (activeStore.sharing_group_id) {
+          await supabase.rpc("recalculate_shared_costs", { p_group_id: activeStore.sharing_group_id });
+        }
+
+        toast({ 
+          title: "Sucesso!", 
+          description: "Esta loja foi removida do compartilhamento. A despesa continua dividida entre as demais lojas." 
+        });
+        await fetchExpenses();
+        await refreshGroup();
+      }
+    }
+
+    setDeleteSharedConfirm(null);
+    setIsDeletingShared(false);
   };
 
   const handleToggleShare = async (expense: FixedExpense) => {
@@ -604,6 +666,58 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
               Divisão igualitária entre {storeCount} lojas
             </p>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ─── Confirm Delete Shared Expense Dialog ─── */}
+      <Dialog open={!!deleteSharedConfirm} onOpenChange={(open) => !open && setDeleteSharedConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              {isPrimaryStore ? "Excluir despesa compartilhada?" : "Remover compartilhamento?"}
+            </DialogTitle>
+            <DialogDescription>
+              {isPrimaryStore
+                ? "Esta despesa será excluída permanentemente de TODAS as lojas do grupo. Esta ação não pode ser desfeita facilmente."
+                : "Ao remover, esta loja deixará de compartilhar esta despesa. As demais lojas continuarão dividindo o valor entre si."
+              }
+            </DialogDescription>
+          </DialogHeader>
+          <div className="p-3 bg-muted/50 rounded-lg">
+            <p className="text-sm font-medium text-foreground">{deleteSharedConfirm?.name}</p>
+            <p className="text-sm text-muted-foreground">
+              Valor total: R$ {formatCurrency(deleteSharedConfirm?.monthly_value || 0)}
+            </p>
+          </div>
+          {!isPrimaryStore && (
+            <div className="p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+              <p className="text-xs text-foreground">
+                <strong>O que vai acontecer:</strong>
+              </p>
+              <ul className="text-xs text-muted-foreground mt-1 space-y-1 list-disc pl-4">
+                <li>Esta loja será removida do grupo de compartilhamento</li>
+                <li>A despesa continuará dividida entre as {storeCount - 1} lojas restantes (R$ {formatCurrency((deleteSharedConfirm?.monthly_value || 0) / Math.max(storeCount - 1, 1))}/loja)</li>
+                <li>Para reativar o compartilhamento, acesse a loja principal e compartilhe novamente</li>
+              </ul>
+            </div>
+          )}
+          {isPrimaryStore && (
+            <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+              <p className="text-xs text-foreground">
+                <strong>Atenção:</strong> Como esta é a loja principal, a despesa será movida para a lixeira e removida de todas as {storeCount} lojas do grupo.
+              </p>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDeleteSharedConfirm(null)} disabled={isDeletingShared}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmDeleteShared} disabled={isDeletingShared} variant="destructive" className="gap-2">
+              {isDeletingShared && <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              {isPrimaryStore ? "Excluir de todas as lojas" : "Remover desta loja"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
