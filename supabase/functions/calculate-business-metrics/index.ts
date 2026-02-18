@@ -49,10 +49,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // ─── Rate Limiting: 15 req/min por usuário ───
+    // ─── Rate Limiting: 30 req/min por usuário, block 30s ───
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { data: rlData } = await supabase.rpc("check_rate_limit", {
-      _key: user.id, _endpoint: "business-metrics", _max_requests: 15, _window_seconds: 60, _block_seconds: 120,
+      _key: user.id, _endpoint: "business-metrics", _max_requests: 30, _window_seconds: 60, _block_seconds: 30,
     });
     const rl = rlData?.[0];
     if (rl && !rl.allowed) {
