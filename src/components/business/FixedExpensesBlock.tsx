@@ -522,7 +522,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
                           >
                             {expense.name}
                           </span>
-                          {isShared && (
+                          {isShared && stores.length > 1 && (
                             <Badge variant="secondary" className="bg-violet-500/10 text-violet-600 dark:text-violet-400 text-[10px] gap-0.5 flex-shrink-0">
                               <Share2 className="w-2.5 h-2.5" />
                               {expenseStoreCount} lojas
@@ -536,7 +536,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
                           >
                             R$ {formatCurrency(isShared ? expense.monthly_value : expense.monthly_value)}
                           </span>
-                          {isShared && (
+                          {isShared && stores.length > 1 && (
                             <Button
                               variant="ghost"
                               size="icon"
@@ -558,7 +558,7 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
                       </div>
 
                       {/* Shared details line */}
-                      {isShared && expenseStoreCount > 0 && (
+                      {isShared && expenseStoreCount > 0 && stores.length > 1 && (
                         <div className="flex items-center gap-3 mt-1.5 text-sm">
                           <span className="text-muted-foreground">Total: R$ {formatCurrency(expense.monthly_value)}</span>
                           <span className="text-violet-600 dark:text-violet-400 font-medium">
@@ -636,8 +636,8 @@ export default function FixedExpensesBlock({ userId, storeId, monthlyRevenue, on
           <CategoryMismatchAlert inputText={newExpense.name} currentCategory="despesas_fixas" />
         </div>
 
-        {/* Shared Costs Summary (only if there are shared expenses) */}
-        {hasGroup && sharedExpenses.length > 0 && (
+        {/* Shared Costs Summary (only if there are shared expenses and multiple stores) */}
+        {hasGroup && sharedExpenses.length > 0 && stores.length > 1 && (
           <div className="mt-6 p-4 bg-violet-500/5 rounded-xl border border-violet-500/20">
             <div className="flex items-center gap-2 mb-3">
               <Users className="w-4 h-4 text-violet-500" />
