@@ -14,6 +14,7 @@ export interface Store {
   ifood_url: string | null;
   menu_cache: any | null;
   menu_cached_at: string | null;
+  sharing_group_id: string | null;
 }
 
 interface StoreContextType {

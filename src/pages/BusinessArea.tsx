@@ -46,6 +46,7 @@ import SimplifiedDREBlock from "@/components/business/SimplifiedDREBlock";
 import MonthlyRevenueBlock from "@/components/business/MonthlyRevenueBlock";
 import IfoodPlanBlock from "@/components/business/IfoodPlanBlock";
 import TaxesAndFeesBlock from "@/components/business/TaxesAndFeesBlock";
+import SharedExpensesBlock from "@/components/business/SharedExpensesBlock";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
@@ -96,6 +97,7 @@ export default function BusinessArea() {
   const [variableCostsTotal, setVariableCostsTotal] = useState(0);
   const [fixedExpensesTotal, setFixedExpensesTotal] = useState(0);
   const [variableExpensesTotal, setVariableExpensesTotal] = useState(0);
+  const [sharedExpensesTotal, setSharedExpensesTotal] = useState(0);
   const [calculatedMonthlyRevenue, setCalculatedMonthlyRevenue] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     business_name: "",
@@ -621,6 +623,13 @@ export default function BusinessArea() {
                 storeId={activeStore?.id}
                 monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
                 onTotalChange={(v) => { setVariableExpensesTotal(v); calculateMetrics(activeStore?.id); }}
+              />
+            </div>
+
+            {/* Shared Expenses Block (only visible if store is in a sharing group) */}
+            <div className="mt-6">
+              <SharedExpensesBlock
+                onTotalChange={(v) => { setSharedExpensesTotal(v); calculateMetrics(activeStore?.id); }}
               />
             </div>
           </div>
