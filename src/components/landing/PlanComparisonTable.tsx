@@ -19,7 +19,7 @@ const comparisonData: ComparisonRow[] = [
   { feature: "Receita incremental", free: "Até 5 análises", essencial: true, pro: true },
   { feature: "Exportação de dados", free: false, essencial: true, pro: true },
   { feature: "Multi-loja", free: false, essencial: false, pro: "Até 3 lojas" },
-  { feature: "Colaboradores", free: false, essencial: false, pro: true },
+  { feature: "Gestão de equipe", free: false, essencial: false, pro: true },
   { feature: "Suporte", free: "Padrão", essencial: "Padrão", pro: "Via WhatsApp" },
 ];
 
