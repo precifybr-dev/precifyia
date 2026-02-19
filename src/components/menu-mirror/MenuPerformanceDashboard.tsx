@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import type { AnalysisUsage } from "@/hooks/useMenuMirror";
+import { IncrementalRevenueCard } from "./IncrementalRevenueCard";
 import {
   Flame, ChevronDown, ChevronUp, Star, Target, AlertTriangle,
   TrendingUp, Lightbulb, PenLine, Sparkles, DollarSign,
@@ -437,6 +438,11 @@ export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMe
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* Incremental Revenue Calculator */}
+          {analysis.priceAdjustments && analysis.priceAdjustments.length > 0 && (
+            <IncrementalRevenueCard priceAdjustments={analysis.priceAdjustments} />
           )}
 
           {/* Re-analyze */}
