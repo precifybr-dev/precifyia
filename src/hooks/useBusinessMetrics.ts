@@ -55,6 +55,8 @@ export function useBusinessMetrics() {
   const retryCountRef = useRef(0);
   const inFlightRef = useRef(false);
   const { toast } = useToast();
+  const toastRef = useRef(toast);
+  toastRef.current = toast;
 
   useEffect(() => {
     return () => {
@@ -147,7 +149,7 @@ export function useBusinessMetrics() {
             setIsCalculating(false);
             inFlightRef.current = false;
 
-            toast({
+            toastRef.current({
               title: "Aguarde um momento",
               description: `Servidor ocupado. Nova tentativa em ${delaySec}s...`,
             });
@@ -198,7 +200,7 @@ export function useBusinessMetrics() {
         inFlightRef.current = false;
       }
     }, delay);
-  }, [toast, clearRetryState]);
+  }, [clearRetryState]);
 
   const reset = useCallback(() => {
     setResult(null);

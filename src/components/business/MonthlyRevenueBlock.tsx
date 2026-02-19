@@ -98,11 +98,13 @@ export default function MonthlyRevenueBlock({ userId, storeId, onAverageChange }
   // Use calculated average if available, otherwise use manual average
   const effectiveAverage = calculatedAverage !== null ? calculatedAverage : manualAverage;
 
+  // Only react to actual value changes — callback ref excluded to prevent loop
   useEffect(() => {
     if (effectiveAverage !== null) {
       onAverageChange?.(effectiveAverage);
     }
-  }, [effectiveAverage, onAverageChange]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveAverage]);
 
   const getRevenueForMonth = (month: number): MonthlyRevenue | undefined => {
     return revenues.find(r => r.month === month);
