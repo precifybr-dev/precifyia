@@ -1,83 +1,105 @@
 
-# Corrigir dados compartilhados orfaos e proteger a UI
 
-## Problema
+# Eliminar tempestade de requisicoes na Área do Negocio
 
-As lojas secundarias foram excluidas, mas as despesas compartilhadas continuam com `cost_type = 'shared'`, `shared_store_ids` referenciando lojas que nao existem mais, e o grupo de compartilhamento ainda existe com apenas 1 loja. Isso causa:
+## Problema raiz
 
-- Badges "3 lojas" e "2 lojas" aparecendo nas despesas
-- "Resumo de Custos Compartilhados" visivel mesmo sem lojas adicionais
-- Calculos de parcela incorretos (dividindo por lojas que nao existem)
+A pagina BusinessArea tem **8 componentes filhos** que cada um chama `scheduleRecalc()` quando carrega seus dados. Somado a chamada direta no `useEffect` de troca de loja, isso gera dezenas de chamadas a edge function em poucos segundos, estourando o rate limit de 80 req/min.
 
-A causa raiz: o trigger `cleanup_sharing_after_store_delete` depende de contar registros em `sharing_group_stores`, mas as entradas podem ser removidas por CASCADE antes do trigger AFTER DELETE rodar, ou o trigger foi criado depois das exclusoes ja terem ocorrido.
+O debounce de 800ms no `scheduleRecalc` + 3000ms no hook nao e suficiente porque os callbacks dos filhos disparam em momentos diferentes (cada um tem seu proprio fetch assincrono).
 
-## Solucao em 3 partes
+## Solucao
 
-### 1. Migracao para limpar dados orfaos existentes
+### 1. Consolidar todas as chamadas em um unico ponto controlado
 
-Executar SQL que:
-- Identifica grupos com 1 ou 0 lojas reais
-- Converte todas as despesas `shared` desses grupos para `exclusive` da loja restante
-- Limpa `sharing_group_id` da loja restante
-- Remove o grupo orfao
-- Remove IDs de lojas inexistentes de `shared_store_ids` em todas as despesas
+No `BusinessArea.tsx`:
 
-### 2. Melhorar o trigger para ser mais robusto
+- Remover a chamada direta `calculateMetrics(activeStore?.id)` do useEffect de troca de loja (linha 233)
+- Alterar `scheduleRecalc` para usar um debounce mais longo (2000ms ao inves de 800ms), dando tempo para todos os filhos carregarem
+- Marcar `initialLoadDone` so apos 5 segundos (ao inves de 3), cobrindo componentes mais lentos
+- Disparar `calculateMetrics` uma unica vez apos o timer de `initialLoadDone` expirar (primeiro calculo garantido)
 
-Alterar o trigger para validar contra a tabela `stores` real (nao apenas `sharing_group_stores`) ao contar lojas restantes, garantindo que lojas realmente existentes sejam consideradas.
+Resultado: ao abrir a pagina, os 8 filhos carregam e disparam callbacks, mas NENHUM gera requisicao durante os primeiros 5 segundos. Depois, apenas UM calculo e feito.
 
-### 3. Guards na UI (FixedExpensesBlock)
+### 2. Aumentar debounce no hook useBusinessMetrics
 
-Adicionar verificacoes extras no componente:
-- Badge "X lojas" so aparece se `stores.length > 1` (lojas reais do usuario)
-- "Resumo de Custos Compartilhados" so aparece se `stores.length > 1`
-- Linha "Sua parcela" so aparece se `stores.length > 1`
-- `SharedExpensesBlock` retorna `null` se `stores.length <= 1`
+No `useBusinessMetrics.ts`:
+
+- Aumentar `DEBOUNCE_MS` de 3000ms para 5000ms
+- Isso garante que mesmo se `scheduleRecalc` for chamado multiplas vezes em sequencia, apenas a ultima chamada gera requisicao
+
+### 3. Aumentar rate limit no backend (margem de seguranca)
+
+No `calculate-business-metrics/index.ts`:
+
+- Aumentar `_max_requests` de 80 para 120
+- Aumentar `_window_seconds` de 60 para 120 (2 minutos)
+- Manter `_block_seconds` em 10
+
+Isso permite 120 requisicoes em 2 minutos (1 req/seg em media), muito mais tolerante sem abrir brecha para abuso.
 
 ## Detalhes tecnicos
 
-### Migracao SQL
+### Arquivo: `src/pages/BusinessArea.tsx`
 
 ```text
--- 1. Limpar shared_store_ids com IDs de lojas inexistentes
-UPDATE fixed_expenses fe
-SET shared_store_ids = (
-  SELECT array_agg(sid)
-  FROM unnest(fe.shared_store_ids) AS sid
-  WHERE EXISTS (SELECT 1 FROM stores WHERE id = sid)
-)
-WHERE fe.shared_store_ids IS NOT NULL;
+// ANTES (linha 88-94):
+const scheduleRecalc = useCallback(() => {
+  if (!initialLoadDone.current) return;
+  if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
+  recalcTimerRef.current = setTimeout(() => {
+    calculateMetrics(activeStore?.id);
+  }, 800);
+}, [activeStore?.id, calculateMetrics]);
 
--- 2. Encontrar grupos orfaos (0 ou 1 loja real restante)
--- Para cada grupo: converter despesas shared -> exclusive, limpar grupo
-
--- 3. Recriar trigger mais robusto que valida contra tabela stores
+// DEPOIS:
+const scheduleRecalc = useCallback(() => {
+  if (!initialLoadDone.current) return;
+  if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
+  recalcTimerRef.current = setTimeout(() => {
+    calculateMetrics(activeStore?.id);
+  }, 2000);
+}, [activeStore?.id, calculateMetrics]);
 ```
 
-### FixedExpensesBlock.tsx
-
-Todas as secoes que mostram informacao de compartilhamento ganham guard `stores.length > 1`:
-
-- Linha 525-530 (Badge "X lojas"): adicionar `&& stores.length > 1`
-- Linha 539-548 (botao Eye): adicionar `&& stores.length > 1`
-- Linha 561-568 (linha "Sua parcela"): adicionar `&& stores.length > 1`
-- Linha 640-665 (Resumo de Custos Compartilhados): adicionar `&& stores.length > 1`
-
-### SharedExpensesBlock.tsx
-
-Importar `useStore` e adicionar guard:
 ```text
-const { stores } = useStore();
-if (!hasGroup || stores.length <= 1) return null;
+// ANTES (linha 216-239): useEffect troca de loja
+calculateMetrics(activeStore?.id);  // REMOVER esta linha
+fetchMetrics(user.id, activeStore?.id);
+const timer = setTimeout(() => { initialLoadDone.current = true; }, 3000);
+
+// DEPOIS:
+fetchMetrics(user.id, activeStore?.id);
+const timer = setTimeout(() => {
+  initialLoadDone.current = true;
+  calculateMetrics(activeStore?.id); // Unico calculo inicial, apos todos os filhos carregarem
+}, 5000);
 ```
 
-### useSharingGroup.ts
+### Arquivo: `src/hooks/useBusinessMetrics.ts`
 
-Adicionar guard: se `stores.length <= 1`, retornar `hasGroup: false` independente do banco, forcando todos os componentes a esconderem a UI de compartilhamento.
+```text
+// ANTES (linha 42):
+const DEBOUNCE_MS = 3000;
+
+// DEPOIS:
+const DEBOUNCE_MS = 5000;
+```
+
+### Arquivo: `supabase/functions/calculate-business-metrics/index.ts`
+
+```text
+// ANTES:
+_max_requests: 80, _window_seconds: 60, _block_seconds: 10
+
+// DEPOIS:
+_max_requests: 120, _window_seconds: 120, _block_seconds: 10
+```
 
 ## Resultado esperado
 
-- Com 1 loja: nenhuma UI de compartilhamento visivel, despesas sao todas exclusivas
-- Com 2+ lojas: funcionalidade de compartilhamento disponivel normalmente
-- Dados orfaos existentes sao limpos automaticamente pela migracao
-- Trigger protege contra orfaos futuros
+- Abertura da pagina: 0 chamadas nos primeiros 5 segundos, depois exatamente 1 chamada
+- Edicao de dados pelo usuario: 1 chamada apos 2s de inatividade (debounce do scheduleRecalc) + 5s de debounce do hook = maximo 1 chamada real
+- Troca de loja: 1 chamada apos 5 segundos (tempo para filhos recarregarem)
+- Rate limit nunca atingido em uso normal (120 req / 2 min = impossivel com debounce de 5s)
+- Nenhuma alteracao na logica de calculo financeiro
