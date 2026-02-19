@@ -21,6 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import OnboardingProgress from "@/components/dashboard/OnboardingProgress";
 import WelcomeImportPrompt from "@/components/dashboard/WelcomeImportPrompt";
 import { QuickPriceUpdate } from "@/components/dashboard/QuickPriceUpdate";
+import { DashboardUpgradeNudge } from "@/components/dashboard/DashboardUpgradeNudge";
+import { MilestoneCelebration } from "@/components/dashboard/MilestoneCelebration";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { SpreadsheetImportModal } from "@/components/spreadsheet-import/SpreadsheetImportModal";
 import { AppSidebar } from "@/components/layout/AppSidebar";
@@ -418,10 +420,22 @@ export default function Dashboard() {
           {/* When onboarding is complete, show quick access + price update button */}
           {isOnboardingComplete && (
             <div className="space-y-4">
+              {/* Milestone Celebration */}
+              <MilestoneCelebration
+                recipesCount={recipesCount}
+                ingredientsCount={ingredientsCount}
+              />
+
               <QuickPriceUpdate
                 userId={user?.id}
                 storeId={activeStore?.id || null}
                 onPriceUpdated={() => fetchMetrics(user?.id, profile)}
+              />
+
+              {/* Upgrade Nudge for non-Pro users */}
+              <DashboardUpgradeNudge
+                recipesCount={recipesCount}
+                ingredientsCount={ingredientsCount}
               />
 
               <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-card">
