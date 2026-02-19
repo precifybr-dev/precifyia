@@ -244,9 +244,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
 
     const { error } = await supabase
-      .from("stores")
-      .delete()
-      .eq("id", storeId);
+      .rpc("delete_store_safe", { p_store_id: storeId });
 
     if (error) {
       console.error("Error deleting store:", error);
