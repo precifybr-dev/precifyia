@@ -90,7 +90,7 @@ export default function BusinessArea() {
     if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current);
     recalcTimerRef.current = setTimeout(() => {
       calculateMetrics(activeStore?.id);
-    }, 800);
+    }, 2000);
   }, [activeStore?.id, calculateMetrics]);
 
   useEffect(() => {
@@ -230,9 +230,11 @@ export default function BusinessArea() {
         default_cmv: (activeStore as any)?.default_cmv?.toString() || profile?.default_cmv?.toString() || "",
       });
       // Fetch fresh data
-      calculateMetrics(activeStore?.id);
       fetchMetrics(user.id, activeStore?.id);
-      const timer = setTimeout(() => { initialLoadDone.current = true; }, 3000);
+      const timer = setTimeout(() => {
+        initialLoadDone.current = true;
+        calculateMetrics(activeStore?.id);
+      }, 5000);
       return () => clearTimeout(timer);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
