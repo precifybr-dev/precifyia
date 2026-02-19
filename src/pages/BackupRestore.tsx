@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const LABEL_MAP: Record<string, { label: string; icon: typeof Package }> = {
+  stores: { label: "Lojas", icon: Building2 },
+  sharing_groups: { label: "Grupos de Compartilhamento", icon: Building2 },
   ingredients: { label: "Insumos", icon: Package },
   recipes: { label: "Fichas Técnicas", icon: FileSpreadsheet },
   recipe_ingredients: { label: "Ingredientes de Receitas", icon: FileSpreadsheet },
@@ -33,6 +35,10 @@ const LABEL_MAP: Record<string, { label: string; icon: typeof Package }> = {
   business_taxes: { label: "Impostos", icon: DollarSign },
   card_fees: { label: "Taxas de Cartão", icon: DollarSign },
   monthly_revenues: { label: "Faturamento Mensal", icon: DollarSign },
+  cmv_periodos: { label: "Períodos CMV", icon: DollarSign },
+  cmv_categorias: { label: "Categorias CMV", icon: DollarSign },
+  cost_allocations: { label: "Alocações de Custos", icon: DollarSign },
+  topo_cardapio_simulacoes: { label: "Simulações de Cardápio", icon: Sparkles },
 };
 
 export default function BackupRestore() {
