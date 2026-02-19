@@ -52,7 +52,7 @@ Deno.serve(async (req) => {
     // ─── Rate Limiting: 80 req/min por usuário, block 10s ───
     const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
     const { data: rlData } = await supabase.rpc("check_rate_limit", {
-      _key: user.id, _endpoint: "business-metrics", _max_requests: 80, _window_seconds: 60, _block_seconds: 10,
+      _key: user.id, _endpoint: "business-metrics", _max_requests: 120, _window_seconds: 120, _block_seconds: 10,
     });
     const rl = rlData?.[0];
     if (rl && !rl.allowed) {
