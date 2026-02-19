@@ -1,30 +1,31 @@
 
 
-## Remover "Colaboradores ilimitados" do plano PRO no banco de dados
+## Fix: Add `mfa_verified_at` timestamp to verify-mfa-code edge function
 
-### Problema
-A coluna `features` (JSONB) do plano PRO na tabela `pricing_plans` ainda contém o item `"Colaboradores ilimitados"`. Como o frontend prioriza os dados do banco sobre os fallbacks locais, esse texto continua aparecendo para o usuario.
+### Problem
+The `verify-mfa-code` edge function sets `mfa_verified = true` but does not set `mfa_verified_at`. The `useAdminSecurity` hook relies on `mfa_verified_at` to enforce the 30-minute session expiration for admin roles (`master`, `financeiro`). Without this timestamp, re-verified sessions may fail the database-side validity check, forcing repeated re-authentication or leaving sessions in an inconsistent state.
 
-### Solucao
-Executar um UPDATE na tabela `pricing_plans` para remover o item `"Colaboradores ilimitados"` do array JSON, mantendo todos os demais itens intactos.
+### Solution
+Add `mfa_verified_at: new Date().toISOString()` to the update payload in `supabase/functions/verify-mfa-code/index.ts`.
 
-### Detalhes tecnicos
+### Technical details
 
-Sera executado o seguinte UPDATE via ferramenta de insercao/atualizacao de dados:
+**File:** `supabase/functions/verify-mfa-code/index.ts`
 
+In the success branch (around line 89), the `.update()` call currently sets:
 ```text
-UPDATE pricing_plans 
-SET features = '[
-  {"included": true, "text": "Fichas técnicas ilimitadas"},
-  {"included": true, "text": "Insumos ilimitados"},
-  {"included": true, "text": "Dashboard avançado + DRE"},
-  {"included": true, "text": "Até 15 análises de cardápio/mês"},
-  {"included": true, "text": "Até 10 combos estratégicos/mês"},
-  {"included": true, "text": "Importações ilimitadas"},
-  {"included": true, "text": "Até 3 lojas"},
-  {"included": true, "text": "Suporte prioritário via WhatsApp"}
-]'::jsonb
-WHERE id = 'pro';
+mfa_verified: true,
+last_mfa_code: null,
+mfa_code_expires_at: null,
 ```
 
-Nenhuma alteracao de codigo e necessaria -- o problema e exclusivamente no banco de dados.
+It will be updated to:
+```text
+mfa_verified: true,
+mfa_verified_at: new Date().toISOString(),
+last_mfa_code: null,
+mfa_code_expires_at: null,
+```
+
+This is a one-line addition. No other files or database schema changes are needed -- the `mfa_verified_at` column already exists in `user_security` and is already consumed by `useAdminSecurity.ts`.
+
