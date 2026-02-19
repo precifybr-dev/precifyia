@@ -1,31 +1,31 @@
 
 
-## Fix: Add `mfa_verified_at` timestamp to verify-mfa-code edge function
+## Correções Seguras (4 itens)
 
-### Problem
-The `verify-mfa-code` edge function sets `mfa_verified = true` but does not set `mfa_verified_at`. The `useAdminSecurity` hook relies on `mfa_verified_at` to enforce the 30-minute session expiration for admin roles (`master`, `financeiro`). Without this timestamp, re-verified sessions may fail the database-side validity check, forcing repeated re-authentication or leaving sessions in an inconsistent state.
+### 1. Corrigir limites do plano gratuito em Register.tsx
+- Alterar "Até 35 insumos" para "Até 80 insumos"
+- Alterar "Até 3 fichas técnicas" para "Até 10 fichas técnicas"
+- Esses valores estao incorretos e nao refletem os limites reais do banco de dados
 
-### Solution
-Add `mfa_verified_at: new Date().toISOString()` to the update payload in `supabase/functions/verify-mfa-code/index.ts`.
+### 2. Corrigir links quebrados em Register.tsx
+- Substituir `href="#"` do link "Termos de Uso" por `/termos-de-uso`
+- Substituir `href="#"` do link "Política de Privacidade" por `/politica-de-privacidade`
+- Atualmente os links nao levam a lugar nenhum
 
-### Technical details
+### 3. Deletar arquivo orfao: src/pages/Index.tsx
+- Arquivo padrao do Lovable que nunca e usado (nenhuma rota aponta para ele)
+- Contem apenas texto placeholder "Welcome to Your Blank App"
 
-**File:** `supabase/functions/verify-mfa-code/index.ts`
+### 4. Deletar arquivo orfao: src/hooks/useIfoodFees.ts
+- Hook que nao e importado por nenhum componente do projeto
+- Codigo morto sem utilidade
 
-In the success branch (around line 89), the `.update()` call currently sets:
-```text
-mfa_verified: true,
-last_mfa_code: null,
-mfa_code_expires_at: null,
-```
+### Detalhes tecnicos
 
-It will be updated to:
-```text
-mfa_verified: true,
-mfa_verified_at: new Date().toISOString(),
-last_mfa_code: null,
-mfa_code_expires_at: null,
-```
+**Register.tsx** - Duas alteracoes de texto e dois hrefs:
+- Linha com "35 insumos" vira "80 insumos"
+- Linha com "3 fichas" vira "10 fichas"
+- `href="#"` nos links de termos e privacidade serao corrigidos para as rotas reais ja existentes no app
 
-This is a one-line addition. No other files or database schema changes are needed -- the `mfa_verified_at` column already exists in `user_security` and is already consumed by `useAdminSecurity.ts`.
+**Index.tsx e useIfoodFees.ts** - Exclusao simples, sem impacto (confirmado que nenhum arquivo importa esses modulos)
 
