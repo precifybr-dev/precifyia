@@ -1,278 +1,142 @@
 
-# Corrigir erro "tuple to be deleted was already modified" ao excluir loja
+# Atualizar Backup e Exportacao de Dados
 
-## Causa raiz
+## Diagnostico: O que esta desatualizado
 
-O erro ocorre por um conflito de triggers em cascata durante a exclusao de uma loja que pertence a um grupo de compartilhamento.
+### Backup do Usuario (backup-restore)
 
-A cadeia de eventos:
+O backup exporta/importa dados do usuario para ele restaurar em outra conta ou loja. Foram encontradas **6 lacunas**:
 
-1. `DELETE FROM stores WHERE id = X` e executado
-2. O trigger BEFORE DELETE `cleanup_sharing_after_store_delete` dispara
-3. Dentro dele, varias operacoes acontecem:
-   - UPDATE em `fixed_expenses` (converte compartilhadas para exclusivas)
-   - Isso dispara `trg_recalc_shared_expense_change` (AFTER UPDATE em fixed_expenses)
-   - Que deleta/insere em `cost_allocations`
-   - O trigger `trg_protect_cost_allocation_history` valida cada exclusao
-   - UPDATE em `stores` (limpa sharing_group_id da loja restante)
-   - DELETE de `sharing_group_stores`
-   - Isso dispara `trg_recalc_group_store_change` (AFTER DELETE)
-   - Que chama `recalculate_shared_costs()` novamente
-4. Em algum ponto dessa cascata, o PostgreSQL detecta que a tupla original (store X) foi modificada por uma operacao disparada pelo mesmo comando
-5. O PostgreSQL bloqueia a exclusao com o erro "tuple to be deleted was already modified"
+| Problema | Impacto | Risco |
+|----------|---------|-------|
+| `fixed_expenses` nao exporta `cost_type`, `sharing_group_id`, `shared_store_ids` | Despesas compartilhadas perdem configuracao de compartilhamento ao restaurar | **Alto** |
+| `stores` nao sao exportadas (nome, business_type, monthly_revenue, default_cmv) | Informacoes da loja se perdem, impossivel restaurar multi-loja | **Alto** |
+| `sharing_groups` e `sharing_group_stores` nao sao exportados | Grupos de compartilhamento nao podem ser recriados | **Alto** |
+| `cost_allocations` nao sao exportadas | Historico de alocacao de custos se perde | Medio |
+| `cmv_periodos` e `cmv_categorias` nao sao exportados | Historico de CMV se perde | Medio |
+| `topo_cardapio_simulacoes` nao sao exportadas | Simulacoes de cardapio se perdem | Baixo |
 
-O problema fundamental: um trigger BEFORE DELETE faz operacoes demais, disparando outros triggers que conflitam com a exclusao em andamento.
+### Exportacao Admin (admin-export)
 
-## Solucao: Substituir trigger por RPC (funcao segura)
+O admin export gera CSVs para auditoria. Foram encontradas **3 lacunas**:
 
-Em vez de depender do trigger BEFORE DELETE (que cria cascatas circulares), vamos:
+| Problema | Impacto |
+|----------|---------|
+| Lista de tabelas no fallback do modulo `database` esta desatualizada (faltam ~18 tabelas) | Admin nao ve todas as tabelas do sistema |
+| Lista de Edge Functions esta desatualizada | Faltam funcoes recentes no CSV |
+| Schema SQL (known tables) tambem desatualizado | DDL gerado fica incompleto |
 
-1. Criar uma funcao `delete_store_safe(p_store_id uuid)` que faz toda a limpeza E a exclusao em uma unica transacao controlada
-2. Remover o trigger BEFORE DELETE de stores
-3. Alterar o frontend para chamar a RPC em vez de DELETE direto
+---
 
-### Por que esta abordagem resolve?
+## Plano de Correcao
 
-A funcao RPC controla a ORDEM exata das operacoes:
-1. Primeiro limpa cost_allocations (evita conflito com trg_protect_cost_allocation_history)
-2. Depois converte expenses para exclusivas (sem dados dependentes para conflitar)
-3. Limpa sharing_group_stores (sem recalculo desnecessario porque os dados ja foram limpos)
-4. So entao exclui a loja (sem trigger BEFORE DELETE, cascades funcionam limpo)
+### Fase 1 -- Backup do Usuario (backup-restore/index.ts)
 
-## Detalhes tecnicos
+**1.1 Adicionar campos de compartilhamento em fixed_expenses**
 
-### 1. Migration SQL
+Incluir `cost_type`, `sharing_group_id`, `shared_store_ids` no EXPORT_FIELDS de fixed_expenses. Na importacao, tratar para que despesas compartilhadas sejam reconvertidas corretamente.
 
-Criar funcao RPC e remover trigger:
+**1.2 Exportar/importar stores**
 
-```text
--- Funcao segura para excluir loja
-CREATE OR REPLACE FUNCTION public.delete_store_safe(p_store_id uuid)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-DECLARE
-  v_user_id uuid;
-  v_group_id uuid;
-  v_remaining_count int;
-  v_remaining_store_id uuid;
-  v_is_default boolean;
-  v_store_count int;
-BEGIN
-  -- Validar propriedade
-  SELECT user_id, sharing_group_id, is_default
-  INTO v_user_id, v_group_id, v_is_default
-  FROM public.stores WHERE id = p_store_id;
+Adicionar `stores` ao backup com campos: `name`, `business_type`, `is_default`, `monthly_revenue`, `default_cmv`, `ifood_url`. Na importacao, recriar as lojas do usuario (ou mapear para existentes).
 
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Loja nao encontrada.';
-  END IF;
+**1.3 Exportar/importar sharing_groups e sharing_group_stores**
 
-  IF v_user_id != auth.uid() THEN
-    RAISE EXCEPTION 'Sem permissao para excluir esta loja.';
-  END IF;
+Incluir dados de grupos de compartilhamento. Na importacao, recriar grupos apenas se houver multiplas lojas.
 
-  -- Verificar se nao e a unica loja
-  SELECT count(*) INTO v_store_count
-  FROM public.stores WHERE user_id = v_user_id;
+**1.4 Exportar/importar cost_allocations**
 
-  IF v_store_count <= 1 THEN
-    RAISE EXCEPTION 'Voce precisa ter pelo menos uma loja.';
-  END IF;
+Exportar alocacoes por `expense_id` (referenciando nome da despesa). Na importacao, reconectar apos inserir fixed_expenses.
 
-  -- Verificar se e default
-  IF v_is_default THEN
-    RAISE EXCEPTION 'Nao e possivel excluir a loja principal.';
-  END IF;
+**1.5 Exportar/importar CMV (cmv_periodos + cmv_categorias)**
 
-  -- Limpeza de compartilhamento (se pertence a grupo)
-  IF v_group_id IS NOT NULL THEN
-    -- 1. Remover store das arrays shared_store_ids
-    UPDATE public.fixed_expenses
-    SET shared_store_ids = array_remove(shared_store_ids, p_store_id)
-    WHERE sharing_group_id = v_group_id
-      AND shared_store_ids IS NOT NULL;
+Exportar periodos CMV com suas categorias aninhadas. Na importacao, recriar com referencia a loja correta.
 
-    -- 2. Contar lojas restantes no grupo
-    SELECT count(*) INTO v_remaining_count
-    FROM public.stores
-    WHERE sharing_group_id = v_group_id
-      AND id != p_store_id;
+**1.6 Exportar/importar topo_cardapio_simulacoes**
 
-    IF v_remaining_count <= 1 THEN
-      -- Grupo sera dissolvido
-      SELECT id INTO v_remaining_store_id
-      FROM public.stores
-      WHERE sharing_group_id = v_group_id
-        AND id != p_store_id
-      LIMIT 1;
+Incluir simulacoes de cardapio no backup.
 
-      -- 3. Deletar TODAS cost_allocations do grupo PRIMEIRO
-      DELETE FROM public.cost_allocations
-      WHERE expense_id IN (
-        SELECT id FROM public.fixed_expenses
-        WHERE sharing_group_id = v_group_id
-      );
+**1.7 Incrementar SCHEMA_VERSION para "2.0.0"**
 
-      -- 4. Converter expenses para exclusivas
-      UPDATE public.fixed_expenses
-      SET cost_type = 'exclusive',
-          sharing_group_id = NULL,
-          store_id = v_remaining_store_id,
-          shared_store_ids = NULL
-      WHERE sharing_group_id = v_group_id;
+Com fallback para aceitar backups "1.0.0" (importa o que existir, ignora o que nao tiver).
 
-      -- 5. Limpar grupo da loja restante
-      IF v_remaining_store_id IS NOT NULL THEN
-        UPDATE public.stores
-        SET sharing_group_id = NULL
-        WHERE id = v_remaining_store_id;
-      END IF;
+### Fase 2 -- Admin Export (admin-export/index.ts)
 
-      -- 6. Limpar sharing_group_stores
-      DELETE FROM public.sharing_group_stores
-      WHERE sharing_group_id = v_group_id;
+**2.1 Atualizar lista de tabelas no modulo database**
 
-      -- 7. Excluir grupo
-      DELETE FROM public.sharing_groups
-      WHERE id = v_group_id;
+Adicionar tabelas faltantes: `marketing_campaigns`, `monetization_settings`, `payment_links`, `pricing_anchoring_config`, `pricing_audit_log`, `pricing_phrases`, `pricing_plans`, `rate_limit_global`, `risk_flags`, `support_abuse_alerts`, `support_session_logs`, `ticket_messages`, `ticket_notes`, `topo_cardapio_simulacoes`, `university_modules`, `user_lesson_progress`, `user_sessions`.
 
-    ELSE
-      -- Mais de 1 loja restante: remover apenas esta loja do grupo
-      DELETE FROM public.sharing_group_stores
-      WHERE sharing_group_id = v_group_id
-        AND store_id = p_store_id;
+**2.2 Atualizar lista de Edge Functions**
 
-      -- Converter expenses que ficaram com 0 ou 1 loja
-      UPDATE public.fixed_expenses
-      SET cost_type = 'exclusive',
-          sharing_group_id = NULL,
-          store_id = (shared_store_ids)[1],
-          shared_store_ids = NULL
-      WHERE sharing_group_id = v_group_id
-        AND shared_store_ids IS NOT NULL
-        AND array_length(shared_store_ids, 1) <= 1;
+Sincronizar com config.toml atual.
 
-      -- Recalcular para as restantes
-      PERFORM public.recalculate_shared_costs(v_group_id);
-    END IF;
+**2.3 Atualizar known tables do schema_sql**
 
-    -- 8. Limpar sharing_group_id da loja sendo excluida
-    --    (evita que o trigger BEFORE DELETE tente limpar novamente)
-    UPDATE public.stores
-    SET sharing_group_id = NULL
-    WHERE id = p_store_id;
-  END IF;
+Mesma lista atualizada da 2.1, para que o DDL gerado seja completo.
 
-  -- 9. Finalmente excluir a loja (cascades limpam dados dependentes)
-  DELETE FROM public.stores WHERE id = p_store_id;
-END;
-$$;
+---
 
--- Remover o trigger problematico
-DROP TRIGGER IF EXISTS after_store_delete_cleanup_sharing ON public.stores;
-```
+## Detalhes Tecnicos
 
-Nota: o trigger e removido porque a funcao RPC faz toda a limpeza. A exclusao no passo 9 dispara apenas os CASCADEs normais (ingredients, recipes, etc.), sem conflito de triggers.
-
-### 2. Frontend: StoreContext.tsx
-
-Alterar `deleteStore` para usar RPC em vez de DELETE direto:
+### backup-restore/index.ts -- Alteracoes
 
 ```text
-// ANTES:
-const { error } = await supabase
-  .from("stores")
-  .delete()
-  .eq("id", storeId);
-
-// DEPOIS:
-const { error } = await supabase
-  .rpc("delete_store_safe", { p_store_id: storeId });
-```
-
-### 3. Protecao contra trg_protect_cost_allocation_history
-
-A funcao RPC deleta cost_allocations ANTES de qualquer outra operacao. Porem, o trigger `trg_protect_cost_allocation_history` bloqueia exclusao de meses anteriores. Precisamos permitir a exclusao quando a loja esta sendo removida:
-
-```text
--- Atualizar o trigger para permitir cascade delete quando loja e excluida
-CREATE OR REPLACE FUNCTION public.protect_cost_allocation_history()
-  RETURNS trigger
-  LANGUAGE plpgsql
-  SECURITY DEFINER
-  SET search_path TO 'public'
-AS $$
-BEGIN
-  IF TG_OP = 'UPDATE' OR TG_OP = 'DELETE' THEN
-    -- Permitir exclusao se a loja ou expense nao existem mais (cascade)
-    IF TG_OP = 'DELETE' THEN
-      IF NOT EXISTS (SELECT 1 FROM public.stores WHERE id = OLD.store_id) THEN
-        RETURN OLD;
-      END IF;
-      IF NOT EXISTS (SELECT 1 FROM public.fixed_expenses WHERE id = OLD.expense_id) THEN
-        RETURN OLD;
-      END IF;
-    END IF;
-    
-    IF OLD.reference_month < to_char(now(), 'YYYY-MM') THEN
-      RAISE EXCEPTION 'Alocacoes de meses anteriores sao imutaveis.';
-    END IF;
-  END IF;
+EXPORT_FIELDS atualizado:
+  fixed_expenses: ["name", "monthly_value", "store_id", "cost_type", "sharing_group_id", "shared_store_ids"]
   
-  IF TG_OP = 'DELETE' THEN
-    RETURN OLD;
-  END IF;
-  RETURN NEW;
-END;
-$$;
+Novas entradas:
+  stores: ["name", "business_type", "is_default", "monthly_revenue", "default_cmv", "ifood_url"]
+  cmv_periodos: ["mes", "ano", "modo", "estoque_inicial", "compras", "estoque_final", "ajustes", 
+                  "cmv_calculado", "cmv_percentual", "faturamento_liquido", "meta_definida", 
+                  "meta_automatica", "onboarding_concluido", "store_id"]
+  cmv_categorias: ["categoria", "estoque_inicial", "compras", "estoque_final", "ajustes",
+                    "cmv_categoria", "cmv_percentual_categoria"]
+  topo_cardapio_simulacoes: ["estrategia_aplicada", "itens_simulados", "explicacao", "store_id"]
+  cost_allocations: ["store_id", "percentage", "allocated_value", "reference_month"]
 ```
 
-Explicacao: quando a funcao RPC deleta cost_allocations, as lojas e expenses ainda existem (a loja sera excluida DEPOIS). Entao para meses anteriores, o trigger precisa permitir a exclusao. A solucao: na RPC, deletamos cost_allocations de TODOS os meses (a loja esta sendo excluida, nao faz sentido proteger historico de uma loja que nao existira mais). Alternativa mais simples: remover a verificacao de mes apenas para DELETE (manter para UPDATE):
+A funcao `handleExport` sera expandida para buscar essas tabelas adicionais.
 
-```text
-CREATE OR REPLACE FUNCTION public.protect_cost_allocation_history()
-  RETURNS trigger
-  LANGUAGE plpgsql
-  SET search_path TO 'public'
-AS $$
-BEGIN
-  IF TG_OP = 'UPDATE' THEN
-    IF OLD.reference_month < to_char(now(), 'YYYY-MM') THEN
-      RAISE EXCEPTION 'Alocacoes de meses anteriores sao imutaveis e nao podem ser alteradas.';
-    END IF;
-  END IF;
-  
-  IF TG_OP = 'DELETE' THEN
-    RETURN OLD;
-  END IF;
-  RETURN NEW;
-END;
-$$;
-```
+A funcao `insertData` sera expandida para importar na ordem correta:
+1. Stores (primeiro, para ter os IDs)
+2. Sharing groups + sharing_group_stores
+3. Ingredientes, receitas, etc. (existente)
+4. Fixed expenses com campos de compartilhamento
+5. Cost allocations (referenciando expenses importadas)
+6. CMV periodos + categorias
+7. Simulacoes
 
-Justificativa: a protecao de historico faz sentido para UPDATE (nao alterar valores passados), mas DELETE deve ser permitido quando uma loja e excluida (os dados perdem significado sem a loja).
+Compatibilidade: backups v1.0.0 continuam sendo importados normalmente (campos ausentes sao ignorados).
 
-## Arquivos alterados
+### admin-export/index.ts -- Alteracoes
 
-1. **Nova migration SQL** -- cria funcao `delete_store_safe`, remove trigger, atualiza `protect_cost_allocation_history`
-2. **src/contexts/StoreContext.tsx** -- usa `supabase.rpc("delete_store_safe", ...)` em vez de DELETE direto
+Atualizar arrays hardcoded:
+- `tableNames` no fallback do modulo database: adicionar 18 tabelas faltantes
+- `functions` no modulo edge_functions: sincronizar com config.toml
+- `knownTables` no handler schema_sql: mesma atualizacao
 
-## Riscos e mitigacao
+### Frontend (BackupRestore.tsx)
+
+Adicionar labels para novas tabelas no LABEL_MAP:
+- `stores`: "Lojas"
+- `cmv_periodos`: "Periodos CMV"
+- `cmv_categorias`: "Categorias CMV"
+- `cost_allocations`: "Alocacoes de Custos"
+- `topo_cardapio_simulacoes`: "Simulacoes de Cardapio"
+
+---
+
+## Arquivos Alterados
+
+1. `supabase/functions/backup-restore/index.ts` -- expandir export/import com tabelas faltantes
+2. `supabase/functions/admin-export/index.ts` -- atualizar listas de tabelas e functions
+3. `src/pages/BackupRestore.tsx` -- adicionar labels para novos itens no preview
+
+## Riscos
 
 | Mudanca | Risco | Mitigacao |
 |---------|-------|-----------|
-| Remover trigger BEFORE DELETE | Baixo - DELETE direto na tabela nao tera limpeza automatica | RPC e o unico caminho de exclusao no app. Protecao de is_default e contagem existem na RPC |
-| Permitir DELETE em cost_allocations de meses antigos | Baixo - so afeta cenario de exclusao de loja | UPDATE continua protegido. Dados historicos so somem quando a loja e removida (coerente) |
-| Mudar de DELETE direto para RPC | Baixo - mesma logica, mesmo resultado | Validacoes de propriedade e permissao dentro da funcao SECURITY DEFINER |
-
-## Resultado esperado
-
-- Exclusao de loja com grupo de compartilhamento funciona sem erro
-- Exclusao de loja sem grupo de compartilhamento continua funcionando (a RPC pula a limpeza)
-- Despesas compartilhadas sao corretamente convertidas para exclusivas
-- Cost allocations sao limpas antes da exclusao
-- Loja default continua protegida contra exclusao
-- Nenhuma alteracao em formulas financeiras, RBAC ou logica de calculo
+| Novo schema_version 2.0.0 | Baixo | Aceita backups 1.0.0 via fallback |
+| Exportar/importar stores | Medio | Mapeia por nome, nao sobrescreve existentes |
+| Exportar sharing_groups | Medio | So recria se ambas as lojas existirem |
+| Mais dados no backup | Baixo | Campos opcionais, import ignora se ausentes |
