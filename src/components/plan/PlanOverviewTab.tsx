@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Crown, ArrowRight, FileSpreadsheet, Package, BarChart3, Sparkles, Upload, Info, Store, Trash2, AlertTriangle } from "lucide-react";
+import { Crown, ArrowRight, FileSpreadsheet, Package, BarChart3, Sparkles, Upload, Info, Store, Trash2, AlertTriangle, TrendingUp } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useStore } from "@/contexts/StoreContext";
@@ -204,6 +204,68 @@ export function PlanOverviewTab() {
             })}
           </div>
         </div>
+
+        {/* Strategic Potential Alert for Free/Basic users */}
+        {userPlan !== "pro" && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">Você está operando abaixo do seu potencial</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {userPlan === "free"
+                      ? "Seu diagnóstico mostra apenas a camada inicial. Existem alavancas de crescimento e estratégias de multiplicação que ainda não foram desbloqueadas."
+                      : "Você já domina o básico, mas existem 3 camadas avançadas de otimização e escala que podem transformar seus resultados."}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2 pl-12">
+                {userPlan === "free" ? (
+                  <>
+                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">🔒 Estratégias de multiplicação</Badge>
+                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">🔒 Sub-receitas avançadas</Badge>
+                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">🔒 Otimização de escala</Badge>
+                  </>
+                ) : (
+                  <>
+                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">🔒 Multi-loja (até 3)</Badge>
+                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">🔒 Dashboard DRE avançado</Badge>
+                    <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">🔒 Suporte WhatsApp</Badge>
+                  </>
+                )}
+              </div>
+              <div className="pl-12">
+                <Button size="sm" className="gap-2" onClick={() => setShowUpgrade(true)}>
+                  Desbloquear potencial completo <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Near-limit warnings */}
+        {resolvedItems.some(i => i.limit !== null && i.limit !== -1 && i.limit! > 0 && (i.used / i.limit!) >= 0.8) && userPlan !== "pro" && (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="text-sm font-semibold text-foreground">Você está perto de atingir seus limites</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Quando os limites são atingidos, você pode estar deixando oportunidades na mesa. 
+                    O upgrade libera capacidade ilimitada e ferramentas avançadas de crescimento.
+                  </p>
+                  <Button variant="outline" size="sm" className="mt-2 gap-1.5 text-xs" onClick={() => setShowUpgrade(true)}>
+                    Ver planos superiores <ArrowRight className="h-3 w-3" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Info Note */}
         <div className="flex items-start gap-2 p-3 rounded-lg bg-muted/50 border border-border">

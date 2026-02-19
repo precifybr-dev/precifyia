@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Sparkles, ArrowRight } from "lucide-react";
+import { Check, Sparkles, ArrowRight, Lock, TrendingUp, Zap, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +12,35 @@ const PLAN_SLUG_MAP: Record<string, string> = {
   teste: "free",
   essencial: "basic",
   pro: "pro",
+};
+
+const PLAN_HIGHLIGHTS: Record<string, { icon: typeof Zap; tagline: string; blocked: string[] }> = {
+  free: {
+    icon: Shield,
+    tagline: "Demonstração estratégica com capacidade limitada",
+    blocked: [
+      "Estratégia completa de precificação",
+      "Sub-receitas ilimitadas",
+      "Otimização e projeção de escala",
+      "Simulação de cenários",
+      "Roadmap de crescimento",
+    ],
+  },
+  basic: {
+    icon: Zap,
+    tagline: "Para quem quer lucrar com estrutura",
+    blocked: [
+      "Multi-loja (até 3 unidades)",
+      "Dashboard avançado + DRE",
+      "Suporte prioritário via WhatsApp",
+      "Análises ilimitadas de cardápio",
+    ],
+  },
+  pro: {
+    icon: TrendingUp,
+    tagline: "Controle total. Escala real. Potencial máximo.",
+    blocked: [],
+  },
 };
 
 const fallbackPlans: PricingPlan[] = [
@@ -85,15 +114,42 @@ export function PlansTab() {
 
   return (
     <div className="space-y-8">
+      {/* Strategic messaging for non-Pro users */}
+      {userPlan !== "pro" && (
+        <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-4">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <TrendingUp className="h-5 w-5 text-primary" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-sm font-bold text-foreground">
+                  {userPlan === "free"
+                    ? "O Teste revela a oportunidade. O Pro constrói a máquina."
+                    : "Sua estrutura já indica capacidade de operar em nível avançado."}
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {userPlan === "free"
+                    ? "Você está vendo apenas a camada inicial do seu potencial. Existem alavancas de crescimento, estratégias de multiplicação e camadas avançadas que ainda não foram desbloqueadas."
+                    : "Você já domina a estrutura básica. O próximo nível lógico desbloqueia multi-loja, DRE avançado e capacidade ilimitada para escalar seus resultados."}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Plan Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         {plans.map((plan) => {
           const isCurrent = isCurrentPlan(plan);
           const isLower = isLowerPlan(plan);
+          const slug = getPlanSlug(plan);
           const hasAnchoring = plan.anchored_price_monthly > plan.real_price_monthly;
           const discountPct = hasAnchoring
             ? Math.round(((plan.anchored_price_monthly - plan.real_price_monthly) / plan.anchored_price_monthly) * 100)
             : 0;
+          const highlight = PLAN_HIGHLIGHTS[slug] || PLAN_HIGHLIGHTS.free;
 
           return (
             <Card
@@ -126,7 +182,7 @@ export function PlansTab() {
               <CardContent className="p-6 flex flex-col h-full">
                 <div className="text-center mb-5">
                   <h3 className="font-bold text-lg text-foreground">{plan.name}</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">{plan.description}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{highlight.tagline}</p>
                   <div className="flex items-baseline justify-center gap-1 mt-4">
                     {hasAnchoring && !isCurrent && (
                       <span className="text-sm line-through text-muted-foreground mr-1">
@@ -145,7 +201,7 @@ export function PlansTab() {
                   )}
                 </div>
 
-                <ul className="space-y-2.5 mb-6 flex-1">
+                <ul className="space-y-2.5 mb-4 flex-1">
                   {plan.features.filter(f => f.included).map((f) => (
                     <li key={f.text} className="flex items-start gap-2 text-sm">
                       <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
@@ -153,6 +209,28 @@ export function PlansTab() {
                     </li>
                   ))}
                 </ul>
+
+                {/* Blocked features for current plan */}
+                {isCurrent && highlight.blocked.length > 0 && (
+                  <div className="mb-4 pt-3 border-t border-border">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      🔒 Potencial bloqueado
+                    </p>
+                    <ul className="space-y-1.5">
+                      {highlight.blocked.slice(0, 3).map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <Lock className="h-3 w-3 shrink-0 mt-0.5 opacity-50" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                      {highlight.blocked.length > 3 && (
+                        <li className="text-xs text-primary font-medium pl-5">
+                          +{highlight.blocked.length - 3} recursos avançados
+                        </li>
+                      )}
+                    </ul>
+                  </div>
+                )}
 
                 {isCurrent ? (
                   <Button variant="secondary" disabled className="w-full">
@@ -168,7 +246,7 @@ export function PlansTab() {
                     variant={plan.is_popular ? "default" : "outline"}
                     onClick={() => setShowUpgrade(true)}
                   >
-                    Subir de plano <ArrowRight className="h-4 w-4" />
+                    Desbloquear potencial <ArrowRight className="h-4 w-4" />
                   </Button>
                 )}
               </CardContent>
@@ -176,6 +254,27 @@ export function PlansTab() {
           );
         })}
       </div>
+
+      {/* Progression CTA */}
+      {userPlan !== "pro" && (
+        <Card className="border-dashed border-muted-foreground/20">
+          <CardContent className="p-5 text-center space-y-2">
+            <p className="text-sm font-semibold text-foreground">
+              {userPlan === "free"
+                ? "🔍 O Teste mostra a oportunidade. O upgrade constrói o resultado."
+                : "🚀 Você já opera com estrutura. O Pro desbloqueia escala."}
+            </p>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              {userPlan === "free"
+                ? "Este plano revela apenas o cenário base. Estratégias de multiplicação, alavancas ocultas e expansão de canais estão disponíveis nos planos superiores."
+                : "Multi-loja, DRE completo, insumos ilimitados e suporte dedicado. A evolução natural para quem já entende o valor da precificação inteligente."}
+            </p>
+            <Button className="gap-2 mt-1" onClick={() => setShowUpgrade(true)}>
+              Evoluir agora <ArrowRight className="h-4 w-4" />
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Full Comparison Table */}
       <Card>
