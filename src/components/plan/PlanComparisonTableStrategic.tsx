@@ -20,6 +20,7 @@ const comparisonData: ComparisonRow[] = [
   { feature: "Importação iFood", free: "1 (uso total durante o período)", essencial: "Até 5 usos mensais", pro: "Ilimitada" },
   { feature: "Importação de planilha", free: "1 (uso total durante o período)", essencial: "Até 3 usos mensais", pro: "Ilimitada" },
   { feature: "Sub-receitas", free: "Até 3", essencial: "Incluso", pro: "Incluso" },
+  { feature: "Receita incremental", tooltip: "Calcule o impacto financeiro de ajustes de preço no seu cardápio", free: "Até 5 análises", essencial: "Ilimitado", pro: "Ilimitado" },
   { feature: "Exportação de dados", free: "Indisponível", essencial: "Incluso", pro: "Incluso" },
   { feature: "Multi-loja", free: "1 loja", essencial: "1 loja", pro: "Até 3 lojas" },
   { feature: "Colaboradores", free: "Indisponível", essencial: "Indisponível", pro: "Ilimitados" },
