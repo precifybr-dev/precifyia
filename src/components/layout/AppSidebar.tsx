@@ -162,7 +162,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-minimal">
             {navItems.map((item) => (
               <button
                 key={item.path}
