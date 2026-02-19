@@ -3586,6 +3586,7 @@ export type Database = {
         Returns: Json
       }
       current_user_is_master: { Args: never; Returns: boolean }
+      delete_store_safe: { Args: { p_store_id: string }; Returns: undefined }
       get_active_consent: {
         Args: { _user_id: string }
         Returns: {
