@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Check, ArrowRight, TrendingUp, Zap, Shield, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,8 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { PlanComparisonTable } from "@/components/plan/PlanComparisonTableStrategic";
 import { PlanUpgradePrompt } from "@/components/upsell/PlanUpgradePrompt";
 import { useUpgradeTracking } from "@/hooks/useUpgradeTracking";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { trackGAEvent } from "@/hooks/useGoogleAnalytics";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const PLAN_SLUG_MAP: Record<string, string> = {
   teste: "free",
@@ -16,65 +17,59 @@ const PLAN_SLUG_MAP: Record<string, string> = {
   pro: "pro",
 };
 
-const PLAN_META: Record<string, { icon: typeof Zap; tagline: string; maturityLabel: string }> = {
-  free: {
-    icon: Shield,
-    tagline: "Visualização estratégica inicial",
-    maturityLabel: "Operação inicial",
-  },
-  basic: {
-    icon: Zap,
-    tagline: "Organize sua operação com estrutura",
-    maturityLabel: "Gestão organizada",
-  },
-  pro: {
-    icon: TrendingUp,
-    tagline: "Transforme margem em crescimento previsível",
-    maturityLabel: "Gestão estratégica com escala",
-  },
+const PLAN_META: Record<string, { icon: typeof Zap; tagline: string }> = {
+  free: { icon: Shield, tagline: "Clareza estratégica inicial" },
+  basic: { icon: Zap, tagline: "Estrutura organizada" },
+  pro: { icon: TrendingUp, tagline: "Escala e crescimento com margem real" },
 };
 
 const fallbackPlans: PricingPlan[] = [
   {
-    id: "teste", name: "Teste", description: "Visualização estratégica inicial",
+    id: "teste", name: "Teste", description: "Clareza estratégica inicial",
     real_price_monthly: 0, anchored_price_monthly: 0,
     real_price_yearly: 0, anchored_price_yearly: 0, yearly_discount_percent: 0,
     features: [
-      { text: "Até 2 fichas técnicas", included: true },
-      { text: "Até 35 insumos", included: true },
+      { text: "Até 10 fichas técnicas", included: true },
+      { text: "Até 80 insumos", included: true },
       { text: "Dashboard básico", included: true },
-      { text: "1 análise de cardápio (uso total)", included: true },
-      { text: "1 combo estratégico (uso total)", included: true },
+      { text: "1 análise de cardápio (uso total durante o período)", included: true },
+      { text: "1 combo estratégico (uso total durante o período)", included: true },
+      { text: "1 importação iFood (uso total durante o período)", included: true },
+      { text: "1 loja", included: true },
     ],
     is_popular: false, is_active: true, sort_order: 0,
   },
   {
-    id: "essencial", name: "Essencial", description: "Organize sua operação com estrutura",
+    id: "essencial", name: "Essencial", description: "Estrutura organizada",
     real_price_monthly: 97, anchored_price_monthly: 147,
     real_price_yearly: 932, anchored_price_yearly: 1411, yearly_discount_percent: 20,
     features: [
-      { text: "Tudo do plano Teste, mais:", included: true },
-      { text: "Até 8 fichas técnicas", included: true },
-      { text: "Até 100 insumos", included: true },
+      { text: "Até 40 fichas técnicas", included: true },
+      { text: "Até 200 insumos", included: true },
       { text: "Dashboard completo", included: true },
       { text: "Até 5 análises de cardápio/mês", included: true },
       { text: "Até 3 combos estratégicos/mês", included: true },
+      { text: "Até 5 importações iFood/mês", included: true },
       { text: "Sub-receitas incluso", included: true },
+      { text: "Exportação de dados incluso", included: true },
+      { text: "1 loja", included: true },
     ],
     is_popular: false, is_active: true, sort_order: 1,
   },
   {
-    id: "pro", name: "Pro", description: "Transforme margem em crescimento previsível",
+    id: "pro", name: "Pro", description: "Escala e crescimento com margem real",
     real_price_monthly: 147, anchored_price_monthly: 297,
     real_price_yearly: 1411, anchored_price_yearly: 2851, yearly_discount_percent: 20,
     features: [
-      { text: "Tudo do plano Essencial, mais:", included: true },
       { text: "Fichas técnicas ilimitadas", included: true },
       { text: "Insumos ilimitados", included: true },
       { text: "Dashboard avançado + DRE", included: true },
-      { text: "Até 10 análises de cardápio/mês", included: true },
+      { text: "Até 15 análises de cardápio/mês", included: true },
+      { text: "Até 10 combos estratégicos/mês", included: true },
+      { text: "Importações ilimitadas", included: true },
       { text: "Até 3 lojas", included: true },
-      { text: "Colaboradores + WhatsApp", included: true },
+      { text: "Colaboradores ilimitados", included: true },
+      { text: "Suporte prioritário via WhatsApp", included: true },
     ],
     is_popular: true, is_active: true, sort_order: 2,
   },
@@ -85,11 +80,14 @@ function formatPrice(value: number) {
   return `R$ ${Math.round(value)}`;
 }
 
+function getPlanSlug(plan: PricingPlan) {
+  return PLAN_SLUG_MAP[plan.id?.toLowerCase()] || PLAN_SLUG_MAP[plan.name?.toLowerCase()] || plan.id;
+}
+
 export function PlansTab() {
   const { plans: dbPlans } = usePublicPricing();
   const { userPlan } = usePlanFeatures();
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const [upgradeTarget, setUpgradeTarget] = useState<string>("pro");
   const { trackUpgradeViewed, trackUpgradeClicked } = useUpgradeTracking();
   const sectionRef = useRef<HTMLDivElement>(null);
   const hasTrackedView = useRef(false);
@@ -97,27 +95,21 @@ export function PlansTab() {
 
   const plans = dbPlans.length > 0 ? dbPlans : fallbackPlans;
 
-  // Reorder: Teste, PRO (center), Essencial → visually: Teste | PRO | Essencial
-  // Actually per brief: PRO in center = order Teste, PRO, Essencial on desktop
   const orderedPlans = (() => {
     const teste = plans.find(p => getPlanSlug(p) === "free");
     const essencial = plans.find(p => getPlanSlug(p) === "basic");
     const pro = plans.find(p => getPlanSlug(p) === "pro");
-    // Desktop: Essencial | PRO (center, highlighted) | Teste (reference)
-    // But brief says PRO center → Teste | PRO | Essencial
     return [teste, pro, essencial].filter(Boolean) as PricingPlan[];
   })();
 
-  // Track plan_view
   useEffect(() => {
     if (!hasTrackedView.current) {
       hasTrackedView.current = true;
       trackUpgradeViewed("plans_tab");
-      trackGAAndFunnel("plan_view");
+      trackGAEvent("plan_view", { source: "plans_tab" });
     }
-  }, []);
+  }, [trackUpgradeViewed]);
 
-  // Track scroll 75%
   useEffect(() => {
     const el = sectionRef.current;
     if (!el) return;
@@ -125,7 +117,7 @@ export function PlansTab() {
       ([entry]) => {
         if (entry.isIntersecting && !hasTrackedScroll.current) {
           hasTrackedScroll.current = true;
-          trackGAAndFunnel("plan_scroll_75");
+          trackGAEvent("plan_scroll_75", { source: "plans_tab" });
         }
       },
       { threshold: 0.75 }
@@ -134,43 +126,23 @@ export function PlansTab() {
     return () => observer.disconnect();
   }, []);
 
-  function getPlanSlug(plan: PricingPlan) {
-    return PLAN_SLUG_MAP[plan.id?.toLowerCase()] || PLAN_SLUG_MAP[plan.name?.toLowerCase()] || plan.id;
-  }
-
   const isCurrentPlan = (plan: PricingPlan) => getPlanSlug(plan) === userPlan;
-
   const isLowerPlan = (plan: PricingPlan) => {
     const order: Record<string, number> = { free: 0, basic: 1, pro: 2 };
-    const slug = getPlanSlug(plan);
-    return (order[slug] ?? 0) < (order[userPlan] ?? 0);
+    return (order[getPlanSlug(plan)] ?? 0) < (order[userPlan] ?? 0);
   };
-
-  function trackGAAndFunnel(event: string, extra?: Record<string, string>) {
-    import("@/hooks/useGoogleAnalytics").then(m => m.trackGAEvent(event, extra));
-    import("@/hooks/useFunnelTracking").then(async m => {
-      const { trackEvent } = m.useFunnelTracking();
-      trackEvent(event, undefined, extra);
-    });
-  }
 
   const handleCtaClick = (slug: string) => {
-    const event = slug === "pro" ? "plan_cta_pro_click" : "plan_cta_essencial_click";
-    trackGAAndFunnel(event);
+    trackGAEvent(slug === "pro" ? "plan_cta_pro_click" : "plan_cta_essencial_click");
     trackUpgradeClicked("plans_tab", slug);
-    setUpgradeTarget(slug);
     setShowUpgrade(true);
-  };
-
-  const handleCompareClick = () => {
-    trackGAAndFunnel("plan_compare_click");
   };
 
   return (
     <TooltipProvider>
       <div className="space-y-8" ref={sectionRef}>
-        {/* Recommended plan banner for Teste users */}
-        {userPlan === "free" && (
+        {/* Recommendation banner */}
+        {userPlan !== "pro" && (
           <Card className="border-primary/30 bg-gradient-to-r from-primary/8 via-primary/4 to-transparent">
             <CardContent className="p-5">
               <div className="flex items-start gap-4">
@@ -179,10 +151,14 @@ export function PlansTab() {
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-sm font-bold text-foreground">
-                    Plano recomendado com base na sua estrutura
+                    {userPlan === "free"
+                      ? "Plano recomendado com base no seu potencial identificado"
+                      : "Sua estrutura já indica capacidade de operar em nível avançado"}
                   </h3>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Você já demonstrou clareza sobre a sua operação. O próximo passo natural é desbloquear a estrutura completa para transformar margem em crescimento previsível.
+                    {userPlan === "free"
+                      ? "Você já demonstrou clareza sobre a sua operação. O próximo passo é desbloquear a estrutura completa para transformar margem em crescimento previsível."
+                      : "Multi-loja, DRE completo, colaboradores ilimitados e suporte prioritário. A evolução natural para quem já entende o valor da precificação inteligente."}
                   </p>
                 </div>
               </div>
@@ -190,33 +166,14 @@ export function PlansTab() {
           </Card>
         )}
 
-        {userPlan === "basic" && (
-          <Card className="border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
-            <CardContent className="p-5">
-              <div className="flex items-start gap-4">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-foreground">
-                    Sua estrutura já indica capacidade de operar em nível avançado.
-                  </h3>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Multi-loja, DRE completo e capacidade ilimitada. A evolução natural para quem já entende o valor da precificação inteligente.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Plan Cards — PRO in center */}
+        {/* Plan Cards — Teste | PRO (center) | Essencial */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-start">
           {orderedPlans.map((plan) => {
             const slug = getPlanSlug(plan);
             const isCurrent = isCurrentPlan(plan);
             const isLower = isLowerPlan(plan);
             const isPro = slug === "pro";
+            const isBasic = slug === "basic";
             const meta = PLAN_META[slug] || PLAN_META.free;
             const hasAnchoring = plan.anchored_price_monthly > plan.real_price_monthly;
             const discountPct = hasAnchoring
@@ -234,7 +191,7 @@ export function PlansTab() {
                     : "border"
                 }`}
                 onMouseEnter={() => {
-                  if (isPro) trackGAAndFunnel("plan_hover_pro");
+                  if (isPro) trackGAEvent("plan_hover_pro");
                 }}
               >
                 {isPro && (
@@ -245,7 +202,7 @@ export function PlansTab() {
                   </div>
                 )}
 
-                {slug === "basic" && !isCurrent && (
+                {isBasic && !isCurrent && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
                     <Badge variant="secondary" className="text-[10px] px-3 py-1 whitespace-nowrap">
                       Ideal para restaurantes em estruturação
@@ -326,24 +283,15 @@ export function PlansTab() {
           })}
         </div>
 
-        {/* Maturity reinforcement */}
+        {/* CTA block */}
         {userPlan !== "pro" && (
           <div className="text-center space-y-3 py-2">
-            <Button
-              size="lg"
-              className="gap-2 font-semibold"
-              onClick={() => handleCtaClick("pro")}
-            >
+            <Button size="lg" className="gap-2 font-semibold" onClick={() => handleCtaClick("pro")}>
               Desbloquear Estrutura Completa <ArrowRight className="h-4 w-4" />
             </Button>
             {userPlan === "free" && (
               <div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-muted-foreground"
-                  onClick={() => handleCtaClick("basic")}
-                >
+                <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={() => handleCtaClick("basic")}>
                   Começar com Estrutura Essencial
                 </Button>
               </div>
@@ -354,13 +302,10 @@ export function PlansTab() {
           </div>
         )}
 
-        {/* Full Comparison Table */}
+        {/* Comparison Table */}
         <Card>
           <CardContent className="p-6">
-            <h3
-              className="text-lg font-bold text-foreground text-center mb-6 cursor-pointer"
-              onClick={handleCompareClick}
-            >
+            <h3 className="text-lg font-bold text-foreground text-center mb-6">
               Comparação detalhada dos planos
             </h3>
             <PlanComparisonTable currentPlan={userPlan} />
