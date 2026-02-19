@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,6 +41,7 @@ import {
   Building2,
   Shield,
   ShieldOff,
+  Gift,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -56,6 +58,18 @@ const PLAN_CONFIG = {
   basic: { label: "Básico", color: "border-primary text-primary" },
   pro: { label: "Pro", color: "border-emerald-600 text-emerald-600" },
 };
+
+const FEATURE_LABELS: Record<string, string> = {
+  ai_analysis: "Análise IA",
+  combos_ai: "Combos IA",
+  ifood_import: "Import iFood",
+  menu_analysis: "Análise Cardápio",
+  incremental_revenue: "Receita Incremental",
+  spreadsheet_import: "Import Planilha",
+  sub_recipes: "Sub-receitas",
+};
+
+const BONUS_FEATURES = Object.entries(FEATURE_LABELS).map(([value, label]) => ({ value, label }));
 
 interface UserManagementProps {
   onImpersonate?: (userId: string) => void;
@@ -79,6 +93,8 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
     getFinancialHistory,
     getSupportHistory,
     startImpersonation: startImpersonationApi,
+    grantCredits,
+    getUserCredits,
   } = useAdminUsers();
 
   const { startImpersonation, isLoading: impersonationLoading } = useImpersonation();
@@ -93,6 +109,11 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
   const [selectedPlan, setSelectedPlan] = useState("");
   const [extensionDays, setExtensionDays] = useState(30);
   const [actionLoading, setActionLoading] = useState(false);
+  const [isGrantCreditsOpen, setIsGrantCreditsOpen] = useState(false);
+  const [creditFeature, setCreditFeature] = useState("");
+  const [creditAmount, setCreditAmount] = useState(5);
+  const [creditReason, setCreditReason] = useState("");
+  const [userCredits, setUserCredits] = useState<any[]>([]);
 
   useEffect(() => {
     fetchUsers();
@@ -112,11 +133,29 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
 
   const handleSelectUser = async (user: AdminUser) => {
     setSelectedUser(user);
-    await Promise.all([
+    const [, , , credits] = await Promise.all([
       getUserDetails(user.id),
       getFinancialHistory(user.id),
       getSupportHistory(user.id),
+      getUserCredits(user.id),
     ]);
+    setUserCredits(credits || []);
+  };
+
+  const handleGrantCredits = async () => {
+    if (!selectedUser || !creditFeature || creditAmount <= 0) return;
+    setActionLoading(true);
+    const result = await grantCredits(selectedUser.id, creditFeature, creditAmount, creditReason || undefined);
+    setActionLoading(false);
+    if (result !== null) {
+      setIsGrantCreditsOpen(false);
+      setCreditFeature("");
+      setCreditAmount(5);
+      setCreditReason("");
+      // Refresh credits
+      const credits = await getUserCredits(selectedUser.id);
+      setUserCredits(credits || []);
+    }
   };
 
   const handleResetPassword = async () => {
@@ -343,6 +382,14 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                                     <Calendar className="h-4 w-4 mr-2" />
                                     Prorrogar
                                   </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedUser(user);
+                                    setIsGrantCreditsOpen(true);
+                                  }}>
+                                    <Gift className="h-4 w-4 mr-2" />
+                                    Conceder Créditos
+                                  </DropdownMenuItem>
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             </TableCell>
@@ -426,6 +473,25 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                       )}
                     </div>
 
+                    {/* Bonus Credits Display */}
+                    {userCredits.length > 0 && (
+                      <>
+                        <Separator />
+                        <div className="space-y-2">
+                          <span className="text-sm text-muted-foreground flex items-center gap-1">
+                            <Gift className="h-3 w-3" /> Créditos Bônus
+                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {userCredits.map((c: any) => (
+                              <Badge key={c.id} variant="outline" className="text-xs border-primary/30 text-primary">
+                                {FEATURE_LABELS[c.feature as keyof typeof FEATURE_LABELS] || c.feature}: +{c.credits}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
                     <Separator />
 
                     <div className="grid grid-cols-2 gap-2">
@@ -455,6 +521,14 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                       >
                         <Calendar className="h-4 w-4 mr-1" />
                         Prorrogar
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => setIsGrantCreditsOpen(true)}
+                      >
+                        <Gift className="h-4 w-4 mr-1" />
+                        Créditos
                       </Button>
                       <Button 
                         variant={selectedUser.has_support_consent ? "default" : "outline"}
@@ -671,6 +745,71 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
             </Button>
             <Button onClick={handleExtendSubscription} disabled={actionLoading || extensionDays <= 0}>
               {actionLoading ? "Prorrogando..." : `Prorrogar ${extensionDays} dias`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Grant Credits Dialog */}
+      <Dialog open={isGrantCreditsOpen} onOpenChange={setIsGrantCreditsOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5" />
+              Conceder Créditos Bônus
+            </DialogTitle>
+            <DialogDescription>
+              Conceda créditos extras para {selectedUser?.email}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Funcionalidade</Label>
+              <Select value={creditFeature} onValueChange={setCreditFeature}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a funcionalidade" />
+                </SelectTrigger>
+                <SelectContent>
+                  {BONUS_FEATURES.map((f) => {
+                    const existing = userCredits.find((c: any) => c.feature === f.value);
+                    return (
+                      <SelectItem key={f.value} value={f.value}>
+                        {f.label} {existing ? `(atual: +${existing.credits})` : ""}
+                      </SelectItem>
+                    );
+                  })}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Quantidade de créditos</Label>
+              <Input
+                type="number"
+                value={creditAmount}
+                onChange={(e) => setCreditAmount(parseInt(e.target.value) || 0)}
+                min={1}
+                max={1000}
+              />
+              <p className="text-xs text-muted-foreground">
+                Os créditos serão somados ao valor existente.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Motivo (opcional)</Label>
+              <Textarea
+                value={creditReason}
+                onChange={(e) => setCreditReason(e.target.value)}
+                placeholder="Ex: Cortesia por problema técnico"
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsGrantCreditsOpen(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleGrantCredits} disabled={actionLoading || !creditFeature || creditAmount <= 0}>
+              {actionLoading ? "Concedendo..." : `Conceder ${creditAmount} crédito(s)`}
             </Button>
           </DialogFooter>
         </DialogContent>
