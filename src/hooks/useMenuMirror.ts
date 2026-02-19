@@ -52,15 +52,26 @@ export function useMenuMirror() {
 
       const plan = profile?.user_plan || "free";
 
-      // Get plan limit
+      // Get plan limit (correct feature name)
       const { data: planFeature } = await supabase
         .from("plan_features")
         .select("usage_limit")
         .eq("plan", plan)
-        .eq("feature", "analyze-menu-performance")
+        .eq("feature", "menu_analysis")
         .maybeSingle();
 
-      const limit = planFeature?.usage_limit ?? (plan === "free" ? 1 : plan === "basic" ? 5 : 10);
+      const planLimit = planFeature?.usage_limit ?? (plan === "free" ? 1 : plan === "basic" ? 5 : 10);
+
+      // Get bonus credits
+      const { data: bonusData } = await supabase
+        .from("user_bonus_credits")
+        .select("credits")
+        .eq("user_id", user.id)
+        .eq("feature", "menu_analysis")
+        .maybeSingle();
+
+      const bonus = (bonusData as any)?.credits ?? 0;
+      const limit = planLimit + bonus;
 
       // Count usage - free = all-time, paid = monthly
       let query = supabase
