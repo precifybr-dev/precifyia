@@ -23,7 +23,7 @@ const comparisonData: ComparisonRow[] = [
   { feature: "Receita incremental", tooltip: "Calcule o impacto financeiro de ajustes de preço no seu cardápio", free: "Até 5 análises", essencial: "Ilimitado", pro: "Ilimitado" },
   { feature: "Exportação de dados", free: "Indisponível", essencial: "Incluso", pro: "Incluso" },
   { feature: "Multi-loja", free: "1 loja", essencial: "1 loja", pro: "Até 3 lojas" },
-  { feature: "Colaboradores", free: "Indisponível", essencial: "Indisponível", pro: "Ilimitados" },
+  { feature: "Gestão de equipe", free: "Indisponível", essencial: "Indisponível", pro: "Ilimitado" },
   { feature: "Suporte", free: "Padrão", essencial: "Padrão", pro: "Prioritário via WhatsApp" },
 ];
 
