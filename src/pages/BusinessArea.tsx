@@ -93,6 +93,41 @@ export default function BusinessArea() {
     }, 2000);
   }, [activeStore?.id, calculateMetrics]);
 
+  // Memoized callbacks for child components — stable references prevent re-render loops
+  const handleRevenueChange = useCallback((avg: number) => {
+    setCalculatedMonthlyRevenue(avg);
+    scheduleRecalc();
+  }, [scheduleRecalc]);
+
+  const handleFixedCostsChange = useCallback((v: number) => {
+    setFixedCostsTotal(v);
+    scheduleRecalc();
+  }, [scheduleRecalc]);
+
+  const handleVariableCostsChange = useCallback((v: number) => {
+    setVariableCostsTotal(v);
+    scheduleRecalc();
+  }, [scheduleRecalc]);
+
+  const handleFixedExpensesChange = useCallback((v: number) => {
+    setFixedExpensesTotal(v);
+    scheduleRecalc();
+  }, [scheduleRecalc]);
+
+  const handleSharedExpensesChange = useCallback((v: number) => {
+    setSharedExpensesTotal(v);
+    scheduleRecalc();
+  }, [scheduleRecalc]);
+
+  const handleVariableExpensesChange = useCallback((v: number) => {
+    setVariableExpensesTotal(v);
+    scheduleRecalc();
+  }, [scheduleRecalc]);
+
+  const handleTaxesChanged = useCallback(() => {
+    scheduleRecalc();
+  }, [scheduleRecalc]);
+
   useEffect(() => {
     return () => { if (recalcTimerRef.current) clearTimeout(recalcTimerRef.current); };
   }, []);
@@ -548,10 +583,7 @@ export default function BusinessArea() {
             <MonthlyRevenueBlock 
               userId={user?.id}
               storeId={activeStore?.id}
-              onAverageChange={(avg) => {
-                setCalculatedMonthlyRevenue(avg);
-                scheduleRecalc();
-              }}
+              onAverageChange={handleRevenueChange}
             />
           </div>
 
@@ -594,7 +626,7 @@ export default function BusinessArea() {
               taxPercentage={businessMetrics?.tax_percentage}
               averageCardFee={businessMetrics?.average_card_fee}
               totalDeductions={businessMetrics?.total_deductions}
-              onDataChanged={() => scheduleRecalc()}
+              onDataChanged={handleTaxesChanged}
             />
           </div>
 
@@ -613,12 +645,12 @@ export default function BusinessArea() {
               <FixedCostsBlock 
                 userId={user?.id} 
                 storeId={activeStore?.id}
-                onTotalChange={(v) => { setFixedCostsTotal(v); scheduleRecalc(); }}
+                onTotalChange={handleFixedCostsChange}
               />
               <VariableCostsBlock 
                 userId={user?.id} 
                 storeId={activeStore?.id}
-                onTotalChange={(v) => { setVariableCostsTotal(v); scheduleRecalc(); }}
+                onTotalChange={handleVariableCostsChange}
               />
             </div>
           </div>
@@ -664,14 +696,14 @@ export default function BusinessArea() {
                 userId={user?.id} 
                 storeId={activeStore?.id}
                 monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-                onTotalChange={(v) => { setFixedExpensesTotal(v); scheduleRecalc(); }}
-                onSharedTotalChange={(v) => { setSharedExpensesTotal(v); scheduleRecalc(); }}
+                onTotalChange={handleFixedExpensesChange}
+                onSharedTotalChange={handleSharedExpensesChange}
               />
               <VariableExpensesBlock 
                 userId={user?.id} 
                 storeId={activeStore?.id}
                 monthlyRevenue={businessMetrics?.monthly_revenue ?? (profile?.monthly_revenue ? Number(profile.monthly_revenue) : null)}
-                onTotalChange={(v) => { setVariableExpensesTotal(v); scheduleRecalc(); }}
+                onTotalChange={handleVariableExpensesChange}
               />
             </div>
           </div>
