@@ -94,8 +94,9 @@ serve(async (req: Request) => {
     const { error: updateError } = await supabase
       .from('user_security')
       .update({
-        mfa_verified: true,
-        last_mfa_code: null,
+    mfa_verified: true,
+    mfa_verified_at: new Date().toISOString(),
+    last_mfa_code: null,
         mfa_code_expires_at: null,
       })
       .eq('user_id', userId);
