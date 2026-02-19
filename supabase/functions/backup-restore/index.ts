@@ -6,7 +6,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const SCHEMA_VERSION = "1.0.0";
+const SCHEMA_VERSION = "2.0.0";
+const COMPATIBLE_VERSIONS = ["1.0.0", "2.0.0"];
 
 // Whitelist of fields per table (input-only, no calculated fields)
 const EXPORT_FIELDS: Record<string, string[]> = {
@@ -20,11 +21,16 @@ const EXPORT_FIELDS: Record<string, string[]> = {
   combo_items: ["item_name", "item_type", "combo_id", "role"],
   fixed_costs: ["name", "value_per_item", "store_id"],
   variable_costs: ["name", "value_per_item", "store_id"],
-  fixed_expenses: ["name", "monthly_value", "store_id"],
+  fixed_expenses: ["name", "monthly_value", "store_id", "cost_type", "sharing_group_id", "shared_store_ids"],
   variable_expenses: ["name", "monthly_value", "store_id"],
   business_taxes: ["tax_regime", "tax_percentage", "notes", "store_id"],
   card_fees: ["payment_type", "fee_percentage", "notes", "store_id"],
   monthly_revenues: ["month", "year", "value", "store_id"],
+  stores: ["name", "business_type", "is_default", "monthly_revenue", "default_cmv", "ifood_url"],
+  cmv_periodos: ["mes", "ano", "modo", "estoque_inicial", "compras", "estoque_final", "ajustes", "cmv_calculado", "cmv_percentual", "faturamento_liquido", "meta_definida", "meta_automatica", "onboarding_concluido", "store_id"],
+  cmv_categorias: ["categoria", "estoque_inicial", "compras", "estoque_final", "ajustes", "cmv_categoria", "cmv_percentual_categoria"],
+  cost_allocations: ["store_id", "allocated_amount", "division_type", "reference_month", "total_stores"],
+  topo_cardapio_simulacoes: ["estrategia_aplicada", "itens_simulados", "explicacao", "store_id"],
 };
 
 const PROFILE_FIELDS = [
@@ -58,11 +64,6 @@ async function handleExport(supabaseAdmin: any, userId: string, storeId: string 
     return q;
   };
 
-  const filterNoUser = (q: any, fk: string, ids: string[]) => {
-    if (ids.length === 0) return q.in(fk, ["__none__"]);
-    return q.in(fk, ids);
-  };
-
   // Fetch all tables
   const [
     { data: ingredients },
@@ -78,6 +79,8 @@ async function handleExport(supabaseAdmin: any, userId: string, storeId: string 
     { data: cardFees },
     { data: monthlyRevenues },
     { data: profileData },
+    { data: userStores },
+    { data: cmvPeriodos },
   ] = await Promise.all([
     filter(supabaseAdmin.from("ingredients").select("*")).order("code"),
     filter(supabaseAdmin.from("recipes").select("*")).order("name"),
@@ -92,17 +95,33 @@ async function handleExport(supabaseAdmin: any, userId: string, storeId: string 
     filter(supabaseAdmin.from("card_fees").select("*")),
     filter(supabaseAdmin.from("monthly_revenues").select("*")),
     supabaseAdmin.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
+    supabaseAdmin.from("stores").select("*").eq("user_id", userId).order("is_default", { ascending: false }),
+    supabaseAdmin.from("cmv_periodos").select("*").eq("user_id", userId).order("ano").order("mes"),
   ]);
 
   // Fetch relational tables
   const recipeIds = (recipes || []).map((r: any) => r.id);
   const subRecipeIds = (subRecipes || []).map((s: any) => s.id);
   const comboIds = (combos || []).map((c: any) => c.id);
+  const cmvPeriodoIds = (cmvPeriodos || []).map((p: any) => p.id);
+
+  // Collect sharing_group_ids from stores
+  const sharingGroupIds = [...new Set(
+    (userStores || []).map((s: any) => s.sharing_group_id).filter(Boolean)
+  )];
+
+  // Collect expense ids for cost_allocations
+  const expenseIds = (fixedExpenses || []).map((e: any) => e.id);
 
   const [
     { data: recipeIngredients },
     { data: subRecipeIngredients },
     { data: comboItems },
+    { data: cmvCategorias },
+    { data: sharingGroups },
+    { data: sharingGroupStores },
+    { data: costAllocations },
+    { data: topoSimulacoes },
   ] = await Promise.all([
     recipeIds.length > 0
       ? supabaseAdmin.from("recipe_ingredients").select("*").in("recipe_id", recipeIds)
@@ -113,6 +132,20 @@ async function handleExport(supabaseAdmin: any, userId: string, storeId: string 
     comboIds.length > 0
       ? supabaseAdmin.from("combo_items").select("*").in("combo_id", comboIds)
       : Promise.resolve({ data: [] }),
+    cmvPeriodoIds.length > 0
+      ? supabaseAdmin.from("cmv_categorias").select("*").in("periodo_id", cmvPeriodoIds)
+      : Promise.resolve({ data: [] }),
+    sharingGroupIds.length > 0
+      ? supabaseAdmin.from("sharing_groups").select("*").in("id", sharingGroupIds)
+      : Promise.resolve({ data: [] }),
+    sharingGroupIds.length > 0
+      ? supabaseAdmin.from("sharing_group_stores").select("*").in("sharing_group_id", sharingGroupIds)
+      : Promise.resolve({ data: [] }),
+    expenseIds.length > 0
+      ? supabaseAdmin.from("cost_allocations").select("*").in("expense_id", expenseIds)
+      : Promise.resolve({ data: [] }),
+    supabaseAdmin.from("topo_cardapio_simulacoes").select("*").eq("user_id", userId)
+      .then((r: any) => r).catch(() => ({ data: [] })),
   ]);
 
   // Build name maps for relational resolution
@@ -120,6 +153,8 @@ async function handleExport(supabaseAdmin: any, userId: string, storeId: string 
   const recipeMap = new Map((recipes || []).map((r: any) => [r.id, r.name]));
   const subRecipeMap = new Map((subRecipes || []).map((s: any) => [s.id, s.name]));
   const comboMap = new Map((combos || []).map((c: any) => [c.id, c.name]));
+  const storeMap = new Map((userStores || []).map((s: any) => [s.id, s.name]));
+  const expenseMap = new Map((fixedExpenses || []).map((e: any) => [e.id, e.name]));
 
   // Map relational data to names instead of IDs
   const mappedRecipeIngredients = (recipeIngredients || []).map((ri: any) => ({
@@ -143,11 +178,67 @@ async function handleExport(supabaseAdmin: any, userId: string, storeId: string 
     role: ci.role,
   }));
 
-  // Get store name
+  // Map CMV categorias with periodo reference
+  const periodoMap = new Map((cmvPeriodos || []).map((p: any) => [p.id, { mes: p.mes, ano: p.ano }]));
+  const mappedCmvCategorias = (cmvCategorias || []).map((c: any) => {
+    const periodo = periodoMap.get(c.periodo_id);
+    return {
+      ...pick(c, EXPORT_FIELDS.cmv_categorias),
+      periodo_mes: periodo?.mes,
+      periodo_ano: periodo?.ano,
+    };
+  });
+
+  // Map cost_allocations with expense_name and store_name
+  const mappedCostAllocations = (costAllocations || []).map((ca: any) => ({
+    expense_name: expenseMap.get(ca.expense_id) || "unknown",
+    store_name: storeMap.get(ca.store_id) || "unknown",
+    allocated_amount: ca.allocated_amount,
+    division_type: ca.division_type,
+    reference_month: ca.reference_month,
+    total_stores: ca.total_stores,
+  }));
+
+  // Map sharing_group_stores with store_name and group_name
+  const groupMap = new Map((sharingGroups || []).map((g: any) => [g.id, g.name]));
+  const mappedSharingGroupStores = (sharingGroupStores || []).map((sgs: any) => ({
+    group_name: groupMap.get(sgs.sharing_group_id) || "unknown",
+    store_name: storeMap.get(sgs.store_id) || "unknown",
+  }));
+
+  // Map fixed_expenses: replace sharing_group_id with group_name and store_id with store_name
+  const mappedFixedExpenses = (fixedExpenses || []).map((fe: any) => {
+    const exported = pick(fe, EXPORT_FIELDS.fixed_expenses);
+    if (exported.sharing_group_id) {
+      exported.sharing_group_name = groupMap.get(exported.sharing_group_id) || null;
+      delete exported.sharing_group_id;
+    }
+    if (exported.shared_store_ids && Array.isArray(exported.shared_store_ids)) {
+      exported.shared_store_names = exported.shared_store_ids.map((sid: string) => storeMap.get(sid) || "unknown");
+      delete exported.shared_store_ids;
+    }
+    // Replace store_id with store_name for portability
+    if (exported.store_id) {
+      exported.store_name = storeMap.get(exported.store_id) || null;
+      delete exported.store_id;
+    }
+    return exported;
+  });
+
+  // Map CMV periodos: replace store_id with store_name
+  const mappedCmvPeriodos = (cmvPeriodos || []).map((p: any) => {
+    const exported = pick(p, EXPORT_FIELDS.cmv_periodos);
+    if (exported.store_id) {
+      exported.store_name = storeMap.get(exported.store_id) || null;
+      delete exported.store_id;
+    }
+    return exported;
+  });
+
+  // Get store name for header
   let storeName: string | null = null;
   if (storeId) {
-    const { data: store } = await supabaseAdmin.from("stores").select("name").eq("id", storeId).maybeSingle();
-    storeName = store?.name || null;
+    storeName = storeMap.get(storeId) || null;
   }
 
   const backup = {
@@ -159,6 +250,9 @@ async function handleExport(supabaseAdmin: any, userId: string, storeId: string 
     store_name: storeName,
     data: {
       profile: profileData ? pick(profileData, PROFILE_FIELDS) : null,
+      stores: (userStores || []).map((s: any) => pick(s, EXPORT_FIELDS.stores)),
+      sharing_groups: (sharingGroups || []).map((g: any) => ({ name: g.name })),
+      sharing_group_stores: mappedSharingGroupStores,
       ingredients: (ingredients || []).map((i: any) => pick(i, EXPORT_FIELDS.ingredients)),
       recipes: (recipes || []).map((r: any) => pick(r, EXPORT_FIELDS.recipes)),
       recipe_ingredients: mappedRecipeIngredients,
@@ -169,11 +263,15 @@ async function handleExport(supabaseAdmin: any, userId: string, storeId: string 
       combo_items: mappedComboItems,
       fixed_costs: (fixedCosts || []).map((f: any) => pick(f, EXPORT_FIELDS.fixed_costs)),
       variable_costs: (variableCosts || []).map((v: any) => pick(v, EXPORT_FIELDS.variable_costs)),
-      fixed_expenses: (fixedExpenses || []).map((f: any) => pick(f, EXPORT_FIELDS.fixed_expenses)),
+      fixed_expenses: mappedFixedExpenses,
       variable_expenses: (variableExpenses || []).map((v: any) => pick(v, EXPORT_FIELDS.variable_expenses)),
       business_taxes: (businessTaxes || []).map((t: any) => pick(t, EXPORT_FIELDS.business_taxes)),
       card_fees: (cardFees || []).map((c: any) => pick(c, EXPORT_FIELDS.card_fees)),
       monthly_revenues: (monthlyRevenues || []).map((m: any) => pick(m, EXPORT_FIELDS.monthly_revenues)),
+      cmv_periodos: mappedCmvPeriodos,
+      cmv_categorias: mappedCmvCategorias,
+      cost_allocations: mappedCostAllocations,
+      topo_cardapio_simulacoes: (topoSimulacoes || []).map((t: any) => pick(t, EXPORT_FIELDS.topo_cardapio_simulacoes)),
     },
   };
 
@@ -192,6 +290,9 @@ async function handleExport(supabaseAdmin: any, userId: string, storeId: string 
         sub_recipes: backup.data.sub_recipes.length,
         beverages: backup.data.beverages.length,
         combos: backup.data.combos.length,
+        stores: backup.data.stores.length,
+        cmv_periodos: backup.data.cmv_periodos.length,
+        cost_allocations: backup.data.cost_allocations.length,
       },
     },
   });
@@ -205,38 +306,45 @@ async function handleImportPreview(body: any, userId: string) {
     return jsonResponse({ error: "Formato de arquivo inválido. Use um arquivo .precify-backup exportado pelo sistema." }, 400);
   }
 
-  if (body.schema_version !== SCHEMA_VERSION) {
+  if (!COMPATIBLE_VERSIONS.includes(body.schema_version)) {
     return jsonResponse({
-      error: `Versão incompatível. O arquivo usa a versão ${body.schema_version}, mas o sistema espera ${SCHEMA_VERSION}.`,
+      error: `Versão incompatível. O arquivo usa a versão ${body.schema_version}, mas o sistema aceita ${COMPATIBLE_VERSIONS.join(", ")}.`,
     }, 400);
   }
 
-  // user_id validation removed — backup can be restored by any authenticated user
-  // All imported data will be re-assigned to the current user's user_id
-
   const data = body.data || {};
+  const counts: Record<string, number> = {
+    ingredients: (data.ingredients || []).length,
+    recipes: (data.recipes || []).length,
+    recipe_ingredients: (data.recipe_ingredients || []).length,
+    sub_recipes: (data.sub_recipes || []).length,
+    sub_recipe_ingredients: (data.sub_recipe_ingredients || []).length,
+    beverages: (data.beverages || []).length,
+    combos: (data.combos || []).length,
+    combo_items: (data.combo_items || []).length,
+    fixed_costs: (data.fixed_costs || []).length,
+    variable_costs: (data.variable_costs || []).length,
+    fixed_expenses: (data.fixed_expenses || []).length,
+    variable_expenses: (data.variable_expenses || []).length,
+    business_taxes: (data.business_taxes || []).length,
+    card_fees: (data.card_fees || []).length,
+    monthly_revenues: (data.monthly_revenues || []).length,
+  };
+
+  // v2.0.0 fields
+  if (data.stores) counts.stores = data.stores.length;
+  if (data.sharing_groups) counts.sharing_groups = data.sharing_groups.length;
+  if (data.cmv_periodos) counts.cmv_periodos = data.cmv_periodos.length;
+  if (data.cmv_categorias) counts.cmv_categorias = data.cmv_categorias.length;
+  if (data.cost_allocations) counts.cost_allocations = data.cost_allocations.length;
+  if (data.topo_cardapio_simulacoes) counts.topo_cardapio_simulacoes = data.topo_cardapio_simulacoes.length;
+
   const preview = {
     valid: true,
     schema_version: body.schema_version,
     exported_at: body.exported_at,
     store_name: body.store_name,
-    counts: {
-      ingredients: (data.ingredients || []).length,
-      recipes: (data.recipes || []).length,
-      recipe_ingredients: (data.recipe_ingredients || []).length,
-      sub_recipes: (data.sub_recipes || []).length,
-      sub_recipe_ingredients: (data.sub_recipe_ingredients || []).length,
-      beverages: (data.beverages || []).length,
-      combos: (data.combos || []).length,
-      combo_items: (data.combo_items || []).length,
-      fixed_costs: (data.fixed_costs || []).length,
-      variable_costs: (data.variable_costs || []).length,
-      fixed_expenses: (data.fixed_expenses || []).length,
-      variable_expenses: (data.variable_expenses || []).length,
-      business_taxes: (data.business_taxes || []).length,
-      card_fees: (data.card_fees || []).length,
-      monthly_revenues: (data.monthly_revenues || []).length,
-    },
+    counts,
   };
 
   return jsonResponse(preview);
@@ -247,7 +355,7 @@ async function handleImportExecute(supabaseAdmin: any, body: any, userId: string
   if (!body || body.format !== "precify-backup") {
     return jsonResponse({ error: "Formato de arquivo inválido." }, 400);
   }
-  if (body.schema_version !== SCHEMA_VERSION) {
+  if (!COMPATIBLE_VERSIONS.includes(body.schema_version)) {
     return jsonResponse({ error: `Versão incompatível: ${body.schema_version}` }, 400);
   }
 
@@ -315,15 +423,24 @@ async function executeReplace(admin: any, data: any, userId: string, storeId: st
   const { data: existingRecipes } = await admin.from("recipes").select("id").eq("user_id", userId).then((r: any) => r);
   const { data: existingSubRecipes } = await admin.from("sub_recipes").select("id").eq("user_id", userId);
   const { data: existingCombos } = await admin.from("combos").select("id").eq("user_id", userId);
+  const { data: existingExpenses } = await admin.from("fixed_expenses").select("id").eq("user_id", userId);
+  const { data: existingCmvPeriodos } = await admin.from("cmv_periodos").select("id").eq("user_id", userId);
 
   const recipeIds = (existingRecipes || []).map((r: any) => r.id);
   const subRecipeIds = (existingSubRecipes || []).map((s: any) => s.id);
   const comboIds = (existingCombos || []).map((c: any) => c.id);
+  const expenseIds = (existingExpenses || []).map((e: any) => e.id);
+  const cmvPeriodoIds = (existingCmvPeriodos || []).map((p: any) => p.id);
 
   // 2. Delete in dependency order
+  if (cmvPeriodoIds.length > 0) await admin.from("cmv_categorias").delete().in("periodo_id", cmvPeriodoIds);
+  if (expenseIds.length > 0) await admin.from("cost_allocations").delete().in("expense_id", expenseIds);
   if (comboIds.length > 0) await admin.from("combo_items").delete().in("combo_id", comboIds);
   if (recipeIds.length > 0) await admin.from("recipe_ingredients").delete().in("recipe_id", recipeIds);
   if (subRecipeIds.length > 0) await admin.from("sub_recipe_ingredients").delete().in("sub_recipe_id", subRecipeIds);
+
+  // Delete topo_cardapio_simulacoes
+  await admin.from("topo_cardapio_simulacoes").delete().eq("user_id", userId).then(() => {}).catch(() => {});
 
   await Promise.all([
     deleteFilter("combos"),
@@ -338,6 +455,7 @@ async function executeReplace(admin: any, data: any, userId: string, storeId: st
     deleteFilter("business_taxes"),
     deleteFilter("card_fees"),
     deleteFilter("monthly_revenues"),
+    deleteFilter("cmv_periodos"),
   ]);
 
   // 3. Insert in dependency order
@@ -374,18 +492,26 @@ async function executeMerge(admin: any, data: any, userId: string, storeId: stri
   filteredData.business_taxes = data.business_taxes || [];
   filteredData.card_fees = data.card_fees || [];
   filteredData.monthly_revenues = data.monthly_revenues || [];
+  filteredData.cmv_periodos = data.cmv_periodos || [];
+  filteredData.cmv_categorias = data.cmv_categorias || [];
+  filteredData.cost_allocations = data.cost_allocations || [];
+  filteredData.topo_cardapio_simulacoes = data.topo_cardapio_simulacoes || [];
 
   // Build a merged data object and insert
   await insertData(admin, {
     ...data,
     ...filteredData,
-    // For relational tables, we need to resolve after insert
   }, userId, storeId);
 }
 
 async function insertData(admin: any, data: any, userId: string, storeId: string | null) {
   const addMeta = (items: any[]) =>
     items.map((i: any) => ({ ...i, user_id: userId, store_id: storeId }));
+
+  // Resolve store name map for v2.0.0 imports
+  // Get all stores for this user to map names to IDs
+  const { data: userStores } = await admin.from("stores").select("id, name").eq("user_id", userId);
+  const storeNameToId = new Map((userStores || []).map((s: any) => [s.name, s.id]));
 
   // 1. Insert ingredients
   const ingredientsToInsert = addMeta(
@@ -485,16 +611,31 @@ async function insertData(admin: any, data: any, userId: string, storeId: string
     if (error) throw new Error(`Erro ao inserir itens de combo: ${error.message}`);
   }
 
-  // 9. Insert costs, expenses, taxes, fees, revenues
+  // 9. Insert costs, expenses (exclusive only), taxes, fees, revenues
+  const fixedExpensesToInsert = (data.fixed_expenses || [])
+    .filter((fe: any) => !fe.cost_type || fe.cost_type === "exclusive")
+    .map((fe: any) => {
+      const item: any = { name: fe.name, monthly_value: fe.monthly_value, user_id: userId, store_id: storeId };
+      if (fe.store_name && storeNameToId.has(fe.store_name)) {
+        item.store_id = storeNameToId.get(fe.store_name);
+      }
+      return item;
+    });
+
   const simpleTables = [
     { key: "fixed_costs", fields: EXPORT_FIELDS.fixed_costs },
     { key: "variable_costs", fields: EXPORT_FIELDS.variable_costs },
-    { key: "fixed_expenses", fields: EXPORT_FIELDS.fixed_expenses },
     { key: "variable_expenses", fields: EXPORT_FIELDS.variable_expenses },
     { key: "business_taxes", fields: EXPORT_FIELDS.business_taxes },
     { key: "card_fees", fields: EXPORT_FIELDS.card_fees },
     { key: "monthly_revenues", fields: EXPORT_FIELDS.monthly_revenues },
   ];
+
+  // Insert fixed_expenses (exclusive)
+  if (fixedExpensesToInsert.length > 0) {
+    const { error } = await admin.from("fixed_expenses").insert(fixedExpensesToInsert);
+    if (error) throw new Error(`Erro ao inserir despesas fixas: ${error.message}`);
+  }
 
   for (const { key, fields } of simpleTables) {
     const items = addMeta((data[key] || []).map((item: any) => pick(item, fields)));
@@ -504,7 +645,52 @@ async function insertData(admin: any, data: any, userId: string, storeId: string
     }
   }
 
-  // 10. Update profile
+  // 10. Insert CMV periodos + categorias
+  const cmvPeriodosToInsert = (data.cmv_periodos || []).map((p: any) => {
+    const item: any = { ...pick(p, EXPORT_FIELDS.cmv_periodos), user_id: userId, store_id: storeId };
+    if (p.store_name && storeNameToId.has(p.store_name)) {
+      item.store_id = storeNameToId.get(p.store_name);
+    }
+    return item;
+  });
+
+  if (cmvPeriodosToInsert.length > 0) {
+    const { data: insertedPeriodos, error } = await admin.from("cmv_periodos").insert(cmvPeriodosToInsert).select("id, mes, ano");
+    if (error) throw new Error(`Erro ao inserir períodos CMV: ${error.message}`);
+
+    // Map periodo by mes+ano to new IDs for categorias
+    const periodoKeyToId = new Map(
+      (insertedPeriodos || []).map((p: any) => [`${p.mes}-${p.ano}`, p.id])
+    );
+
+    const cmvCategoriasToInsert = (data.cmv_categorias || [])
+      .map((c: any) => {
+        const periodoId = periodoKeyToId.get(`${c.periodo_mes}-${c.periodo_ano}`);
+        if (!periodoId) return null;
+        return {
+          ...pick(c, EXPORT_FIELDS.cmv_categorias),
+          periodo_id: periodoId,
+        };
+      })
+      .filter(Boolean);
+
+    if (cmvCategoriasToInsert.length > 0) {
+      const { error: catErr } = await admin.from("cmv_categorias").insert(cmvCategoriasToInsert);
+      if (catErr) throw new Error(`Erro ao inserir categorias CMV: ${catErr.message}`);
+    }
+  }
+
+  // 11. Insert topo_cardapio_simulacoes
+  const topoToInsert = (data.topo_cardapio_simulacoes || []).map((t: any) => ({
+    ...pick(t, EXPORT_FIELDS.topo_cardapio_simulacoes),
+    user_id: userId,
+    store_id: storeId,
+  }));
+  if (topoToInsert.length > 0) {
+    await admin.from("topo_cardapio_simulacoes").insert(topoToInsert).catch(() => {});
+  }
+
+  // 12. Update profile
   if (data.profile) {
     const profileUpdate = pick(data.profile, PROFILE_FIELDS);
     const { error } = await admin.from("profiles").update(profileUpdate).eq("user_id", userId);
