@@ -1,128 +1,72 @@
 
 
-# Sistema de Creditos Bonus para o Admin
+# Corrigir Créditos Bônus no Menu e Receita Incremental
 
-## Resumo
+## Problema Identificado
 
-O administrador podera conceder creditos extras a qualquer usuario, para qualquer funcionalidade limitada do sistema. Funciona como uma "carteira de creditos bonus" que se soma ao limite do plano do usuario.
+O admin concedeu 12 créditos bônus para `menu_analysis`, mas o frontend continua exibindo "10 de 10 análises usadas". O problema tem **duas causas**:
 
-## Como funciona hoje
+1. **Feature name errado**: O hook `useMenuMirror.ts` busca `plan_features` com `feature = "analyze-menu-performance"` (nome do endpoint), mas o nome correto na tabela e `"menu_analysis"`. Por isso cai no fallback hardcoded.
 
-- Cada funcionalidade tem um limite definido na tabela `plan_features` (ex: `ai_analysis` = 10 no Basico)
-- A funcao `check_and_increment_usage` conta os registros em `strategic_usage_logs` e compara com o limite
-- Se o usuario atingiu o limite, a funcao bloqueia
+2. **Bonus nunca consultado**: Nem `useMenuMirror.ts` nem `useIncrementalRevenue.ts` consultam a tabela `user_bonus_credits` para somar ao limite do plano.
 
-## O que muda
+## O que sera feito
 
-O limite efetivo passa a ser: **limite do plano + creditos bonus concedidos pelo admin**
+### 1. Corrigir `useMenuMirror.ts` - fetchAnalysisUsage
 
-## Funcionalidades com limite que receberao suporte a bonus
+- Trocar a query de `plan_features` para usar `feature = "menu_analysis"` (nome correto)
+- Adicionar consulta a `user_bonus_credits` para obter bonus
+- Calcular `effectiveLimit = planLimit + bonus`
+- Retornar o limite efetivo no state `analysisUsage`
 
-| Feature | Free | Basico | Pro |
-|---------|------|--------|-----|
-| ai_analysis | 2 | 10 | 50 |
-| combos_ai | 1 | 3 | 10 |
-| ifood_import | 1 | 5 | ilimitado |
-| menu_analysis | 1 | 5 | 15 |
-| incremental_revenue | 5 | ilimitado | ilimitado |
-| spreadsheet_import | 1 | 3 | ilimitado |
-| sub_recipes | 3 | ilimitado | ilimitado |
+### 2. Corrigir `useIncrementalRevenue.ts` - fetchUsage
 
-## Implementacao
+- Adicionar consulta a `user_bonus_credits` para obter bonus de `incremental_revenue`
+- Calcular `effectiveLimit = planLimit + bonus`
+- Retornar o limite efetivo no state `usage`
 
-### 1. Nova tabela: `user_bonus_credits`
+### 3. Corrigir `PlanOverviewTab.tsx` - featureKeys
 
-```sql
-CREATE TABLE public.user_bonus_credits (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-  feature text NOT NULL,
-  credits integer NOT NULL DEFAULT 0,
-  granted_by uuid REFERENCES auth.users(id),
-  reason text,
-  created_at timestamptz DEFAULT now(),
-  UNIQUE (user_id, feature)
-);
-```
-
-- RLS: leitura pelo proprio usuario, escrita apenas via service_role (Edge Function admin)
-- Indice em `user_id`
-
-### 2. Atualizar `check_and_increment_usage`
-
-A funcao passara a somar os bonus ao limite do plano:
-
-```
-limite_efetivo = v_limit + COALESCE(bonus_credits, 0)
-```
-
-Se `v_limit` e NULL (ilimitado), nao precisa verificar bonus.
-
-### 3. Nova action na Edge Function `admin-users`: `grant_credits`
-
-O admin envia:
-```json
-{
-  "action": "grant_credits",
-  "targetUserId": "uuid",
-  "data": {
-    "feature": "ai_analysis",
-    "credits": 10,
-    "reason": "Cortesia por problema tecnico"
-  }
-}
-```
-
-A Edge Function faz UPSERT na tabela `user_bonus_credits`, somando os creditos ao valor existente. Registra a acao no `admin_audit_logs`.
-
-### 4. Hook `useAdminUsers` - nova funcao `grantCredits`
-
-Adiciona a funcao no hook para chamar a Edge Function com a action `grant_credits`.
-
-### 5. Interface no `UserManagement`
-
-Ao selecionar um usuario, aparecera:
-- Novo botao "Conceder Creditos" no dropdown de acoes
-- Dialog com:
-  - Select da funcionalidade (lista apenas features com limite)
-  - Input numerico para quantidade de creditos
-  - Input de texto para motivo (opcional)
-  - Exibicao dos creditos atuais do usuario para aquela feature
-  - Botao "Conceder"
-
-### 6. Visualizacao dos bonus no painel do usuario
-
-No detalhe do usuario (aba Info), exibir os bonus ativos com um badge por feature.
-
-### 7. Frontend do usuario: exibir bonus no `PlanOverviewTab`
-
-As barras de progresso de uso passam a considerar o limite efetivo (plano + bonus), mostrando ao usuario que ele tem creditos extras disponiveis.
+- Verificar se os featureKeys usados para buscar bonus (`menu_analysis`, `combos_ai`, etc.) estao alinhados com os nomes reais na tabela `plan_features` e `user_bonus_credits`
+- Atualmente usa featureKeys como `"menu_analysis"` no PlanOverviewTab mas o endpoint para contagem e `"analyze-menu-performance"` — garantir que a contagem de uso e o limite se refiram ao mesmo universo
 
 ## Detalhes tecnicos
 
-### Tabela
-- `user_bonus_credits` com constraint UNIQUE(user_id, feature) para permitir UPSERT
-- RLS: `SELECT` para authenticated onde `user_id = auth.uid()`, sem INSERT/UPDATE/DELETE para usuarios comuns
+### useMenuMirror.ts (fetchAnalysisUsage)
 
-### Funcao SQL atualizada
-```sql
--- Dentro de check_and_increment_usage, apos obter v_limit:
-SELECT COALESCE(credits, 0) INTO v_bonus
-FROM user_bonus_credits
-WHERE user_id = _user_id AND feature = _feature;
-
--- Limite efetivo
-v_effective_limit := v_limit + v_bonus;
+Antes:
+```typescript
+.eq("feature", "analyze-menu-performance") // ERRADO
+// sem consulta de bonus
+const limit = planFeature?.usage_limit ?? fallback;
+setAnalysisUsage({ used, limit, plan });
 ```
 
-### Edge Function
-- Validacao: apenas roles master/admin podem conceder
-- UPSERT: `ON CONFLICT (user_id, feature) DO UPDATE SET credits = user_bonus_credits.credits + EXCLUDED.credits`
-- Audit log com old_value e new_value
+Depois:
+```typescript
+.eq("feature", "menu_analysis") // CORRETO
+// + consulta user_bonus_credits
+const bonus = bonusData?.credits ?? 0;
+const effectiveLimit = planLimit + bonus;
+setAnalysisUsage({ used, limit: effectiveLimit, plan });
+```
+
+### useIncrementalRevenue.ts (fetchUsage)
+
+Antes:
+```typescript
+const limit = planFeature.usage_limit; // sem bonus
+setUsage({ used, limit, plan });
+```
+
+Depois:
+```typescript
+const bonus = bonusData?.credits ?? 0;
+const effectiveLimit = limit !== null ? limit + bonus : limit;
+setUsage({ used, limit: effectiveLimit, plan });
+```
 
 ### Arquivos modificados
-1. **Nova migration SQL** - tabela + RLS + atualizacao da funcao `check_and_increment_usage`
-2. **`supabase/functions/admin-users/index.ts`** - nova action `grant_credits`
-3. **`src/hooks/useAdminUsers.ts`** - nova funcao `grantCredits`
-4. **`src/components/admin/UserManagement.tsx`** - dialog de concessao de creditos + exibicao de bonus
-5. **`src/components/plan/PlanOverviewTab.tsx`** - exibir limite efetivo (plano + bonus) nas barras de uso
+1. `src/hooks/useMenuMirror.ts` - corrigir feature name + adicionar bonus
+2. `src/hooks/useIncrementalRevenue.ts` - adicionar bonus
+3. `src/components/plan/PlanOverviewTab.tsx` - alinhar featureKeys se necessario
