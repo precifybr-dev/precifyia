@@ -4,6 +4,7 @@ import {
   LayoutDashboard, FileSpreadsheet, Package, Wine, Building2,
   LogOut, ChevronRight, Plus, Store, Crown, Sun, Moon,
   Sparkles, Headphones, HardDrive, Trash2, ChevronUp, GraduationCap, UtensilsCrossed, BarChart3, ArrowUpRight,
+  CookingPot,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -33,6 +34,7 @@ const navItems: NavItem[] = [
   { icon: Package, label: "Insumos", path: "ingredients", route: "/app/ingredients" },
   { icon: Wine, label: "Bebidas", path: "beverages", route: "/app/beverages" },
   { icon: FileSpreadsheet, label: "Fichas Técnicas", path: "recipes", route: "/app/recipes" },
+  { icon: CookingPot, label: "Sub-Receitas", path: "sub-recipes", route: "/app/sub-recipes" },
   { icon: Sparkles, label: "Combos (BETA)", path: "combos", route: "/app/combos" },
   { icon: UtensilsCrossed, label: "Meu Cardápio", path: "menu", route: "/app/menu" },
   { icon: BarChart3, label: "CMV Global", path: "cmv", route: "/app/cmv" },
