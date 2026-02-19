@@ -48,7 +48,18 @@ export function useIncrementalRevenue() {
         return;
       }
 
-      const limit = planFeature.usage_limit; // null = unlimited
+      const planLimit = planFeature.usage_limit; // null = unlimited
+
+      // Get bonus credits
+      const { data: bonusData } = await supabase
+        .from("user_bonus_credits")
+        .select("credits")
+        .eq("user_id", user.id)
+        .eq("feature", "incremental_revenue")
+        .maybeSingle();
+
+      const bonus = (bonusData as any)?.credits ?? 0;
+      const limit = planLimit !== null ? planLimit + bonus : planLimit;
 
       // Count usage - free = all-time, paid = monthly
       let query = supabase
