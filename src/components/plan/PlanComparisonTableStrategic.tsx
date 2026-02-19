@@ -19,7 +19,7 @@ const comparisonData: ComparisonRow[] = [
   { feature: "Combos estratégicos (IA)", tooltip: AI_TOOLTIP, free: "1 (uso total durante o período)", essencial: "Até 3 usos mensais", pro: "Até 10 usos mensais" },
   { feature: "Importação iFood", free: "1 (uso total durante o período)", essencial: "Até 5 usos mensais", pro: "Ilimitada" },
   { feature: "Importação de planilha", free: "1 (uso total durante o período)", essencial: "Até 3 usos mensais", pro: "Ilimitada" },
-  { feature: "Sub-receitas", free: "Indisponível", essencial: "Incluso", pro: "Incluso" },
+  { feature: "Sub-receitas", free: "Até 3", essencial: "Incluso", pro: "Incluso" },
   { feature: "Exportação de dados", free: "Indisponível", essencial: "Incluso", pro: "Incluso" },
   { feature: "Multi-loja", free: "1 loja", essencial: "1 loja", pro: "Até 3 lojas" },
   { feature: "Colaboradores", free: "Indisponível", essencial: "Indisponível", pro: "Ilimitados" },
