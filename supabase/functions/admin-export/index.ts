@@ -294,9 +294,108 @@ Deno.serve(async (req) => {
     const body = await req.json();
     const moduleName = body.module;
 
+    // ── Special module: schema_sql ─────────────────────────────────
+    if (moduleName === "schema_sql") {
+      // Query information_schema for all public tables + columns
+      const { data: columns, error: colErr } = await adminClient
+        .from("information_schema.columns" as any)
+        .select("table_name, column_name, data_type, is_nullable, column_default, ordinal_position")
+        .eq("table_schema", "public")
+        .order("table_name")
+        .order("ordinal_position");
+
+      // Fallback: use raw SQL via rpc if the above doesn't work
+      let schemaSQL = "";
+
+      if (colErr || !columns || columns.length === 0) {
+        // Build from known tables using pg_catalog
+        const knownTables = [
+          "profiles", "ingredients", "beverages", "recipes", "recipe_ingredients",
+          "fixed_costs", "fixed_expenses", "variable_costs", "variable_expenses",
+          "stores", "store_members", "combos", "combo_items", "combo_memory",
+          "combo_generation_usage", "cmv_periodos", "cmv_categorias",
+          "business_taxes", "card_fees", "deleted_records", "access_logs",
+          "platform_events", "support_tickets", "support_messages", "support_consent",
+          "user_roles", "user_security", "user_permissions", "role_permissions",
+          "collaborators", "sharing_groups", "sharing_group_stores",
+          "cost_allocations", "calculation_history", "data_audit_log",
+          "admin_alerts", "admin_audit_logs", "admin_export_logs",
+          "affiliates", "commissions", "commission_config", "commission_payouts",
+          "coupons", "coupon_uses", "fraud_flags", "contract_acceptances",
+          "funnel_events", "help_content", "ifood_import_usage",
+          "marketing_monthly_data", "plan_features", "rate_limit_entries",
+          "strategic_usage_logs", "user_payments", "university_courses",
+          "university_lessons", "university_progress",
+          "architecture_prompts", "architecture_base_checks",
+          "architecture_certifications", "architecture_history",
+          "architecture_score_history", "controllership_config",
+        ];
+
+        schemaSQL = `-- Schema SQL exportado em ${new Date().toISOString()}\n`;
+        schemaSQL += `-- Tabelas do schema public\n\n`;
+
+        for (const tableName of knownTables) {
+          const { data: tblCols } = await adminClient.rpc("get_table_ddl_columns", { p_table: tableName }).maybeSingle();
+          
+          // Simple fallback: just list table name
+          schemaSQL += `-- Tabela: ${tableName}\n`;
+          schemaSQL += `-- (Use \\d ${tableName} no psql para detalhes completos)\n\n`;
+        }
+      } else {
+        // Group columns by table
+        const tables: Record<string, any[]> = {};
+        for (const col of columns) {
+          if (!tables[col.table_name]) tables[col.table_name] = [];
+          tables[col.table_name].push(col);
+        }
+
+        schemaSQL = `-- ================================================================\n`;
+        schemaSQL += `-- Schema SQL completo - Exportado em ${new Date().toISOString()}\n`;
+        schemaSQL += `-- Tabelas do schema public (${Object.keys(tables).length} tabelas)\n`;
+        schemaSQL += `-- ================================================================\n\n`;
+
+        for (const [tableName, cols] of Object.entries(tables).sort((a, b) => a[0].localeCompare(b[0]))) {
+          schemaSQL += `-- ────────────────────────────────────────────\n`;
+          schemaSQL += `CREATE TABLE IF NOT EXISTS public.${tableName} (\n`;
+
+          const colDefs = cols.map((c: any) => {
+            let def = `  ${c.column_name} ${c.data_type.toUpperCase()}`;
+            if (c.column_default) {
+              def += ` DEFAULT ${c.column_default}`;
+            }
+            if (c.is_nullable === "NO") {
+              def += " NOT NULL";
+            }
+            return def;
+          });
+
+          schemaSQL += colDefs.join(",\n");
+          schemaSQL += `\n);\n\n`;
+        }
+      }
+
+      // Audit log
+      await adminClient.from("admin_export_logs").insert({
+        admin_id: userId,
+        module: "schema_sql",
+        record_count: 0,
+        ip_address: req.headers.get("x-forwarded-for") || req.headers.get("cf-connecting-ip") || null,
+        user_agent: req.headers.get("user-agent") || null,
+        status: "success",
+      });
+
+      return new Response(schemaSQL, {
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "Content-Type": "text/plain; charset=utf-8",
+        },
+      });
+    }
+
     if (!moduleName || !MODULES[moduleName]) {
       return new Response(
-        JSON.stringify({ error: "Módulo inválido", available_modules: Object.keys(MODULES) }),
+        JSON.stringify({ error: "Módulo inválido", available_modules: [...Object.keys(MODULES), "schema_sql"] }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

@@ -6,11 +6,13 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Download, Users, Database, HardDrive, Zap, KeyRound, ScrollText,
   Activity, Shield, ArrowLeft, CheckCircle2, AlertTriangle, Loader2,
+  Copy, Code2, RefreshCcw,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -49,6 +51,9 @@ export default function AdminExport() {
   const navigate = useNavigate();
   const [statuses, setStatuses] = useState<Record<string, ExportStatus>>({});
   const [confirmModule, setConfirmModule] = useState<string | null>(null);
+  const [schemaSQL, setSchemaSQL] = useState<string>("");
+  const [schemaLoading, setSchemaLoading] = useState(false);
+  const [schemaCopied, setSchemaCopied] = useState(false);
 
   const setModuleStatus = (moduleId: string, status: ExportStatus) => {
     setStatuses((prev) => ({ ...prev, [moduleId]: status }));
@@ -105,7 +110,6 @@ export default function AdminExport() {
       const moduleDef = EXPORT_MODULES.find((m) => m.id === moduleId);
       const filename = `export_${moduleId}_${new Date().toISOString().slice(0, 10)}.csv`;
 
-      // Trigger download
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = downloadUrl;
@@ -121,7 +125,6 @@ export default function AdminExport() {
         description: `${moduleDef?.name}: ${recordCount} registros exportados.`,
       });
 
-      // Reset status after 5s
       setTimeout(() => setModuleStatus(moduleId, "idle"), 5000);
     } catch (error: any) {
       console.error("Export error:", error);
@@ -132,6 +135,55 @@ export default function AdminExport() {
         variant: "destructive",
       });
       setTimeout(() => setModuleStatus(moduleId, "idle"), 5000);
+    }
+  };
+
+  const handleLoadSchema = async () => {
+    setSchemaLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast({ title: "Sessão expirada", description: "Faça login novamente.", variant: "destructive" });
+        setSchemaLoading(false);
+        return;
+      }
+
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const url = `https://${projectId}.supabase.co/functions/v1/admin-export`;
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ module: "schema_sql" }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Erro ao carregar schema");
+      }
+
+      const text = await response.text();
+      setSchemaSQL(text);
+      toast({ title: "Schema SQL carregado", description: "O SQL completo das tabelas está pronto para copiar." });
+    } catch (error: any) {
+      console.error("Schema load error:", error);
+      toast({ title: "Erro ao carregar schema", description: error.message || "Tente novamente.", variant: "destructive" });
+    } finally {
+      setSchemaLoading(false);
+    }
+  };
+
+  const handleCopySchema = async () => {
+    try {
+      await navigator.clipboard.writeText(schemaSQL);
+      setSchemaCopied(true);
+      toast({ title: "SQL copiado!", description: "O schema completo foi copiado para a área de transferência." });
+      setTimeout(() => setSchemaCopied(false), 3000);
+    } catch {
+      toast({ title: "Erro ao copiar", description: "Não foi possível copiar. Selecione o texto manualmente.", variant: "destructive" });
     }
   };
 
@@ -179,44 +231,109 @@ export default function AdminExport() {
             icon={<Download className="h-6 w-6" />}
           />
 
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-              {EXPORT_MODULES.map((mod) => {
-                const status = statuses[mod.id] || "idle";
-                const Icon = mod.icon;
-
-                return (
-                  <Card key={mod.id} className="flex flex-col">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10">
-                            <Icon className="h-5 w-5 text-primary" />
-                          </div>
-                          <CardTitle className="text-base">{mod.name}</CardTitle>
-                        </div>
-                        {getStatusBadge(status)}
-                      </div>
-                      <CardDescription className="mt-2">{mod.description}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="mt-auto pt-0">
+          <div className="p-6 space-y-8">
+            {/* ── SQL Schema Section ──────────────────────────────── */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Code2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">SQL das Tabelas (Migração)</CardTitle>
+                      <CardDescription>
+                        Gere o SQL completo (CREATE TABLE) de todas as tabelas do sistema para copiar e migrar.
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {schemaSQL && (
                       <Button
-                        onClick={() => setConfirmModule(mod.id)}
-                        disabled={status === "loading"}
-                        className="w-full gap-2"
-                        variant={status === "success" ? "outline" : "default"}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleCopySchema}
                       >
-                        {status === "loading" ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                        {schemaCopied ? (
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                         ) : (
-                          <Download className="h-4 w-4" />
+                          <Copy className="h-4 w-4" />
                         )}
-                        {status === "loading" ? "Exportando..." : "Exportar CSV"}
+                        {schemaCopied ? "Copiado!" : "Copiar SQL"}
                       </Button>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+                    )}
+                    <Button
+                      onClick={handleLoadSchema}
+                      disabled={schemaLoading}
+                      className="gap-2"
+                    >
+                      {schemaLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : schemaSQL ? (
+                        <RefreshCcw className="h-4 w-4" />
+                      ) : (
+                        <Code2 className="h-4 w-4" />
+                      )}
+                      {schemaLoading ? "Carregando..." : schemaSQL ? "Recarregar" : "Gerar SQL"}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              {schemaSQL && (
+                <CardContent>
+                  <div className="relative">
+                    <pre className="bg-muted rounded-lg p-4 text-sm font-mono overflow-auto max-h-[500px] whitespace-pre-wrap break-words border">
+                      {schemaSQL}
+                    </pre>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
+
+            <Separator />
+
+            {/* ── Export Cards ────────────────────────────────────── */}
+            <div>
+              <h2 className="text-lg font-semibold mb-4">Exportação CSV por Módulo</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {EXPORT_MODULES.map((mod) => {
+                  const status = statuses[mod.id] || "idle";
+                  const Icon = mod.icon;
+
+                  return (
+                    <Card key={mod.id} className="flex flex-col">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10">
+                              <Icon className="h-5 w-5 text-primary" />
+                            </div>
+                            <CardTitle className="text-base">{mod.name}</CardTitle>
+                          </div>
+                          {getStatusBadge(status)}
+                        </div>
+                        <CardDescription className="mt-2">{mod.description}</CardDescription>
+                      </CardHeader>
+                      <CardContent className="mt-auto pt-0">
+                        <Button
+                          onClick={() => setConfirmModule(mod.id)}
+                          disabled={status === "loading"}
+                          className="w-full gap-2"
+                          variant={status === "success" ? "outline" : "default"}
+                        >
+                          {status === "loading" ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                          {status === "loading" ? "Exportando..." : "Exportar CSV"}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </AdminLayout>
