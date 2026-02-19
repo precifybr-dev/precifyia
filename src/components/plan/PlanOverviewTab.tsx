@@ -41,6 +41,7 @@ export function PlanOverviewTab() {
   const { toast } = useToast();
   const [profile, setProfile] = useState<any>(null);
   const [usageItems, setUsageItems] = useState<UsageItem[]>([]);
+  const [bonusCredits, setBonusCredits] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [storeToDelete, setStoreToDelete] = useState<{ id: string; name: string } | null>(null);
@@ -94,6 +95,20 @@ export function PlanOverviewTab() {
           countByEndpoint("analyze-spreadsheet-columns"),
         ]);
 
+        // Fetch bonus credits
+        const { data: bonusData } = await supabase
+          .from("user_bonus_credits")
+          .select("feature, credits")
+          .eq("user_id", user.id);
+
+        const bonusMap: Record<string, number> = {};
+        if (bonusData) {
+          bonusData.forEach((b: any) => {
+            bonusMap[b.feature] = b.credits;
+          });
+        }
+        setBonusCredits(bonusMap);
+
         setUsageItems([
           { label: "Fichas técnicas", icon: FileSpreadsheet, used: recipesCount || 0, limit: null, featureKey: "recipes" },
           { label: "Insumos", icon: Package, used: ingredientsCount || 0, limit: null, featureKey: "ingredients" },
@@ -109,10 +124,17 @@ export function PlanOverviewTab() {
     if (!planLoading) loadUsage();
   }, [planLoading]);
 
-  const resolvedItems = usageItems.map((item) => ({
-    ...item,
-    limit: getFeatureLimit(item.featureKey),
-  }));
+  const resolvedItems = usageItems.map((item) => {
+    const planLimit = getFeatureLimit(item.featureKey);
+    const bonus = bonusCredits[item.featureKey] || 0;
+    const effectiveLimit = planLimit !== null && planLimit !== -1 ? planLimit + bonus : planLimit;
+    return {
+      ...item,
+      limit: effectiveLimit,
+      hasBonus: bonus > 0,
+      bonusAmount: bonus,
+    };
+  });
 
   const getStatusText = () => {
     if (!profile || userPlan === "free") return "Sem vencimento (plano gratuito)";
@@ -182,7 +204,14 @@ export function PlanOverviewTab() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-foreground">{item.label}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium text-foreground">{item.label}</span>
+                            {item.hasBonus && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 border-primary/30 text-primary">
+                                +{item.bonusAmount} bônus
+                              </Badge>
+                            )}
+                          </div>
                           <span className={`text-xs font-medium ${isNearLimit ? "text-destructive" : "text-muted-foreground"}`}>
                             {isUnlimited ? `${item.used} usados` : `${item.used} / ${item.limit}`}
                           </span>

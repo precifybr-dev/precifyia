@@ -357,6 +357,49 @@ export function useAdminUsers() {
     }
   }, []);
 
+  const grantCredits = useCallback(async (userId: string, feature: string, credits: number, reason?: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { 
+          action: "grant_credits", 
+          targetUserId: userId,
+          data: { feature, credits, reason }
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast({
+        title: "Sucesso",
+        description: `${credits} crédito(s) bônus concedidos para ${feature}`,
+      });
+      return data.newTotal;
+    } catch (err: any) {
+      console.error("Error granting credits:", err);
+      toast({
+        title: "Erro",
+        description: err.message || "Erro ao conceder créditos",
+        variant: "destructive",
+      });
+      return null;
+    }
+  }, []);
+
+  const getUserCredits = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-users", {
+        body: { action: "get_user_credits", targetUserId: userId },
+      });
+
+      if (error) throw error;
+      return data.credits || [];
+    } catch (err: any) {
+      console.error("Error fetching user credits:", err);
+      return [];
+    }
+  }, []);
+
   return {
     users,
     isLoading,
@@ -377,5 +420,7 @@ export function useAdminUsers() {
     startImpersonation,
     getSessionLogs,
     getAbuseAlerts,
+    grantCredits,
+    getUserCredits,
   };
 }

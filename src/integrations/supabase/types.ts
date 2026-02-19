@@ -3221,6 +3221,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_bonus_credits: {
+        Row: {
+          created_at: string | null
+          credits: number
+          feature: string
+          granted_by: string | null
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          credits?: number
+          feature: string
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          credits?: number
+          feature?: string
+          granted_by?: string | null
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_lesson_progress: {
         Row: {
           completed: boolean

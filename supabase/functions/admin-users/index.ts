@@ -10,7 +10,8 @@ interface AdminAction {
   action: 'list_users' | 'get_user' | 'reset_password' | 'change_plan' | 
           'extend_subscription' | 'get_financial_history' | 'get_support_history' |
           'start_impersonation' | 'end_impersonation' | 'update_status' |
-          'check_consent' | 'get_session_logs' | 'get_abuse_alerts';
+          'check_consent' | 'get_session_logs' | 'get_abuse_alerts' | 'grant_credits' |
+          'get_user_credits';
   targetUserId?: string;
   data?: Record<string, any>;
 }
@@ -140,6 +141,7 @@ serve(async (req: Request) => {
       'extend_subscription', 'get_financial_history', 'get_support_history',
       'start_impersonation', 'end_impersonation', 'update_status',
       'check_consent', 'get_session_logs', 'get_abuse_alerts',
+      'grant_credits', 'get_user_credits',
     ];
     if (!ALLOWED_ACTIONS.includes(rawBody.action)) {
       return new Response(
@@ -156,6 +158,7 @@ serve(async (req: Request) => {
       'update_status': ['status'],
       'start_impersonation': ['reason'],
       'end_impersonation': ['sessionId'],
+      'grant_credits': ['feature', 'credits', 'reason'],
     };
 
     let sanitizedData: Record<string, any> | undefined;
@@ -244,6 +247,8 @@ serve(async (req: Request) => {
       'check_consent': 'impersonate_user',
       'get_session_logs': 'view_logs',
       'get_abuse_alerts': 'view_logs',
+      'grant_credits': 'manage_plans',
+      'get_user_credits': 'view_users',
     };
 
     const requiredPermission = permissionMap[body.action];
@@ -865,6 +870,77 @@ serve(async (req: Request) => {
 
         return new Response(
           JSON.stringify({ alerts: alerts || [] }),
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'grant_credits': {
+        if (!body.targetUserId || !body.data?.feature || !body.data?.credits) {
+          return new Response(
+            JSON.stringify({ error: 'targetUserId, feature e credits são obrigatórios' }),
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const creditsToGrant = parseInt(body.data.credits);
+        if (isNaN(creditsToGrant) || creditsToGrant <= 0) {
+          return new Response(
+            JSON.stringify({ error: 'credits deve ser um número positivo' }),
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get current bonus credits
+        const { data: currentBonus } = await supabase
+          .from('user_bonus_credits')
+          .select('credits')
+          .eq('user_id', body.targetUserId)
+          .eq('feature', body.data.feature)
+          .maybeSingle();
+
+        const oldCredits = currentBonus?.credits || 0;
+
+        // UPSERT: add credits to existing value
+        const { error: upsertError } = await supabase
+          .from('user_bonus_credits')
+          .upsert({
+            user_id: body.targetUserId,
+            feature: body.data.feature,
+            credits: oldCredits + creditsToGrant,
+            granted_by: user.id,
+            reason: body.data.reason || null,
+          }, { onConflict: 'user_id,feature' });
+
+        if (upsertError) throw upsertError;
+
+        await logAudit(supabase, user.id, 'grant_credits', body.action, body.targetUserId, deviceInfo,
+          { feature: body.data.feature, credits: oldCredits },
+          { feature: body.data.feature, credits: oldCredits + creditsToGrant, added: creditsToGrant, reason: body.data.reason }
+        );
+
+        return new Response(
+          JSON.stringify({ success: true, newTotal: oldCredits + creditsToGrant }),
+          { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'get_user_credits': {
+        if (!body.targetUserId) {
+          return new Response(
+            JSON.stringify({ error: 'targetUserId é obrigatório' }),
+            { status: 400, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: credits, error: creditsError } = await supabase
+          .from('user_bonus_credits')
+          .select('*')
+          .eq('user_id', body.targetUserId);
+
+        if (creditsError) throw creditsError;
+
+        return new Response(
+          JSON.stringify({ credits: credits || [] }),
           { status: 200, headers: { ...corsHeaders, ...rateLimitHeaders, 'Content-Type': 'application/json' } }
         );
       }
