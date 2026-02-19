@@ -119,6 +119,39 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_export_logs: {
+        Row: {
+          admin_id: string
+          exported_at: string
+          id: string
+          ip_address: string | null
+          module: string
+          record_count: number
+          status: string
+          user_agent: string | null
+        }
+        Insert: {
+          admin_id: string
+          exported_at?: string
+          id?: string
+          ip_address?: string | null
+          module: string
+          record_count?: number
+          status?: string
+          user_agent?: string | null
+        }
+        Update: {
+          admin_id?: string
+          exported_at?: string
+          id?: string
+          ip_address?: string | null
+          module?: string
+          record_count?: number
+          status?: string
+          user_agent?: string | null
+        }
+        Relationships: []
+      }
       affiliates: {
         Row: {
           commission_rate: number

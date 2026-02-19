@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.analyze-menu-performance]
 verify_jwt = false
+
+[functions.admin-export]
+verify_jwt = false
