@@ -55,6 +55,7 @@ import MyPlan from "./pages/MyPlan";
 import AdminDashboard from "./pages/AdminDashboard";
 import Collaborators from "./pages/Collaborators";
 import SystemBook from "./pages/SystemBook";
+import AdminExport from "./pages/AdminExport";
 
 const queryClient = new QueryClient();
 
@@ -226,6 +227,14 @@ const App = () => (
               element={
                 <AdminRoute>
                   <Collaborators />
+                </AdminRoute>
+              } 
+            />
+            <Route 
+              path="/admin/export" 
+              element={
+                <AdminRoute>
+                  <AdminExport />
                 </AdminRoute>
               } 
             />
