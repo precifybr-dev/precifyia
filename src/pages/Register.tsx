@@ -132,8 +132,8 @@ export default function Register() {
 
           <div className="space-y-4">
             {[
-              "Até 35 insumos cadastrados",
-              "Até 3 fichas técnicas",
+              "Até 80 insumos cadastrados",
+              "Até 10 fichas técnicas",
               "Dashboard completo",
               "Suporte por email"
             ].map((item) => (
@@ -303,13 +303,13 @@ export default function Register() {
 
           <p className="text-center text-xs text-muted-foreground mt-4">
             Ao criar uma conta, você concorda com nossos{" "}
-            <a href="#" className="text-primary hover:underline">
+            <Link to="/termos-de-uso" className="text-primary hover:underline">
               Termos de Uso
-            </a>{" "}
+            </Link>{" "}
             e{" "}
-            <a href="#" className="text-primary hover:underline">
+            <Link to="/politica-de-privacidade" className="text-primary hover:underline">
               Política de Privacidade
-            </a>
+            </Link>
           </p>
         </div>
       </div>
