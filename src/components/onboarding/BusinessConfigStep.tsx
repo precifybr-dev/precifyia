@@ -31,11 +31,12 @@ type SubStep =
   | "revenue"
   | "cmv"
   | "referral"
-  | "import_data";
+  | "import_spreadsheet"
+  | "import_ifood";
 
 const SUB_STEPS: SubStep[] = [
   "welcome", "business_name", "business_type", "ifood_check",
-  "ifood_details", "revenue", "cmv", "referral", "import_data",
+  "ifood_details", "revenue", "cmv", "referral", "import_spreadsheet", "import_ifood",
 ];
 
 const businessTypes = [
@@ -85,7 +86,11 @@ export function BusinessConfigStep({ profile, onUpdate, onAdvance }: BusinessCon
   const currentIndex = SUB_STEPS.indexOf(subStep);
   // Skip ifood_details if not selling on ifood
   const effectiveSteps = SUB_STEPS.filter(
-    (s) => s !== "ifood_details" || sellsOnIfood === true
+    (s) => {
+      if (s === "ifood_details" && sellsOnIfood !== true) return false;
+      if (s === "import_ifood" && sellsOnIfood !== true) return false;
+      return true;
+    }
   );
   const effectiveIndex = effectiveSteps.indexOf(subStep);
   const progress = ((effectiveIndex + 1) / effectiveSteps.length) * 100;
@@ -458,11 +463,11 @@ export function BusinessConfigStep({ profile, onUpdate, onAdvance }: BusinessCon
           </StepCard>
         )}
 
-        {subStep === "import_data" && (
+        {subStep === "import_spreadsheet" && (
           <StepCard
-            emoji="📦"
-            title="Quer importar seus dados?"
-            subtitle="Você pode trazer seus insumos de uma planilha ou seu cardápio do iFood. Ou pular e fazer depois."
+            emoji="📊"
+            title="Importar planilha de insumos"
+            subtitle="Traga seus ingredientes de uma planilha Excel ou CSV. Ou pule e cadastre depois."
           >
             <div className="space-y-3">
               <button
@@ -477,21 +482,57 @@ export function BusinessConfigStep({ profile, onUpdate, onAdvance }: BusinessCon
                   <p className="text-xs text-muted-foreground">Excel ou CSV com seus ingredientes</p>
                 </div>
               </button>
+            </div>
 
-              {sellsOnIfood && (
-                <button
-                  onClick={() => setShowIfoodImport(true)}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border bg-card hover:border-primary/40 hover:shadow-sm transition-all text-left"
+            <div className="flex gap-3 mt-6">
+              {canGoBack && <BackButton onClick={goBack} />}
+              {sellsOnIfood ? (
+                <Button
+                  variant="hero"
+                  size="lg"
+                  className="flex-1"
+                  onClick={goNext}
                 >
-                  <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
-                    <Upload className="w-6 h-6 text-destructive" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">Importar cardápio do iFood</p>
-                    <p className="text-xs text-muted-foreground">Traz seus produtos automaticamente</p>
-                  </div>
-                </button>
+                  Próximo <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  variant="hero"
+                  size="lg"
+                  className="flex-1"
+                  onClick={handleFinish}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Salvando..." : "Finalizar configuração"} <Sparkles className="w-4 h-4 ml-2" />
+                </Button>
               )}
+            </div>
+            <SkipButton
+              label={sellsOnIfood ? "Pular →" : "Pular importação e finalizar"}
+              onClick={sellsOnIfood ? goNext : handleFinish}
+            />
+          </StepCard>
+        )}
+
+        {subStep === "import_ifood" && (
+          <StepCard
+            emoji="🛵"
+            title="Importar cardápio do iFood"
+            subtitle="Traga seus produtos do iFood com os nomes e valores de venda já preenchidos."
+          >
+            <div className="space-y-3">
+              <button
+                onClick={() => setShowIfoodImport(true)}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-border bg-card hover:border-primary/40 hover:shadow-sm transition-all text-left"
+              >
+                <div className="w-12 h-12 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                  <Upload className="w-6 h-6 text-destructive" />
+                </div>
+                <div>
+                  <p className="font-semibold text-foreground">Importar cardápio do iFood</p>
+                  <p className="text-xs text-muted-foreground">Cria fichas técnicas com preços de venda do iFood</p>
+                </div>
+              </button>
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -532,7 +573,7 @@ export function BusinessConfigStep({ profile, onUpdate, onAdvance }: BusinessCon
             setShowIfoodImport(open);
             if (!open) handleFinish();
           }}
-          importType="ingredients"
+          importType="recipes"
           userId={profile.user_id}
           userPlan="free"
           onImportComplete={async () => { setShowIfoodImport(false); await handleFinish(); }}
