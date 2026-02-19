@@ -61,6 +61,9 @@ import { useStore } from "@/contexts/StoreContext";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { useDataProtection } from "@/hooks/useDataProtection";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import { PlanUpgradePrompt } from "@/components/upsell/PlanUpgradePrompt";
+import { useUpgradeTracking } from "@/hooks/useUpgradeTracking";
 // Sub-recipe red color constant
 const SUB_RECIPE_COLOR = "#ef4444";
 
@@ -114,6 +117,12 @@ export default function SubRecipes() {
   // Delete dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [subRecipeToDelete, setSubRecipeToDelete] = useState<SubRecipe | null>(null);
+  
+  // Plan gate state
+  const { isFeatureEnabled, userPlan, loading: planLoading } = usePlanFeatures();
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const { trackFeatureBlocked } = useUpgradeTracking();
+  const subRecipesAllowed = isFeatureEnabled("sub_recipes");
   
   // Form state
   const [recipeName, setRecipeName] = useState("");
@@ -290,6 +299,11 @@ export default function SubRecipes() {
   };
 
   const handleNewSubRecipe = () => {
+    if (!subRecipesAllowed) {
+      trackFeatureBlocked("sub_recipes");
+      setShowUpgradePrompt(true);
+      return;
+    }
     setRecipeName("");
     setYieldQuantity("1");
     setYieldUnit("kg");
@@ -887,6 +901,14 @@ export default function SubRecipes() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PlanUpgradePrompt
+        open={showUpgradePrompt}
+        onOpenChange={setShowUpgradePrompt}
+        currentPlan={userPlan}
+        feature="sub_recipes"
+        limitReached="sub-receitas"
+      />
     </div>
   );
 }

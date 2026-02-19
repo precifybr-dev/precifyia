@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useUpgradeTracking } from "@/hooks/useUpgradeTracking";
 import {
   Dialog,
   DialogContent,
@@ -87,6 +88,14 @@ export function PlanUpgradePrompt({
   const navigate = useNavigate();
   const { plans: dbPlans } = usePublicPricing();
   const [showComparison, setShowComparison] = useState(false);
+  const { trackUpgradeViewed, trackUpgradeClicked, trackUpgradeDismissed } = useUpgradeTracking();
+
+  // Track when prompt is shown
+  useEffect(() => {
+    if (open) {
+      trackUpgradeViewed(feature);
+    }
+  }, [open, feature]);
 
   const plans = dbPlans.length > 0 ? dbPlans : fallbackPlans;
 
@@ -197,6 +206,7 @@ export function PlanUpgradePrompt({
                     className={`w-full gap-2 ${plan.is_popular ? "bg-primary hover:bg-primary/90" : ""}`}
                     variant={plan.is_popular ? "default" : "outline"}
                     onClick={() => {
+                      trackUpgradeClicked(feature, getPlanSlug(plan));
                       onOpenChange(false);
                       navigate("/app/plan");
                     }}
@@ -232,7 +242,10 @@ export function PlanUpgradePrompt({
           <Button
             variant="ghost"
             className="text-muted-foreground"
-            onClick={() => onOpenChange(false)}
+            onClick={() => {
+              trackUpgradeDismissed(feature);
+              onOpenChange(false);
+            }}
           >
             Agora não
           </Button>
