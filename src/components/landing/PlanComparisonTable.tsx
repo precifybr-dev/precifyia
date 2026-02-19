@@ -15,7 +15,7 @@ const comparisonData: ComparisonRow[] = [
   { feature: "Combos estratégicos (IA)", free: "1 (único)", essencial: "3/mês", pro: "5/mês" },
   { feature: "Importação iFood", free: "1 (única)", essencial: "5/mês", pro: "Ilimitada" },
   { feature: "Importação de planilha", free: "1 (única, até 35 insumos)", essencial: "3/mês", pro: "Ilimitada" },
-  { feature: "Sub-receitas", free: false, essencial: true, pro: true },
+  { feature: "Sub-receitas", free: "Até 3", essencial: true, pro: true },
   { feature: "Exportação de dados", free: false, essencial: true, pro: true },
   { feature: "Multi-loja", free: false, essencial: false, pro: "Até 3 lojas" },
   { feature: "Colaboradores", free: false, essencial: false, pro: true },

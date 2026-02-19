@@ -119,10 +119,11 @@ export default function SubRecipes() {
   const [subRecipeToDelete, setSubRecipeToDelete] = useState<SubRecipe | null>(null);
   
   // Plan gate state
-  const { isFeatureEnabled, userPlan, loading: planLoading } = usePlanFeatures();
+  const { isFeatureEnabled, getFeatureLimit, userPlan, loading: planLoading } = usePlanFeatures();
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const { trackFeatureBlocked } = useUpgradeTracking();
   const subRecipesAllowed = isFeatureEnabled("sub_recipes");
+  const subRecipesLimit = getFeatureLimit("sub_recipes");
   
   // Form state
   const [recipeName, setRecipeName] = useState("");
@@ -300,6 +301,12 @@ export default function SubRecipes() {
 
   const handleNewSubRecipe = () => {
     if (!subRecipesAllowed) {
+      trackFeatureBlocked("sub_recipes");
+      setShowUpgradePrompt(true);
+      return;
+    }
+    // Check limit for plans with usage_limit
+    if (subRecipesLimit !== null && subRecipes.length >= subRecipesLimit) {
       trackFeatureBlocked("sub_recipes");
       setShowUpgradePrompt(true);
       return;
