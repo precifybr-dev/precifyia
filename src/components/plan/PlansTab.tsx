@@ -68,7 +68,7 @@ const fallbackPlans: PricingPlan[] = [
       { text: "Até 10 combos estratégicos/mês", included: true },
       { text: "Importações ilimitadas", included: true },
       { text: "Até 3 lojas", included: true },
-      { text: "Gestão de equipe ilimitada", included: true },
+      
       { text: "Suporte prioritário via WhatsApp", included: true },
     ],
     is_popular: true, is_active: true, sort_order: 2,
@@ -158,7 +158,7 @@ export function PlansTab() {
                   <p className="text-xs text-muted-foreground leading-relaxed">
                     {userPlan === "free"
                       ? "Você já demonstrou clareza sobre a sua operação. O próximo passo é desbloquear a estrutura completa para transformar margem em crescimento previsível."
-                      : "Multi-loja, DRE completo, gestão de equipe ilimitada e suporte prioritário. A evolução natural para quem já entende o valor da precificação inteligente."}
+                      : "Multi-loja, DRE completo e suporte prioritário. A evolução natural para quem já entende o valor da precificação inteligente."}
                   </p>
                 </div>
               </div>
