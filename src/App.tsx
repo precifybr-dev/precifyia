@@ -50,6 +50,7 @@ import University from "./pages/University";
 import MenuMirror from "./pages/MenuMirror";
 import CMVGlobal from "./pages/CMVGlobal";
 import MyPlan from "./pages/MyPlan";
+import Packagings from "./pages/Packagings";
 
 // Admin pages (master/collaborators)
 import AdminDashboard from "./pages/AdminDashboard";
@@ -196,6 +197,14 @@ const App = () => (
               } 
             />
             <Route 
+              path="/app/packagings" 
+              element={
+                <AppRoute>
+                  <Packagings />
+                </AppRoute>
+              } 
+            />
+            <Route
               path="/app/combos" 
               element={
                 <AppRoute>

@@ -1974,6 +1974,94 @@ export type Database = {
           },
         ]
       }
+      packaging_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_name: string
+          packaging_id: string
+          quantity: number
+          subtotal: number
+          unit_cost: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_name: string
+          packaging_id: string
+          quantity?: number
+          subtotal?: number
+          unit_cost?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_name?: string
+          packaging_id?: string
+          quantity?: number
+          subtotal?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_items_packaging_id_fkey"
+            columns: ["packaging_id"]
+            isOneToOne: false
+            referencedRelation: "packagings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packagings: {
+        Row: {
+          category: string | null
+          cost_total: number
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          store_id: string | null
+          type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          cost_total?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          store_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          cost_total?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          store_id?: string | null
+          type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packagings_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payment_links: {
         Row: {
           amount: number
@@ -2450,7 +2538,11 @@ export type Database = {
           created_at: string
           id: string
           ifood_selling_price: number | null
+          market_price_avg: number | null
+          market_price_max: number | null
+          market_price_min: number | null
           name: string
+          packaging_id: string | null
           selling_price: number | null
           servings: number
           store_id: string | null
@@ -2466,7 +2558,11 @@ export type Database = {
           created_at?: string
           id?: string
           ifood_selling_price?: number | null
+          market_price_avg?: number | null
+          market_price_max?: number | null
+          market_price_min?: number | null
           name: string
+          packaging_id?: string | null
           selling_price?: number | null
           servings?: number
           store_id?: string | null
@@ -2482,7 +2578,11 @@ export type Database = {
           created_at?: string
           id?: string
           ifood_selling_price?: number | null
+          market_price_avg?: number | null
+          market_price_max?: number | null
+          market_price_min?: number | null
           name?: string
+          packaging_id?: string | null
           selling_price?: number | null
           servings?: number
           store_id?: string | null
@@ -2492,6 +2592,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "recipes_packaging_id_fkey"
+            columns: ["packaging_id"]
+            isOneToOne: false
+            referencedRelation: "packagings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "recipes_store_id_fkey"
             columns: ["store_id"]
