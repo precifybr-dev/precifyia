@@ -40,6 +40,7 @@ interface PricingSummaryPanelProps {
   pricingResult?: RecipePricingResult | null;
   packagingCost?: number;
   rawIngredientsCost?: number;
+  totalFixedExpenses?: number;
 }
 
 const formatCurrency = (value: number) => {
@@ -81,6 +82,7 @@ export default function PricingSummaryPanel({
   pricingResult = null,
   packagingCost = 0,
   rawIngredientsCost,
+  totalFixedExpenses = 0,
 }: PricingSummaryPanelProps) {
   const effectiveIfoodRate = parseFloat(localIfoodRate) || ifoodRealPercentage || 0;
   const hasCustomIfoodPrice = ifoodSellingPrice.trim() !== "" && parseFloat(ifoodSellingPrice) > 0;
@@ -180,7 +182,7 @@ export default function PricingSummaryPanel({
         </div>
       </div>
 
-      {/* Profit Cards */}
+      {/* Contribution Margin Cards */}
       <PricingProfitCard
         sellingPrice={sellingPrice}
         suggestedPrice={suggestedPrice}
@@ -193,6 +195,7 @@ export default function PricingSummaryPanel({
         pricingResult={pricingResult}
         formatCurrency={formatCurrency}
         packagingCost={packagingCost}
+        totalFixedExpenses={totalFixedExpenses}
       />
 
       {/* Final note */}

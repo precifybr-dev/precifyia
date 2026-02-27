@@ -16,8 +16,8 @@ const differentials = [
   },
   {
     icon: BarChart3,
-    title: "Mostra lucro líquido real",
-    description: "Lucro por produto descontando impostos, taxas e custos fixos — não só CMV.",
+    title: "Margem de Contribuição real",
+    description: "Margem de contribuição por produto descontando impostos, taxas e custos variáveis — não só CMV.",
   },
   {
     icon: RefreshCw,
