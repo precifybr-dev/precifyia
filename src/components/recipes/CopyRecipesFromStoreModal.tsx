@@ -289,9 +289,17 @@ export function CopyRecipesFromStoreModal({
       .eq("user_id", userId)
       .eq("store_id", activeStoreId);
     
-    let destSubRecipeMaxCode = 0;
+    // Copied sub-recipes use code range 500-599
+    const COPY_CODE_START = 500;
+    const COPY_CODE_END = 599;
+    let destSubRecipeMaxCode = COPY_CODE_START - 1;
     if (destSubRecipes && destSubRecipes.length > 0) {
-      destSubRecipeMaxCode = Math.max(...destSubRecipes.map((sr: any) => sr.code || 0));
+      const codesInRange = destSubRecipes
+        .map((sr: any) => sr.code || 0)
+        .filter((c: number) => c >= COPY_CODE_START && c <= COPY_CODE_END);
+      if (codesInRange.length > 0) {
+        destSubRecipeMaxCode = Math.max(...codesInRange);
+      }
     }
 
     let copied = 0;
@@ -354,8 +362,8 @@ export function CopyRecipesFromStoreModal({
           }
         }
 
-        // 5. Create linked ingredient (is_sub_recipe = true)
-        destMaxCodeRef.value++;
+        // 5. Create linked ingredient (is_sub_recipe = true) — uses same code as the sub-recipe
+        const linkedIngCode = destSubRecipeMaxCode; // same code assigned to the sub-recipe
         let linkedRetries = 3;
         while (linkedRetries > 0) {
           const { error: linkedErr } = await supabase
@@ -363,7 +371,7 @@ export function CopyRecipesFromStoreModal({
             .insert({
               user_id: userId,
               store_id: activeStoreId,
-              code: destMaxCodeRef.value,
+              code: linkedIngCode,
               name: subRecipe.name,
               is_sub_recipe: true,
               sub_recipe_id: newSubRecipe.id,
