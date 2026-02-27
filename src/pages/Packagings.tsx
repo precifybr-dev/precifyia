@@ -1,55 +1,46 @@
-import { useState } from "react";
-import { Package, Plus, Pencil, Copy, Trash2, ToggleLeft, ToggleRight, ChevronDown, ChevronRight, Store as StoreIcon } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Package, Plus, Pencil, Copy, Trash2, ToggleLeft, ToggleRight, Store as StoreIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { usePackagings, type Packaging } from "@/hooks/usePackagings";
 import { useStore } from "@/contexts/StoreContext";
-// Search is inline
 import { Textarea } from "@/components/ui/textarea";
+import { IngredientSelector, type IngredientData } from "@/components/recipes/IngredientSelector";
+import { supabase } from "@/integrations/supabase/client";
+import { ColorDot } from "@/components/ui/color-picker";
 
-interface ComboItem {
-  id?: string;
+interface FormItem {
+  ingredient_id?: string;
   item_name: string;
+  unit: string;
   quantity: number;
   unit_cost: number;
+  code?: number;
+  color?: string | null;
 }
 
 export default function Packagings() {
-  const { packagings, loading, createPackaging, updatePackaging, deletePackaging, duplicatePackaging, toggleActive, copyToStore } = usePackagings();
+  const { packagings, loading, userId, createPackaging, updatePackaging, deletePackaging, duplicatePackaging, toggleActive, copyToStore } = usePackagings();
   const { stores, activeStore, userPlan } = useStore();
   const isPro = userPlan === "pro";
   const otherStores = stores.filter((s) => s.id !== activeStore?.id);
 
+  const [ingredients, setIngredients] = useState<IngredientData[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingPkg, setEditingPkg] = useState<Packaging | null>(null);
@@ -61,26 +52,45 @@ export default function Packagings() {
 
   // Form state
   const [formName, setFormName] = useState("");
-  const [formType, setFormType] = useState<"simples" | "combo">("simples");
   const [formCategory, setFormCategory] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formCostTotal, setFormCostTotal] = useState("");
-  const [formItems, setFormItems] = useState<ComboItem[]>([{ item_name: "", quantity: 1, unit_cost: 0 }]);
+  const [formItems, setFormItems] = useState<FormItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Fetch ingredients for selector
+  const fetchIngredients = useCallback(async () => {
+    if (!userId) return;
+    let query = supabase
+      .from("ingredients")
+      .select("*")
+      .eq("user_id", userId)
+      .order("code", { ascending: true });
+
+    if (activeStore?.id) {
+      query = query.eq("store_id", activeStore.id);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data } = await query;
+    if (data) setIngredients(data as IngredientData[]);
+  }, [userId, activeStore?.id]);
+
+  useEffect(() => {
+    if (userId) fetchIngredients();
+  }, [userId, activeStore?.id, fetchIngredients]);
 
   const filtered = packagings.filter((p) =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const comboTotal = formItems.reduce((sum, i) => sum + i.quantity * i.unit_cost, 0);
+  const formTotal = formItems.reduce((sum, i) => sum + i.quantity * i.unit_cost, 0);
 
   const resetForm = () => {
     setFormName("");
-    setFormType("simples");
     setFormCategory("");
     setFormDescription("");
-    setFormCostTotal("");
-    setFormItems([{ item_name: "", quantity: 1, unit_cost: 0 }]);
+    setFormItems([]);
     setEditingPkg(null);
     setShowForm(false);
   };
@@ -88,38 +98,77 @@ export default function Packagings() {
   const openEdit = (pkg: Packaging) => {
     setEditingPkg(pkg);
     setFormName(pkg.name);
-    setFormType(pkg.type);
     setFormCategory(pkg.category || "");
     setFormDescription(pkg.description || "");
-    setFormCostTotal(pkg.type === "simples" ? pkg.cost_total.toString() : "");
     setFormItems(
-      pkg.type === "combo" && pkg.packaging_items?.length
-        ? pkg.packaging_items.map((i) => ({ id: i.id, item_name: i.item_name, quantity: i.quantity, unit_cost: i.unit_cost }))
-        : [{ item_name: "", quantity: 1, unit_cost: 0 }]
+      pkg.packaging_items?.map((i) => {
+        const ing = ingredients.find((ing) => ing.id === (i as any).ingredient_id);
+        return {
+          ingredient_id: (i as any).ingredient_id || undefined,
+          item_name: i.item_name,
+          unit: ing?.unit || "un",
+          quantity: i.quantity,
+          unit_cost: i.unit_cost,
+          code: ing?.code,
+          color: ing?.color,
+        };
+      }) || []
     );
     setShowForm(true);
+  };
+
+  const handleSelectIngredient = (ing: IngredientData) => {
+    // Don't add duplicate
+    if (formItems.some((i) => i.ingredient_id === ing.id)) return;
+    const unitPrice = ing.unit_price ?? (ing.purchase_price / ing.purchase_quantity);
+    setFormItems((prev) => [
+      ...prev,
+      {
+        ingredient_id: ing.id,
+        item_name: ing.name,
+        unit: ing.unit,
+        quantity: 1,
+        unit_cost: unitPrice,
+        code: ing.code,
+        color: ing.color,
+      },
+    ]);
+  };
+
+  const removeItem = (idx: number) => setFormItems((prev) => prev.filter((_, i) => i !== idx));
+
+  const updateItemQuantity = (idx: number, qty: number) => {
+    setFormItems((prev) => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], quantity: qty };
+      return updated;
+    });
   };
 
   const handleSave = async () => {
     if (!formName.trim()) return;
     setIsSaving(true);
 
+    const items = formItems.map((i) => ({
+      ingredient_id: i.ingredient_id,
+      item_name: i.item_name,
+      quantity: i.quantity,
+      unit_cost: i.unit_cost,
+    }));
+
     if (editingPkg) {
       await updatePackaging(editingPkg.id, {
         name: formName.trim(),
         category: formCategory,
         description: formDescription,
-        cost_total: formType === "simples" ? parseFloat(formCostTotal) || 0 : undefined,
-        items: formType === "combo" ? formItems.filter((i) => i.item_name.trim()) : undefined,
+        items,
       });
     } else {
       await createPackaging({
         name: formName.trim(),
-        type: formType,
         category: formCategory || undefined,
         description: formDescription || undefined,
-        cost_total: formType === "simples" ? parseFloat(formCostTotal) || 0 : undefined,
-        items: formType === "combo" ? formItems.filter((i) => i.item_name.trim()) : undefined,
+        items,
       });
     }
 
@@ -144,16 +193,6 @@ export default function Packagings() {
     }
   };
 
-  const addItem = () => setFormItems((prev) => [...prev, { item_name: "", quantity: 1, unit_cost: 0 }]);
-  const removeItem = (idx: number) => setFormItems((prev) => prev.filter((_, i) => i !== idx));
-  const updateItem = (idx: number, field: keyof ComboItem, value: any) => {
-    setFormItems((prev) => {
-      const updated = [...prev];
-      updated[idx] = { ...updated[idx], [field]: value };
-      return updated;
-    });
-  };
-
   const formatCurrency = (v: number) =>
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -168,7 +207,7 @@ export default function Packagings() {
               Embalagens
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Gerencie as embalagens dos seus produtos
+              Monte suas embalagens como fichas técnicas usando insumos cadastrados
             </p>
           </div>
           <Button onClick={() => { resetForm(); setShowForm(true); }} className="gap-2">
@@ -178,13 +217,11 @@ export default function Packagings() {
         </div>
 
         {/* Search */}
-        <div className="relative">
-          <Input
-            placeholder="Buscar embalagem..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+        <Input
+          placeholder="Buscar embalagem..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
 
         {/* List */}
         {loading ? (
@@ -206,21 +243,23 @@ export default function Packagings() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-semibold text-foreground truncate">{pkg.name}</h3>
-                        <Badge variant={pkg.type === "combo" ? "default" : "secondary"} className="text-xs">
-                          {pkg.type === "combo" ? "Combo" : "Simples"}
-                        </Badge>
                         {!pkg.is_active && (
                           <Badge variant="outline" className="text-xs text-muted-foreground">Inativa</Badge>
                         )}
                         {pkg.category && (
                           <Badge variant="outline" className="text-xs">{pkg.category}</Badge>
                         )}
+                        {pkg.packaging_items && pkg.packaging_items.length > 0 && (
+                          <Badge variant="secondary" className="text-xs">
+                            {pkg.packaging_items.length} {pkg.packaging_items.length === 1 ? "insumo" : "insumos"}
+                          </Badge>
+                        )}
                       </div>
                       <p className="text-lg font-bold text-primary mt-1">{formatCurrency(pkg.cost_total)}</p>
                       {pkg.description && (
                         <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{pkg.description}</p>
                       )}
-                      {pkg.type === "combo" && pkg.packaging_items && pkg.packaging_items.length > 0 && (
+                      {pkg.packaging_items && pkg.packaging_items.length > 0 && (
                         <div className="mt-2 text-xs text-muted-foreground">
                           {pkg.packaging_items.map((i) => i.item_name).join(", ")}
                         </div>
@@ -233,30 +272,17 @@ export default function Packagings() {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => duplicatePackaging(pkg)}>
                         <Copy className="w-4 h-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => toggleActive(pkg.id, pkg.is_active)}
-                      >
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toggleActive(pkg.id, pkg.is_active)}>
                         {pkg.is_active ? <ToggleRight className="w-4 h-4 text-primary" /> : <ToggleLeft className="w-4 h-4" />}
                       </Button>
                       {isPro && otherStores.length > 0 && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => { setPkgToCopy(pkg); setTargetStoreId(""); setCopyDialogOpen(true); }}
-                        >
+                        <Button variant="ghost" size="icon" className="h-8 w-8"
+                          onClick={() => { setPkgToCopy(pkg); setTargetStoreId(""); setCopyDialogOpen(true); }}>
                           <StoreIcon className="w-4 h-4" />
                         </Button>
                       )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => { setPkgToDelete(pkg); setDeleteDialogOpen(true); }}
-                      >
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => { setPkgToDelete(pkg); setDeleteDialogOpen(true); }}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
@@ -274,28 +300,15 @@ export default function Packagings() {
           <DialogHeader>
             <DialogTitle>{editingPkg ? "Editar Embalagem" : "Nova Embalagem"}</DialogTitle>
             <DialogDescription>
-              {editingPkg ? "Atualize os dados da embalagem." : "Preencha os dados para criar uma embalagem."}
+              {editingPkg ? "Atualize os dados da embalagem." : "Monte sua embalagem selecionando insumos cadastrados."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
               <Label>Nome *</Label>
-              <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Ex: Marmita PP" />
+              <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Ex: Marmita Completa G" />
             </div>
-
-            {!editingPkg && (
-              <div>
-                <Label>Tipo</Label>
-                <Select value={formType} onValueChange={(v) => setFormType(v as any)}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="simples">Simples (valor único)</SelectItem>
-                    <SelectItem value="combo">Combo (múltiplos itens)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
 
             <div>
               <Label>Categoria (opcional)</Label>
@@ -307,69 +320,76 @@ export default function Packagings() {
               <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Observações..." rows={2} />
             </div>
 
-            {formType === "simples" ? (
-              <div>
-                <Label>Custo Total (R$)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formCostTotal}
-                  onChange={(e) => setFormCostTotal(e.target.value)}
-                  placeholder="0,00"
-                />
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <Label>Itens do Combo</Label>
-                  <Button variant="outline" size="sm" onClick={addItem} className="gap-1">
-                    <Plus className="w-3 h-3" /> Item
-                  </Button>
-                </div>
-                {formItems.map((item, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-2 items-end">
-                    <div className="col-span-5">
-                      {idx === 0 && <Label className="text-xs">Nome</Label>}
-                      <Input
-                        value={item.item_name}
-                        onChange={(e) => updateItem(idx, "item_name", e.target.value)}
-                        placeholder="Item"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      {idx === 0 && <Label className="text-xs">Qtd</Label>}
-                      <Input
-                        type="number"
-                        min="1"
-                        value={item.quantity}
-                        onChange={(e) => updateItem(idx, "quantity", parseFloat(e.target.value) || 1)}
-                      />
-                    </div>
-                    <div className="col-span-3">
-                      {idx === 0 && <Label className="text-xs">Custo (R$)</Label>}
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={item.unit_cost}
-                        onChange={(e) => updateItem(idx, "unit_cost", parseFloat(e.target.value) || 0)}
-                      />
-                    </div>
-                    <div className="col-span-2 flex justify-end">
-                      {formItems.length > 1 && (
-                        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => removeItem(idx)}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      )}
-                    </div>
+            {/* Ingredient selector */}
+            <div className="space-y-3">
+              <Label>Insumos da Embalagem</Label>
+              <IngredientSelector
+                ingredients={ingredients}
+                onSelect={handleSelectIngredient}
+                placeholder="Buscar insumo por código ou nome..."
+              />
+
+              {formItems.length > 0 && (
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-12">#</TableHead>
+                        <TableHead>Insumo</TableHead>
+                        <TableHead className="w-20 text-center">Qtd</TableHead>
+                        <TableHead className="w-24 text-right">Custo</TableHead>
+                        <TableHead className="w-24 text-right">Sub</TableHead>
+                        <TableHead className="w-10"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {formItems.map((item, idx) => (
+                        <TableRow key={item.ingredient_id || idx}>
+                          <TableCell className="font-mono text-xs text-primary font-semibold">
+                            <span className="flex items-center gap-1">
+                              <ColorDot color={item.color} size="sm" />
+                              {item.code || "-"}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-medium text-sm">{item.item_name}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="0.01"
+                              step="0.01"
+                              value={item.quantity}
+                              onChange={(e) => updateItemQuantity(idx, parseFloat(e.target.value) || 1)}
+                              className="h-8 text-center w-full"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right text-sm text-muted-foreground">
+                            {formatCurrency(item.unit_cost)}/{item.unit}
+                          </TableCell>
+                          <TableCell className="text-right text-sm font-semibold">
+                            {formatCurrency(item.quantity * item.unit_cost)}
+                          </TableCell>
+                          <TableCell>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(idx)}>
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <div className="px-4 py-3 bg-muted/50 text-right border-t">
+                    <span className="text-sm text-muted-foreground">Total: </span>
+                    <span className="text-base font-bold text-primary">{formatCurrency(formTotal)}</span>
                   </div>
-                ))}
-                <div className="text-right text-sm font-semibold text-primary">
-                  Total: {formatCurrency(comboTotal)}
                 </div>
-              </div>
-            )}
+              )}
+
+              {formItems.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Selecione insumos acima para montar a embalagem
+                </p>
+              )}
+            </div>
           </div>
 
           <DialogFooter>

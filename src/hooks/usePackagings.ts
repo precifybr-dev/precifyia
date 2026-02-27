@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 export interface PackagingItem {
   id: string;
   packaging_id: string;
+  ingredient_id: string | null;
   item_name: string;
   quantity: number;
   unit_cost: number;
@@ -72,13 +73,16 @@ export function usePackagings() {
 
   const createPackaging = async (data: {
     name: string;
-    type: "simples" | "combo";
+    type?: "simples" | "combo";
     category?: string;
     description?: string;
     cost_total?: number;
-    items?: { item_name: string; quantity: number; unit_cost: number }[];
+    items?: { ingredient_id?: string; item_name: string; quantity: number; unit_cost: number }[];
   }) => {
     if (!userId) return null;
+
+    const hasItems = data.items && data.items.length > 0;
+    const resolvedType = data.type || (hasItems ? "combo" : "simples");
 
     const { data: packaging, error } = await supabase
       .from("packagings")
@@ -86,10 +90,10 @@ export function usePackagings() {
         user_id: userId,
         store_id: activeStore?.id || null,
         name: data.name,
-        type: data.type,
+        type: resolvedType,
         category: data.category || null,
         description: data.description || null,
-        cost_total: data.type === "simples" ? (data.cost_total || 0) : 0,
+        cost_total: resolvedType === "simples" ? (data.cost_total || 0) : 0,
       } as any)
       .select()
       .single();
@@ -99,13 +103,14 @@ export function usePackagings() {
       return null;
     }
 
-    // Insert combo items
-    if (data.type === "combo" && data.items && data.items.length > 0) {
+    // Insert items
+    if (hasItems && data.items!.length > 0) {
       const { error: itemsError } = await supabase
         .from("packaging_items")
         .insert(
-          data.items.map((item) => ({
+          data.items!.map((item) => ({
             packaging_id: (packaging as any).id,
+            ingredient_id: item.ingredient_id || null,
             item_name: item.item_name,
             quantity: item.quantity,
             unit_cost: item.unit_cost,
@@ -131,7 +136,7 @@ export function usePackagings() {
       description?: string;
       cost_total?: number;
       is_active?: boolean;
-      items?: { id?: string; item_name: string; quantity: number; unit_cost: number }[];
+      items?: { id?: string; ingredient_id?: string; item_name: string; quantity: number; unit_cost: number }[];
     }
   ) => {
     const updateData: any = {};
@@ -154,6 +159,7 @@ export function usePackagings() {
         await supabase.from("packaging_items").insert(
           data.items.map((item) => ({
             packaging_id: id,
+            ingredient_id: item.ingredient_id || null,
             item_name: item.item_name,
             quantity: item.quantity,
             unit_cost: item.unit_cost,
@@ -181,6 +187,7 @@ export function usePackagings() {
 
   const duplicatePackaging = async (packaging: Packaging) => {
     const items = packaging.packaging_items?.map((i) => ({
+      ingredient_id: i.ingredient_id || undefined,
       item_name: i.item_name,
       quantity: i.quantity,
       unit_cost: i.unit_cost,
@@ -192,7 +199,7 @@ export function usePackagings() {
       category: packaging.category || undefined,
       description: packaging.description || undefined,
       cost_total: packaging.type === "simples" ? packaging.cost_total : undefined,
-      items: packaging.type === "combo" ? items : undefined,
+      items: items,
     });
   };
 

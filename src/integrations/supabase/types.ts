@@ -1978,6 +1978,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          ingredient_id: string | null
           item_name: string
           packaging_id: string
           quantity: number
@@ -1987,6 +1988,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          ingredient_id?: string | null
           item_name: string
           packaging_id: string
           quantity?: number
@@ -1996,6 +1998,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          ingredient_id?: string | null
           item_name?: string
           packaging_id?: string
           quantity?: number
@@ -2003,6 +2006,13 @@ export type Database = {
           unit_cost?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "packaging_items_ingredient_id_fkey"
+            columns: ["ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "packaging_items_packaging_id_fkey"
             columns: ["packaging_id"]
