@@ -1,74 +1,75 @@
 
 
-# Corrigir Modal de Copia: Sub-Receitas entre Lojas
+# Embalagens como Ficha Tecnica (com Insumos Cadastrados)
 
 ## Resumo
 
-O modal "Copiar de outra loja" atualmente copia **fichas tecnicas (recipes)**. O usuario quer que ele copie **sub-receitas (sub_recipes)** entre lojas, importando automaticamente os ingredientes necessarios que nao existam na loja destino, mantendo custos e configuracoes.
+Transformar o cadastro de embalagens para funcionar como uma ficha tecnica: em vez de digitar nomes e custos manualmente, o usuario seleciona insumos ja cadastrados na loja (ex: "Marmita PP", "Tampa", "Sacola") e monta a embalagem com quantidades. O custo e puxado automaticamente do insumo. Depois, a embalagem montada e vinculada na ficha tecnica final.
 
-## O que sera feito
+## O que muda
 
-### 1. Renomear e adaptar o CopyRecipesFromStoreModal
+### 1. Banco de dados - Adicionar `ingredient_id` na tabela `packaging_items`
 
-Transformar o modal para copiar **sub-receitas** em vez de receitas:
-- Buscar da tabela `sub_recipes` (em vez de `recipes`)
-- Buscar ingredientes da tabela `sub_recipe_ingredients` (em vez de `recipe_ingredients`)
-- Ao copiar, criar a sub-receita na loja destino com todos os seus ingredientes
-- Criar o ingrediente vinculado automaticamente (`is_sub_recipe = true`) na loja destino
-- Atualizar textos do modal para refletir "Sub-Receitas"
+- Adicionar coluna `ingredient_id` (UUID, FK para `ingredients`, nullable) na tabela `packaging_items`
+- Manter `item_name` e `unit_cost` para compatibilidade (preenchidos automaticamente do ingrediente selecionado)
+- Quando o usuario seleciona um insumo, o `item_name` recebe o nome e `unit_cost` recebe o `unit_price` do insumo
+- RLS ja esta coberta pois as policies existentes verificam o `packaging_id` -> `packagings.user_id`
 
-### 2. Logica de copia (fluxo completo)
+### 2. Pagina de Embalagens - Substituir inputs manuais pelo IngredientSelector
 
-Para cada sub-receita selecionada:
+- Remover a distincao "simples vs combo" (toda embalagem passa a ser uma lista de insumos, como uma ficha tecnica)
+- No formulario de criacao/edicao:
+  - Usar o componente `IngredientSelector` (ja existente) para buscar insumos por codigo ou nome
+  - Ao selecionar um insumo, preencher automaticamente nome, unidade e custo unitario
+  - Permitir ajustar a quantidade
+  - Exibir subtotal (quantidade x custo) por linha
+  - Exibir custo total da embalagem no rodape
+- Manter acoes existentes: duplicar, ativar/inativar, copiar entre lojas, excluir
 
-1. Buscar `sub_recipe_ingredients` da sub-receita de origem
-2. Para cada ingrediente usado:
-   - Verificar se ja existe na loja destino (por nome normalizado)
-   - Se nao existir: criar o ingrediente na loja destino com codigo sequencial e `unit_price` recalculado
-3. Criar a `sub_recipe` na loja destino com `total_cost`, `unit_cost`, `yield_quantity`, `unit`
-4. Criar os `sub_recipe_ingredients` com os IDs mapeados para a loja destino
-5. Criar o ingrediente vinculado (`is_sub_recipe = true`, `sub_recipe_id = novo_id`) na loja destino
+### 3. Hook usePackagings - Adaptar para salvar `ingredient_id`
 
-### 3. Mover o botao para a pagina SubRecipes.tsx
+- Ao criar/atualizar itens, salvar o `ingredient_id` junto com `item_name` e `unit_cost`
+- Ao buscar embalagens, trazer o `ingredient_id` nos itens para exibir corretamente no selector
+- Funcao de duplicar e copiar entre lojas: manter mapeamento de ingredientes (similar a copia de sub-receitas)
 
-- Adicionar o botao "Copiar de outra loja" na pagina de Sub-Receitas (`SubRecipes.tsx`)
-- Manter o botao na pagina de Fichas Tecnicas (`Recipes.tsx`) tambem, caso queiram copiar fichas tecnicas
-- Ambas as paginas terao a opcao de copiar da outra loja
+### 4. Integracao com Ficha Tecnica (sem alteracao)
 
-### 4. Bidirecionalidade
+- A ficha tecnica ja seleciona embalagens ativas via dropdown - isso continua igual
+- O custo da embalagem ja e calculado automaticamente via triggers - isso continua igual
 
-- Qualquer loja pode copiar sub-receitas de qualquer outra loja do mesmo usuario
-- Loja 1 pode copiar de Loja 2 ou 3, e vice-versa
-- A lista de lojas de origem mostra todas as outras lojas (exceto a ativa)
+## Estrutura visual do formulario
+
+```text
+Nova Embalagem
++-------------------------------------------+
+| Nome: [Marmita Completa G              ]  |
+| Categoria: [Descartaveis               ]  |
+| Descricao: [                           ]  |
++-------------------------------------------+
+| Insumos da Embalagem                      |
+| [Buscar insumo por codigo ou nome...   ]  |
+|                                           |
+| #  | Insumo        | Qtd | Custo | Sub   |
+| 45 | Marmita G     |  1  | 0.85  | 0.85  |
+| 46 | Tampa G       |  1  | 0.35  | 0.35  |
+| 47 | Sacola kraft   |  1  | 0.50  | 0.50  |
+|                                           |
+|              Total: R$ 1,70               |
++-------------------------------------------+
+| [Cancelar]              [Criar]           |
++-------------------------------------------+
+```
 
 ## Arquivos modificados
 
-1. **`src/components/recipes/CopyRecipesFromStoreModal.tsx`** — Adicionar prop `mode` ("recipes" | "sub-recipes") para suportar ambos os tipos. Quando `mode = "sub-recipes"`, buscar de `sub_recipes` e `sub_recipe_ingredients`, e criar o ingrediente vinculado automaticamente
-2. **`src/pages/SubRecipes.tsx`** — Importar e renderizar o modal + botao "Copiar de outra loja"
-3. **`src/pages/Recipes.tsx`** — Passar `mode="recipes"` ao modal existente (sem mudanca visual)
+1. **Migracao SQL** - Adicionar `ingredient_id` na `packaging_items`
+2. **`src/hooks/usePackagings.ts`** - Adaptar interfaces e CRUD para incluir `ingredient_id`
+3. **`src/pages/Packagings.tsx`** - Redesign do formulario usando `IngredientSelector`, remover tipo simples/combo, listar insumos como ficha tecnica
 
-## Detalhes tecnicos
+## O que NAO muda
 
-### Fluxo de copia de sub-receita
-
-```text
-Sub-receita origem (Loja A)
-  |
-  +-- sub_recipe_ingredients
-  |     +-- ingrediente X (existe na Loja B? reutiliza : cria)
-  |     +-- ingrediente Y (existe na Loja B? reutiliza : cria)
-  |
-  v
-Sub-receita destino (Loja B)
-  +-- sub_recipe_ingredients (com IDs mapeados)
-  +-- ingrediente vinculado (is_sub_recipe=true)
-```
-
-### Ingrediente vinculado
-
-Ao criar uma sub-receita, o sistema cria automaticamente um ingrediente com:
-- `is_sub_recipe = true`
-- `sub_recipe_id = id_da_nova_sub_receita`
-- `unit_price = unit_cost` da sub-receita
-- `purchase_price = total_cost`
-- `purchase_quantity = yield_quantity`
+- Triggers de calculo automatico (`sync_packaging_cost`, `update_packaging_total`) continuam funcionando
+- RLS policies existentes continuam validas
+- Vinculacao de embalagem na ficha tecnica (dropdown no `Recipes.tsx`) continua igual
+- Copia entre lojas continua funcionando
+- Nenhum calculo existente e alterado
