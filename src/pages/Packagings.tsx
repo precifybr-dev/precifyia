@@ -347,8 +347,8 @@ export default function Packagings() {
       </div>
 
       {/* Create/Edit Dialog */}
-      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }} modal={false}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto fixed left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%]" onInteractOutside={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>{editingPkg ? "Editar Embalagem" : "Nova Embalagem"}</DialogTitle>
             <DialogDescription>
