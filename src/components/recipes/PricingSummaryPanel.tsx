@@ -189,6 +189,7 @@ export default function PricingSummaryPanel({
         hasCustomIfoodPrice={hasCustomIfoodPrice}
         pricingResult={pricingResult}
         formatCurrency={formatCurrency}
+        packagingCost={packagingCost}
       />
 
       {/* Final note */}

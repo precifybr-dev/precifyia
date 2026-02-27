@@ -6,7 +6,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Store, Smartphone, Wallet, HelpCircle, Info } from "lucide-react";
+import { Store, Smartphone, Wallet, HelpCircle, Info, Package } from "lucide-react";
 import type { RecipePricingResult } from "@/hooks/useRecipePricing";
 
 interface PricingProfitCardProps {
@@ -20,6 +20,7 @@ interface PricingProfitCardProps {
   hasCustomIfoodPrice: boolean;
   pricingResult?: RecipePricingResult | null;
   formatCurrency: (value: number) => string;
+  packagingCost?: number;
 }
 
 export default function PricingProfitCard({
@@ -33,6 +34,7 @@ export default function PricingProfitCard({
   hasCustomIfoodPrice,
   pricingResult,
   formatCurrency,
+  packagingCost = 0,
 }: PricingProfitCardProps) {
   const effectivePrice = pricingResult?.final_selling_price ?? (parseFloat(sellingPrice) || suggestedPrice);
   const productionCostValue = pricingResult?.production_cost_value_loja ?? (effectivePrice * (productionCostsPercent || 0) / 100);
@@ -41,9 +43,14 @@ export default function PricingProfitCard({
   const cardFeePercent = pricingResult?.average_card_fee ?? 0;
   const netProfit = pricingResult?.net_profit_loja ?? (effectivePrice - costWithLoss - productionCostValue - taxValue - cardFeeValue);
   const netProfitPercent = pricingResult?.net_profit_loja_percent ?? (effectivePrice > 0 ? (netProfit / effectivePrice) * 100 : 0);
-  const costPercent = effectivePrice > 0 ? (costWithLoss / effectivePrice) * 100 : 0;
   const taxPercent = pricingResult?.tax_percentage ?? (taxPercentage || 0);
   const productionPercent = pricingResult?.production_costs_percent ?? (productionCostsPercent || 0);
+
+  // Separate packaging from costWithLoss for display
+  // costWithLoss already includes packaging; compute the ingredients-only portion
+  const costWithLossWithoutPackaging = packagingCost > 0 ? costWithLoss - packagingCost : costWithLoss;
+  const costPercentDisplay = effectivePrice > 0 ? (costWithLossWithoutPackaging / effectivePrice) * 100 : 0;
+  const packagingPercent = effectivePrice > 0 ? (packagingCost / effectivePrice) * 100 : 0;
 
   // iFood values
   const ifoodFeeValue = pricingResult?.ifood_fee_value ?? (ifoodPrice * (effectiveIfoodRate / 100));
@@ -52,7 +59,9 @@ export default function PricingProfitCard({
   const ifoodTaxValue = pricingResult?.ifood_tax_value ?? (ifoodNetRevenue * (taxPercentage || 0) / 100);
   const ifoodNetProfit = pricingResult?.net_profit_ifood ?? (ifoodNetRevenue - costWithLoss - ifoodProductionCost - ifoodTaxValue);
   const ifoodNetProfitPercent = pricingResult?.net_profit_ifood_percent ?? (ifoodPrice > 0 ? (ifoodNetProfit / ifoodPrice) * 100 : 0);
-  const ifoodCostPercent = ifoodPrice > 0 ? (costWithLoss / ifoodPrice) * 100 : 0;
+  const ifoodCostWithoutPackaging = packagingCost > 0 ? costWithLoss - packagingCost : costWithLoss;
+  const ifoodCostPercent = ifoodPrice > 0 ? (ifoodCostWithoutPackaging / ifoodPrice) * 100 : 0;
+  const ifoodPackagingPercent = ifoodPrice > 0 ? (packagingCost / ifoodPrice) * 100 : 0;
   const ifoodProductionCostPercent = ifoodPrice > 0 ? (ifoodProductionCost / ifoodPrice) * 100 : 0;
   const ifoodTaxPercent = ifoodPrice > 0 ? (ifoodTaxValue / ifoodPrice) * 100 : 0;
 
@@ -75,10 +84,23 @@ export default function PricingProfitCard({
             <div className="flex justify-between items-center py-1 text-destructive/80">
               <span>(-) Custo c/ Perda</span>
               <div className="flex items-center gap-2">
-                <span className="font-mono">{formatCurrency(costWithLoss)}</span>
-                <span className="text-xs text-muted-foreground">{costPercent.toFixed(0)}%</span>
+                <span className="font-mono">{formatCurrency(costWithLossWithoutPackaging)}</span>
+                <span className="text-xs text-muted-foreground">{costPercentDisplay.toFixed(0)}%</span>
               </div>
             </div>
+
+            {packagingCost > 0 && (
+              <div className="flex justify-between items-center py-1 text-orange-500">
+                <span className="flex items-center gap-1">
+                  <Package className="w-3.5 h-3.5" />
+                  (-) Embalagem
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono">{formatCurrency(packagingCost)}</span>
+                  <span className="text-xs text-muted-foreground">{packagingPercent.toFixed(1)}%</span>
+                </div>
+              </div>
+            )}
             
             {productionCostsPercent !== null && productionCostsPercent > 0 && (
               <div className="flex justify-between items-center py-1 text-blue-600">
@@ -147,6 +169,8 @@ export default function PricingProfitCard({
                     <p className="font-semibold mb-1">Como o lucro é calculado</p>
                     <p>O lucro líquido mostrado aqui já considera:</p>
                     <ul className="list-disc pl-3 mt-1 space-y-0.5">
+                      <li>Custo dos insumos (com perda)</li>
+                      <li>Custo da embalagem (quando selecionada)</li>
                       <li>Custos de produção rateados</li>
                       <li>Impostos sobre a venda</li>
                       <li>Taxas de cartão (média cadastrada)</li>
@@ -192,10 +216,23 @@ export default function PricingProfitCard({
             <div className="flex justify-between items-center py-1 text-destructive/80">
               <span>(-) Custo c/ Perda</span>
               <div className="flex items-center gap-2">
-                <span className="font-mono">{formatCurrency(costWithLoss)}</span>
+                <span className="font-mono">{formatCurrency(ifoodCostWithoutPackaging)}</span>
                 <span className="text-xs text-muted-foreground">{ifoodCostPercent.toFixed(0)}%</span>
               </div>
             </div>
+
+            {packagingCost > 0 && (
+              <div className="flex justify-between items-center py-1 text-orange-500">
+                <span className="flex items-center gap-1">
+                  <Package className="w-3.5 h-3.5" />
+                  (-) Embalagem
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono">{formatCurrency(packagingCost)}</span>
+                  <span className="text-xs text-muted-foreground">{ifoodPackagingPercent.toFixed(1)}%</span>
+                </div>
+              </div>
+            )}
             
             {productionCostsPercent !== null && productionCostsPercent > 0 && (
               <div className="flex justify-between items-center py-1 text-blue-600">
