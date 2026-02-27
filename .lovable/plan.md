@@ -1,75 +1,68 @@
 
 
-# Embalagens como Ficha Tecnica (com Insumos Cadastrados)
+# Embalagem dentro da Ficha Tecnica - Checkbox + CMV
 
 ## Resumo
 
-Transformar o cadastro de embalagens para funcionar como uma ficha tecnica: em vez de digitar nomes e custos manualmente, o usuario seleciona insumos ja cadastrados na loja (ex: "Marmita PP", "Tampa", "Sacola") e monta a embalagem com quantidades. O custo e puxado automaticamente do insumo. Depois, a embalagem montada e vinculada na ficha tecnica final.
+Substituir a secao de Embalagem em Accordion (atual) por um checkbox logo abaixo da tabela de insumos. Se o usuario marcar "Sim, quero adicionar embalagem", aparece o campo de busca de embalagens cadastradas. A embalagem selecionada passa a fazer parte do CMV (custo total) da ficha tecnica.
 
-## O que muda
+## Mudancas
 
-### 1. Banco de dados - Adicionar `ingredient_id` na tabela `packaging_items`
+### 1. Novo estado `includePackaging` (boolean)
 
-- Adicionar coluna `ingredient_id` (UUID, FK para `ingredients`, nullable) na tabela `packaging_items`
-- Manter `item_name` e `unit_cost` para compatibilidade (preenchidos automaticamente do ingrediente selecionado)
-- Quando o usuario seleciona um insumo, o `item_name` recebe o nome e `unit_cost` recebe o `unit_price` do insumo
-- RLS ja esta coberta pois as policies existentes verificam o `packaging_id` -> `packagings.user_id`
+- Adicionar estado `includePackaging` no formulario da ficha tecnica
+- Quando `false`: nenhum campo de embalagem aparece
+- Quando `true`: exibe dropdown de embalagens e torna selecao obrigatoria
+- Ao editar uma ficha que ja tem `packaging_id`, setar `includePackaging = true` automaticamente
 
-### 2. Pagina de Embalagens - Substituir inputs manuais pelo IngredientSelector
+### 2. UI - Checkbox + Select abaixo dos insumos
 
-- Remover a distincao "simples vs combo" (toda embalagem passa a ser uma lista de insumos, como uma ficha tecnica)
-- No formulario de criacao/edicao:
-  - Usar o componente `IngredientSelector` (ja existente) para buscar insumos por codigo ou nome
-  - Ao selecionar um insumo, preencher automaticamente nome, unidade e custo unitario
-  - Permitir ajustar a quantidade
-  - Exibir subtotal (quantidade x custo) por linha
-  - Exibir custo total da embalagem no rodape
-- Manter acoes existentes: duplicar, ativar/inativar, copiar entre lojas, excluir
-
-### 3. Hook usePackagings - Adaptar para salvar `ingredient_id`
-
-- Ao criar/atualizar itens, salvar o `ingredient_id` junto com `item_name` e `unit_cost`
-- Ao buscar embalagens, trazer o `ingredient_id` nos itens para exibir corretamente no selector
-- Funcao de duplicar e copiar entre lojas: manter mapeamento de ingredientes (similar a copia de sub-receitas)
-
-### 4. Integracao com Ficha Tecnica (sem alteracao)
-
-- A ficha tecnica ja seleciona embalagens ativas via dropdown - isso continua igual
-- O custo da embalagem ja e calculado automaticamente via triggers - isso continua igual
-
-## Estrutura visual do formulario
+Posicao: logo apos a `IngredientsSpreadsheetTable` (linha ~1094), antes do `PricingSummaryPanel`.
 
 ```text
-Nova Embalagem
-+-------------------------------------------+
-| Nome: [Marmita Completa G              ]  |
-| Categoria: [Descartaveis               ]  |
-| Descricao: [                           ]  |
-+-------------------------------------------+
-| Insumos da Embalagem                      |
-| [Buscar insumo por codigo ou nome...   ]  |
-|                                           |
-| #  | Insumo        | Qtd | Custo | Sub   |
-| 45 | Marmita G     |  1  | 0.85  | 0.85  |
-| 46 | Tampa G       |  1  | 0.35  | 0.35  |
-| 47 | Sacola kraft   |  1  | 0.50  | 0.50  |
-|                                           |
-|              Total: R$ 1,70               |
-+-------------------------------------------+
-| [Cancelar]              [Criar]           |
-+-------------------------------------------+
+[x] Deseja adicionar embalagem a este produto?
+
+Se marcado:
++---------------------------------------+
+| Selecionar embalagem... [dropdown]    |
+| Marmita Completa G - R$ 1,70          |
++---------------------------------------+
+| Custo embalagem: R$ 1,70              |
+| % sobre preco: 5.2%                  |
++---------------------------------------+
 ```
 
-## Arquivos modificados
+Se desmarcado: campo some e `selectedPackagingId` volta para `null`.
 
-1. **Migracao SQL** - Adicionar `ingredient_id` na `packaging_items`
-2. **`src/hooks/usePackagings.ts`** - Adaptar interfaces e CRUD para incluir `ingredient_id`
-3. **`src/pages/Packagings.tsx`** - Redesign do formulario usando `IngredientSelector`, remover tipo simples/combo, listar insumos como ficha tecnica
+### 3. Embalagem como parte do CMV
+
+- O custo da embalagem sera somado ao custo dos ingredientes para formar o CMV total
+- Variavel `totalCostWithPackaging` = `ingredientsCost` + custo da embalagem selecionada
+- Esse valor total e exibido como "Custo Total (CMV)" no painel de precificacao
+- O `cost_per_serving` salvo no banco incluira o custo da embalagem
+
+### 4. Validacao ao salvar
+
+- Se `includePackaging === true` e `selectedPackagingId === null`: bloquear salvamento com toast de erro "Selecione uma embalagem ou desmarque a opcao"
+
+### 5. Remover Accordion de Embalagem
+
+- Remover o `AccordionItem value="packaging"` (linhas 1136-1197)
+- Manter o `AccordionItem value="market"` (Analise de Mercado) como esta
+
+### 6. Duplicacao de ficha tecnica
+
+- Ao duplicar, copiar tambem o `packaging_id` e o estado `includePackaging` (se a ficha original tinha embalagem, a copia tambem tera)
+
+## Arquivo modificado
+
+- `src/pages/Recipes.tsx`: Adicionar checkbox, mover logica de embalagem, incluir custo no CMV, remover Accordion de embalagem, validacao no save
 
 ## O que NAO muda
 
-- Triggers de calculo automatico (`sync_packaging_cost`, `update_packaging_total`) continuam funcionando
-- RLS policies existentes continuam validas
-- Vinculacao de embalagem na ficha tecnica (dropdown no `Recipes.tsx`) continua igual
-- Copia entre lojas continua funcionando
-- Nenhum calculo existente e alterado
+- `usePackagings.ts` - nenhuma alteracao
+- Backend de precificacao - nenhuma alteracao (custo da embalagem e somado client-side antes de exibir)
+- Banco de dados - `packaging_id` na tabela `recipes` ja existe
+- Menu de Embalagens - continua igual
+- Analise de Mercado - continua no Accordion
+
