@@ -24,15 +24,39 @@ import { IngredientSelector, type IngredientData } from "@/components/recipes/In
 import { supabase } from "@/integrations/supabase/client";
 import { ColorDot } from "@/components/ui/color-picker";
 
-interface FormItem {
-  ingredient_id?: string;
-  item_name: string;
+const units = [
+  { value: "g", label: "g" },
+  { value: "kg", label: "kg" },
+  { value: "ml", label: "ml" },
+  { value: "l", label: "L" },
+  { value: "un", label: "un" },
+];
+
+interface FormRow {
+  id: string;
+  ingredientId: string | null;
+  ingredientCode: number | null;
+  name: string;
+  quantity: string;
   unit: string;
-  quantity: number;
-  unit_cost: number;
-  code?: number;
-  color?: string | null;
+  unitPrice: number;
+  baseUnit: string;
+  cost: number;
+  color: string | null;
 }
+
+const createEmptyRow = (): FormRow => ({
+  id: crypto.randomUUID(),
+  ingredientId: null,
+  ingredientCode: null,
+  name: "",
+  quantity: "",
+  unit: "un",
+  unitPrice: 0,
+  baseUnit: "un",
+  cost: 0,
+  color: null,
+});
 
 export default function Packagings() {
   const { packagings, loading, userId, createPackaging, updatePackaging, deletePackaging, duplicatePackaging, toggleActive, copyToStore } = usePackagings();
@@ -54,7 +78,7 @@ export default function Packagings() {
   const [formName, setFormName] = useState("");
   const [formCategory, setFormCategory] = useState("");
   const [formDescription, setFormDescription] = useState("");
-  const [formItems, setFormItems] = useState<FormItem[]>([]);
+  const [formRows, setFormRows] = useState<FormRow[]>([createEmptyRow()]);
   const [isSaving, setIsSaving] = useState(false);
 
   // Fetch ingredients for selector
@@ -84,13 +108,13 @@ export default function Packagings() {
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const formTotal = formItems.reduce((sum, i) => sum + i.quantity * i.unit_cost, 0);
+  const formTotal = formRows.reduce((sum, r) => sum + r.cost, 0);
 
   const resetForm = () => {
     setFormName("");
     setFormCategory("");
     setFormDescription("");
-    setFormItems([]);
+    setFormRows([createEmptyRow()]);
     setEditingPkg(null);
     setShowForm(false);
   };
@@ -100,75 +124,103 @@ export default function Packagings() {
     setFormName(pkg.name);
     setFormCategory(pkg.category || "");
     setFormDescription(pkg.description || "");
-    setFormItems(
-      pkg.packaging_items?.map((i) => {
-        const ing = ingredients.find((ing) => ing.id === (i as any).ingredient_id);
-        return {
-          ingredient_id: (i as any).ingredient_id || undefined,
-          item_name: i.item_name,
-          unit: ing?.unit || "un",
-          quantity: i.quantity,
-          unit_cost: i.unit_cost,
-          code: ing?.code,
-          color: ing?.color,
-        };
-      }) || []
-    );
+
+    const rows: FormRow[] = pkg.packaging_items?.map((item) => {
+      const ing = ingredients.find((i) => i.id === (item as any).ingredient_id);
+      const unitPrice = item.unit_cost;
+      const qty = item.quantity;
+      return {
+        id: crypto.randomUUID(),
+        ingredientId: (item as any).ingredient_id || null,
+        ingredientCode: ing?.code || null,
+        name: item.item_name,
+        quantity: qty.toString(),
+        unit: ing?.unit || "un",
+        unitPrice,
+        baseUnit: ing?.unit || "un",
+        cost: qty * unitPrice,
+        color: ing?.color || null,
+      };
+    }) || [];
+
+    setFormRows(rows.length > 0 ? rows : [createEmptyRow()]);
     setShowForm(true);
   };
 
-  const handleSelectIngredient = (ing: IngredientData) => {
-    // Don't add duplicate
-    if (formItems.some((i) => i.ingredient_id === ing.id)) return;
+  const handleSelectIngredient = (index: number, ing: IngredientData) => {
     const unitPrice = ing.unit_price ?? (ing.purchase_price / ing.purchase_quantity);
-    setFormItems((prev) => [
-      ...prev,
-      {
-        ingredient_id: ing.id,
-        item_name: ing.name,
-        unit: ing.unit,
-        quantity: 1,
-        unit_cost: unitPrice,
-        code: ing.code,
-        color: ing.color,
-      },
-    ]);
-  };
-
-  const removeItem = (idx: number) => setFormItems((prev) => prev.filter((_, i) => i !== idx));
-
-  const updateItemQuantity = (idx: number, qty: number) => {
-    setFormItems((prev) => {
+    setFormRows((prev) => {
       const updated = [...prev];
-      updated[idx] = { ...updated[idx], quantity: qty };
+      const currentQty = parseFloat(updated[index].quantity) || 0;
+      updated[index] = {
+        ...updated[index],
+        ingredientId: ing.id,
+        ingredientCode: ing.code,
+        name: ing.name,
+        unit: ing.unit,
+        unitPrice,
+        baseUnit: ing.unit,
+        cost: currentQty * unitPrice,
+        color: ing.color,
+      };
       return updated;
     });
+  };
+
+  const handleQuantityChange = (index: number, value: string) => {
+    setFormRows((prev) => {
+      const updated = [...prev];
+      const qty = parseFloat(value) || 0;
+      updated[index] = {
+        ...updated[index],
+        quantity: value,
+        cost: qty * updated[index].unitPrice,
+      };
+      return updated;
+    });
+  };
+
+  const handleUnitChange = (index: number, unit: string) => {
+    setFormRows((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], unit };
+      return updated;
+    });
+  };
+
+  const addRow = () => setFormRows((prev) => [...prev, createEmptyRow()]);
+
+  const removeRow = (index: number) => {
+    if (formRows.length <= 1) return;
+    setFormRows((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSave = async () => {
     if (!formName.trim()) return;
     setIsSaving(true);
 
-    const items = formItems.map((i) => ({
-      ingredient_id: i.ingredient_id,
-      item_name: i.item_name,
-      quantity: i.quantity,
-      unit_cost: i.unit_cost,
-    }));
+    const validItems = formRows
+      .filter((r) => r.ingredientId && parseFloat(r.quantity) > 0)
+      .map((r) => ({
+        ingredient_id: r.ingredientId!,
+        item_name: r.name,
+        quantity: parseFloat(r.quantity),
+        unit_cost: r.unitPrice,
+      }));
 
     if (editingPkg) {
       await updatePackaging(editingPkg.id, {
         name: formName.trim(),
         category: formCategory,
         description: formDescription,
-        items,
+        items: validItems,
       });
     } else {
       await createPackaging({
         name: formName.trim(),
         category: formCategory || undefined,
         description: formDescription || undefined,
-        items,
+        items: validItems,
       });
     }
 
@@ -296,23 +348,24 @@ export default function Packagings() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) resetForm(); }}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingPkg ? "Editar Embalagem" : "Nova Embalagem"}</DialogTitle>
             <DialogDescription>
-              {editingPkg ? "Atualize os dados da embalagem." : "Monte sua embalagem selecionando insumos cadastrados."}
+              {editingPkg ? "Atualize os dados da embalagem." : "Monte sua embalagem selecionando insumos cadastrados, igual a uma ficha técnica."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <Label>Nome *</Label>
-              <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Ex: Marmita Completa G" />
-            </div>
-
-            <div>
-              <Label>Categoria (opcional)</Label>
-              <Input value={formCategory} onChange={(e) => setFormCategory(e.target.value)} placeholder="Ex: Descartáveis" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <Label>Nome *</Label>
+                <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="Ex: Marmita Completa G" />
+              </div>
+              <div>
+                <Label>Categoria (opcional)</Label>
+                <Input value={formCategory} onChange={(e) => setFormCategory(e.target.value)} placeholder="Ex: Descartáveis" />
+              </div>
             </div>
 
             <div>
@@ -320,75 +373,134 @@ export default function Packagings() {
               <Textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Observações..." rows={2} />
             </div>
 
-            {/* Ingredient selector */}
-            <div className="space-y-3">
+            {/* Spreadsheet-style table like Ficha Técnica */}
+            <div className="space-y-2">
               <Label>Insumos da Embalagem</Label>
-              <IngredientSelector
-                ingredients={ingredients}
-                onSelect={handleSelectIngredient}
-                placeholder="Buscar insumo por código ou nome..."
-              />
-
-              {formItems.length > 0 && (
-                <div className="border rounded-lg overflow-hidden">
+              <div className="border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">#</TableHead>
-                        <TableHead>Insumo</TableHead>
-                        <TableHead className="w-20 text-center">Qtd</TableHead>
-                        <TableHead className="w-24 text-right">Custo</TableHead>
-                        <TableHead className="w-24 text-right">Sub</TableHead>
+                      <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
+                        <TableHead className="text-primary-foreground font-semibold w-20">Código</TableHead>
+                        <TableHead className="text-primary-foreground font-semibold min-w-[200px]">INSUMO</TableHead>
+                        <TableHead className="text-primary-foreground font-semibold w-24 text-center">QTD</TableHead>
+                        <TableHead className="text-primary-foreground font-semibold w-20 text-center">UND</TableHead>
+                        <TableHead className="text-primary-foreground font-semibold w-28 text-right">CUSTO UN</TableHead>
+                        <TableHead className="text-primary-foreground font-semibold w-24 text-right">CUSTO</TableHead>
                         <TableHead className="w-10"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {formItems.map((item, idx) => (
-                        <TableRow key={item.ingredient_id || idx}>
-                          <TableCell className="font-mono text-xs text-primary font-semibold">
-                            <span className="flex items-center gap-1">
-                              <ColorDot color={item.color} size="sm" />
-                              {item.code || "-"}
-                            </span>
+                      {formRows.map((row, index) => (
+                        <TableRow
+                          key={row.id}
+                          className={index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50"}
+                        >
+                          {/* Código com cor */}
+                          <TableCell className="font-mono">
+                            {row.ingredientCode ? (
+                              <div className="flex items-center gap-1.5">
+                                <ColorDot color={row.color} size="sm" />
+                                <span className="font-semibold">{row.ingredientCode}</span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1.5">
+                                <div className="w-3 h-3 rounded-full bg-muted" />
+                                <span className="text-muted-foreground">—</span>
+                              </div>
+                            )}
                           </TableCell>
-                          <TableCell className="font-medium text-sm">{item.item_name}</TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="0.01"
-                              step="0.01"
-                              value={item.quantity}
-                              onChange={(e) => updateItemQuantity(idx, parseFloat(e.target.value) || 1)}
-                              className="h-8 text-center w-full"
+
+                          {/* Seletor de ingrediente */}
+                          <TableCell className="p-1">
+                            <IngredientSelector
+                              ingredients={ingredients}
+                              onSelect={(selected) => handleSelectIngredient(index, selected)}
+                              selectedId={row.ingredientId || undefined}
+                              placeholder="Buscar..."
                             />
                           </TableCell>
-                          <TableCell className="text-right text-sm text-muted-foreground">
-                            {formatCurrency(item.unit_cost)}/{item.unit}
+
+                          {/* Quantidade */}
+                          <TableCell className="p-1">
+                            <Input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="0"
+                              value={row.quantity}
+                              onChange={(e) => handleQuantityChange(index, e.target.value)}
+                              className="h-8 text-center font-mono text-sm"
+                            />
                           </TableCell>
-                          <TableCell className="text-right text-sm font-semibold">
-                            {formatCurrency(item.quantity * item.unit_cost)}
+
+                          {/* Unidade */}
+                          <TableCell className="p-1">
+                            <Select
+                              value={row.unit}
+                              onValueChange={(value) => handleUnitChange(index, value)}
+                            >
+                              <SelectTrigger className="h-8 text-sm">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {units.map((u) => (
+                                  <SelectItem key={u.value} value={u.value}>
+                                    {u.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(idx)}>
-                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+
+                          {/* Custo Unitário */}
+                          <TableCell className="text-right font-mono text-sm text-muted-foreground">
+                            {row.unitPrice > 0 ? `${formatCurrency(row.unitPrice)}/${row.baseUnit}` : "—"}
+                          </TableCell>
+
+                          {/* Custo Total */}
+                          <TableCell className="text-right font-mono font-semibold text-sm">
+                            <span className={row.cost > 0 ? "text-primary" : "text-muted-foreground"}>
+                              {formatCurrency(row.cost)}
+                            </span>
+                          </TableCell>
+
+                          {/* Botão de remover */}
+                          <TableCell className="p-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={() => removeRow(index)}
+                              disabled={formRows.length === 1}
+                            >
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
-                  <div className="px-4 py-3 bg-muted/50 text-right border-t">
-                    <span className="text-sm text-muted-foreground">Total: </span>
-                    <span className="text-base font-bold text-primary">{formatCurrency(formTotal)}</span>
-                  </div>
                 </div>
-              )}
 
-              {formItems.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Selecione insumos acima para montar a embalagem
-                </p>
-              )}
+                {/* Total row */}
+                <div className="px-4 py-3 bg-muted/50 border-t flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Total da Embalagem</span>
+                  <span className="text-lg font-bold text-primary">{formatCurrency(formTotal)}</span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="border-dashed w-full"
+                onClick={addRow}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar insumo
+              </Button>
             </div>
           </div>
 
