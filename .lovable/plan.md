@@ -1,68 +1,53 @@
 
+# Fix: Custo da Embalagem no Calculo Final da Ficha Tecnica
 
-# Embalagem dentro da Ficha Tecnica - Checkbox + CMV
+## Problema
 
-## Resumo
+O custo da embalagem nao esta aparecendo na precificacao porque:
 
-Substituir a secao de Embalagem em Accordion (atual) por um checkbox logo abaixo da tabela de insumos. Se o usuario marcar "Sim, quero adicionar embalagem", aparece o campo de busca de embalagens cadastradas. A embalagem selecionada passa a fazer parte do CMV (custo total) da ficha tecnica.
+1. O backend (edge function) calcula tudo sem saber da embalagem
+2. O resultado do backend (`pricingResult`) sobrescreve os valores locais que incluem embalagem
+3. Mudar a embalagem nao re-dispara o calculo (falta nas dependencias do useEffect)
+
+## Solucao
+
+Adicionar o custo da embalagem como parametro extra enviado ao backend, para que TODOS os calculos (preco sugerido, CMV, margens, lucro liquido) incluam a embalagem.
 
 ## Mudancas
 
-### 1. Novo estado `includePackaging` (boolean)
+### 1. Hook `useRecipePricing.ts` - Adicionar campo `packaging_cost`
 
-- Adicionar estado `includePackaging` no formulario da ficha tecnica
-- Quando `false`: nenhum campo de embalagem aparece
-- Quando `true`: exibe dropdown de embalagens e torna selecao obrigatoria
-- Ao editar uma ficha que ja tem `packaging_id`, setar `includePackaging = true` automaticamente
+- Adicionar `packaging_cost?: number` na interface `RecipePricingInput`
+- O valor sera enviado ao backend junto com os demais parametros
 
-### 2. UI - Checkbox + Select abaixo dos insumos
+### 2. Edge Function `calculate-recipe-pricing` - Somar embalagem ao custo
 
-Posicao: logo apos a `IngredientsSpreadsheetTable` (linha ~1094), antes do `PricingSummaryPanel`.
+- Receber `packaging_cost` (default 0) no body
+- Somar ao `ingredients_cost_total` e `ingredients_cost_per_serving`
+- Todos os calculos derivados (CMV, margem, preco sugerido, lucro) automaticamente incluirao a embalagem
 
-```text
-[x] Deseja adicionar embalagem a este produto?
+### 3. `Recipes.tsx` - Passar packaging_cost e corrigir dependencias
 
-Se marcado:
-+---------------------------------------+
-| Selecionar embalagem... [dropdown]    |
-| Marmita Completa G - R$ 1,70          |
-+---------------------------------------+
-| Custo embalagem: R$ 1,70              |
-| % sobre preco: 5.2%                  |
-+---------------------------------------+
-```
+- No `calculatePricing()`, passar `packaging_cost: packagingCost`
+- Adicionar `includePackaging` e `selectedPackagingId` no array de dependencias do useEffect
+- Remover a soma local duplicada (linha 780) ja que o backend fara isso
 
-Se desmarcado: campo some e `selectedPackagingId` volta para `null`.
+### 4. `PricingSummaryPanel` e `PricingInputsCard` - Exibir custo com embalagem
 
-### 3. Embalagem como parte do CMV
+- Adicionar linha "Custo c/ Embalagem" no card de custos quando houver embalagem selecionada
+- Mostrar claramente que o custo total inclui embalagem
 
-- O custo da embalagem sera somado ao custo dos ingredientes para formar o CMV total
-- Variavel `totalCostWithPackaging` = `ingredientsCost` + custo da embalagem selecionada
-- Esse valor total e exibido como "Custo Total (CMV)" no painel de precificacao
-- O `cost_per_serving` salvo no banco incluira o custo da embalagem
+## Arquivos modificados
 
-### 4. Validacao ao salvar
-
-- Se `includePackaging === true` e `selectedPackagingId === null`: bloquear salvamento com toast de erro "Selecione uma embalagem ou desmarque a opcao"
-
-### 5. Remover Accordion de Embalagem
-
-- Remover o `AccordionItem value="packaging"` (linhas 1136-1197)
-- Manter o `AccordionItem value="market"` (Analise de Mercado) como esta
-
-### 6. Duplicacao de ficha tecnica
-
-- Ao duplicar, copiar tambem o `packaging_id` e o estado `includePackaging` (se a ficha original tinha embalagem, a copia tambem tera)
-
-## Arquivo modificado
-
-- `src/pages/Recipes.tsx`: Adicionar checkbox, mover logica de embalagem, incluir custo no CMV, remover Accordion de embalagem, validacao no save
+- `src/hooks/useRecipePricing.ts` - adicionar campo packaging_cost na interface
+- `supabase/functions/calculate-recipe-pricing/index.ts` - somar packaging_cost nos calculos
+- `src/pages/Recipes.tsx` - passar packaging_cost, corrigir dependencias do useEffect
+- `src/components/recipes/pricing/PricingInputsCard.tsx` - exibir linha de custo embalagem
+- `src/components/recipes/PricingSummaryPanel.tsx` - passar packagingCost ao card
 
 ## O que NAO muda
 
-- `usePackagings.ts` - nenhuma alteracao
-- Backend de precificacao - nenhuma alteracao (custo da embalagem e somado client-side antes de exibir)
-- Banco de dados - `packaging_id` na tabela `recipes` ja existe
-- Menu de Embalagens - continua igual
-- Analise de Mercado - continua no Accordion
-
+- Tabelas do banco de dados
+- Menu de Embalagens
+- Hook `usePackagings.ts`
+- UI do Switch/Select de embalagem (ja funciona)
