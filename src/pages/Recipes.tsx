@@ -22,7 +22,8 @@ import {
   Sparkles,
   Sun,
   Moon,
-  Copy
+  Copy,
+  Store as StoreIcon
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +62,7 @@ import { useStore } from "@/contexts/StoreContext";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { useDataProtection } from "@/hooks/useDataProtection";
+import { CopyRecipesFromStoreModal } from "@/components/recipes/CopyRecipesFromStoreModal";
 
 type Recipe = Tables<"recipes">;
 
@@ -100,7 +102,7 @@ interface RecipeWithIngredients extends Recipe {
 }
 
 export default function Recipes() {
-  const { activeStore } = useStore();
+  const { activeStore, stores } = useStore();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -132,6 +134,7 @@ export default function Recipes() {
   
   // iFood import modal state
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [copyFromStoreOpen, setCopyFromStoreOpen] = useState(false);
   
   // Recipe form state
   const [recipeName, setRecipeName] = useState("");
@@ -945,6 +948,19 @@ export default function Recipes() {
               <span className="hidden sm:inline">Importar (IA)</span>
               <span className="sm:hidden">iFood</span>
             </Button>
+            {stores.length > 1 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 flex-shrink-0 text-xs sm:text-sm"
+                onClick={() => setCopyFromStoreOpen(true)}
+                disabled={!canCreateRecipe}
+              >
+                <StoreIcon className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Copiar de outra loja</span>
+                <span className="sm:hidden">Copiar</span>
+              </Button>
+            )}
             <Button 
               size="sm"
               className="gap-1.5 flex-shrink-0 text-xs sm:text-sm" 
@@ -1389,6 +1405,18 @@ export default function Recipes() {
           await checkUsage();
         }}
       />
+
+      {/* Copy Recipes from Store Modal */}
+      {user && activeStore && stores.length > 1 && (
+        <CopyRecipesFromStoreModal
+          open={copyFromStoreOpen}
+          onOpenChange={setCopyFromStoreOpen}
+          stores={stores}
+          activeStoreId={activeStore.id}
+          userId={user.id}
+          onCopyComplete={() => fetchRecipes(user.id, activeStore?.id)}
+        />
+      )}
     </div>
   );
 }
