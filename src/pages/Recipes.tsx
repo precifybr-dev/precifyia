@@ -79,7 +79,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 
 
 type Recipe = Tables<"recipes">;
@@ -1111,10 +1111,10 @@ export default function Recipes() {
                 />
               </div>
 
-              {/* Packaging Checkbox */}
+              {/* Packaging Toggle */}
               <div className="mb-6 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                  <Switch
                     id="includePackaging"
                     checked={includePackaging}
                     onCheckedChange={(checked) => {
@@ -1122,8 +1122,9 @@ export default function Recipes() {
                       if (!checked) setSelectedPackagingId(null);
                     }}
                   />
-                  <Label htmlFor="includePackaging" className="text-sm font-medium cursor-pointer">
-                    Deseja adicionar embalagem a este produto?
+                  <Label htmlFor="includePackaging" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                    <Package className="w-4 h-4 text-primary" />
+                    Adicionar embalagem ao produto
                   </Label>
                 </div>
 
