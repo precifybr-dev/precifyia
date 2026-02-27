@@ -6,8 +6,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Store, Smartphone, Wallet, HelpCircle, Info, Package } from "lucide-react";
+import { Store, Smartphone, Wallet, HelpCircle, Info, Package, Target } from "lucide-react";
 import type { RecipePricingResult } from "@/hooks/useRecipePricing";
+import { useNavigate } from "react-router-dom";
 
 interface PricingProfitCardProps {
   sellingPrice: string;
@@ -21,6 +22,7 @@ interface PricingProfitCardProps {
   pricingResult?: RecipePricingResult | null;
   formatCurrency: (value: number) => string;
   packagingCost?: number;
+  totalFixedExpenses?: number;
 }
 
 export default function PricingProfitCard({
@@ -35,7 +37,10 @@ export default function PricingProfitCard({
   pricingResult,
   formatCurrency,
   packagingCost = 0,
+  totalFixedExpenses = 0,
 }: PricingProfitCardProps) {
+  const navigate = useNavigate();
+
   const effectivePrice = pricingResult?.final_selling_price ?? (parseFloat(sellingPrice) || suggestedPrice);
   const productionCostValue = pricingResult?.production_cost_value_loja ?? (effectivePrice * (productionCostsPercent || 0) / 100);
   const taxValue = pricingResult?.tax_value_loja ?? (effectivePrice * (taxPercentage || 0) / 100);
@@ -65,6 +70,11 @@ export default function PricingProfitCard({
   const ifoodProductionCostPercent = ifoodPrice > 0 ? (ifoodProductionCost / ifoodPrice) * 100 : 0;
   const ifoodTaxPercent = ifoodPrice > 0 ? (ifoodTaxValue / ifoodPrice) * 100 : 0;
 
+  // Break-even calculation
+  const breakEvenUnits = netProfit > 0 && totalFixedExpenses > 0
+    ? Math.ceil(totalFixedExpenses / netProfit)
+    : null;
+
   return (
     <div className="grid md:grid-cols-2 gap-4 mt-4">
       {/* LOJA */}
@@ -72,7 +82,7 @@ export default function PricingProfitCard({
         <CardContent className="pt-4">
           <div className="flex items-center gap-2 mb-4">
             <Store className="w-5 h-5 text-success" />
-            <span className="text-sm font-semibold">LUCRO POR PRODUTO - LOJA</span>
+            <span className="text-sm font-semibold">MARGEM DE CONTRIBUIÇÃO - LOJA</span>
           </div>
 
           <div className="space-y-2 text-sm">
@@ -146,7 +156,7 @@ export default function PricingProfitCard({
               <div className="flex justify-between items-center">
                 <span className="font-semibold flex items-center gap-1">
                   <Wallet className="w-4 h-4" />
-                  = LUCRO POR PRODUTO
+                  = MARGEM DE CONTRIBUIÇÃO
                 </span>
                 <div className="flex items-center gap-2">
                   <span className={`font-mono text-lg font-bold ${netProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
@@ -157,17 +167,22 @@ export default function PricingProfitCard({
                   </span>
                 </div>
               </div>
+
+              <p className="text-xs text-muted-foreground mt-2">
+                A Margem de Contribuição é o valor que cada venda gera para pagar despesas fixas e, após isso, gerar lucro líquido.
+              </p>
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <p className="text-xs text-muted-foreground mt-2 italic cursor-help flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground mt-1 italic cursor-help flex items-center gap-1">
                       <HelpCircle className="w-3 h-3" />
-                      Como o lucro é calculado
+                      Como é calculado
                     </p>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-[300px] text-xs">
-                    <p className="font-semibold mb-1">Como o lucro é calculado</p>
-                    <p>O lucro líquido mostrado aqui já considera:</p>
+                    <p className="font-semibold mb-1">Margem de Contribuição Unitária</p>
+                    <p>Este valor ainda não representa lucro líquido. Ele será utilizado para cobrir despesas fixas como aluguel, equipe, energia e pró-labore.</p>
                     <ul className="list-disc pl-3 mt-1 space-y-0.5">
                       <li>Custo dos insumos (com perda)</li>
                       <li>Custo da embalagem (quando selecionada)</li>
@@ -175,10 +190,35 @@ export default function PricingProfitCard({
                       <li>Impostos sobre a venda</li>
                       <li>Taxas de cartão (média cadastrada)</li>
                     </ul>
-                    <p className="mt-1">As despesas do negócio são abatidas apenas do faturamento mensal, não por produto.</p>
+                    <p className="mt-1">As despesas fixas do negócio são abatidas apenas do faturamento mensal, não por produto.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+            </div>
+
+            {/* Break-even / Ponto de Equilíbrio */}
+            <div className="border-t border-success/20 pt-3 mt-2">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Target className="w-3.5 h-3.5 text-primary" />
+                <span className="text-xs font-semibold text-foreground">Ponto de Equilíbrio</span>
+              </div>
+              {breakEvenUnits !== null ? (
+                <p className="text-xs text-muted-foreground">
+                  Você precisa vender <span className="font-semibold text-foreground">{breakEvenUnits.toLocaleString("pt-BR")} unidades</span> deste produto para cobrir sua estrutura mensal.
+                </p>
+              ) : totalFixedExpenses <= 0 ? (
+                <button
+                  type="button"
+                  onClick={() => navigate("/app/business")}
+                  className="text-xs text-primary hover:underline cursor-pointer"
+                >
+                  Cadastre suas despesas fixas para calcular seu ponto de equilíbrio →
+                </button>
+              ) : (
+                <p className="text-xs text-muted-foreground italic">
+                  Defina um preço de venda para calcular o ponto de equilíbrio.
+                </p>
+              )}
             </div>
           </div>
         </CardContent>
@@ -189,7 +229,7 @@ export default function PricingProfitCard({
         <CardContent className="pt-4">
           <div className="flex items-center gap-2 mb-4">
             <Smartphone className="w-5 h-5 text-destructive" />
-            <span className="text-sm font-semibold">LUCRO POR PRODUTO - IFOOD</span>
+            <span className="text-sm font-semibold">MARGEM DE CONTRIBUIÇÃO - IFOOD</span>
             {hasCustomIfoodPrice && (
               <Badge variant="outline" className="text-xs bg-warning/10 text-warning border-warning/30">
                 preço personalizado
@@ -287,7 +327,7 @@ export default function PricingProfitCard({
               <div className="flex justify-between items-center">
                 <span className="font-semibold flex items-center gap-1">
                   <Wallet className="w-4 h-4" />
-                  = LUCRO POR PRODUTO
+                  = MARGEM DE CONTRIBUIÇÃO
                 </span>
                 <div className="flex items-center gap-2">
                   <span className={`font-mono text-lg font-bold ${ifoodNetProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
@@ -298,24 +338,29 @@ export default function PricingProfitCard({
                   </span>
                 </div>
               </div>
+
+              <p className="text-xs text-muted-foreground mt-2">
+                A Margem de Contribuição é o valor que cada venda gera para pagar despesas fixas e, após isso, gerar lucro líquido.
+              </p>
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <p className="text-xs text-muted-foreground mt-2 italic cursor-help flex items-center gap-1">
+                    <p className="text-xs text-muted-foreground mt-1 italic cursor-help flex items-center gap-1">
                       <HelpCircle className="w-3 h-3" />
-                      Como o lucro é calculado
+                      Como é calculado
                     </p>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-[300px] text-xs">
-                    <p className="font-semibold mb-1">Como o lucro é calculado</p>
-                    <p>O lucro líquido mostrado aqui já considera:</p>
+                    <p className="font-semibold mb-1">Margem de Contribuição Unitária</p>
+                    <p>Este valor ainda não representa lucro líquido. Ele será utilizado para cobrir despesas fixas como aluguel, equipe, energia e pró-labore.</p>
                      <ul className="list-disc pl-3 mt-1 space-y-0.5">
                       <li>Custo dos insumos (com perda)</li>
                       <li>Custo da embalagem (quando selecionada)</li>
                       <li>Custos de produção rateados</li>
                       <li>Taxas (iFood, cartões, impostos)</li>
                     </ul>
-                    <p className="mt-1">As despesas do negócio são abatidas apenas do faturamento mensal, não por produto.</p>
+                    <p className="mt-1">As despesas fixas do negócio são abatidas apenas do faturamento mensal, não por produto.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

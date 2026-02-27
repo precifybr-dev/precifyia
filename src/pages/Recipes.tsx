@@ -133,6 +133,7 @@ export default function Recipes() {
   
   // Business cost state (expenses as % of revenue)
   const [totalBusinessCostPercent, setTotalBusinessCostPercent] = useState<number | null>(null);
+  const [totalFixedExpenses, setTotalFixedExpenses] = useState<number>(0);
   // Production costs as % of monthly revenue (fixed + variable)
   const [productionCostsPercent, setProductionCostsPercent] = useState<number | null>(null);
   // iFood real percentage from profile
@@ -300,6 +301,7 @@ export default function Recipes() {
     const percent = (totalExpenses / monthlyRevenue) * 100;
     
     setTotalBusinessCostPercent(percent);
+    setTotalFixedExpenses(fixedTotal);
   };
 
   useEffect(() => {
@@ -1215,6 +1217,7 @@ export default function Recipes() {
                   pricingResult={pricingResult}
                   packagingCost={packagingCost}
                   rawIngredientsCost={rawIngredientsCost / (parseInt(servings) || 1)}
+                  totalFixedExpenses={totalFixedExpenses}
                 />
               </div>
 
