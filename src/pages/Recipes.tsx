@@ -79,6 +79,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 
 type Recipe = Tables<"recipes">;
@@ -176,6 +177,7 @@ export default function Recipes() {
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   
   // Packaging & Market Analysis state
+  const [includePackaging, setIncludePackaging] = useState(false);
   const [selectedPackagingId, setSelectedPackagingId] = useState<string | null>(null);
   const [marketPriceMin, setMarketPriceMin] = useState("");
   const [marketPriceAvg, setMarketPriceAvg] = useState("");
@@ -437,6 +439,7 @@ export default function Recipes() {
     // Reset backend pricing
     resetPricing();
     // Reset packaging & market
+    setIncludePackaging(false);
     setSelectedPackagingId(null);
     setMarketPriceMin("");
     setMarketPriceAvg("");
@@ -465,6 +468,7 @@ export default function Recipes() {
     setDiscountPercent("5");
     setLocalIfoodRate("");
     setIfoodSellingPrice("");
+    setIncludePackaging(false);
     setSelectedPackagingId(null);
     setMarketPriceMin("");
     setMarketPriceAvg("");
@@ -539,7 +543,9 @@ export default function Recipes() {
     setLocalIfoodRate("");
     setIfoodSellingPrice(recipe.ifood_selling_price?.toString() || "");
     // Load packaging & market data
-    setSelectedPackagingId((recipe as any).packaging_id || null);
+    const pkgId = (recipe as any).packaging_id || null;
+    setIncludePackaging(!!pkgId);
+    setSelectedPackagingId(pkgId);
     setMarketPriceMin((recipe as any).market_price_min?.toString() || "");
     setMarketPriceAvg((recipe as any).market_price_avg?.toString() || "");
     setMarketPriceMax((recipe as any).market_price_max?.toString() || "");
@@ -582,10 +588,11 @@ export default function Recipes() {
           cost_per_serving: recipeToDuplicate.cost_per_serving,
           suggested_price: recipeToDuplicate.suggested_price,
           cmv_target: recipeToDuplicate.cmv_target,
-          selling_price: null, // Reset selling price on duplicate
-          ifood_selling_price: null, // Reset iFood price on duplicate
+          selling_price: null,
+          ifood_selling_price: null,
           store_id: recipeToDuplicate.store_id,
-        })
+          packaging_id: (recipeToDuplicate as any).packaging_id || null,
+        } as any)
         .select()
         .single();
 
@@ -764,7 +771,13 @@ export default function Recipes() {
 
   // ============ VALUES FROM BACKEND (or fallback while loading) ============
   // Local fallback for instant preview (ingredient costs only - simple sum)
-  const ingredientsCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
+  const rawIngredientsCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
+  // Include packaging cost in CMV
+  const selectedPackaging = includePackaging && selectedPackagingId
+    ? activePackagings.find(p => p.id === selectedPackagingId)
+    : null;
+  const packagingCost = selectedPackaging?.cost_total || 0;
+  const ingredientsCost = rawIngredientsCost + packagingCost;
   const ingredientsCostPerServing = ingredientsCost / (parseInt(servings) || 1);
 
   // Use backend results when available, local fallback while calculating
@@ -792,6 +805,11 @@ export default function Recipes() {
     const validIngredients = recipeIngredients.filter((i) => i.ingredientId && parseFloat(i.quantity) > 0);
     if (validIngredients.length === 0) {
       toast({ title: "Erro", description: "Adicione pelo menos um insumo com quantidade", variant: "destructive" });
+      return;
+    }
+
+    if (includePackaging && !selectedPackagingId) {
+      toast({ title: "Erro", description: "Selecione uma embalagem ou desmarque a opção", variant: "destructive" });
       return;
     }
 
@@ -1093,6 +1111,70 @@ export default function Recipes() {
                 />
               </div>
 
+              {/* Packaging Checkbox */}
+              <div className="mb-6 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="includePackaging"
+                    checked={includePackaging}
+                    onCheckedChange={(checked) => {
+                      setIncludePackaging(!!checked);
+                      if (!checked) setSelectedPackagingId(null);
+                    }}
+                  />
+                  <Label htmlFor="includePackaging" className="text-sm font-medium cursor-pointer">
+                    Deseja adicionar embalagem a este produto?
+                  </Label>
+                </div>
+
+                {includePackaging && (
+                  <div className="space-y-3 pl-6 border-l-2 border-primary/20">
+                    <Select
+                      value={selectedPackagingId || "none"}
+                      onValueChange={(v) => setSelectedPackagingId(v === "none" ? null : v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar embalagem..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Selecionar embalagem...</SelectItem>
+                        {activePackagings.map((pkg) => (
+                          <SelectItem key={pkg.id} value={pkg.id}>
+                            {pkg.name} — {formatCurrency(pkg.cost_total)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {selectedPackagingId && (() => {
+                      const pkg = activePackagings.find(p => p.id === selectedPackagingId);
+                      const currentPrice = parseFloat(sellingPrice) || suggestedPrice;
+                      const pctOfPrice = currentPrice > 0 && pkg ? (pkg.cost_total / currentPrice * 100) : 0;
+                      return pkg ? (
+                        <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Custo embalagem:</span>
+                            <span className="font-semibold">{formatCurrency(pkg.cost_total)}</span>
+                          </div>
+                          {currentPrice > 0 && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">% sobre preço:</span>
+                              <span className={`font-semibold ${pctOfPrice > 15 ? "text-destructive" : pctOfPrice > 10 ? "text-warning" : "text-success"}`}>
+                                {pctOfPrice.toFixed(1)}%
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ) : null;
+                    })()}
+                    {activePackagings.length === 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhuma embalagem ativa. Cadastre em Embalagens no menu lateral.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Pricing Summary Panel */}
               <div className="mb-6">
               <PricingSummaryPanel
@@ -1130,72 +1212,8 @@ export default function Recipes() {
                 />
               </div>
 
-              {/* Packaging & Market Analysis */}
-              <Accordion type="multiple" defaultValue={["packaging"]} className="mb-6">
-                {/* Embalagem */}
-                <AccordionItem value="packaging">
-                  <AccordionTrigger className="text-sm font-semibold">
-                    <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4 text-primary" />
-                      Embalagem
-                      {selectedPackagingId && (() => {
-                        const pkg = activePackagings.find(p => p.id === selectedPackagingId);
-                        return pkg ? (
-                          <Badge variant="secondary" className="text-xs ml-2">
-                            {formatCurrency(pkg.cost_total)}
-                          </Badge>
-                        ) : null;
-                      })()}
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent>
-                    <div className="space-y-3">
-                      <Select
-                        value={selectedPackagingId || "none"}
-                        onValueChange={(v) => setSelectedPackagingId(v === "none" ? null : v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecionar embalagem..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">Sem embalagem</SelectItem>
-                          {activePackagings.map((pkg) => (
-                            <SelectItem key={pkg.id} value={pkg.id}>
-                              {pkg.name} — {formatCurrency(pkg.cost_total)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {selectedPackagingId && (() => {
-                        const pkg = activePackagings.find(p => p.id === selectedPackagingId);
-                        const currentPrice = parseFloat(sellingPrice) || suggestedPrice;
-                        const pctOfPrice = currentPrice > 0 && pkg ? (pkg.cost_total / currentPrice * 100) : 0;
-                        return pkg ? (
-                          <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Custo embalagem:</span>
-                              <span className="font-semibold">{formatCurrency(pkg.cost_total)}</span>
-                            </div>
-                            {currentPrice > 0 && (
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">% sobre preço:</span>
-                                <span className={`font-semibold ${pctOfPrice > 15 ? "text-destructive" : pctOfPrice > 10 ? "text-warning" : "text-success"}`}>
-                                  {pctOfPrice.toFixed(1)}%
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ) : null;
-                      })()}
-                      {activePackagings.length === 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Nenhuma embalagem ativa. Cadastre em Embalagens no menu lateral.
-                        </p>
-                      )}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-
+              {/* Market Analysis */}
+              <Accordion type="multiple" className="mb-6">
                 {/* Análise de Mercado */}
                 <AccordionItem value="market">
                   <AccordionTrigger className="text-sm font-semibold">
