@@ -11,6 +11,8 @@ import { Store } from "@/contexts/StoreContext";
 import { Loader2, Store as StoreIcon, ChefHat } from "lucide-react";
 import { normalizeText } from "@/lib/utils";
 
+type CopyMode = "recipes" | "sub-recipes";
+
 interface CopyRecipesFromStoreModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -18,16 +20,20 @@ interface CopyRecipesFromStoreModalProps {
   activeStoreId: string;
   userId: string;
   onCopyComplete: () => void;
+  mode?: CopyMode;
 }
 
-interface SourceRecipe {
+interface SourceItem {
   id: string;
   name: string;
-  cost_per_serving: number | null;
-  servings: number;
+  cost_per_serving?: number | null;
+  servings?: number;
   total_cost: number | null;
-  cmv_target: number | null;
-  suggested_price: number | null;
+  cmv_target?: number | null;
+  suggested_price?: number | null;
+  unit_cost?: number;
+  yield_quantity?: number;
+  unit?: string;
 }
 
 export function CopyRecipesFromStoreModal({
@@ -37,58 +43,76 @@ export function CopyRecipesFromStoreModal({
   activeStoreId,
   userId,
   onCopyComplete,
+  mode = "recipes",
 }: CopyRecipesFromStoreModalProps) {
   const [selectedStoreId, setSelectedStoreId] = useState<string>("");
-  const [recipes, setRecipes] = useState<SourceRecipe[]>([]);
-  const [selectedRecipeIds, setSelectedRecipeIds] = useState<Set<string>>(new Set());
-  const [loadingRecipes, setLoadingRecipes] = useState(false);
+  const [items, setItems] = useState<SourceItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [loadingItems, setLoadingItems] = useState(false);
   const [copying, setCopying] = useState(false);
   const [progress, setProgress] = useState(0);
   const { toast } = useToast();
 
+  const isSubRecipeMode = mode === "sub-recipes";
+  const label = isSubRecipeMode ? "Sub-Receita" : "Ficha Técnica";
+  const labelPlural = isSubRecipeMode ? "Sub-Receitas" : "Fichas Técnicas";
+
   const otherStores = stores.filter((s) => s.id !== activeStoreId);
 
-  // Reset state when modal opens/closes
   useEffect(() => {
     if (!open) {
       setSelectedStoreId("");
-      setRecipes([]);
-      setSelectedRecipeIds(new Set());
+      setItems([]);
+      setSelectedIds(new Set());
       setProgress(0);
       setCopying(false);
     }
   }, [open]);
 
-  // Fetch recipes when store is selected
   useEffect(() => {
     if (!selectedStoreId) {
-      setRecipes([]);
-      setSelectedRecipeIds(new Set());
+      setItems([]);
+      setSelectedIds(new Set());
       return;
     }
 
-    const fetchRecipes = async () => {
-      setLoadingRecipes(true);
-      const { data, error } = await supabase
-        .from("recipes")
-        .select("id, name, cost_per_serving, servings, total_cost, cmv_target, suggested_price")
-        .eq("user_id", userId)
-        .eq("store_id", selectedStoreId)
-        .order("name");
+    const fetchItems = async () => {
+      setLoadingItems(true);
+      if (isSubRecipeMode) {
+        const { data, error } = await supabase
+          .from("sub_recipes")
+          .select("id, name, total_cost, unit_cost, yield_quantity, unit")
+          .eq("user_id", userId)
+          .eq("store_id", selectedStoreId)
+          .order("name");
 
-      if (error) {
-        toast({ title: "Erro", description: "Não foi possível carregar as receitas.", variant: "destructive" });
+        if (error) {
+          toast({ title: "Erro", description: "Não foi possível carregar as sub-receitas.", variant: "destructive" });
+        } else {
+          setItems((data || []).map((d) => ({ ...d, cost_per_serving: d.unit_cost })));
+        }
       } else {
-        setRecipes(data || []);
+        const { data, error } = await supabase
+          .from("recipes")
+          .select("id, name, cost_per_serving, servings, total_cost, cmv_target, suggested_price")
+          .eq("user_id", userId)
+          .eq("store_id", selectedStoreId)
+          .order("name");
+
+        if (error) {
+          toast({ title: "Erro", description: "Não foi possível carregar as receitas.", variant: "destructive" });
+        } else {
+          setItems(data || []);
+        }
       }
-      setLoadingRecipes(false);
+      setLoadingItems(false);
     };
 
-    fetchRecipes();
-  }, [selectedStoreId, userId, toast]);
+    fetchItems();
+  }, [selectedStoreId, userId, toast, isSubRecipeMode]);
 
-  const toggleRecipe = (id: string) => {
-    setSelectedRecipeIds((prev) => {
+  const toggleItem = (id: string) => {
+    setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -97,30 +121,21 @@ export function CopyRecipesFromStoreModal({
   };
 
   const toggleAll = () => {
-    if (selectedRecipeIds.size === recipes.length) {
-      setSelectedRecipeIds(new Set());
+    if (selectedIds.size === items.length) {
+      setSelectedIds(new Set());
     } else {
-      setSelectedRecipeIds(new Set(recipes.map((r) => r.id)));
+      setSelectedIds(new Set(items.map((r) => r.id)));
     }
   };
 
-  const handleCopy = async () => {
-    if (selectedRecipeIds.size === 0) return;
-    setCopying(true);
-    setProgress(0);
-
-    const selected = recipes.filter((r) => selectedRecipeIds.has(r.id));
-    let copied = 0;
-    let errors = 0;
-
-    // Pre-fetch destination ingredients once
+  // Shared: fetch dest ingredients & build map
+  const prepareDestIngredients = async () => {
     const { data: destIngredients } = await supabase
       .from("ingredients")
       .select("*")
       .eq("user_id", userId)
       .eq("store_id", activeStoreId);
 
-    // Get max code in destination store for sequential code generation
     let destMaxCode = 0;
     if (destIngredients && destIngredients.length > 0) {
       destMaxCode = Math.max(...destIngredients.map((i: any) => i.code || 0));
@@ -130,9 +145,76 @@ export function CopyRecipesFromStoreModal({
       (destIngredients || []).map((i: any) => [normalizeText(i.name), i])
     );
 
+    return { destMaxCode, destIngredientsMap };
+  };
+
+  // Shared: map or create ingredient in destination
+  const mapOrCreateIngredient = async (
+    srcIng: any,
+    destIngredientsMap: Map<string, any>,
+    destMaxCodeRef: { value: number }
+  ): Promise<string | null> => {
+    const normalizedName = normalizeText(srcIng.name);
+    const existing = destIngredientsMap.get(normalizedName);
+
+    if (existing) return existing.id;
+
+    const correctionFactor = srcIng.correction_factor ?? 1;
+    const purchaseQty = srcIng.purchase_quantity || 1;
+    const calculatedUnitPrice = (srcIng.purchase_price / purchaseQty) * correctionFactor;
+
+    let newIng: any = null;
+    let retries = 3;
+    while (retries > 0) {
+      destMaxCodeRef.value++;
+      const { data, error: ingErr } = await supabase
+        .from("ingredients")
+        .insert({
+          user_id: userId,
+          store_id: activeStoreId,
+          code: destMaxCodeRef.value,
+          name: srcIng.name,
+          purchase_price: srcIng.purchase_price,
+          purchase_quantity: srcIng.purchase_quantity,
+          unit: srcIng.unit,
+          unit_price: calculatedUnitPrice,
+          correction_factor: srcIng.correction_factor,
+          color: srcIng.color,
+          is_sub_recipe: false,
+          sub_recipe_id: null,
+        })
+        .select()
+        .single();
+
+      if (!ingErr && data) {
+        newIng = data;
+        break;
+      }
+      if (ingErr?.code === "23505") {
+        retries--;
+        continue;
+      }
+      console.error("Error creating ingredient:", ingErr);
+      break;
+    }
+
+    if (!newIng) {
+      console.error("Failed to create ingredient after retries:", srcIng.name);
+      return null;
+    }
+
+    destIngredientsMap.set(normalizedName, newIng);
+    return newIng.id;
+  };
+
+  const handleCopyRecipes = async (selected: SourceItem[]) => {
+    const { destMaxCode, destIngredientsMap } = await prepareDestIngredients();
+    const destMaxCodeRef = { value: destMaxCode };
+    let copied = 0;
+    let errors = 0;
+
     for (const recipe of selected) {
       try {
-        // 1. Fetch recipe ingredients from source
         const { data: recipeIngs } = await supabase
           .from("recipe_ingredients")
           .select(`
@@ -143,78 +225,21 @@ export function CopyRecipesFromStoreModal({
           `)
           .eq("recipe_id", recipe.id);
 
-        // 2. Map ingredients to destination store
         const ingredientMapping: Record<string, string> = {};
-
         for (const ri of recipeIngs || []) {
           const srcIng = (ri as any).ingredients;
           if (!srcIng) continue;
-
-          const normalizedName = normalizeText(srcIng.name);
-          const existing = destIngredientsMap.get(normalizedName);
-
-          if (existing) {
-            ingredientMapping[srcIng.id] = existing.id;
-          } else {
-            // Create ingredient in destination store with sequential code + retry on collision
-            const correctionFactor = srcIng.correction_factor ?? 1;
-            const purchaseQty = srcIng.purchase_quantity || 1;
-            const calculatedUnitPrice = (srcIng.purchase_price / purchaseQty) * correctionFactor;
-
-            let newIng: any = null;
-            let retries = 3;
-            while (retries > 0) {
-              destMaxCode++;
-              const { data, error: ingErr } = await supabase
-                .from("ingredients")
-                .insert({
-                  user_id: userId,
-                  store_id: activeStoreId,
-                  code: destMaxCode,
-                  name: srcIng.name,
-                  purchase_price: srcIng.purchase_price,
-                  purchase_quantity: srcIng.purchase_quantity,
-                  unit: srcIng.unit,
-                  unit_price: calculatedUnitPrice,
-                  correction_factor: srcIng.correction_factor,
-                  color: srcIng.color,
-                  is_sub_recipe: false,
-                  sub_recipe_id: null,
-                })
-                .select()
-                .single();
-
-              if (!ingErr && data) {
-                newIng = data;
-                break;
-              }
-              // If unique constraint violation, retry with next code
-              if (ingErr?.code === "23505") {
-                retries--;
-                continue;
-              }
-              console.error("Error creating ingredient:", ingErr);
-              break;
-            }
-
-            if (!newIng) {
-              console.error("Failed to create ingredient after retries:", srcIng.name);
-              continue;
-            }
-
-            ingredientMapping[srcIng.id] = newIng.id;
-            destIngredientsMap.set(normalizedName, newIng);
-          }
+          const mappedId = await mapOrCreateIngredient(srcIng, destIngredientsMap, destMaxCodeRef);
+          if (mappedId) ingredientMapping[srcIng.id] = mappedId;
         }
 
-        // 3. Create recipe in destination store
         const { data: newRecipe, error: recipeErr } = await supabase
           .from("recipes")
           .insert({
             user_id: userId,
             store_id: activeStoreId,
             name: recipe.name,
-            servings: recipe.servings,
+            servings: recipe.servings || 1,
             total_cost: recipe.total_cost,
             cost_per_serving: recipe.cost_per_serving,
             suggested_price: recipe.suggested_price,
@@ -225,11 +250,8 @@ export function CopyRecipesFromStoreModal({
           .select()
           .single();
 
-        if (recipeErr || !newRecipe) {
-          throw recipeErr || new Error("Falha ao criar receita");
-        }
+        if (recipeErr || !newRecipe) throw recipeErr || new Error("Falha ao criar receita");
 
-        // 4. Create recipe ingredients
         if (recipeIngs && recipeIngs.length > 0) {
           const newRecipeIngs = recipeIngs
             .filter((ri) => ingredientMapping[ri.ingredient_id])
@@ -240,7 +262,6 @@ export function CopyRecipesFromStoreModal({
               unit: ri.unit,
               cost: ri.cost,
             }));
-
           if (newRecipeIngs.length > 0) {
             await supabase.from("recipe_ingredients").insert(newRecipeIngs);
           }
@@ -251,23 +272,154 @@ export function CopyRecipesFromStoreModal({
         console.error(`Error copying recipe ${recipe.name}:`, err);
         errors++;
       }
-
       setProgress(Math.round(((copied + errors) / selected.length) * 100));
     }
+
+    return { copied, errors };
+  };
+
+  const handleCopySubRecipes = async (selected: SourceItem[]) => {
+    const { destMaxCode, destIngredientsMap } = await prepareDestIngredients();
+    const destMaxCodeRef = { value: destMaxCode };
+
+    // Also get max sub_recipe code in destination
+    const { data: destSubRecipes } = await supabase
+      .from("sub_recipes")
+      .select("code")
+      .eq("user_id", userId)
+      .eq("store_id", activeStoreId);
+    
+    let destSubRecipeMaxCode = 0;
+    if (destSubRecipes && destSubRecipes.length > 0) {
+      destSubRecipeMaxCode = Math.max(...destSubRecipes.map((sr: any) => sr.code || 0));
+    }
+
+    let copied = 0;
+    let errors = 0;
+
+    for (const subRecipe of selected) {
+      try {
+        // 1. Fetch sub_recipe_ingredients from source
+        const { data: subRecipeIngs } = await supabase
+          .from("sub_recipe_ingredients")
+          .select(`
+            ingredient_id, quantity, unit, cost,
+            ingredients (
+              id, name, purchase_price, purchase_quantity, unit, unit_price, correction_factor, color
+            )
+          `)
+          .eq("sub_recipe_id", subRecipe.id);
+
+        // 2. Map ingredients
+        const ingredientMapping: Record<string, string> = {};
+        for (const ri of subRecipeIngs || []) {
+          const srcIng = (ri as any).ingredients;
+          if (!srcIng) continue;
+          const mappedId = await mapOrCreateIngredient(srcIng, destIngredientsMap, destMaxCodeRef);
+          if (mappedId) ingredientMapping[srcIng.id] = mappedId;
+        }
+
+        // 3. Create sub_recipe in destination
+        destSubRecipeMaxCode++;
+        const { data: newSubRecipe, error: srErr } = await supabase
+          .from("sub_recipes")
+          .insert({
+            user_id: userId,
+            store_id: activeStoreId,
+            code: destSubRecipeMaxCode,
+            name: subRecipe.name,
+            unit: subRecipe.unit || "kg",
+            yield_quantity: subRecipe.yield_quantity || 1,
+            total_cost: subRecipe.total_cost || 0,
+            unit_cost: subRecipe.unit_cost || 0,
+          })
+          .select()
+          .single();
+
+        if (srErr || !newSubRecipe) throw srErr || new Error("Falha ao criar sub-receita");
+
+        // 4. Create sub_recipe_ingredients
+        if (subRecipeIngs && subRecipeIngs.length > 0) {
+          const newSubRecipeIngs = subRecipeIngs
+            .filter((ri) => ingredientMapping[ri.ingredient_id])
+            .map((ri) => ({
+              sub_recipe_id: newSubRecipe.id,
+              ingredient_id: ingredientMapping[ri.ingredient_id],
+              quantity: ri.quantity,
+              unit: ri.unit,
+              cost: ri.cost,
+            }));
+          if (newSubRecipeIngs.length > 0) {
+            await supabase.from("sub_recipe_ingredients").insert(newSubRecipeIngs);
+          }
+        }
+
+        // 5. Create linked ingredient (is_sub_recipe = true)
+        destMaxCodeRef.value++;
+        let linkedRetries = 3;
+        while (linkedRetries > 0) {
+          const { error: linkedErr } = await supabase
+            .from("ingredients")
+            .insert({
+              user_id: userId,
+              store_id: activeStoreId,
+              code: destMaxCodeRef.value,
+              name: subRecipe.name,
+              is_sub_recipe: true,
+              sub_recipe_id: newSubRecipe.id,
+              purchase_price: subRecipe.total_cost || 0,
+              purchase_quantity: subRecipe.yield_quantity || 1,
+              unit: subRecipe.unit || "kg",
+              unit_price: subRecipe.unit_cost || 0,
+              correction_factor: 1,
+              color: "#ef4444",
+            });
+
+          if (!linkedErr) break;
+          if (linkedErr.code === "23505") {
+            destMaxCodeRef.value++;
+            linkedRetries--;
+            continue;
+          }
+          console.error("Error creating linked ingredient:", linkedErr);
+          break;
+        }
+
+        copied++;
+      } catch (err: any) {
+        console.error(`Error copying sub-recipe ${subRecipe.name}:`, err);
+        errors++;
+      }
+      setProgress(Math.round(((copied + errors) / selected.length) * 100));
+    }
+
+    return { copied, errors };
+  };
+
+  const handleCopy = async () => {
+    if (selectedIds.size === 0) return;
+    setCopying(true);
+    setProgress(0);
+
+    const selected = items.filter((r) => selectedIds.has(r.id));
+
+    const { copied, errors } = isSubRecipeMode
+      ? await handleCopySubRecipes(selected)
+      : await handleCopyRecipes(selected);
 
     setCopying(false);
 
     if (copied > 0) {
       toast({
-        title: "Receitas copiadas!",
-        description: `${copied} ficha${copied > 1 ? "s" : ""} técnica${copied > 1 ? "s" : ""} copiada${copied > 1 ? "s" : ""} com sucesso.${errors > 0 ? ` ${errors} erro${errors > 1 ? "s" : ""}.` : ""}`,
+        title: `${labelPlural} copiadas!`,
+        description: `${copied} ${copied > 1 ? labelPlural.toLowerCase() : label.toLowerCase()} copiada${copied > 1 ? "s" : ""} com sucesso.${errors > 0 ? ` ${errors} erro${errors > 1 ? "s" : ""}.` : ""}`,
       });
       onCopyComplete();
       onOpenChange(false);
     } else {
       toast({
         title: "Erro na cópia",
-        description: "Não foi possível copiar as receitas selecionadas.",
+        description: `Não foi possível copiar as ${labelPlural.toLowerCase()} selecionadas.`,
         variant: "destructive",
       });
     }
@@ -281,15 +433,14 @@ export function CopyRecipesFromStoreModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <StoreIcon className="w-5 h-5 text-primary" />
-            Copiar Fichas de Outra Loja
+            Copiar {labelPlural} de Outra Loja
           </DialogTitle>
           <DialogDescription>
-            Copie fichas técnicas de suas outras lojas para <strong>{activeStoreName}</strong>. Ingredientes inexistentes serão criados automaticamente.
+            Copie {labelPlural.toLowerCase()} de suas outras lojas para <strong>{activeStoreName}</strong>. Ingredientes inexistentes serão criados automaticamente.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Step 1: Select source store */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Loja de origem</label>
             <Select value={selectedStoreId} onValueChange={setSelectedStoreId} disabled={copying}>
@@ -306,47 +457,46 @@ export function CopyRecipesFromStoreModal({
             </Select>
           </div>
 
-          {/* Step 2: Recipe list */}
           {selectedStoreId && (
             <div className="space-y-2">
-              {loadingRecipes ? (
+              {loadingItems ? (
                 <div className="flex items-center justify-center py-8">
                   <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
                 </div>
-              ) : recipes.length === 0 ? (
+              ) : items.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">
-                  Nenhuma receita encontrada nesta loja.
+                  Nenhuma {label.toLowerCase()} encontrada nesta loja.
                 </p>
               ) : (
                 <>
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">
-                      {recipes.length} receita{recipes.length > 1 ? "s" : ""} encontrada{recipes.length > 1 ? "s" : ""}
+                      {items.length} {items.length > 1 ? labelPlural.toLowerCase() : label.toLowerCase()} encontrada{items.length > 1 ? "s" : ""}
                     </span>
                     <Button variant="ghost" size="sm" onClick={toggleAll} disabled={copying}>
-                      {selectedRecipeIds.size === recipes.length ? "Desmarcar todas" : "Selecionar todas"}
+                      {selectedIds.size === items.length ? "Desmarcar todas" : "Selecionar todas"}
                     </Button>
                   </div>
                   <ScrollArea className="h-[240px] rounded-md border border-border">
                     <div className="p-2 space-y-1">
-                      {recipes.map((recipe) => (
+                      {items.map((item) => (
                         <label
-                          key={recipe.id}
+                          key={item.id}
                           className="flex items-center gap-3 p-2 rounded-md hover:bg-accent/50 cursor-pointer transition-colors"
                         >
                           <Checkbox
-                            checked={selectedRecipeIds.has(recipe.id)}
-                            onCheckedChange={() => toggleRecipe(recipe.id)}
+                            checked={selectedIds.has(item.id)}
+                            onCheckedChange={() => toggleItem(item.id)}
                             disabled={copying}
                           />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <ChefHat className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                              <span className="text-sm font-medium truncate">{recipe.name}</span>
+                              <span className="text-sm font-medium truncate">{item.name}</span>
                             </div>
-                            {recipe.cost_per_serving != null && (
+                            {item.cost_per_serving != null && (
                               <span className="text-xs text-muted-foreground">
-                                Custo/porção: R$ {recipe.cost_per_serving.toFixed(2)}
+                                {isSubRecipeMode ? "Custo unitário" : "Custo/porção"}: R$ {item.cost_per_serving.toFixed(2)}
                               </span>
                             )}
                           </div>
@@ -359,7 +509,6 @@ export function CopyRecipesFromStoreModal({
             </div>
           )}
 
-          {/* Progress bar */}
           {copying && (
             <div className="space-y-1">
               <Progress value={progress} className="h-2" />
@@ -376,7 +525,7 @@ export function CopyRecipesFromStoreModal({
           </Button>
           <Button
             onClick={handleCopy}
-            disabled={selectedRecipeIds.size === 0 || copying}
+            disabled={selectedIds.size === 0 || copying}
           >
             {copying ? (
               <>
@@ -384,7 +533,7 @@ export function CopyRecipesFromStoreModal({
                 Copiando...
               </>
             ) : (
-              `Copiar ${selectedRecipeIds.size > 0 ? selectedRecipeIds.size : ""} Selecionada${selectedRecipeIds.size !== 1 ? "s" : ""}`
+              `Copiar ${selectedIds.size > 0 ? selectedIds.size : ""} Selecionada${selectedIds.size !== 1 ? "s" : ""}`
             )}
           </Button>
         </DialogFooter>

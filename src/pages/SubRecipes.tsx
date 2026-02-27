@@ -64,6 +64,8 @@ import { useDataProtection } from "@/hooks/useDataProtection";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { PlanUpgradePrompt } from "@/components/upsell/PlanUpgradePrompt";
 import { useUpgradeTracking } from "@/hooks/useUpgradeTracking";
+import { CopyRecipesFromStoreModal } from "@/components/recipes/CopyRecipesFromStoreModal";
+import { Copy, Store as StoreIcon } from "lucide-react";
 // Sub-recipe red color constant
 const SUB_RECIPE_COLOR = "#ef4444";
 
@@ -103,7 +105,7 @@ const units = [
 ];
 
 export default function SubRecipes() {
-  const { activeStore } = useStore();
+  const { activeStore, stores } = useStore();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -134,6 +136,7 @@ export default function SubRecipes() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
   });
+  const [copyFromStoreOpen, setCopyFromStoreOpen] = useState(false);
   
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState("");
@@ -669,6 +672,12 @@ export default function SubRecipes() {
                 showColorFilter={false}
               />
               <StoreSwitcher />
+              {stores.length > 1 && (
+                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setCopyFromStoreOpen(true)}>
+                  <Copy className="w-4 h-4" />
+                  <span className="hidden sm:inline">Copiar de outra loja</span>
+                </Button>
+              )}
               <Button className="gap-2" onClick={handleNewSubRecipe}>
                 <Plus className="w-4 h-4" />
                 Nova Receita
@@ -916,6 +925,18 @@ export default function SubRecipes() {
         feature="sub_recipes"
         limitReached="sub-receitas"
       />
+
+      {user && activeStore && stores.length > 1 && (
+        <CopyRecipesFromStoreModal
+          open={copyFromStoreOpen}
+          onOpenChange={setCopyFromStoreOpen}
+          stores={stores}
+          activeStoreId={activeStore.id}
+          userId={user.id}
+          onCopyComplete={() => fetchSubRecipes(user.id, activeStore?.id)}
+          mode="sub-recipes"
+        />
+      )}
     </div>
   );
 }
