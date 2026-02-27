@@ -467,7 +467,7 @@ export default function Beverages() {
     return storePrice / (1 - ifoodRealPercentage / 100);
   };
 
-  // Calculate CMV and Net Profit for a beverage (Loja and iFood)
+  // Calculate metrics for a beverage (Margem de Contribuição + Simulação)
   const calculateMetrics = (beverage: Beverage) => {
     const unitPrice = beverage.unit_price || (beverage.purchase_price / beverage.purchase_quantity);
     const sellingPrice = beverage.selling_price || 0;
@@ -477,31 +477,41 @@ export default function Beverages() {
     const ifoodPrice = beverage.ifood_selling_price > 0 ? beverage.ifood_selling_price : suggestedIfoodPrice;
     const cmvTarget = beverage.cmv_target || 35;
     
-    // Loja metrics - deduct production costs, business expenses, and taxes as %
-    const cmvLoja = sellingPrice > 0 ? (unitPrice / sellingPrice) * 100 : 0;
-    const prodCostLoja = sellingPrice * (productionCostsPercent || 0) / 100;
+    // Custos variáveis Loja (impostos + taxa cartão)
     const taxCostLoja = sellingPrice * (taxPercentage || 0) / 100;
-    const netProfitLoja = sellingPrice - unitPrice - prodCostLoja - taxCostLoja;
-    const netProfitPercentLoja = sellingPrice > 0 ? (netProfitLoja / sellingPrice) * 100 : 0;
+    const prodCostLoja = sellingPrice * (productionCostsPercent || 0) / 100;
+    const totalVariableCostsLoja = taxCostLoja + prodCostLoja;
     
-    // iFood metrics - deduct iFood fee, then production costs, business expenses, and taxes
+    // Margem de Contribuição Loja = Preço Venda - Custo Unitário - Custos Variáveis
+    const margemContribuicaoLoja = sellingPrice - unitPrice - totalVariableCostsLoja;
+    const margemContribuicaoPercentLoja = sellingPrice > 0 ? (margemContribuicaoLoja / sellingPrice) * 100 : 0;
+    
+    // CMV Loja
+    const cmvLoja = sellingPrice > 0 ? (unitPrice / sellingPrice) * 100 : 0;
+    
+    // iFood metrics
     const ifoodFee = ifoodPrice * (ifoodRealPercentage / 100);
     const ifoodNetRevenue = ifoodPrice - ifoodFee;
     const cmvIfood = ifoodNetRevenue > 0 ? (unitPrice / ifoodNetRevenue) * 100 : 0;
-    const prodCostIfood = ifoodNetRevenue * (productionCostsPercent || 0) / 100;
     const taxCostIfood = ifoodNetRevenue * (taxPercentage || 0) / 100;
-    const netProfitIfood = ifoodNetRevenue - unitPrice - prodCostIfood - taxCostIfood;
-    const netProfitPercentIfood = ifoodPrice > 0 ? (netProfitIfood / ifoodPrice) * 100 : 0;
+    const prodCostIfood = ifoodNetRevenue * (productionCostsPercent || 0) / 100;
+    const totalVariableCostsIfood = taxCostIfood + prodCostIfood + ifoodFee;
+    
+    // Margem de Contribuição iFood
+    const margemContribuicaoIfood = ifoodPrice - unitPrice - totalVariableCostsIfood;
+    const margemContribuicaoPercentIfood = ifoodPrice > 0 ? (margemContribuicaoIfood / ifoodPrice) * 100 : 0;
     
     return { 
       unitPrice, 
       cmvTarget,
       cmvLoja, 
-      netProfitLoja, 
-      netProfitPercentLoja,
+      totalVariableCostsLoja,
+      margemContribuicaoLoja, 
+      margemContribuicaoPercentLoja,
       cmvIfood,
-      netProfitIfood,
-      netProfitPercentIfood,
+      totalVariableCostsIfood,
+      margemContribuicaoIfood,
+      margemContribuicaoPercentIfood,
       ifoodPrice,
       suggestedIfoodPrice,
       ifoodFee,
@@ -778,10 +788,10 @@ export default function Beverages() {
                       <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Des.</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço Loja</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Loja</TableHead>
-                       <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro/Produto</TableHead>
+                       <TableHead className="text-primary-foreground font-medium w-24 text-right">C. Variáveis</TableHead>
+                       <TableHead className="text-primary-foreground font-medium w-28 text-right">M. Contribuição</TableHead>
                       <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço iFood</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV iFood</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro/Produto</TableHead>
+                      <TableHead className="text-primary-foreground font-medium w-28 text-right">M. Contribuição</TableHead>
                       <TableHead className="w-20"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -824,12 +834,21 @@ export default function Beverages() {
                           </TableCell>
                           <TableCell className="text-right">
                             {bev.selling_price > 0 ? (
+                              <span className="font-mono text-xs text-muted-foreground">
+                                {formatCurrency(metrics.totalVariableCostsLoja)}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {bev.selling_price > 0 ? (
                               <div className="flex flex-col items-end">
-                                <span className={`font-mono font-semibold ${metrics.netProfitLoja >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                  {formatCurrency(metrics.netProfitLoja)}
+                                <span className={`font-mono font-semibold ${metrics.margemContribuicaoLoja >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {formatCurrency(metrics.margemContribuicaoLoja)}
                                 </span>
-                                <span className={`text-xs ${metrics.netProfitLoja >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                  {metrics.netProfitPercentLoja.toFixed(0)}%
+                                <span className={`text-xs ${metrics.margemContribuicaoLoja >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {metrics.margemContribuicaoPercentLoja.toFixed(0)}%
                                 </span>
                               </div>
                             ) : (
@@ -851,23 +870,14 @@ export default function Beverages() {
                               <span className="text-muted-foreground">—</span>
                             )}
                           </TableCell>
-                          <TableCell className="text-center">
-                            {metrics.ifoodPrice > 0 ? (
-                              <span className={`font-mono font-semibold ${cmvIfoodOk ? 'text-success' : 'text-warning'}`}>
-                                {metrics.cmvIfood.toFixed(1)}%
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                          </TableCell>
                           <TableCell className="text-right">
                             {metrics.ifoodPrice > 0 ? (
                               <div className="flex flex-col items-end">
-                                <span className={`font-mono font-semibold ${metrics.netProfitIfood >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                  {formatCurrency(metrics.netProfitIfood)}
+                                <span className={`font-mono font-semibold ${metrics.margemContribuicaoIfood >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {formatCurrency(metrics.margemContribuicaoIfood)}
                                 </span>
-                                <span className={`text-xs ${metrics.netProfitIfood >= 0 ? 'text-success' : 'text-destructive'}`}>
-                                  {metrics.netProfitPercentIfood.toFixed(0)}%
+                                <span className={`text-xs ${metrics.margemContribuicaoIfood >= 0 ? 'text-success' : 'text-destructive'}`}>
+                                  {metrics.margemContribuicaoPercentIfood.toFixed(0)}%
                                 </span>
                                 {ifoodRealPercentage > 0 && (
                                   <span className="text-[10px] text-muted-foreground">
