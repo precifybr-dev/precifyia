@@ -3661,6 +3661,23 @@ export type Database = {
         }
         Relationships: []
       }
+      unified_products: {
+        Row: {
+          cmv_target: number | null
+          created_at: string | null
+          custo_unitario: number | null
+          id: string | null
+          ifood_selling_price: number | null
+          name: string | null
+          preco_sugerido: number | null
+          preco_venda: number | null
+          store_id: string | null
+          tipo: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       calculate_extraction_score: { Args: { p_user: string }; Returns: number }
