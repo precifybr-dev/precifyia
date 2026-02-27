@@ -308,7 +308,7 @@ export function CopyRecipesFromStoreModal({
     for (const subRecipe of selected) {
       try {
         // 1. Fetch sub_recipe_ingredients from source
-        const { data: subRecipeIngs } = await supabase
+        const { data: subRecipeIngs, error: fetchErr } = await supabase
           .from("sub_recipe_ingredients")
           .select(`
             ingredient_id, quantity, unit, cost,
@@ -318,14 +318,30 @@ export function CopyRecipesFromStoreModal({
           `)
           .eq("sub_recipe_id", subRecipe.id);
 
-        // 2. Map ingredients
+        if (fetchErr) {
+          console.error("Error fetching sub_recipe_ingredients:", fetchErr);
+          throw fetchErr;
+        }
+
+        console.log(`Sub-recipe "${subRecipe.name}": found ${subRecipeIngs?.length || 0} ingredients`);
+
+        // 2. Map ingredients — create missing ones in destination
         const ingredientMapping: Record<string, string> = {};
         for (const ri of subRecipeIngs || []) {
           const srcIng = (ri as any).ingredients;
-          if (!srcIng) continue;
+          if (!srcIng) {
+            console.warn("Ingredient data missing for ingredient_id:", ri.ingredient_id);
+            continue;
+          }
           const mappedId = await mapOrCreateIngredient(srcIng, destIngredientsMap, destMaxCodeRef);
-          if (mappedId) ingredientMapping[srcIng.id] = mappedId;
+          if (mappedId) {
+            ingredientMapping[srcIng.id] = mappedId;
+          } else {
+            console.warn("Failed to map/create ingredient:", srcIng.name);
+          }
         }
+
+        console.log(`Mapped ${Object.keys(ingredientMapping).length} ingredients for "${subRecipe.name}"`);
 
         // 3. Create sub_recipe in destination
         destSubRecipeMaxCode++;
@@ -346,19 +362,30 @@ export function CopyRecipesFromStoreModal({
 
         if (srErr || !newSubRecipe) throw srErr || new Error("Falha ao criar sub-receita");
 
-        // 4. Create sub_recipe_ingredients
+        // 4. Create sub_recipe_ingredients with mapped ingredient IDs
         if (subRecipeIngs && subRecipeIngs.length > 0) {
           const newSubRecipeIngs = subRecipeIngs
             .filter((ri) => ingredientMapping[ri.ingredient_id])
-            .map((ri) => ({
-              sub_recipe_id: newSubRecipe.id,
-              ingredient_id: ingredientMapping[ri.ingredient_id],
-              quantity: ri.quantity,
-              unit: ri.unit,
-              cost: ri.cost,
-            }));
+            .map((ri) => {
+              const destIngId = ingredientMapping[ri.ingredient_id];
+              // Recalculate cost using destination ingredient unit_price
+              const destIng = Array.from(destIngredientsMap.values()).find((i: any) => i.id === destIngId);
+              const recalculatedCost = destIng ? ri.quantity * (destIng.unit_price || 0) : ri.cost;
+              return {
+                sub_recipe_id: newSubRecipe.id,
+                ingredient_id: destIngId,
+                quantity: ri.quantity,
+                unit: ri.unit,
+                cost: recalculatedCost,
+              };
+            });
           if (newSubRecipeIngs.length > 0) {
-            await supabase.from("sub_recipe_ingredients").insert(newSubRecipeIngs);
+            const { error: ingInsertErr } = await supabase.from("sub_recipe_ingredients").insert(newSubRecipeIngs);
+            if (ingInsertErr) {
+              console.error("Error inserting sub_recipe_ingredients:", ingInsertErr);
+              throw ingInsertErr;
+            }
+            console.log(`Inserted ${newSubRecipeIngs.length} ingredients into sub-recipe "${subRecipe.name}"`);
           }
         }
 
