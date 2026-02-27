@@ -1,87 +1,90 @@
 
 
-# Copiar Receitas de Outras Lojas
+# Corrigir Numeracao de Insumos por Loja
 
-## Resumo
+## Problema
 
-Adicionar um botao na pagina de Fichas Tecnicas que permite ao usuario (Pro com multiplas lojas) importar/copiar receitas de suas outras lojas para a loja ativa. O sistema busca as receitas das outras lojas, permite selecionar quais copiar, e duplica-as (com ingredientes) para a loja atual.
+Quando o usuario cria uma segunda loja, a numeracao dos insumos continua de onde parou na loja 1 (ex: loja 1 tem 50 insumos, loja 2 comeca no 51). O correto e cada loja ter sua propria sequencia independente comecando pelo 1.
 
-## Pre-requisitos
+## Causa raiz
 
-- Usuario deve ter plano Pro (multi-loja)
-- Usuario deve ter mais de 1 loja cadastrada
-- So copia receitas de lojas do mesmo usuario
+1. A constraint do banco e `UNIQUE (user_id, code)` — impede codigos iguais entre lojas do mesmo usuario
+2. Todas as funcoes `getNextCode` buscam o maior codigo global do usuario, sem filtrar por loja
 
-## Implementacao
+## O que sera feito
 
-### 1. Novo componente: `CopyRecipesFromStoreModal`
+### 1. Migration SQL: alterar constraint de unicidade
 
-Arquivo: `src/components/recipes/CopyRecipesFromStoreModal.tsx`
+Trocar a constraint de `UNIQUE (user_id, code)` para `UNIQUE (user_id, store_id, code)` na tabela `ingredients`.
 
-- Dialog/modal com dois passos:
-  1. **Selecionar loja de origem**: Dropdown com as outras lojas do usuario (exclui a ativa)
-  2. **Selecionar receitas**: Lista com checkboxes das receitas da loja selecionada, mostrando nome e custo por porcao
-- Botao "Copiar Selecionadas" que executa a duplicacao
-- Indicador de progresso durante a copia
+Fazer o mesmo para `beverages`: trocar `UNIQUE (user_id, code)` para `UNIQUE (user_id, store_id, code)`.
 
-### 2. Logica de copia
+Isso permite que cada loja tenha sua propria sequencia de codigos (1, 2, 3...) independente.
 
-Para cada receita selecionada:
-1. Buscar `recipe_ingredients` da receita original
-2. Verificar se os ingredientes existem na loja destino (por nome)
-   - Se existem: usar o `ingredient_id` da loja destino
-   - Se nao existem: copiar o ingrediente tambem para a loja destino
-3. Criar nova receita com `store_id` da loja ativa e `user_id` do usuario
-4. Criar os `recipe_ingredients` vinculados a nova receita
-5. Resetar `selling_price` e `ifood_selling_price` para null (mesmo padrao da duplicacao existente)
+### 2. Corrigir `Ingredients.tsx` — getNextCode
 
-### 3. Integracao na pagina Recipes.tsx
+A funcao `getNextCode` passara a considerar apenas os ingredientes carregados da loja ativa (que ja sao filtrados por store_id no `fetchIngredients`). Nenhuma mudanca de logica necessaria aqui, pois o array `ingredients` ja e filtrado por loja. O calculo `Math.max(...ingredients.map(ing => ing.code))` ja retorna o maximo correto da loja ativa.
 
-- Adicionar botao "Copiar de outra loja" ao lado do botao "Nova Ficha Tecnica"
-- Botao so aparece quando:
-  - `stores.length > 1` (usuario tem mais de uma loja)
-  - Respeita o limite de receitas do plano
-- Importar e renderizar o `CopyRecipesFromStoreModal`
-- Apos copia bem-sucedida, recarregar a lista de receitas
+### 3. Corrigir `Ingredients.tsx` — handleIfoodImport (getGlobalMaxCode)
 
-### 4. Verificacao de ingredientes
+A funcao `getGlobalMaxCode` sera renomeada e filtrada por `store_id` da loja ativa, em vez de buscar globalmente por `user_id`.
 
-Ao copiar uma receita, os ingredientes podem nao existir na loja destino. A logica sera:
-- Buscar ingrediente na loja destino pelo nome (case-insensitive)
-- Se encontrar: reutilizar
-- Se nao encontrar: criar o ingrediente na loja destino copiando os dados (nome, preco, unidade, fator de correcao, etc.)
-- Recalcular custos com base nos precos dos ingredientes da loja destino
+### 4. Corrigir `SpreadsheetImportModal.tsx`
 
-### Arquivos criados/modificados
+A query que busca o maior codigo tambem sera filtrada por `store_id`.
 
-1. **Novo**: `src/components/recipes/CopyRecipesFromStoreModal.tsx` — Modal completo com selecao de loja, selecao de receitas e logica de copia
-2. **Modificado**: `src/pages/Recipes.tsx` — Adicionar botao + state do modal + integracao
+### 5. Corrigir `Beverages.tsx` — getNextCode
 
-### Fluxo do usuario
+Filtrar por `store_id` da loja ativa ao buscar o maior codigo.
 
-```text
-[Pagina Fichas Tecnicas]
-        |
-  [Botao: Copiar de outra loja]  (visivel apenas para Pro com 2+ lojas)
-        |
-  [Modal abre]
-        |
-  [Seleciona loja de origem]
-        |
-  [Lista receitas da loja com checkboxes]
-        |
-  [Seleciona receitas desejadas]
-        |
-  [Clica "Copiar Selecionadas"]
-        |
-  [Sistema copia receitas + ingredientes]
-        |
-  [Toast de sucesso + lista atualizada]
+### 6. Corrigir `IngredientsStep.tsx` (onboarding) — getNextCode
+
+Filtrar por `store_id` da loja ao buscar o proximo codigo.
+
+### 7. Corrigir `CopyRecipesFromStoreModal.tsx`
+
+Ao copiar ingredientes para a loja destino, gerar o codigo sequencial correto para a loja destino (buscar max code da loja destino e incrementar).
+
+## Detalhes tecnicos
+
+### Migration SQL
+
+```sql
+-- Ingredients: trocar constraint
+ALTER TABLE public.ingredients 
+  DROP CONSTRAINT ingredients_user_id_code_key;
+ALTER TABLE public.ingredients 
+  ADD CONSTRAINT ingredients_user_store_code_key UNIQUE (user_id, store_id, code);
+
+-- Beverages: trocar constraint
+ALTER TABLE public.beverages 
+  DROP CONSTRAINT beverages_user_code_unique;
+ALTER TABLE public.beverages 
+  ADD CONSTRAINT beverages_user_store_code_unique UNIQUE (user_id, store_id, code);
 ```
 
-### Consideracoes
+### Padrao das queries corrigidas
 
-- Nenhuma migration SQL necessaria — usa tabelas existentes (`recipes`, `recipe_ingredients`, `ingredients`)
-- RLS ja garante que o usuario so acessa suas proprias lojas e dados
-- Ingredientes duplicados sao evitados pela busca por nome na loja destino
-- Limite de receitas do plano e respeitado (verifica antes de copiar)
+Antes (global):
+```typescript
+.eq("user_id", user.id)
+.order("code", { ascending: false })
+.limit(1)
+```
+
+Depois (por loja):
+```typescript
+.eq("user_id", user.id)
+.eq("store_id", activeStoreId)
+.order("code", { ascending: false })
+.limit(1)
+```
+
+### Arquivos modificados
+
+1. **Nova migration SQL** — alterar constraints de unicidade
+2. **`src/pages/Ingredients.tsx`** — corrigir `getGlobalMaxCode` no iFood import
+3. **`src/pages/Beverages.tsx`** — corrigir `getNextCode` para filtrar por loja
+4. **`src/components/spreadsheet-import/SpreadsheetImportModal.tsx`** — filtrar por store_id
+5. **`src/components/onboarding/IngredientsStep.tsx`** — corrigir `getNextCode` para filtrar por loja
+6. **`src/components/recipes/CopyRecipesFromStoreModal.tsx`** — gerar codigo sequencial ao copiar ingredientes
