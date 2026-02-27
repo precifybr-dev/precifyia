@@ -24,28 +24,37 @@ export function Footer() {
   return (
     <footer className="bg-card border-t border-border py-12">
       <div className="container px-4 mx-auto">
-        <div className="grid md:grid-cols-4 gap-8 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-8">
           {/* Brand */}
-          <div className="md:col-span-2">
+          <div className="col-span-2">
             <Link to="/" className="mb-4 inline-block">
               <Logo size="sm" showText />
             </Link>
             <p className="text-muted-foreground max-w-md leading-relaxed mb-4">
-              Saiba exatamente quanto você lucra em cada venda no iFood e no balcão.
+              Precificação inteligente para food service. Calcule custos, margens e preços ideais para seu restaurante, delivery e iFood.
             </p>
           </div>
 
-          {/* Links */}
+          {/* Produto */}
           <div>
             <h4 className="font-display font-semibold mb-4 text-foreground">Produto</h4>
             <ul className="space-y-3">
               <li>
                 <a 
-                  href="#funcionalidades" 
-                  onClick={(e) => handleSmoothScroll(e, "funcionalidades")}
+                  href="#calculadora" 
+                  onClick={(e) => handleSmoothScroll(e, "calculadora")}
                   className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  Funcionalidades
+                  Calculadora de Preços
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="#resultados" 
+                  onClick={(e) => handleSmoothScroll(e, "resultados")}
+                  className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Resultados
                 </a>
               </li>
               <li>
@@ -54,12 +63,22 @@ export function Footer() {
                   onClick={(e) => handleSmoothScroll(e, "precos")}
                   className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  Planos
+                  Planos e Preços
+                </a>
+              </li>
+              <li>
+                <a 
+                  href="#faq" 
+                  onClick={(e) => handleSmoothScroll(e, "faq")}
+                  className="text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                >
+                  Perguntas Frequentes
                 </a>
               </li>
             </ul>
           </div>
 
+          {/* Suporte */}
           <div>
             <h4 className="font-display font-semibold mb-4 text-foreground">Suporte</h4>
             <ul className="space-y-3">
@@ -81,9 +100,26 @@ export function Footer() {
                   Falar no WhatsApp
                 </a>
               </li>
+              <li>
+                <Link 
+                  to="/login"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Entrar na Conta
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/register"
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Criar Conta Grátis
+                </Link>
+              </li>
             </ul>
           </div>
 
+          {/* Redes Sociais & Legal */}
           <div>
             <h4 className="font-display font-semibold mb-4 text-foreground">Redes Sociais</h4>
             <ul className="space-y-3">
