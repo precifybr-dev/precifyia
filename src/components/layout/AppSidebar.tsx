@@ -9,6 +9,8 @@ import {
 import { FloatingCalculator } from "./FloatingCalculator";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import {
   Popover,
   PopoverContent,
@@ -56,6 +58,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
   const location = useLocation();
   const { toast } = useToast();
   const { activeStore, userPlan, canCreateStore, storeCount, maxStores } = useStore();
+  const isMobile = useIsMobile();
   const isPro = userPlan === "pro";
   const [showCreateStoreModal, setShowCreateStoreModal] = useState(false);
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
@@ -132,10 +135,14 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
                     : "Negócio"}
                 </p>
               </div>
-              <FloatingCalculator />
+              <div className="hidden lg:block">
+                <FloatingCalculator />
+              </div>
             </div>
 
-            {isPro ? (
+            {isMobile ? (
+              <StoreSwitcher />
+            ) : isPro ? (
               <button
                 onClick={() => setShowCreateStoreModal(true)}
                 disabled={!canCreateStore}
