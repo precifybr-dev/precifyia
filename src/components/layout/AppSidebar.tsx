@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, FileSpreadsheet, Package, Wine, Building2,
-  LogOut, ChevronRight, Plus, Store, Crown, Sun, Moon,
+  LayoutDashboard, Package, Wine, Building2,
+  LogOut, ChevronRight, ChevronDown, Plus, Store, Crown, Sun, Moon,
   Sparkles, Headphones, HardDrive, Trash2, ChevronUp, GraduationCap, UtensilsCrossed, BarChart3, ArrowUpRight,
-  CookingPot,
+  CookingPot, FileText, ShoppingBag,
 } from "lucide-react";
 import { FloatingCalculator } from "./FloatingCalculator";
 import { Button } from "@/components/ui/button";
@@ -31,17 +31,43 @@ type NavItem = {
   route: string;
 };
 
-const navItems: NavItem[] = [
+type NavGroup = {
+  icon: typeof LayoutDashboard;
+  label: string;
+  key: string;
+  children: NavItem[];
+};
+
+type NavEntry = NavItem | NavGroup;
+
+const isGroup = (entry: NavEntry): entry is NavGroup => "children" in entry;
+
+const navEntries: NavEntry[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "dashboard", route: "/app" },
-  { icon: Building2, label: "Área do Negócio", path: "business", route: "/app/business" },
-  { icon: Package, label: "Insumos", path: "ingredients", route: "/app/ingredients" },
-  { icon: Wine, label: "Bebidas", path: "beverages", route: "/app/beverages" },
-  { icon: FileSpreadsheet, label: "Fichas Técnicas", path: "recipes", route: "/app/recipes" },
-  { icon: CookingPot, label: "Sub-Receitas", path: "sub-recipes", route: "/app/sub-recipes" },
-  { icon: Package, label: "Embalagens", path: "packagings", route: "/app/packagings" },
-  { icon: Sparkles, label: "Combos (BETA)", path: "combos", route: "/app/combos" },
-  { icon: UtensilsCrossed, label: "Meu Cardápio", path: "menu", route: "/app/menu" },
+  {
+    icon: Package, label: "Insumos", key: "insumos",
+    children: [
+      { icon: ShoppingBag, label: "Ingredientes", path: "ingredients", route: "/app/ingredients" },
+      { icon: Wine, label: "Bebidas", path: "beverages", route: "/app/beverages" },
+      { icon: Package, label: "Embalagens", path: "packagings", route: "/app/packagings" },
+    ],
+  },
+  {
+    icon: FileText, label: "Fichas Técnicas", key: "fichas",
+    children: [
+      { icon: UtensilsCrossed, label: "Produtos Finais", path: "recipes", route: "/app/recipes" },
+      { icon: CookingPot, label: "Minhas Receitas", path: "sub-recipes", route: "/app/sub-recipes" },
+    ],
+  },
+  {
+    icon: UtensilsCrossed, label: "Meu Cardápio", key: "cardapio",
+    children: [
+      { icon: UtensilsCrossed, label: "Produtos Ativos", path: "menu", route: "/app/menu" },
+      { icon: Sparkles, label: "Combos (BETA)", path: "combos", route: "/app/combos" },
+    ],
+  },
   { icon: BarChart3, label: "CMV Global", path: "cmv", route: "/app/cmv" },
+  { icon: Building2, label: "Área do Negócio", path: "business", route: "/app/business" },
   { icon: GraduationCap, label: "Universidade", path: "universidade", route: "/app/universidade" },
   { icon: Headphones, label: "Suporte", path: "support", route: "/app/support" },
 ];
@@ -61,6 +87,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
   const isMobile = useIsMobile();
   const isPro = userPlan === "pro";
   const [showCreateStoreModal, setShowCreateStoreModal] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     return document.documentElement.classList.contains("dark") ? "dark" : "light";
@@ -68,15 +95,46 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
 
   const currentPath = location.pathname;
 
+  const getAllNavItems = (): NavItem[] => {
+    const items: NavItem[] = [];
+    for (const entry of navEntries) {
+      if (isGroup(entry)) {
+        items.push(...entry.children);
+      } else {
+        items.push(entry);
+      }
+    }
+    return items;
+  };
+
   const getActiveNav = () => {
     if (currentPath === "/app" || currentPath === "/app/dashboard") return "dashboard";
-    for (const item of navItems) {
+    for (const item of getAllNavItems()) {
       if (item.route !== "/app" && currentPath.startsWith(item.route)) return item.path;
     }
     return "";
   };
 
   const activeNav = getActiveNav();
+
+  // Auto-open group containing active route
+  const getActiveGroupKey = (): string | null => {
+    for (const entry of navEntries) {
+      if (isGroup(entry) && entry.children.some(c => c.path === activeNav)) {
+        return entry.key;
+      }
+    }
+    return null;
+  };
+
+  const toggleGroup = (key: string) => {
+    setOpenGroups(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const isGroupOpen = (key: string) => {
+    if (openGroups[key] !== undefined) return openGroups[key];
+    return getActiveGroupKey() === key;
+  };
 
   const handleNavClick = (item: NavItem) => {
     onClose();
@@ -175,21 +233,66 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-minimal">
-            {navItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => handleNavClick(item)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                  activeNav === item.path
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                <item.icon className="w-5 h-5" />
-                <span>{item.label}</span>
-                {activeNav !== item.path && <ChevronRight className="w-4 h-4 ml-auto opacity-50" />}
-              </button>
-            ))}
+            {navEntries.map((entry) => {
+              if (isGroup(entry)) {
+                const groupOpen = isGroupOpen(entry.key);
+                const groupActive = entry.children.some(c => c.path === activeNav);
+                return (
+                  <div key={entry.key}>
+                    <button
+                      onClick={() => toggleGroup(entry.key)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                        groupActive
+                          ? "text-primary font-medium"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      <entry.icon className="w-5 h-5" />
+                      <span>{entry.label}</span>
+                      {groupOpen ? (
+                        <ChevronDown className="w-4 h-4 ml-auto opacity-50" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 ml-auto opacity-50" />
+                      )}
+                    </button>
+                    {groupOpen && (
+                      <div className="ml-4 pl-4 border-l border-border space-y-0.5 mt-0.5">
+                        {entry.children.map((child) => (
+                          <button
+                            key={child.path}
+                            onClick={() => handleNavClick(child)}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                              activeNav === child.path
+                                ? "bg-primary/10 text-primary font-medium"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            }`}
+                          >
+                            <child.icon className="w-4 h-4" />
+                            <span>{child.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+              const item = entry as NavItem;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => handleNavClick(item)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                    activeNav === item.path
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                  {activeNav !== item.path && <ChevronRight className="w-4 h-4 ml-auto opacity-50" />}
+                </button>
+              );
+            })}
           </nav>
 
           {/* Footer: Theme + User Menu */}
