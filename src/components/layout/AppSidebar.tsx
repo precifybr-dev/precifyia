@@ -62,7 +62,7 @@ const navEntries: NavEntry[] = [
   {
     icon: UtensilsCrossed, label: "Meu Cardápio", key: "cardapio",
     children: [
-      { icon: UtensilsCrossed, label: "Produtos Ativos", path: "menu", route: "/app/menu" },
+      { icon: UtensilsCrossed, label: "Cardápio Ifood IA", path: "menu", route: "/app/menu" },
       { icon: Sparkles, label: "Combos (BETA)", path: "combos", route: "/app/combos" },
     ],
   },
