@@ -487,13 +487,20 @@ export function SpreadsheetImportModal({
       // Start code from 1 if deleting all, otherwise get max
       let startCode = 1;
       if (!shouldDeleteExisting) {
-        const { data: maxCodeData } = await supabase
+        let codeQuery = supabase
           .from("ingredients")
           .select("code")
           .eq("user_id", userId)
           .order("code", { ascending: false })
           .limit(1);
         
+        if (storeId) {
+          codeQuery = codeQuery.eq("store_id", storeId);
+        } else {
+          codeQuery = codeQuery.is("store_id", null);
+        }
+
+        const { data: maxCodeData } = await codeQuery;
         startCode = maxCodeData && maxCodeData.length > 0 ? maxCodeData[0].code + 1 : 1;
       }
 

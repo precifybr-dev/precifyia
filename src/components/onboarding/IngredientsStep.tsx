@@ -123,15 +123,22 @@ export function IngredientsStep({ onAdvance }: IngredientsStepProps) {
     }
   };
 
-  // Helper: buscar próximo código global do usuário (não por loja)
+  // Helper: buscar próximo código da loja padrão do usuário
   const getNextCode = async (userId: string): Promise<number> => {
-    const { data } = await supabase
+    let query = supabase
       .from("ingredients")
       .select("code")
       .eq("user_id", userId)
       .order("code", { ascending: false })
       .limit(1);
     
+    if (defaultStoreId) {
+      query = query.eq("store_id", defaultStoreId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data } = await query;
     return (data && data.length > 0 ? data[0].code : 0) + 1;
   };
 
