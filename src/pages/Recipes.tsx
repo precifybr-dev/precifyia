@@ -1415,6 +1415,7 @@ export default function Recipes() {
           activeStoreId={activeStore.id}
           userId={user.id}
           onCopyComplete={() => fetchRecipes(user.id, activeStore?.id)}
+          mode="recipes"
         />
       )}
     </div>
