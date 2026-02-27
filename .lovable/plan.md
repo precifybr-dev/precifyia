@@ -1,53 +1,33 @@
 
-# Fix: Custo da Embalagem no Calculo Final da Ficha Tecnica
 
-## Problema
+# Correcao de Bugs na Precificacao - Embalagem
 
-O custo da embalagem nao esta aparecendo na precificacao porque:
+## Bugs Encontrados
 
-1. O backend (edge function) calcula tudo sem saber da embalagem
-2. O resultado do backend (`pricingResult`) sobrescreve os valores locais que incluem embalagem
-3. Mudar a embalagem nao re-dispara o calculo (falta nas dependencias do useEffect)
+### Bug 1: "CUSTO RECEITA" ja inclui embalagem (PricingInputsCard)
+No `PricingInputsCard.tsx` (linha 76), o campo "CUSTO RECEITA" exibe `ingredientsCost` que ja inclui a embalagem (calculado em `Recipes.tsx` linha 783: `rawIngredientsCost + packagingCost`). 
+Resultado: as colunas "CUSTO RECEITA" e "C/ EMBALAGEM" mostram o **mesmo valor**, o que e incorreto e confuso.
 
-## Solucao
+**Correcao**: Passar `rawIngredientsCost` (sem embalagem) para exibir em "CUSTO RECEITA", e `ingredientsCost` (com embalagem) para "C/ EMBALAGEM".
 
-Adicionar o custo da embalagem como parametro extra enviado ao backend, para que TODOS os calculos (preco sugerido, CMV, margens, lucro liquido) incluam a embalagem.
+### Bug 2: Tooltip do iFood nao menciona embalagem (PricingProfitCard)
+No card de lucro do iFood (linha 312-315), o tooltip "Como o lucro e calculado" nao lista "Custo da embalagem" como item, diferente do tooltip da Loja (linha 173) que menciona corretamente.
 
-## Mudancas
+**Correcao**: Adicionar "Custo da embalagem (quando selecionada)" na lista do tooltip do iFood.
 
-### 1. Hook `useRecipePricing.ts` - Adicionar campo `packaging_cost`
+## Arquivos a Modificar
 
-- Adicionar `packaging_cost?: number` na interface `RecipePricingInput`
-- O valor sera enviado ao backend junto com os demais parametros
+### 1. `src/pages/Recipes.tsx`
+- Passar `rawIngredientsCost` como nova prop para o `PricingSummaryPanel`
 
-### 2. Edge Function `calculate-recipe-pricing` - Somar embalagem ao custo
+### 2. `src/components/recipes/PricingSummaryPanel.tsx`
+- Receber e repassar `rawIngredientsCost` ao `PricingInputsCard`
 
-- Receber `packaging_cost` (default 0) no body
-- Somar ao `ingredients_cost_total` e `ingredients_cost_per_serving`
-- Todos os calculos derivados (CMV, margem, preco sugerido, lucro) automaticamente incluirao a embalagem
+### 3. `src/components/recipes/pricing/PricingInputsCard.tsx`
+- Receber `rawIngredientsCost` como prop
+- "CUSTO RECEITA" exibe `rawIngredientsCost` (somente insumos)
+- "C/ EMBALAGEM" exibe `ingredientsCost` (insumos + embalagem) -- ja funciona
 
-### 3. `Recipes.tsx` - Passar packaging_cost e corrigir dependencias
+### 4. `src/components/recipes/pricing/PricingProfitCard.tsx`
+- Adicionar "Custo da embalagem (quando selecionada)" no tooltip do iFood (linhas 312-315)
 
-- No `calculatePricing()`, passar `packaging_cost: packagingCost`
-- Adicionar `includePackaging` e `selectedPackagingId` no array de dependencias do useEffect
-- Remover a soma local duplicada (linha 780) ja que o backend fara isso
-
-### 4. `PricingSummaryPanel` e `PricingInputsCard` - Exibir custo com embalagem
-
-- Adicionar linha "Custo c/ Embalagem" no card de custos quando houver embalagem selecionada
-- Mostrar claramente que o custo total inclui embalagem
-
-## Arquivos modificados
-
-- `src/hooks/useRecipePricing.ts` - adicionar campo packaging_cost na interface
-- `supabase/functions/calculate-recipe-pricing/index.ts` - somar packaging_cost nos calculos
-- `src/pages/Recipes.tsx` - passar packaging_cost, corrigir dependencias do useEffect
-- `src/components/recipes/pricing/PricingInputsCard.tsx` - exibir linha de custo embalagem
-- `src/components/recipes/PricingSummaryPanel.tsx` - passar packagingCost ao card
-
-## O que NAO muda
-
-- Tabelas do banco de dados
-- Menu de Embalagens
-- Hook `usePackagings.ts`
-- UI do Switch/Select de embalagem (ja funciona)
