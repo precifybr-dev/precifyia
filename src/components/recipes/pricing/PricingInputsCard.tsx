@@ -14,6 +14,7 @@ interface PricingInputsCardProps {
   lossPercent: string;
   setLossPercent: (value: string) => void;
   formatCurrency: (value: number) => string;
+  packagingCost?: number;
 }
 
 export default function PricingInputsCard({
@@ -26,6 +27,7 @@ export default function PricingInputsCard({
   lossPercent,
   setLossPercent,
   formatCurrency,
+  packagingCost = 0,
 }: PricingInputsCardProps) {
   const hasSellingPrice = sellingPrice.trim() !== "" && parseFloat(sellingPrice) > 0;
 
@@ -67,13 +69,24 @@ export default function PricingInputsCard({
       {/* Custos */}
       <Card>
         <CardContent className="pt-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className={`grid ${packagingCost > 0 ? 'grid-cols-3' : 'grid-cols-2'} gap-3`}>
             <div>
               <p className="text-xs text-muted-foreground mb-1">CUSTO RECEITA</p>
               <p className="font-mono font-semibold text-foreground">
                 {formatCurrency(ingredientsCost)}
               </p>
             </div>
+            {packagingCost > 0 && (
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">C/ EMBALAGEM</p>
+                <p className="font-mono font-semibold text-primary">
+                  {formatCurrency(ingredientsCost)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  (emb: {formatCurrency(packagingCost)})
+                </p>
+              </div>
+            )}
             <div>
               <div className="flex items-center gap-1 mb-1">
                 <p className="text-xs text-muted-foreground">CUSTO C/ PERDA</p>

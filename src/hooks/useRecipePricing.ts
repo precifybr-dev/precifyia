@@ -12,6 +12,7 @@ export interface RecipePricingInput {
   discount_percent?: number;
   local_ifood_rate?: number | null;
   store_id?: string | null;
+  packaging_cost?: number;
 }
 
 export interface RecipePricingResult {
