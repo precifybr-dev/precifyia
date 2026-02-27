@@ -156,29 +156,49 @@ export function CopyRecipesFromStoreModal({
           if (existing) {
             ingredientMapping[srcIng.id] = existing.id;
           } else {
-            // Create ingredient in destination store with sequential code
-            destMaxCode++;
-            const { data: newIng, error: ingErr } = await supabase
-              .from("ingredients")
-              .insert({
-                user_id: userId,
-                store_id: activeStoreId,
-                code: destMaxCode,
-                name: srcIng.name,
-                purchase_price: srcIng.purchase_price,
-                purchase_quantity: srcIng.purchase_quantity,
-                unit: srcIng.unit,
-                unit_price: srcIng.unit_price,
-                correction_factor: srcIng.correction_factor,
-                color: srcIng.color,
-                is_sub_recipe: false,
-                sub_recipe_id: null,
-              })
-              .select()
-              .single();
+            // Create ingredient in destination store with sequential code + retry on collision
+            const correctionFactor = srcIng.correction_factor ?? 1;
+            const purchaseQty = srcIng.purchase_quantity || 1;
+            const calculatedUnitPrice = (srcIng.purchase_price / purchaseQty) * correctionFactor;
 
-            if (ingErr || !newIng) {
+            let newIng: any = null;
+            let retries = 3;
+            while (retries > 0) {
+              destMaxCode++;
+              const { data, error: ingErr } = await supabase
+                .from("ingredients")
+                .insert({
+                  user_id: userId,
+                  store_id: activeStoreId,
+                  code: destMaxCode,
+                  name: srcIng.name,
+                  purchase_price: srcIng.purchase_price,
+                  purchase_quantity: srcIng.purchase_quantity,
+                  unit: srcIng.unit,
+                  unit_price: calculatedUnitPrice,
+                  correction_factor: srcIng.correction_factor,
+                  color: srcIng.color,
+                  is_sub_recipe: false,
+                  sub_recipe_id: null,
+                })
+                .select()
+                .single();
+
+              if (!ingErr && data) {
+                newIng = data;
+                break;
+              }
+              // If unique constraint violation, retry with next code
+              if (ingErr?.code === "23505") {
+                retries--;
+                continue;
+              }
               console.error("Error creating ingredient:", ingErr);
+              break;
+            }
+
+            if (!newIng) {
+              console.error("Failed to create ingredient after retries:", srcIng.name);
               continue;
             }
 
