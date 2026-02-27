@@ -6,6 +6,7 @@ import {
   Sparkles, Headphones, HardDrive, Trash2, ChevronUp, GraduationCap, UtensilsCrossed, BarChart3, ArrowUpRight,
   CookingPot,
 } from "lucide-react";
+import { FloatingCalculator } from "./FloatingCalculator";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -131,6 +132,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
                     : "Negócio"}
                 </p>
               </div>
+              <FloatingCalculator />
             </div>
 
             {isPro ? (
