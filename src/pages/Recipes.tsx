@@ -23,7 +23,9 @@ import {
   Sun,
   Moon,
   Copy,
-  Store as StoreIcon
+  Store as StoreIcon,
+  TrendingUp,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -62,6 +64,21 @@ import { useStore } from "@/contexts/StoreContext";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { useDataProtection } from "@/hooks/useDataProtection";
+import { usePackagings } from "@/hooks/usePackagings";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
 
 
 type Recipe = Tables<"recipes">;
@@ -158,9 +175,16 @@ export default function Recipes() {
   const [sortOption, setSortOption] = useState("default");
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   
+  // Packaging & Market Analysis state
+  const [selectedPackagingId, setSelectedPackagingId] = useState<string | null>(null);
+  const [marketPriceMin, setMarketPriceMin] = useState("");
+  const [marketPriceAvg, setMarketPriceAvg] = useState("");
+  const [marketPriceMax, setMarketPriceMax] = useState("");
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const { softDelete } = useDataProtection();
+  const { activePackagings } = usePackagings();
   
   // Backend pricing hook
   const { result: pricingResult, isCalculating, error: pricingError, calculate: calculatePricing, reset: resetPricing } = useRecipePricing();
@@ -412,6 +436,11 @@ export default function Recipes() {
     setIfoodSellingPrice("");
     // Reset backend pricing
     resetPricing();
+    // Reset packaging & market
+    setSelectedPackagingId(null);
+    setMarketPriceMin("");
+    setMarketPriceAvg("");
+    setMarketPriceMax("");
   };
 
   const handleNewRecipe = () => {
@@ -436,6 +465,10 @@ export default function Recipes() {
     setDiscountPercent("5");
     setLocalIfoodRate("");
     setIfoodSellingPrice("");
+    setSelectedPackagingId(null);
+    setMarketPriceMin("");
+    setMarketPriceAvg("");
+    setMarketPriceMax("");
   };
 
   const handleEditRecipe = async (recipe: Recipe) => {
@@ -505,6 +538,11 @@ export default function Recipes() {
     setDiscountPercent("5");
     setLocalIfoodRate("");
     setIfoodSellingPrice(recipe.ifood_selling_price?.toString() || "");
+    // Load packaging & market data
+    setSelectedPackagingId((recipe as any).packaging_id || null);
+    setMarketPriceMin((recipe as any).market_price_min?.toString() || "");
+    setMarketPriceAvg((recipe as any).market_price_avg?.toString() || "");
+    setMarketPriceMax((recipe as any).market_price_max?.toString() || "");
   };
 
   const handleDeleteClick = (recipe: Recipe) => {
@@ -777,7 +815,11 @@ export default function Recipes() {
         suggested_price: backendSuggestedPrice,
         selling_price: sellingPrice.trim() !== "" ? parseFloat(sellingPrice) : null,
         ifood_selling_price: parsedIfoodPrice && parsedIfoodPrice > 0 ? parsedIfoodPrice : null,
-      };
+        packaging_id: selectedPackagingId || null,
+        market_price_min: marketPriceMin.trim() ? parseFloat(marketPriceMin) : null,
+        market_price_avg: marketPriceAvg.trim() ? parseFloat(marketPriceAvg) : null,
+        market_price_max: marketPriceMax.trim() ? parseFloat(marketPriceMax) : null,
+      } as any;
 
       let recipeId = editingId;
 
@@ -1087,6 +1129,159 @@ export default function Recipes() {
                   pricingResult={pricingResult}
                 />
               </div>
+
+              {/* Packaging & Market Analysis */}
+              <Accordion type="multiple" defaultValue={["packaging"]} className="mb-6">
+                {/* Embalagem */}
+                <AccordionItem value="packaging">
+                  <AccordionTrigger className="text-sm font-semibold">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-primary" />
+                      Embalagem
+                      {selectedPackagingId && (() => {
+                        const pkg = activePackagings.find(p => p.id === selectedPackagingId);
+                        return pkg ? (
+                          <Badge variant="secondary" className="text-xs ml-2">
+                            {formatCurrency(pkg.cost_total)}
+                          </Badge>
+                        ) : null;
+                      })()}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3">
+                      <Select
+                        value={selectedPackagingId || "none"}
+                        onValueChange={(v) => setSelectedPackagingId(v === "none" ? null : v)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecionar embalagem..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sem embalagem</SelectItem>
+                          {activePackagings.map((pkg) => (
+                            <SelectItem key={pkg.id} value={pkg.id}>
+                              {pkg.name} — {formatCurrency(pkg.cost_total)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {selectedPackagingId && (() => {
+                        const pkg = activePackagings.find(p => p.id === selectedPackagingId);
+                        const currentPrice = parseFloat(sellingPrice) || suggestedPrice;
+                        const pctOfPrice = currentPrice > 0 && pkg ? (pkg.cost_total / currentPrice * 100) : 0;
+                        return pkg ? (
+                          <div className="bg-muted/50 rounded-lg p-3 text-sm space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">Custo embalagem:</span>
+                              <span className="font-semibold">{formatCurrency(pkg.cost_total)}</span>
+                            </div>
+                            {currentPrice > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">% sobre preço:</span>
+                                <span className={`font-semibold ${pctOfPrice > 15 ? "text-destructive" : pctOfPrice > 10 ? "text-warning" : "text-success"}`}>
+                                  {pctOfPrice.toFixed(1)}%
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : null;
+                      })()}
+                      {activePackagings.length === 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Nenhuma embalagem ativa. Cadastre em Embalagens no menu lateral.
+                        </p>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Análise de Mercado */}
+                <AccordionItem value="market">
+                  <AccordionTrigger className="text-sm font-semibold">
+                    <div className="flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-primary" />
+                      Análise de Mercado
+                      {(() => {
+                        const avg = parseFloat(marketPriceAvg);
+                        const price = parseFloat(sellingPrice) || suggestedPrice;
+                        if (!avg || !price) return null;
+                        const diff = ((price - avg) / avg) * 100;
+                        const status = diff < -10 ? "Abaixo" : diff > 10 ? "Acima" : "Na média";
+                        const color = diff < -10 ? "bg-primary/10 text-primary" : diff > 10 ? "bg-destructive/10 text-destructive" : "bg-success/10 text-success";
+                        return (
+                          <Badge variant="outline" className={`text-xs ml-2 ${color}`}>
+                            {status} ({diff > 0 ? "+" : ""}{diff.toFixed(0)}%)
+                          </Badge>
+                        );
+                      })()}
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <Label className="text-xs">Mínimo (R$)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={marketPriceMin}
+                            onChange={(e) => setMarketPriceMin(e.target.value)}
+                            placeholder="0,00"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Médio (R$)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={marketPriceAvg}
+                            onChange={(e) => setMarketPriceAvg(e.target.value)}
+                            placeholder="0,00"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Máximo (R$)</Label>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={marketPriceMax}
+                            onChange={(e) => setMarketPriceMax(e.target.value)}
+                            placeholder="0,00"
+                          />
+                        </div>
+                      </div>
+                      {(() => {
+                        const min = parseFloat(marketPriceMin);
+                        const avg = parseFloat(marketPriceAvg);
+                        const max = parseFloat(marketPriceMax);
+                        const price = parseFloat(sellingPrice) || suggestedPrice;
+                        if (!avg || !price) return null;
+                        const diff = ((price - avg) / avg) * 100;
+                        const status = price < (min || avg * 0.9) ? "Abaixo do mercado" : price > (max || avg * 1.1) ? "Acima do mercado" : "Dentro da média";
+                        const statusColor = status === "Abaixo do mercado" ? "text-primary" : status === "Acima do mercado" ? "text-destructive" : "text-success";
+                        const bgColor = status === "Abaixo do mercado" ? "bg-primary/5 border-primary/20" : status === "Acima do mercado" ? "bg-destructive/5 border-destructive/20" : "bg-success/5 border-success/20";
+                        return (
+                          <div className={`rounded-lg border p-3 ${bgColor}`}>
+                            <div className="flex items-center justify-between">
+                              <span className={`font-semibold text-sm ${statusColor}`}>{status}</span>
+                              <span className={`font-mono text-sm ${statusColor}`}>
+                                {diff > 0 ? "+" : ""}{diff.toFixed(1)}%
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Seu preço: {formatCurrency(price)} | Média: {formatCurrency(avg)}
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
 
               {/* Actions */}
               <div className="flex gap-3 justify-end">
