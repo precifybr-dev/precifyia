@@ -1,33 +1,63 @@
 
+# Layout Responsivo: Mobile vs Desktop
 
-# Correcao de Bugs na Precificacao - Embalagem
+## Resumo
 
-## Bugs Encontrados
+Adaptar o menu lateral (sidebar) para que no **celular** tenha comportamento diferente do **desktop**:
 
-### Bug 1: "CUSTO RECEITA" ja inclui embalagem (PricingInputsCard)
-No `PricingInputsCard.tsx` (linha 76), o campo "CUSTO RECEITA" exibe `ingredientsCost` que ja inclui a embalagem (calculado em `Recipes.tsx` linha 783: `rawIngredientsCost + packagingCost`). 
-Resultado: as colunas "CUSTO RECEITA" e "C/ EMBALAGEM" mostram o **mesmo valor**, o que e incorreto e confuso.
+1. **Esconder a calculadora** no mobile
+2. **Trocar o botao "Nova Loja"** por um **seletor de lojas** (StoreSwitcher) no mobile
+3. **Manter tudo como esta** no desktop
 
-**Correcao**: Passar `rawIngredientsCost` (sem embalagem) para exibir em "CUSTO RECEITA", e `ingredientsCost` (com embalagem) para "C/ EMBALAGEM".
+## Mudancas
 
-### Bug 2: Tooltip do iFood nao menciona embalagem (PricingProfitCard)
-No card de lucro do iFood (linha 312-315), o tooltip "Como o lucro e calculado" nao lista "Custo da embalagem" como item, diferente do tooltip da Loja (linha 173) que menciona corretamente.
+### 1. `src/components/layout/AppSidebar.tsx`
 
-**Correcao**: Adicionar "Custo da embalagem (quando selecionada)" na lista do tooltip do iFood.
+**Calculadora**: Envolver o `<FloatingCalculator />` com a classe `hidden lg:block` para que so apareca em telas grandes (desktop).
 
-## Arquivos a Modificar
+**Secao da loja**: No mobile, substituir o botao "Nova Loja" / "Upgrade PRO" por um `<StoreSwitcher />` compacto que permite trocar de loja rapidamente. No desktop, manter o comportamento atual.
 
-### 1. `src/pages/Recipes.tsx`
-- Passar `rawIngredientsCost` como nova prop para o `PricingSummaryPanel`
+Logica:
+- Importar o hook `useIsMobile` de `src/hooks/use-mobile.tsx`
+- Importar o componente `StoreSwitcher`
+- Na area abaixo da loja ativa:
+  - Se `isMobile`: renderizar o `<StoreSwitcher />` 
+  - Se desktop: renderizar o botao "Nova Loja" / "Upgrade PRO" como hoje
 
-### 2. `src/components/recipes/PricingSummaryPanel.tsx`
-- Receber e repassar `rawIngredientsCost` ao `PricingInputsCard`
+### 2. Nenhum outro arquivo precisa ser alterado
 
-### 3. `src/components/recipes/pricing/PricingInputsCard.tsx`
-- Receber `rawIngredientsCost` como prop
-- "CUSTO RECEITA" exibe `rawIngredientsCost` (somente insumos)
-- "C/ EMBALAGEM" exibe `ingredientsCost` (insumos + embalagem) -- ja funciona
+O `StoreSwitcher` ja existe e funciona. O hook `useIsMobile` tambem ja existe. Apenas o `AppSidebar.tsx` sera modificado.
 
-### 4. `src/components/recipes/pricing/PricingProfitCard.tsx`
-- Adicionar "Custo da embalagem (quando selecionada)" no tooltip do iFood (linhas 312-315)
+## Detalhes Tecnicos
 
+```text
+Mobile (< 768px):
++------------------+
+| Logo Precify     |
++------------------+
+| [Loja icon] Nome |
+| Tipo negocio     |
++------------------+
+| [StoreSwitcher]  |  <-- troca de loja
++------------------+
+| Dashboard        |
+| Area do Negocio  |
+| ...              |
++------------------+
+
+Desktop (>= 768px):
++------------------+
+| Logo Precify     |
++------------------+
+| [Loja icon] Nome | [Calc]
+| Tipo negocio     |
++------------------+
+| [+ Nova Loja]    |  <-- criar loja (PRO)
++------------------+
+| Dashboard        |
+| ...              |
++------------------+
+```
+
+## Arquivo modificado
+- `src/components/layout/AppSidebar.tsx`
