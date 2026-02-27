@@ -737,6 +737,14 @@ export default function Recipes() {
     setRecipeIngredients((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // (packaging cost and calculation trigger below)
+
+  // ============ PACKAGING COST ============
+  const selectedPackaging = includePackaging && selectedPackagingId
+    ? activePackagings.find(p => p.id === selectedPackagingId)
+    : null;
+  const packagingCost = selectedPackaging?.cost_total || 0;
+
   // ============ BACKEND CALCULATION TRIGGER ============
   // Trigger backend calculation whenever inputs change
   useEffect(() => {
@@ -762,21 +770,16 @@ export default function Recipes() {
       loss_percent: parseFloat(lossPercent) || 0,
       discount_percent: parseFloat(discountPercent) || 0,
       local_ifood_rate: localIfoodRate.trim() ? parseFloat(localIfoodRate) : null,
+      packaging_cost: packagingCost,
     });
   }, [
     showForm, recipeIngredients, recipeName, servings, cmvTarget,
     sellingPrice, ifoodSellingPrice, lossPercent, discountPercent, localIfoodRate,
-    calculatePricing,
+    calculatePricing, includePackaging, selectedPackagingId, packagingCost,
   ]);
 
   // ============ VALUES FROM BACKEND (or fallback while loading) ============
-  // Local fallback for instant preview (ingredient costs only - simple sum)
   const rawIngredientsCost = recipeIngredients.reduce((sum, ing) => sum + ing.cost, 0);
-  // Include packaging cost in CMV
-  const selectedPackaging = includePackaging && selectedPackagingId
-    ? activePackagings.find(p => p.id === selectedPackagingId)
-    : null;
-  const packagingCost = selectedPackaging?.cost_total || 0;
   const ingredientsCost = rawIngredientsCost + packagingCost;
   const ingredientsCostPerServing = ingredientsCost / (parseInt(servings) || 1);
 
@@ -1210,6 +1213,7 @@ export default function Recipes() {
                   isCalculating={isCalculating}
                   calculationError={pricingError}
                   pricingResult={pricingResult}
+                  packagingCost={packagingCost}
                 />
               </div>
 

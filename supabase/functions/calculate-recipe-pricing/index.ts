@@ -91,6 +91,7 @@ interface RequestBody {
   local_ifood_rate?: number | null;
   recipe_name: string;
   store_id?: string | null;
+  packaging_cost?: number;
 }
 
 // ─── Main handler ───
@@ -148,6 +149,7 @@ Deno.serve(async (req) => {
       'recipe_id', 'ingredients', 'servings', 'cmv_target',
       'selling_price', 'ifood_selling_price', 'loss_percent',
       'discount_percent', 'local_ifood_rate', 'recipe_name', 'store_id',
+      'packaging_cost',
     ];
     const body: RequestBody = {} as RequestBody;
     for (const key of ALLOWED_FIELDS) {
@@ -345,6 +347,10 @@ Deno.serve(async (req) => {
       ingredientsCostTotal += cost;
     }
 
+    // Add packaging cost to total
+    const packagingCost = requirePositive(body.packaging_cost ?? 0, "Custo embalagem");
+    ingredientsCostTotal += packagingCost;
+
     // Per serving
     const ingredientsCostPerServing = ingredientsCostTotal / servings;
 
@@ -511,6 +517,7 @@ Deno.serve(async (req) => {
         loss_percent: lossPercent,
         discount_percent: discountPercent,
         local_ifood_rate: localIfoodRate,
+        packaging_cost: packagingCost,
         global_ifood_rate: globalIfoodRate,
         production_costs_percent: productionCostsPercent,
         tax_percentage: taxPercentage,
