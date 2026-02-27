@@ -522,15 +522,22 @@ export default function Ingredients() {
   const handleIfoodImport = async (items: { name: string; category?: string }[]) => {
     if (!user?.id || items.length === 0) return;
 
-    // Helper function to get max code globally for user (across ALL stores)
-    const getGlobalMaxCode = async (): Promise<number> => {
-      const { data: maxCodeData } = await supabase
+    // Helper function to get max code for the active store
+    const getStoreMaxCode = async (): Promise<number> => {
+      let query = supabase
         .from("ingredients")
         .select("code")
         .eq("user_id", user.id)
         .order("code", { ascending: false })
         .limit(1);
       
+      if (activeStore?.id) {
+        query = query.eq("store_id", activeStore.id);
+      } else {
+        query = query.is("store_id", null);
+      }
+
+      const { data: maxCodeData } = await query;
       return maxCodeData && maxCodeData.length > 0 ? maxCodeData[0].code : 0;
     };
 
@@ -548,7 +555,7 @@ export default function Ingredients() {
     }));
 
     // First attempt
-    let startCode = (await getGlobalMaxCode()) + 1;
+    let startCode = (await getStoreMaxCode()) + 1;
     let newIngredients = buildIngredients(startCode);
 
     const { error } = await supabase.from("ingredients").insert(newIngredients);
@@ -563,7 +570,7 @@ export default function Ingredients() {
         console.warn("Code collision detected, retrying with fresh max code...");
         
         // Retry once with fresh max code
-        startCode = (await getGlobalMaxCode()) + 1;
+        startCode = (await getStoreMaxCode()) + 1;
         newIngredients = buildIngredients(startCode);
         
         const { error: retryError } = await supabase.from("ingredients").insert(newIngredients);

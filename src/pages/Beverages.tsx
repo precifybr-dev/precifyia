@@ -245,13 +245,20 @@ export default function Beverages() {
   };
 
   const getNextCode = async () => {
-    const { data: maxCodeData } = await supabase
+    let query = supabase
       .from("beverages")
       .select("code")
       .eq("user_id", user.id)
       .order("code", { ascending: false })
       .limit(1);
     
+    if (activeStore?.id) {
+      query = query.eq("store_id", activeStore.id);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data: maxCodeData } = await query;
     return maxCodeData && maxCodeData.length > 0 ? maxCodeData[0].code + 1 : 1;
   };
 

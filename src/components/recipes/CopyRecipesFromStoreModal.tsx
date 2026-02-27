@@ -120,6 +120,12 @@ export function CopyRecipesFromStoreModal({
       .eq("user_id", userId)
       .eq("store_id", activeStoreId);
 
+    // Get max code in destination store for sequential code generation
+    let destMaxCode = 0;
+    if (destIngredients && destIngredients.length > 0) {
+      destMaxCode = Math.max(...destIngredients.map((i: any) => i.code || 0));
+    }
+
     const destIngredientsMap = new Map(
       (destIngredients || []).map((i: any) => [normalizeText(i.name), i])
     );
@@ -150,12 +156,14 @@ export function CopyRecipesFromStoreModal({
           if (existing) {
             ingredientMapping[srcIng.id] = existing.id;
           } else {
-            // Create ingredient in destination store
+            // Create ingredient in destination store with sequential code
+            destMaxCode++;
             const { data: newIng, error: ingErr } = await supabase
               .from("ingredients")
               .insert({
                 user_id: userId,
                 store_id: activeStoreId,
+                code: destMaxCode,
                 name: srcIng.name,
                 purchase_price: srcIng.purchase_price,
                 purchase_quantity: srcIng.purchase_quantity,
