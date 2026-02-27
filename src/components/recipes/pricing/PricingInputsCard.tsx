@@ -15,6 +15,7 @@ interface PricingInputsCardProps {
   setLossPercent: (value: string) => void;
   formatCurrency: (value: number) => string;
   packagingCost?: number;
+  rawIngredientsCost?: number;
 }
 
 export default function PricingInputsCard({
@@ -28,6 +29,7 @@ export default function PricingInputsCard({
   setLossPercent,
   formatCurrency,
   packagingCost = 0,
+  rawIngredientsCost,
 }: PricingInputsCardProps) {
   const hasSellingPrice = sellingPrice.trim() !== "" && parseFloat(sellingPrice) > 0;
 
@@ -73,7 +75,7 @@ export default function PricingInputsCard({
             <div>
               <p className="text-xs text-muted-foreground mb-1">CUSTO RECEITA</p>
               <p className="font-mono font-semibold text-foreground">
-                {formatCurrency(ingredientsCost)}
+                {formatCurrency(rawIngredientsCost ?? ingredientsCost)}
               </p>
             </div>
             {packagingCost > 0 && (

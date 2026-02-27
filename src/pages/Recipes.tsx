@@ -1214,6 +1214,7 @@ export default function Recipes() {
                   calculationError={pricingError}
                   pricingResult={pricingResult}
                   packagingCost={packagingCost}
+                  rawIngredientsCost={rawIngredientsCost / (parseInt(servings) || 1)}
                 />
               </div>
 
