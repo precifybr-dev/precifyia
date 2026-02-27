@@ -309,7 +309,9 @@ export default function PricingProfitCard({
                   <TooltipContent side="top" className="max-w-[300px] text-xs">
                     <p className="font-semibold mb-1">Como o lucro é calculado</p>
                     <p>O lucro líquido mostrado aqui já considera:</p>
-                    <ul className="list-disc pl-3 mt-1 space-y-0.5">
+                     <ul className="list-disc pl-3 mt-1 space-y-0.5">
+                      <li>Custo dos insumos (com perda)</li>
+                      <li>Custo da embalagem (quando selecionada)</li>
                       <li>Custos de produção rateados</li>
                       <li>Taxas (iFood, cartões, impostos)</li>
                     </ul>
