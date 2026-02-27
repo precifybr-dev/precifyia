@@ -1,90 +1,39 @@
 
 
-# Corrigir Numeracao de Insumos por Loja
+# Confirmacao e Ajustes do Fluxo de Copia entre 3 Lojas
 
-## Problema
+## Status Atual
 
-Quando o usuario cria uma segunda loja, a numeracao dos insumos continua de onde parou na loja 1 (ex: loja 1 tem 50 insumos, loja 2 comeca no 51). O correto e cada loja ter sua propria sequencia independente comecando pelo 1.
+O fluxo de copia de receitas entre lojas **ja esta implementado corretamente** e funciona para 3 lojas. A logica atual:
 
-## Causa raiz
+1. Busca ingredientes da loja destino filtrados por `store_id`
+2. Calcula `destMaxCode` apenas da loja destino (independente das outras)
+3. Cria ingredientes inexistentes com codigos sequenciais (`destMaxCode + 1, +2...`)
+4. Mapeia IDs de ingredientes corretamente para os `recipe_ingredients`
+5. Cada loja tem numeracao independente comecando do 1 (constraint `user_id, store_id, code`)
 
-1. A constraint do banco e `UNIQUE (user_id, code)` — impede codigos iguais entre lojas do mesmo usuario
-2. Todas as funcoes `getNextCode` buscam o maior codigo global do usuario, sem filtrar por loja
+## Cenarios que ja funcionam
 
-## O que sera feito
+- Loja A -> Loja B: ingredientes copiados com codigos sequenciais da Loja B
+- Loja A -> Loja C: ingredientes copiados com codigos sequenciais da Loja C
+- Loja B -> Loja C: ingredientes duplicados sao detectados por nome e reutilizados
 
-### 1. Migration SQL: alterar constraint de unicidade
+## Melhorias a aplicar
 
-Trocar a constraint de `UNIQUE (user_id, code)` para `UNIQUE (user_id, store_id, code)` na tabela `ingredients`.
+Apesar de funcional, ha pequenos ajustes para maior robustez:
 
-Fazer o mesmo para `beverages`: trocar `UNIQUE (user_id, code)` para `UNIQUE (user_id, store_id, code)`.
+### 1. Recalcular `unit_price` ao criar ingrediente na loja destino
 
-Isso permite que cada loja tenha sua propria sequencia de codigos (1, 2, 3...) independente.
+Atualmente o `unit_price` e copiado do ingrediente original. Se o valor estiver `null` no banco de origem, ficara `null` no destino. O correto e sempre recalcular: `(purchase_price / purchase_quantity) * correction_factor`.
 
-### 2. Corrigir `Ingredients.tsx` — getNextCode
+### 2. Tratar colisao de codigo (retry)
 
-A funcao `getNextCode` passara a considerar apenas os ingredientes carregados da loja ativa (que ja sao filtrados por store_id no `fetchIngredients`). Nenhuma mudanca de logica necessaria aqui, pois o array `ingredients` ja e filtrado por loja. O calculo `Math.max(...ingredients.map(ing => ing.code))` ja retorna o maximo correto da loja ativa.
+Se dois processos paralelos tentarem criar ingredientes ao mesmo tempo, pode haver colisao de codigo. Adicionar retry similar ao que ja existe no `handleIfoodImport` do `Ingredients.tsx`.
 
-### 3. Corrigir `Ingredients.tsx` — handleIfoodImport (getGlobalMaxCode)
+### 3. Corrigir warning do DialogFooter
 
-A funcao `getGlobalMaxCode` sera renomeada e filtrada por `store_id` da loja ativa, em vez de buscar globalmente por `user_id`.
+O console mostra warning de ref no `DialogFooter`. Correcao simples com `forwardRef` ou reestruturacao do JSX.
 
-### 4. Corrigir `SpreadsheetImportModal.tsx`
+## Arquivos modificados
 
-A query que busca o maior codigo tambem sera filtrada por `store_id`.
-
-### 5. Corrigir `Beverages.tsx` — getNextCode
-
-Filtrar por `store_id` da loja ativa ao buscar o maior codigo.
-
-### 6. Corrigir `IngredientsStep.tsx` (onboarding) — getNextCode
-
-Filtrar por `store_id` da loja ao buscar o proximo codigo.
-
-### 7. Corrigir `CopyRecipesFromStoreModal.tsx`
-
-Ao copiar ingredientes para a loja destino, gerar o codigo sequencial correto para a loja destino (buscar max code da loja destino e incrementar).
-
-## Detalhes tecnicos
-
-### Migration SQL
-
-```sql
--- Ingredients: trocar constraint
-ALTER TABLE public.ingredients 
-  DROP CONSTRAINT ingredients_user_id_code_key;
-ALTER TABLE public.ingredients 
-  ADD CONSTRAINT ingredients_user_store_code_key UNIQUE (user_id, store_id, code);
-
--- Beverages: trocar constraint
-ALTER TABLE public.beverages 
-  DROP CONSTRAINT beverages_user_code_unique;
-ALTER TABLE public.beverages 
-  ADD CONSTRAINT beverages_user_store_code_unique UNIQUE (user_id, store_id, code);
-```
-
-### Padrao das queries corrigidas
-
-Antes (global):
-```typescript
-.eq("user_id", user.id)
-.order("code", { ascending: false })
-.limit(1)
-```
-
-Depois (por loja):
-```typescript
-.eq("user_id", user.id)
-.eq("store_id", activeStoreId)
-.order("code", { ascending: false })
-.limit(1)
-```
-
-### Arquivos modificados
-
-1. **Nova migration SQL** — alterar constraints de unicidade
-2. **`src/pages/Ingredients.tsx`** — corrigir `getGlobalMaxCode` no iFood import
-3. **`src/pages/Beverages.tsx`** — corrigir `getNextCode` para filtrar por loja
-4. **`src/components/spreadsheet-import/SpreadsheetImportModal.tsx`** — filtrar por store_id
-5. **`src/components/onboarding/IngredientsStep.tsx`** — corrigir `getNextCode` para filtrar por loja
-6. **`src/components/recipes/CopyRecipesFromStoreModal.tsx`** — gerar codigo sequencial ao copiar ingredientes
+1. `src/components/recipes/CopyRecipesFromStoreModal.tsx` — recalcular `unit_price`, adicionar retry em colisao de codigo, corrigir warning de ref
