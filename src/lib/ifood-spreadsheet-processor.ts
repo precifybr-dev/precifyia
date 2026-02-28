@@ -22,6 +22,15 @@ export interface IfoodConsolidation {
   couponType: "fixed" | "percent";
   couponAvgValue: number;
   ordersWithCoupon: number;
+  // Coupon breakdown
+  ordersWithCouponLojaOnly: number;
+  ordersWithCouponIfoodOnly: number;
+  ordersWithCouponShared: number;
+  ordersWithoutCoupon: number;
+  totalCupomShared: number;
+  // Delivery breakdown
+  ordersWithIfoodDelivery: number;
+  totalDeliveryCost: number;
 }
 
 const REQUIRED_COLUMNS = [
@@ -167,6 +176,12 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
   let totalTaxa = 0;
   let ordersWithCoupon = 0;
   let totalCouponValue = 0;
+  let ordersWithCouponLojaOnly = 0;
+  let ordersWithCouponIfoodOnly = 0;
+  let ordersWithCouponShared = 0;
+  let totalCupomShared = 0;
+  let ordersWithIfoodDelivery = 0;
+  let totalDeliveryCost = 0;
 
   const comissaoPercentages: number[] = [];
   const taxaPercentages: number[] = [];
@@ -174,7 +189,10 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
   for (const [, lines] of orderGroups) {
     let orderRevenue = 0;
     let orderNet = 0;
-    let orderHasCoupon = false;
+    let orderHasLojaPromo = false;
+    let orderHasIfoodPromo = false;
+    let orderHasIfoodDelivery = false;
+    let orderDeliveryCost = 0;
 
     for (const line of lines) {
       const tipo = String(line[tipoKey] || "").toLowerCase();
@@ -187,20 +205,18 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
       if (desc.includes("entrada financeira") || desc.includes("repasse") || tipo.includes("credito") || tipo.includes("crédito")) {
         orderRevenue += Math.abs(valor);
         orderNet += valor;
-        // Use base_calculo as gross revenue for the order
         if (base > 0) {
           faturamentoBruto += base;
         }
       } else if (desc.includes("promo") && (desc.includes("loja") || desc.includes("restaurante") || desc.includes("merchant"))) {
-        // Coupon paid by store
         totalCupomLoja += Math.abs(valor);
         orderNet += valor;
-        orderHasCoupon = true;
+        orderHasLojaPromo = true;
         totalCouponValue += Math.abs(valor);
       } else if (desc.includes("promo") && desc.includes("ifood")) {
-        // Coupon paid by iFood
         totalCupomIfood += Math.abs(valor);
         orderNet += valor;
+        orderHasIfoodPromo = true;
       } else if (desc.includes("comiss") || desc.includes("commission")) {
         totalComissao += Math.abs(valor);
         orderNet += valor;
@@ -209,13 +225,33 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
         totalTaxa += Math.abs(valor);
         orderNet += valor;
         if (perc > 0) taxaPercentages.push(perc);
+      } else if (desc.includes("entrega") && desc.includes("ifood")) {
+        orderHasIfoodDelivery = true;
+        orderDeliveryCost += Math.abs(valor);
+        orderNet += valor;
       } else {
-        // Other line items (delivery fee, service fee, etc.)
         orderNet += valor;
       }
     }
 
-    if (orderHasCoupon) ordersWithCoupon++;
+    // Coupon classification per order
+    if (orderHasLojaPromo || orderHasIfoodPromo) {
+      ordersWithCoupon++;
+      if (orderHasLojaPromo && orderHasIfoodPromo) {
+        ordersWithCouponShared++;
+        totalCupomShared += totalCouponValue; // shared amount tracked separately
+      } else if (orderHasLojaPromo) {
+        ordersWithCouponLojaOnly++;
+      } else {
+        ordersWithCouponIfoodOnly++;
+      }
+    }
+
+    if (orderHasIfoodDelivery) {
+      ordersWithIfoodDelivery++;
+      totalDeliveryCost += orderDeliveryCost;
+    }
+
     faturamentoLiquido += orderNet;
   }
 
@@ -269,6 +305,8 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
 
   const couponAvgValue = ordersWithCoupon > 0 ? totalCouponValue / ordersWithCoupon : 0;
 
+  const ordersWithoutCoupon = totalPedidos - ordersWithCoupon;
+
   return {
     mesReferencia,
     totalPedidos,
@@ -284,9 +322,16 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     percentualMedioTaxa: round2(percentualMedioTaxa),
     percentualRealIfood: round2(percentualRealIfood),
     couponAbsorber,
-    couponType: "fixed", // default, since spreadsheet shows absolute values
+    couponType: "fixed",
     couponAvgValue: round2(couponAvgValue),
     ordersWithCoupon,
+    ordersWithCouponLojaOnly,
+    ordersWithCouponIfoodOnly,
+    ordersWithCouponShared,
+    ordersWithoutCoupon,
+    totalCupomShared: round2(totalCupomShared),
+    ordersWithIfoodDelivery,
+    totalDeliveryCost: round2(totalDeliveryCost),
   };
 }
 
