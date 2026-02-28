@@ -3,9 +3,15 @@
  * Lê o arquivo Excel, agrupa por pedido e consolida métricas financeiras.
  */
 
+export interface ValidationWarning {
+  level: "error" | "warning";
+  message: string;
+}
+
 export interface IfoodConsolidation {
   mesReferencia: string;
   totalPedidos: number;
+  totalLinhas: number;
   faturamentoBruto: number;
   faturamentoLiquido: number;
   totalCupomLoja: number;
@@ -31,6 +37,8 @@ export interface IfoodConsolidation {
   // Delivery breakdown
   ordersWithIfoodDelivery: number;
   totalDeliveryCost: number;
+  // Validation
+  warnings: ValidationWarning[];
 }
 
 const REQUIRED_COLUMNS = [
@@ -316,9 +324,12 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
 
   const ordersWithoutCoupon = totalPedidos - ordersWithCoupon;
 
-  return {
+  const totalLinhas = orderLines.length;
+
+  const result = {
     mesReferencia,
     totalPedidos,
+    totalLinhas,
     faturamentoBruto: round2(faturamentoBruto),
     faturamentoLiquido: round2(faturamentoLiquido),
     totalCupomLoja: round2(totalCupomLoja),
@@ -331,7 +342,7 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     percentualMedioTaxa: round2(percentualMedioTaxa),
     percentualRealIfood: round2(percentualRealIfood),
     couponAbsorber,
-    couponType: "fixed",
+    couponType: "fixed" as const,
     couponAvgValue: round2(couponAvgValue),
     ordersWithCoupon,
     ordersWithCouponLojaOnly,
@@ -341,7 +352,68 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     totalCupomShared: round2(totalCupomShared),
     ordersWithIfoodDelivery,
     totalDeliveryCost: round2(totalDeliveryCost),
+    warnings: [] as ValidationWarning[],
   };
+
+  result.warnings = validateConsolidation(result);
+
+  return result;
+}
+
+function validateConsolidation(data: IfoodConsolidation): ValidationWarning[] {
+  const warnings: ValidationWarning[] = [];
+  const totalCupons = data.totalCupomLoja + data.totalCupomIfood + data.totalCupomShared;
+
+  // V1 — Coupon vs Gross
+  if (data.faturamentoBruto > 0 && totalCupons > data.faturamentoBruto * 0.4) {
+    warnings.push({
+      level: "error",
+      message: `Total de cupons (${fmt(totalCupons)}) ultrapassa 40% do faturamento bruto (${fmt(data.faturamentoBruto)}). Possível erro de consolidação.`,
+    });
+  }
+
+  // V2 — Orders vs Lines
+  if (data.totalLinhas > 0 && data.totalPedidos === data.totalLinhas) {
+    warnings.push({
+      level: "warning",
+      message: `Número de pedidos (${data.totalPedidos}) é igual ao número de linhas (${data.totalLinhas}). Pode não ter havido agrupamento.`,
+    });
+  }
+
+  // V3 — Real iFood percentage
+  if (data.percentualRealIfood > 60) {
+    warnings.push({
+      level: "error",
+      message: `Percentual pago ao iFood (${data.percentualRealIfood.toFixed(1)}%) é superior a 60%. Provável erro de consolidação.`,
+    });
+  }
+
+  // V4 — Ticket médio plausível
+  if (data.ticketMedio > 500) {
+    warnings.push({
+      level: "warning",
+      message: `Ticket médio (${fmt(data.ticketMedio)}) está acima de R$ 500. Verifique se o agrupamento está correto.`,
+    });
+  }
+
+  // V5 — Reconciliação básica
+  if (data.faturamentoBruto > 0) {
+    const expected = data.faturamentoBruto - data.totalComissao - data.totalTaxa - data.totalCupomLoja;
+    const diff = Math.abs(expected - data.faturamentoLiquido);
+    const margin = data.faturamentoBruto * 0.05;
+    if (diff > margin) {
+      warnings.push({
+        level: "warning",
+        message: `Reconciliação: diferença de ${fmt(diff)} entre valor esperado e líquido real (margem de 5%: ${fmt(margin)}).`,
+      });
+    }
+  }
+
+  return warnings;
+}
+
+function fmt(v: number): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 }
 
 function round2(n: number): number {
