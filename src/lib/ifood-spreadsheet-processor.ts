@@ -167,7 +167,7 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     orderGroups.get(orderId)!.push(row);
   }
 
-  // Process each order
+  // Process each order — one entry per unique order ID
   let faturamentoBruto = 0;
   let faturamentoLiquido = 0;
   let totalCupomLoja = 0;
@@ -175,7 +175,6 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
   let totalComissao = 0;
   let totalTaxa = 0;
   let ordersWithCoupon = 0;
-  let totalCouponValue = 0;
   let ordersWithCouponLojaOnly = 0;
   let ordersWithCouponIfoodOnly = 0;
   let ordersWithCouponShared = 0;
@@ -187,10 +186,13 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
   const taxaPercentages: number[] = [];
 
   for (const [, lines] of orderGroups) {
-    let orderRevenue = 0;
+    // Per-order accumulators — reset for each unique order
+    let orderGross = 0;       // gross revenue for THIS order
     let orderNet = 0;
-    let orderHasLojaPromo = false;
-    let orderHasIfoodPromo = false;
+    let orderCupomLoja = 0;
+    let orderCupomIfood = 0;
+    let orderComissao = 0;
+    let orderTaxa = 0;
     let orderHasIfoodDelivery = false;
     let orderDeliveryCost = 0;
 
@@ -201,28 +203,27 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
       const base = parseBRValue(line[baseKey]);
       const perc = parseBRPercent(line[percKey]);
 
-      // Classify the line
+      // Classify each line within the SAME order
       if (desc.includes("entrada financeira") || desc.includes("repasse") || tipo.includes("credito") || tipo.includes("crédito")) {
-        orderRevenue += Math.abs(valor);
-        orderNet += valor;
+        // Use base_calculo when available (it's the original order value before deductions)
         if (base > 0) {
-          faturamentoBruto += base;
+          orderGross = Math.max(orderGross, base); // take highest base — same order
+        } else {
+          orderGross += Math.abs(valor);
         }
+        orderNet += valor;
       } else if (desc.includes("promo") && (desc.includes("loja") || desc.includes("restaurante") || desc.includes("merchant"))) {
-        totalCupomLoja += Math.abs(valor);
+        orderCupomLoja += Math.abs(valor);
         orderNet += valor;
-        orderHasLojaPromo = true;
-        totalCouponValue += Math.abs(valor);
       } else if (desc.includes("promo") && desc.includes("ifood")) {
-        totalCupomIfood += Math.abs(valor);
+        orderCupomIfood += Math.abs(valor);
         orderNet += valor;
-        orderHasIfoodPromo = true;
       } else if (desc.includes("comiss") || desc.includes("commission")) {
-        totalComissao += Math.abs(valor);
+        orderComissao += Math.abs(valor);
         orderNet += valor;
         if (perc > 0) comissaoPercentages.push(perc);
       } else if (desc.includes("taxa") && (desc.includes("transa") || desc.includes("pagamento"))) {
-        totalTaxa += Math.abs(valor);
+        orderTaxa += Math.abs(valor);
         orderNet += valor;
         if (perc > 0) taxaPercentages.push(perc);
       } else if (desc.includes("entrega") && desc.includes("ifood")) {
@@ -234,13 +235,23 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
       }
     }
 
-    // Coupon classification per order
-    if (orderHasLojaPromo || orderHasIfoodPromo) {
+    // Accumulate consolidated order into globals
+    faturamentoBruto += orderGross;
+    faturamentoLiquido += orderNet;
+    totalCupomLoja += orderCupomLoja;
+    totalCupomIfood += orderCupomIfood;
+    totalComissao += orderComissao;
+    totalTaxa += orderTaxa;
+
+    // Coupon classification — per consolidated order
+    const hasLoja = orderCupomLoja > 0;
+    const hasIfood = orderCupomIfood > 0;
+    if (hasLoja || hasIfood) {
       ordersWithCoupon++;
-      if (orderHasLojaPromo && orderHasIfoodPromo) {
+      if (hasLoja && hasIfood) {
         ordersWithCouponShared++;
-        totalCupomShared += totalCouponValue; // shared amount tracked separately
-      } else if (orderHasLojaPromo) {
+        totalCupomShared += orderCupomLoja + orderCupomIfood;
+      } else if (hasLoja) {
         ordersWithCouponLojaOnly++;
       } else {
         ordersWithCouponIfoodOnly++;
@@ -251,13 +262,10 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
       ordersWithIfoodDelivery++;
       totalDeliveryCost += orderDeliveryCost;
     }
-
-    faturamentoLiquido += orderNet;
   }
 
-  // If faturamentoBruto is 0, estimate from commission base values
+  // Fallback: if no base_calculo was found, estimate gross from credit lines
   if (faturamentoBruto === 0) {
-    // Sum all positive entry values as gross revenue
     for (const row of orderLines) {
       const desc = String(row[descKey] || "").toLowerCase();
       const valor = parseBRValue(row[valorKey]);
@@ -303,6 +311,7 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     couponAbsorber = "ifood";
   }
 
+  const totalCouponValue = totalCupomLoja + totalCupomIfood;
   const couponAvgValue = ordersWithCoupon > 0 ? totalCouponValue / ordersWithCoupon : 0;
 
   const ordersWithoutCoupon = totalPedidos - ordersWithCoupon;
