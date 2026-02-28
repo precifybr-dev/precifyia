@@ -57,12 +57,24 @@ function parseBRValue(raw: unknown): number {
 }
 
 // Parse percentage "3,2%" -> 3.2
+// Excel stores percentages as decimals (0.12 = 12%), so detect and convert
 function parseBRPercent(raw: unknown): number {
-  if (typeof raw === "number") return raw;
+  if (typeof raw === "number") {
+    // Excel stores 12% as 0.12 — if value is between -1 and 1 (exclusive), multiply by 100
+    if (raw !== 0 && Math.abs(raw) < 1) {
+      return raw * 100;
+    }
+    return raw;
+  }
   if (raw == null) return 0;
   const str = String(raw).replace("%", "").replace(",", ".").trim();
   const val = parseFloat(str);
-  return isNaN(val) ? 0 : val;
+  if (isNaN(val)) return 0;
+  // Also handle string-formatted decimals from Excel like "0.12"
+  if (val !== 0 && Math.abs(val) < 1 && !String(raw).includes("%")) {
+    return val * 100;
+  }
+  return val;
 }
 
 export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodConsolidation {
