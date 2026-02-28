@@ -35,6 +35,9 @@ import {
   Percent,
   Megaphone,
   RefreshCw,
+  Ticket,
+  Truck,
+  Package,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -52,7 +55,7 @@ interface IfoodSpreadsheetImportModalProps {
   onApply: (data: IfoodConsolidation) => void;
 }
 
-type Step = "upload" | "summary" | "done";
+type Step = "upload" | "dashboard" | "done";
 
 function MetricCard({
   icon: Icon,
@@ -96,6 +99,45 @@ function MetricCard({
   );
 }
 
+function MiniStat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+  return (
+    <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-muted/20">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <div className="text-right">
+        <span className="text-sm font-mono font-semibold">{value}</span>
+        {sub && <span className="text-xs text-muted-foreground ml-1">{sub}</span>}
+      </div>
+    </div>
+  );
+}
+
+const DEFAULT_CONSOLIDATION: IfoodConsolidation = {
+  mesReferencia: "",
+  totalPedidos: 0,
+  faturamentoBruto: 0,
+  faturamentoLiquido: 0,
+  totalCupomLoja: 0,
+  totalCupomIfood: 0,
+  totalComissao: 0,
+  totalTaxa: 0,
+  totalAnuncios: 0,
+  ticketMedio: 0,
+  percentualMedioComissao: 0,
+  percentualMedioTaxa: 0,
+  percentualRealIfood: 0,
+  couponAbsorber: "business",
+  couponType: "fixed",
+  couponAvgValue: 0,
+  ordersWithCoupon: 0,
+  ordersWithCouponLojaOnly: 0,
+  ordersWithCouponIfoodOnly: 0,
+  ordersWithCouponShared: 0,
+  ordersWithoutCoupon: 0,
+  totalCupomShared: 0,
+  ordersWithIfoodDelivery: 0,
+  totalDeliveryCost: 0,
+};
+
 export default function IfoodSpreadsheetImportModal({
   userId,
   storeId,
@@ -112,7 +154,6 @@ export default function IfoodSpreadsheetImportModal({
   const [showTutorial, setShowTutorial] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load last import on open
   const loadLastImport = useCallback(async () => {
     const { data } = await supabase
       .from("ifood_import_logs")
@@ -124,6 +165,7 @@ export default function IfoodSpreadsheetImportModal({
     if (data && data.length > 0) {
       const row = data[0];
       setLastImport({
+        ...DEFAULT_CONSOLIDATION,
         mesReferencia: row.mes_referencia,
         totalPedidos: row.total_pedidos,
         faturamentoBruto: Number(row.faturamento_bruto),
@@ -137,12 +179,9 @@ export default function IfoodSpreadsheetImportModal({
         percentualMedioComissao: Number(row.percentual_medio_comissao),
         percentualMedioTaxa: Number(row.percentual_medio_taxa),
         percentualRealIfood: Number(row.percentual_real_ifood),
-        couponAbsorber: "business",
-        couponType: "fixed",
-        couponAvgValue: 0,
-        ordersWithCoupon: 0,
       });
       setLastImportDate(new Date(row.created_at).toLocaleDateString("pt-BR"));
+      setStep("dashboard");
     }
   }, [userId]);
 
@@ -183,7 +222,7 @@ export default function IfoodSpreadsheetImportModal({
 
       const result = processIfoodSpreadsheet(rows);
       setConsolidation(result);
-      setStep("summary");
+      setStep("dashboard");
     } catch (err: any) {
       setError(err.message || "Erro ao processar planilha.");
     } finally {
@@ -236,11 +275,10 @@ export default function IfoodSpreadsheetImportModal({
 
   const fmtPct = (value: number) => `${value.toFixed(2)}%`;
 
-  // Which data to display in the summary view
   const displayData = consolidation || lastImport;
-  const isViewingLastImport = !consolidation && !!lastImport;
+  const isNewImport = !!consolidation;
 
-  const renderSummary = (data: IfoodConsolidation, isLastImport: boolean) => {
+  const renderDashboard = (data: IfoodConsolidation) => {
     const totalDescontos = data.totalComissao + data.totalTaxa + data.totalCupomLoja;
     const descontoPercent = data.faturamentoBruto > 0
       ? (totalDescontos / data.faturamentoBruto) * 100
@@ -249,21 +287,23 @@ export default function IfoodSpreadsheetImportModal({
       ? (data.faturamentoLiquido / data.faturamentoBruto) * 100
       : 0;
 
+    const totalCupons = data.totalCupomLoja + data.totalCupomIfood + data.totalCupomShared;
+
     return (
       <div className="space-y-4">
-        {/* Header badge */}
+        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-green-500" />
             <span className="text-sm font-medium">
-              {isLastImport ? "Última importação" : "Planilha processada"}
+              {isNewImport ? "Nova planilha processada" : "Última importação"}
             </span>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="text-xs font-mono">
               {data.mesReferencia}
             </Badge>
-            {isLastImport && lastImportDate && (
+            {!isNewImport && lastImportDate && (
               <Badge variant="secondary" className="text-xs">
                 {lastImportDate}
               </Badge>
@@ -288,7 +328,7 @@ export default function IfoodSpreadsheetImportModal({
           />
         </div>
 
-        {/* Visual bar: what you keep vs what you pay */}
+        {/* Revenue distribution bar */}
         <div className="rounded-xl border border-border bg-card p-4 space-y-3">
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             Distribuição do Faturamento
@@ -322,7 +362,7 @@ export default function IfoodSpreadsheetImportModal({
           </p>
         </div>
 
-        {/* Cost breakdown */}
+        {/* Commissions & taxes */}
         <div className="grid grid-cols-2 gap-3">
           <MetricCard
             icon={Receipt}
@@ -340,23 +380,91 @@ export default function IfoodSpreadsheetImportModal({
           />
         </div>
 
-        {/* Coupons */}
-        <div className="grid grid-cols-2 gap-3">
-          <MetricCard
-            icon={TrendingDown}
-            label="Cupom (você paga)"
-            value={fmt(data.totalCupomLoja)}
-            variant={data.totalCupomLoja > 0 ? "warning" : "muted"}
-          />
-          <MetricCard
-            icon={TrendingUp}
-            label="Cupom (iFood paga)"
-            value={fmt(data.totalCupomIfood)}
-            variant={data.totalCupomIfood > 0 ? "success" : "muted"}
-          />
+        {/* ── COUPON BREAKDOWN ── */}
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Ticket className="h-4 w-4 text-amber-500" />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Detalhamento de Cupons
+            </p>
+          </div>
+
+          <div className="space-y-1">
+            <MiniStat
+              label="Total de pedidos"
+              value={data.totalPedidos}
+            />
+            <MiniStat
+              label="Pedidos COM cupom"
+              value={data.ordersWithCoupon}
+              sub={data.totalPedidos > 0 ? `(${((data.ordersWithCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
+            />
+            <MiniStat
+              label="Pedidos SEM cupom"
+              value={data.ordersWithoutCoupon}
+              sub={data.totalPedidos > 0 ? `(${((data.ordersWithoutCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
+            />
+          </div>
+
+          <Separator className="my-2" />
+
+          <p className="text-xs font-medium text-muted-foreground">Quem pagou o cupom:</p>
+          <div className="space-y-1">
+            <MiniStat
+              label="🏪 Só eu paguei"
+              value={`${data.ordersWithCouponLojaOnly} pedidos`}
+              sub={data.totalCupomLoja > 0 ? `(${fmt(data.totalCupomLoja)})` : ""}
+            />
+            <MiniStat
+              label="🟠 Só o iFood pagou"
+              value={`${data.ordersWithCouponIfoodOnly} pedidos`}
+              sub={data.totalCupomIfood > 0 ? `(${fmt(data.totalCupomIfood)})` : ""}
+            />
+            <MiniStat
+              label="🤝 Nós dois pagamos"
+              value={`${data.ordersWithCouponShared} pedidos`}
+              sub={data.totalCupomShared > 0 ? `(${fmt(data.totalCupomShared)})` : ""}
+            />
+          </div>
+
+          {totalCupons > 0 && (
+            <>
+              <Separator className="my-2" />
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-xs text-muted-foreground font-medium">Total gasto com cupons</span>
+                <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{fmt(totalCupons)}</span>
+              </div>
+            </>
+          )}
         </div>
 
-        {/* Ads - informational */}
+        {/* ── DELIVERY BREAKDOWN ── */}
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <div className="flex items-center gap-2 mb-1">
+            <Truck className="h-4 w-4 text-blue-500" />
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Entrega iFood
+            </p>
+          </div>
+          <div className="space-y-1">
+            <MiniStat
+              label="Pedidos com entrega iFood"
+              value={data.ordersWithIfoodDelivery}
+              sub={data.totalPedidos > 0 ? `(${((data.ordersWithIfoodDelivery / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
+            />
+            <MiniStat
+              label="Custo total com entrega"
+              value={fmt(data.totalDeliveryCost)}
+            />
+          </div>
+          {data.ordersWithIfoodDelivery === 0 && (
+            <p className="text-xs text-muted-foreground italic">
+              Nenhuma entrega via iFood detectada neste período.
+            </p>
+          )}
+        </div>
+
+        {/* Ads */}
         {data.totalAnuncios > 0 && (
           <MetricCard
             icon={Megaphone}
@@ -364,7 +472,6 @@ export default function IfoodSpreadsheetImportModal({
             value={fmt(data.totalAnuncios)}
             subValue="Informativo — não entra no plano"
             variant="muted"
-            className="col-span-2"
           />
         )}
 
@@ -381,46 +488,65 @@ export default function IfoodSpreadsheetImportModal({
           </p>
         </div>
 
-        {/* Actions */}
-        {!isLastImport && (
-          <DialogFooter className="gap-2 pt-2">
-            <Button variant="outline" onClick={() => { setConsolidation(null); setStep("upload"); }} disabled={isProcessing}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleApply}
-              disabled={isProcessing}
-              className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-            >
-              {isProcessing ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Zap className="h-4 w-4" />
-              )}
-              Aplicar ao Plano
-            </Button>
-          </DialogFooter>
-        )}
-
-        {isLastImport && (
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="outline"
-              className="flex-1 gap-2"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <RefreshCw className="h-4 w-4" />
-              Importar nova planilha
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              className="hidden"
-              onChange={handleFileSelect}
-            />
+        {/* Base rate info */}
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
+          <div className="flex items-center gap-2">
+            <Info className="h-4 w-4 text-amber-500 flex-shrink-0" />
+            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+              Taxa Base Fixa do Plano iFood
+            </p>
           </div>
-        )}
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            A taxa base do iFood é fixa: <strong className="text-foreground">12%</strong> (Plano Básico)
+            ou <strong className="text-foreground">23%</strong> (Plano Entrega).
+            Esse valor não muda e já está incluído no cálculo da comissão acima.
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col gap-2 pt-2">
+          {isNewImport && (
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => { setConsolidation(null); setStep("upload"); }}
+                disabled={isProcessing}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleApply}
+                disabled={isProcessing}
+                className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              >
+                {isProcessing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Zap className="h-4 w-4" />
+                )}
+                Aplicar ao Plano
+              </Button>
+            </DialogFooter>
+          )}
+
+          {/* Always show option to upload new spreadsheet */}
+          <Button
+            variant="outline"
+            className="w-full gap-2"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isProcessing}
+          >
+            <RefreshCw className="h-4 w-4" />
+            {isNewImport ? "Trocar planilha" : "Importar nova planilha"}
+          </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls"
+            className="hidden"
+            onChange={handleFileSelect}
+          />
+        </div>
       </div>
     );
   };
@@ -431,49 +557,35 @@ export default function IfoodSpreadsheetImportModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-destructive" />
-            Importar Planilha de Conciliação iFood
+            Raio-X Financeiro iFood
           </DialogTitle>
           <DialogDescription>
-            Faça upload da planilha oficial de conciliação do iFood para preencher
-            automaticamente os dados do seu plano.
+            Análise detalhada dos seus dados financeiros do iFood.
           </DialogDescription>
         </DialogHeader>
 
-        {/* STEP: Upload (no previous import) or show last import */}
+        {/* STEP: Upload (no previous data) */}
         {step === "upload" && (
           <div className="space-y-4">
-            {/* If there's a last import, show it first */}
-            {lastImport && !consolidation && (
-              <>
-                {renderSummary(lastImport, true)}
-                <Separator />
-              </>
-            )}
-
-            {/* Upload area (show when no last import, or below last import) */}
-            {!lastImport && (
-              <>
-                <div
-                  className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-8 text-center cursor-pointer hover:border-destructive/50 transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="text-sm font-medium text-foreground">
-                    Clique para selecionar a planilha
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Aceita arquivos .xlsx ou .xls
-                  </p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".xlsx,.xls"
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
-                </div>
-              </>
-            )}
+            <div
+              className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-8 text-center cursor-pointer hover:border-destructive/50 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+              <p className="text-sm font-medium text-foreground">
+                Clique para selecionar a planilha
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Aceita arquivos .xlsx ou .xls
+              </p>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+            </div>
 
             {isProcessing && (
               <div className="flex items-center justify-center gap-2 py-4">
@@ -520,8 +632,23 @@ export default function IfoodSpreadsheetImportModal({
           </div>
         )}
 
-        {/* STEP: Summary (new import) */}
-        {step === "summary" && consolidation && renderSummary(consolidation, false)}
+        {/* STEP: Dashboard */}
+        {step === "dashboard" && displayData && renderDashboard(displayData)}
+
+        {/* Loading overlay for file processing on dashboard */}
+        {step === "dashboard" && isProcessing && (
+          <div className="flex items-center justify-center gap-2 py-4">
+            <Loader2 className="h-5 w-5 animate-spin text-destructive" />
+            <span className="text-sm text-muted-foreground">Processando nova planilha...</span>
+          </div>
+        )}
+
+        {step === "dashboard" && error && (
+          <div className="flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
 
         {/* STEP: Done */}
         {step === "done" && (
