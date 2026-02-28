@@ -293,6 +293,7 @@ export default function IfoodSpreadsheetImportModal({
 
     const warnings = data.warnings || [];
     const hasErrors = warnings.some(w => w.level === "error");
+    const isBlocked = data.isBlocked === true;
 
     return (
       <div className="space-y-4">
@@ -307,6 +308,19 @@ export default function IfoodSpreadsheetImportModal({
                 (média de {(data.totalLinhas / data.totalPedidos).toFixed(1)} linhas/pedido)
               </span>
             </p>
+          </div>
+        )}
+
+        {/* Blocked banner */}
+        {isBlocked && (
+          <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-destructive bg-destructive/10">
+            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-destructive">Dados bloqueados — inconsistência detectada</p>
+              <p className="text-xs text-destructive/80 mt-1">
+                Os dados abaixo apresentam erros matemáticos e não podem ser aplicados. Verifique se o arquivo é a planilha de conciliação oficial do iFood e tente novamente.
+              </p>
+            </div>
           </div>
         )}
 
@@ -554,7 +568,7 @@ export default function IfoodSpreadsheetImportModal({
               </Button>
               <Button
                 onClick={handleApply}
-                disabled={isProcessing || hasErrors}
+                disabled={isProcessing || hasErrors || isBlocked}
                 className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               >
                 {isProcessing ? (
