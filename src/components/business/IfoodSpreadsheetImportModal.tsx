@@ -291,7 +291,8 @@ export default function IfoodSpreadsheetImportModal({
 
     const totalCupons = data.totalCupomLoja + data.totalCupomIfood + data.totalCupomShared;
 
-    const hasErrors = data.warnings.some(w => w.level === "error");
+    const warnings = data.warnings || [];
+    const hasErrors = warnings.some(w => w.level === "error");
 
     return (
       <div className="space-y-4">
@@ -310,9 +311,9 @@ export default function IfoodSpreadsheetImportModal({
         )}
 
         {/* Validation warnings */}
-        {data.warnings.length > 0 && (
+        {warnings.length > 0 && (
           <div className="space-y-2">
-            {data.warnings.map((w, i) => (
+            {warnings.map((w, i) => (
               <div
                 key={i}
                 className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs ${
