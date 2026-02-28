@@ -114,6 +114,7 @@ function MiniStat({ label, value, sub }: { label: string; value: string | number
 const DEFAULT_CONSOLIDATION: IfoodConsolidation = {
   mesReferencia: "",
   totalPedidos: 0,
+  totalLinhas: 0,
   faturamentoBruto: 0,
   faturamentoLiquido: 0,
   totalCupomLoja: 0,
@@ -136,6 +137,7 @@ const DEFAULT_CONSOLIDATION: IfoodConsolidation = {
   totalCupomShared: 0,
   ordersWithIfoodDelivery: 0,
   totalDeliveryCost: 0,
+  warnings: [],
 };
 
 export default function IfoodSpreadsheetImportModal({
@@ -289,8 +291,43 @@ export default function IfoodSpreadsheetImportModal({
 
     const totalCupons = data.totalCupomLoja + data.totalCupomIfood + data.totalCupomShared;
 
+    const hasErrors = data.warnings.some(w => w.level === "error");
+
     return (
       <div className="space-y-4">
+        {/* Grouping badge */}
+        {data.totalLinhas > 0 && data.totalLinhas !== data.totalPedidos && (
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20">
+            <Package className="h-4 w-4 text-blue-500 flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">
+              <strong className="text-foreground">{data.totalLinhas}</strong> linhas agrupadas em{" "}
+              <strong className="text-foreground">{data.totalPedidos}</strong> pedidos únicos{" "}
+              <span className="text-muted-foreground/70">
+                (média de {(data.totalLinhas / data.totalPedidos).toFixed(1)} linhas/pedido)
+              </span>
+            </p>
+          </div>
+        )}
+
+        {/* Validation warnings */}
+        {data.warnings.length > 0 && (
+          <div className="space-y-2">
+            {data.warnings.map((w, i) => (
+              <div
+                key={i}
+                className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs ${
+                  w.level === "error"
+                    ? "bg-destructive/10 border-destructive/30 text-destructive"
+                    : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+                }`}
+              >
+                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+                <span>{w.message}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -516,7 +553,7 @@ export default function IfoodSpreadsheetImportModal({
               </Button>
               <Button
                 onClick={handleApply}
-                disabled={isProcessing}
+                disabled={isProcessing || hasErrors}
                 className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
               >
                 {isProcessing ? (
