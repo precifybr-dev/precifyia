@@ -6,12 +6,15 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Smartphone, Truck, Calculator, Percent, Info, ShoppingCart, Receipt, Gift, TrendingUp, HelpCircle, AlertTriangle } from "lucide-react";
+import { Smartphone, Truck, Calculator, Percent, Info, ShoppingCart, Receipt, Gift, TrendingUp, HelpCircle, AlertTriangle, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import IfoodSpreadsheetImportModal from "./IfoodSpreadsheetImportModal";
+import type { IfoodConsolidation } from "@/lib/ifood-spreadsheet-processor";
 
 interface IfoodPlanBlockProps {
   userId: string;
@@ -268,6 +271,39 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
   };
 
   const [userEditedRate, setUserEditedRate] = useState(false);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importedFromSpreadsheet, setImportedFromSpreadsheet] = useState(false);
+  const [showManualEditWarning, setShowManualEditWarning] = useState(false);
+
+  const handleSpreadsheetApply = (data: IfoodConsolidation) => {
+    // Determine plan type from commission percentage
+    const planType = data.percentualMedioComissao >= 18 ? "ifood_delivery" : "own_delivery";
+    
+    setSettings(prev => ({
+      ...prev,
+      planType,
+      baseRate: data.percentualMedioComissao,
+      monthlyOrders: data.totalPedidos,
+      averageTicket: data.ticketMedio,
+      offersCoupon: data.ordersWithCoupon > 0,
+      ordersWithCoupon: data.ordersWithCoupon,
+      couponValue: data.couponAvgValue,
+      couponType: data.couponType === "percent" ? "percent" : "fixed",
+      couponAbsorber: data.couponAbsorber,
+      realPercentage: data.percentualRealIfood,
+    }));
+    setImportedFromSpreadsheet(true);
+    setUserEditedRate(true);
+  };
+
+  const handleManualEditWithWarning = (callback: () => void) => {
+    if (importedFromSpreadsheet && !showManualEditWarning) {
+      setShowManualEditWarning(true);
+      return;
+    }
+    callback();
+    setShowManualEditWarning(false);
+  };
 
   const handlePlanTypeChange = (value: string) => {
     const autoRate = value === "own_delivery" ? 12 : value === "ifood_delivery" ? 23 : null;
@@ -363,18 +399,73 @@ export default function IfoodPlanBlock({ userId, onRealPercentageChange }: Ifood
   return (
     <Card className="border-destructive/30 dark:border-destructive/50 bg-card">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Smartphone className="h-5 w-5 text-destructive" />
             Plano iFood
           </CardTitle>
-          {isSaving && (
-            <Badge variant="outline" className="text-xs">
-              Salvando...
-            </Badge>
-          )}
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setImportModalOpen(true)}
+                    className="gap-1.5 text-xs border-destructive/30 hover:bg-destructive/10"
+                  >
+                    <Zap className="h-3.5 w-3.5 text-destructive" />
+                    <span className="hidden sm:inline">Importar dados reais do iFood</span>
+                    <span className="sm:hidden">Importar</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Use sua planilha oficial de conciliação do iFood para preencher automaticamente seu plano.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            {isSaving && (
+              <Badge variant="outline" className="text-xs">
+                Salvando...
+              </Badge>
+            )}
+          </div>
         </div>
+
+        {/* Manual edit warning */}
+        {showManualEditWarning && (
+          <div className="mt-3 flex items-start gap-3 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+            <AlertTriangle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm text-warning font-medium">
+                Esses dados foram preenchidos com base na sua planilha oficial do iFood.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Alterações manuais podem gerar inconsistência na porcentagem final.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2 text-xs"
+                onClick={() => {
+                  setShowManualEditWarning(false);
+                  setImportedFromSpreadsheet(false);
+                }}
+              >
+                Entendi e quero alterar
+              </Button>
+            </div>
+          </div>
+        )}
       </CardHeader>
+
+      {/* Import Modal */}
+      <IfoodSpreadsheetImportModal
+        userId={userId}
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        onApply={handleSpreadsheetApply}
+      />
       <CardContent className="space-y-6">
         {/* Plan Type Selection */}
         <div className="space-y-3">

@@ -1708,6 +1708,74 @@ export type Database = {
         }
         Relationships: []
       }
+      ifood_import_logs: {
+        Row: {
+          created_at: string
+          faturamento_bruto: number
+          faturamento_liquido: number
+          id: string
+          mes_referencia: string
+          percentual_medio_comissao: number
+          percentual_medio_taxa: number
+          percentual_real_ifood: number
+          store_id: string | null
+          ticket_medio: number
+          total_anuncios: number
+          total_comissao: number
+          total_cupom_ifood: number
+          total_cupom_loja: number
+          total_pedidos: number
+          total_taxa: number
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          faturamento_bruto?: number
+          faturamento_liquido?: number
+          id?: string
+          mes_referencia: string
+          percentual_medio_comissao?: number
+          percentual_medio_taxa?: number
+          percentual_real_ifood?: number
+          store_id?: string | null
+          ticket_medio?: number
+          total_anuncios?: number
+          total_comissao?: number
+          total_cupom_ifood?: number
+          total_cupom_loja?: number
+          total_pedidos?: number
+          total_taxa?: number
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          faturamento_bruto?: number
+          faturamento_liquido?: number
+          id?: string
+          mes_referencia?: string
+          percentual_medio_comissao?: number
+          percentual_medio_taxa?: number
+          percentual_real_ifood?: number
+          store_id?: string | null
+          ticket_medio?: number
+          total_anuncios?: number
+          total_comissao?: number
+          total_cupom_ifood?: number
+          total_cupom_loja?: number
+          total_pedidos?: number
+          total_taxa?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ifood_import_logs_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ifood_import_usage: {
         Row: {
           created_at: string
