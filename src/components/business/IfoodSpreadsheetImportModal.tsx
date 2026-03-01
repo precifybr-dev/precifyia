@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -12,12 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
   Zap,
   Upload,
   FileSpreadsheet,
@@ -27,8 +21,6 @@ import {
   Loader2,
   ChevronDown,
   ChevronUp,
-  TrendingDown,
-  TrendingUp,
   DollarSign,
   ShoppingCart,
   Receipt,
@@ -38,6 +30,7 @@ import {
   Ticket,
   Truck,
   Package,
+  ArrowRight,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -117,6 +110,9 @@ const DEFAULT_CONSOLIDATION: IfoodConsolidation = {
   totalLinhas: 0,
   faturamentoBruto: 0,
   faturamentoLiquido: 0,
+  taxasEComissoes: 0,
+  servicosEPromocoes: 0,
+  ajustesIfood: 0,
   totalCupomLoja: 0,
   totalCupomIfood: 0,
   totalComissao: 0,
@@ -281,14 +277,6 @@ export default function IfoodSpreadsheetImportModal({
   const isNewImport = !!consolidation;
 
   const renderDashboard = (data: IfoodConsolidation) => {
-    const totalDescontos = data.totalComissao + data.totalTaxa + data.totalCupomLoja;
-    const descontoPercent = data.faturamentoBruto > 0
-      ? (totalDescontos / data.faturamentoBruto) * 100
-      : 0;
-    const lucroLiquidoPercent = data.faturamentoBruto > 0
-      ? (data.faturamentoLiquido / data.faturamentoBruto) * 100
-      : 0;
-
     const totalCupons = data.totalCupomLoja + data.totalCupomIfood;
 
     const warnings = data.warnings || [];
@@ -318,7 +306,7 @@ export default function IfoodSpreadsheetImportModal({
             <div>
               <p className="text-sm font-semibold text-destructive">Dados bloqueados — inconsistência detectada</p>
               <p className="text-xs text-destructive/80 mt-1">
-                Os dados abaixo apresentam erros matemáticos e não podem ser aplicados. Verifique se o arquivo é a planilha de conciliação oficial do iFood e tente novamente.
+                Os dados apresentam erros matemáticos e não podem ser aplicados. Verifique se o arquivo é a planilha de conciliação oficial do iFood.
               </p>
             </div>
           </div>
@@ -365,11 +353,37 @@ export default function IfoodSpreadsheetImportModal({
               </div>
             </div>
 
+            {/* ── OFFICIAL IFOOD RECONCILIATION CARDS ── */}
+            <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Reconciliação iFood (deve bater com o Financeiro)
+              </p>
+
+              <div className="space-y-1">
+                <MiniStat label="📊 Valor das Vendas" value={fmt(data.faturamentoBruto)} />
+                <MiniStat label="📉 Taxas e Comissões" value={fmt(data.taxasEComissoes || 0)} />
+                <MiniStat label="🏷️ Serviços e Promoções" value={fmt(data.servicosEPromocoes || 0)} />
+                <MiniStat label="🔄 Ajustes" value={fmt(data.ajustesIfood || 0)} />
+              </div>
+
+              <Separator />
+
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-foreground flex items-center gap-1">
+                  <ArrowRight className="h-4 w-4" />
+                  Total Faturamento
+                </span>
+                <span className="text-lg font-extrabold font-mono text-primary">
+                  {fmt(data.faturamentoLiquido)}
+                </span>
+              </div>
+            </div>
+
             {/* Main KPIs */}
             <div className="grid grid-cols-2 gap-3">
               <MetricCard
                 icon={DollarSign}
-                label="Faturamento Bruto"
+                label="Valor das Vendas"
                 value={fmt(data.faturamentoBruto)}
                 variant="success"
               />
@@ -383,38 +397,50 @@ export default function IfoodSpreadsheetImportModal({
             </div>
 
             {/* Revenue distribution bar */}
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Distribuição do Faturamento
-              </p>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-green-500 inline-block" />
-                    Você recebe
-                  </span>
-                  <span className="font-mono font-bold text-green-600 dark:text-green-400">
-                    {fmtPct(lucroLiquidoPercent)}
-                  </span>
+            {data.faturamentoBruto > 0 && (
+              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Distribuição do Faturamento
+                </p>
+                <div className="space-y-2">
+                  {(() => {
+                    const recebePercent = data.faturamentoBruto > 0
+                      ? (data.faturamentoLiquido / data.faturamentoBruto) * 100
+                      : 0;
+                    const retemPercent = 100 - recebePercent;
+                    return (
+                      <>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 rounded-full bg-green-500 inline-block" />
+                            Você recebe
+                          </span>
+                          <span className="font-mono font-bold text-green-600 dark:text-green-400">
+                            {fmtPct(recebePercent)}
+                          </span>
+                        </div>
+                        <Progress
+                          value={Math.max(0, Math.min(100, recebePercent))}
+                          className="h-3 bg-destructive/15 [&>div]:bg-green-500"
+                        />
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="flex items-center gap-1.5">
+                            <span className="w-3 h-3 rounded-full bg-destructive inline-block" />
+                            iFood retém
+                          </span>
+                          <span className="font-mono font-bold text-destructive">
+                            {fmtPct(retemPercent)}
+                          </span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
-                <Progress
-                  value={lucroLiquidoPercent}
-                  className="h-3 bg-destructive/15 [&>div]:bg-green-500"
-                />
-                <div className="flex items-center justify-between text-sm">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-3 h-3 rounded-full bg-destructive inline-block" />
-                    iFood retém
-                  </span>
-                  <span className="font-mono font-bold text-destructive">
-                    {fmtPct(descontoPercent)}
-                  </span>
-                </div>
+                <p className="text-xs text-muted-foreground">
+                  Total Faturamento: <strong className="text-foreground">{fmt(data.faturamentoLiquido)}</strong>
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Líquido: <strong className="text-foreground">{fmt(data.faturamentoLiquido)}</strong>
-              </p>
-            </div>
+            )}
 
             {/* Commissions & taxes */}
             <div className="grid grid-cols-2 gap-3">
@@ -444,10 +470,7 @@ export default function IfoodSpreadsheetImportModal({
               </div>
 
               <div className="space-y-1">
-                <MiniStat
-                  label="Total de pedidos"
-                  value={data.totalPedidos}
-                />
+                <MiniStat label="Total de pedidos" value={data.totalPedidos} />
                 <MiniStat
                   label="Pedidos COM cupom"
                   value={data.ordersWithCoupon}
@@ -538,7 +561,7 @@ export default function IfoodSpreadsheetImportModal({
                 {fmtPct(data.percentualRealIfood)}
               </p>
               <p className="text-xs text-muted-foreground">
-                (Comissão + Taxa Transação + Entrega iFood) / Faturamento Bruto
+                (Comissão + Taxa Transação + Entrega iFood) / Valor das Vendas
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left">
                 <MiniStat label="Comissão" value={fmt(data.totalComissao)} />
@@ -558,7 +581,6 @@ export default function IfoodSpreadsheetImportModal({
               <p className="text-xs text-muted-foreground leading-relaxed">
                 A taxa base do iFood é fixa: <strong className="text-foreground">12%</strong> (Plano Básico)
                 ou <strong className="text-foreground">23%</strong> (Plano Entrega).
-                Esse valor não muda e já está incluído no cálculo da comissão acima.
               </p>
             </div>
           </>
@@ -590,7 +612,6 @@ export default function IfoodSpreadsheetImportModal({
             </DialogFooter>
           )}
 
-          {/* Always show option to upload new spreadsheet */}
           <Button
             variant="outline"
             className="w-full gap-2"
@@ -625,7 +646,7 @@ export default function IfoodSpreadsheetImportModal({
           </DialogDescription>
         </DialogHeader>
 
-        {/* STEP: Upload (no previous data) */}
+        {/* STEP: Upload */}
         {step === "upload" && (
           <div className="space-y-4">
             <div
@@ -696,7 +717,6 @@ export default function IfoodSpreadsheetImportModal({
         {/* STEP: Dashboard */}
         {step === "dashboard" && displayData && renderDashboard(displayData)}
 
-        {/* Loading overlay for file processing on dashboard */}
         {step === "dashboard" && isProcessing && (
           <div className="flex items-center justify-center gap-2 py-4">
             <Loader2 className="h-5 w-5 animate-spin text-destructive" />
