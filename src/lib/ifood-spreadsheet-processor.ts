@@ -22,11 +22,15 @@ export interface IfoodDebugInfo {
   totalLinhasRaw: number;
   totalLinhasComPedido: number;
   totalPedidosUnicos: number;
+  valorItensEEntregaPropria: number;
+  ressarcimentosCancelados: number;
   valorDasVendas: number;
   taxasEComissoes: number;
   servicosEPromocoes: number;
   ajustes: number;
   totalFaturamento: number;
+  somaEntradaFinanceira: number;
+  somaMaxBaseCalculo: number;
   somaCupomLoja: number;
   somaCupomIfood: number;
   somaComissao: number;
@@ -237,6 +241,7 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
   const descKey = findKey(firstRow, "descricao_lancamento");
   const valorKey = findKey(firstRow, "valor");
   const percKey = findKey(firstRow, "percentual_taxa");
+  const baseCalculoKey = findKey(firstRow, "base_calculo");
 
   // ── Separate lines WITH and WITHOUT order id ──
   const orderLines: Array<{ orderId: string; row: Record<string, unknown> }> = [];
@@ -261,14 +266,17 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
   }
 
   // ── Per-order aggregation ──
-  let valorDasVendas = 0;
-  let totalTaxasEComissoes = 0;
+  let totalValorItensEEntregaPropria = 0;
+  let totalRessarcimentosCancelados = 0;
 
   let totalCupomLoja = 0;
   let totalCupomIfood = 0;
   let totalComissao = 0;
   let totalTaxaTransacao = 0;
   let totalEntregaIfood = 0;
+
+  let totalEntradaFinanceira = 0;
+  let totalSomaMaxBaseCalculo = 0;
 
   let ordersWithCoupon = 0;
   let ordersWithCouponLojaOnly = 0;
@@ -285,13 +293,11 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     // Per-order accumulators for VALOR_DAS_VENDAS formula
     let orderEntry = 0;
     let orderCupomIfood = 0;
-    let orderCupomLoja = 0;
-    let orderTaxaServicoCliente = 0;
-    let orderTaxaEntregaIfood = 0;
+    let orderCupomLojaRaw = 0;
+    let orderTaxaServicoClienteRaw = 0;
+    let orderTaxaEntregaIfoodRaw = 0;
     let orderRessarcCancelado = 0;
-
-    // Per-order accumulators for TAXAS_E_COMISSOES
-    let orderTaxasEComissoes = 0;
+    let orderMaxBaseCalculo = 0;
 
     // Detail accumulators
     let orderComissao = 0;
@@ -302,30 +308,29 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
       const valor = parseBRValue(line[valorKey]);
       const perc = parseBRPercent(line[percKey]);
       const desc = normalizeDescription(line[descKey]);
+      const baseCalculoValue = parseBRValue(line[baseCalculoKey]);
+      if (baseCalculoValue > orderMaxBaseCalculo) {
+        orderMaxBaseCalculo = baseCalculoValue;
+      }
 
       // ── VALOR DAS VENDAS components ──
       if (DESC_ENTRADA_FINANCEIRA.has(desc)) {
         orderEntry += valor;
       }
       if (DESC_CUPOM_IFOOD.has(desc)) {
-        orderCupomIfood += valor; // comes positive in XLSX
+        orderCupomIfood += valor;
       }
       if (DESC_CUPOM_LOJA.has(desc)) {
-        orderCupomLoja += valor; // comes negative in XLSX
+        orderCupomLojaRaw += valor;
       }
       if (DESC_TAXA_SERVICO_CLIENTE.has(desc)) {
-        orderTaxaServicoCliente += valor;
+        orderTaxaServicoClienteRaw += valor;
       }
       if (DESC_TAXA_ENTREGA_IFOOD.has(desc)) {
-        orderTaxaEntregaIfood += valor;
+        orderTaxaEntregaIfoodRaw += valor;
       }
       if (DESC_RESSARCIMENTO_CANCELADO.has(desc)) {
         orderRessarcCancelado += valor;
-      }
-
-      // ── TAXAS E COMISSOES ──
-      if (DESC_TAXAS_E_COMISSOES.has(desc)) {
-        orderTaxasEComissoes += valor;
       }
 
       // ── Detail: commission vs taxa ──
@@ -344,16 +349,21 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
       }
     }
 
-    // VALOR_DAS_VENDAS per order:
-    // entry + cupom_ifood + cupom_loja(negative→adds coupon back) − taxa_servico_cliente − taxa_entrega_ifood + ressarc_cancelado
-    const orderVenda = orderEntry + orderCupomIfood + orderCupomLoja
-      - orderTaxaServicoCliente - orderTaxaEntregaIfood + orderRessarcCancelado;
+    const cupomLojaAbs = Math.abs(orderCupomLojaRaw);
+    const taxaServicoClienteAbs = Math.abs(orderTaxaServicoClienteRaw);
+    const taxaEntregaIfoodAbs = Math.abs(orderTaxaEntregaIfoodRaw);
 
-    valorDasVendas += orderVenda;
-    totalTaxasEComissoes += orderTaxasEComissoes;
+    // Valor dos itens e entrega própria (sem ressarcimento)
+    const orderValorItensEEntregaPropria =
+      orderEntry + orderCupomIfood + cupomLojaAbs - taxaServicoClienteAbs - taxaEntregaIfoodAbs;
+
+    totalValorItensEEntregaPropria += orderValorItensEEntregaPropria;
+    totalRessarcimentosCancelados += orderRessarcCancelado;
+
+    totalEntradaFinanceira += orderEntry;
+    totalSomaMaxBaseCalculo += orderMaxBaseCalculo;
 
     // Coupons (absolute values for display)
-    const cupomLojaAbs = Math.abs(orderCupomLoja);
     const cupomIfoodAbs = Math.abs(orderCupomIfood);
     totalCupomLoja += cupomLojaAbs;
     totalCupomIfood += cupomIfoodAbs;
@@ -362,10 +372,10 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
 
     // Delivery
     const deliveryAbs = Math.abs(orderDelivery);
-    totalEntregaIfood += Math.abs(orderTaxaEntregaIfood);
-    if (deliveryAbs > 0 || Math.abs(orderTaxaEntregaIfood) > 0) {
+    totalEntregaIfood += taxaEntregaIfoodAbs;
+    if (deliveryAbs > 0 || taxaEntregaIfoodAbs > 0) {
       ordersWithIfoodDelivery++;
-      totalDeliveryCost += deliveryAbs + Math.abs(orderTaxaEntregaIfood);
+      totalDeliveryCost += deliveryAbs + taxaEntregaIfoodAbs;
     }
 
     // Coupon classification per order
@@ -419,6 +429,7 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
   }
 
   // ── Official iFood cards ──
+  const valorDasVendas = totalValorItensEEntregaPropria + totalRessarcimentosCancelados;
   const faturamentoBruto = round2(valorDasVendas);
   const taxasEComissoes = round2(totalTaxasEComissoesAllLines);
   const servicosEPromocoes = round2(totalServicosEPromocoes);
@@ -457,11 +468,15 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     totalLinhasRaw: normalizedRows.length,
     totalLinhasComPedido: orderLines.length,
     totalPedidosUnicos: totalPedidos,
+    valorItensEEntregaPropria: round2(totalValorItensEEntregaPropria),
+    ressarcimentosCancelados: round2(totalRessarcimentosCancelados),
     valorDasVendas: round2(valorDasVendas),
     taxasEComissoes: round2(taxasEComissoes),
     servicosEPromocoes: round2(servicosEPromocoes),
     ajustes: round2(ajustesIfood),
     totalFaturamento: round2(totalFaturamento),
+    somaEntradaFinanceira: round2(totalEntradaFinanceira),
+    somaMaxBaseCalculo: round2(totalSomaMaxBaseCalculo),
     somaCupomLoja: round2(totalCupomLoja),
     somaCupomIfood: round2(totalCupomIfood),
     somaComissao: round2(totalComissao),
@@ -557,6 +572,59 @@ function validateConsolidation(data: IfoodConsolidation): { warnings: Validation
       message: `Percentual real pago ao iFood (${data.percentualRealIfood.toFixed(1)}%) está acima de 50%. Provável erro de consolidação.`,
     });
     isBlocked = true;
+  }
+
+  // BLOQUEANTE: reconciliação dos cards iFood
+  const totalReconciliado = round2(
+    data.faturamentoBruto + data.taxasEComissoes + data.servicosEPromocoes + data.ajustesIfood
+  );
+  if (Math.abs(totalReconciliado - data.faturamentoLiquido) > 0.01) {
+    warnings.push({
+      level: "error",
+      message: `Reconciliação inválida: Total Faturamento (${fmt(data.faturamentoLiquido)}) difere de Bruto + Taxas + Serviços + Ajustes (${fmt(totalReconciliado)}).`,
+    });
+    isBlocked = true;
+  }
+
+  // BLOQUEANTE: suspeita de bruto baseado em base_calculo
+  const somaMaxBaseCalculo = data.debugInfo?.somaMaxBaseCalculo ?? 0;
+  if (somaMaxBaseCalculo > 0 && Math.abs(somaMaxBaseCalculo - data.faturamentoBruto) <= 0.01) {
+    warnings.push({
+      level: "error",
+      message: `Valor das Vendas está idêntico à soma de base_calculo (${fmt(somaMaxBaseCalculo)}). O bruto deve seguir a fórmula oficial por pedido.`,
+    });
+    isBlocked = true;
+  }
+
+  // TESTE DE ACEITAÇÃO (planilha 2026-01)
+  if (data.mesReferencia === "2026-01") {
+    const expected = {
+      valorItensEEntregaPropria: 8063.56,
+      ressarcimentosCancelados: 236.63,
+      faturamentoBruto: 8300.19,
+      taxasEComissoes: -1174.87,
+      servicosEPromocoes: -2587.88,
+      ajustesIfood: 0.78,
+      faturamentoLiquido: 4538.22,
+    } as const;
+
+    const diffs = [
+      ["Valor dos itens e entrega própria", data.debugInfo?.valorItensEEntregaPropria ?? 0, expected.valorItensEEntregaPropria],
+      ["Ressarcimento cancelados", data.debugInfo?.ressarcimentosCancelados ?? 0, expected.ressarcimentosCancelados],
+      ["Valor das vendas", data.faturamentoBruto, expected.faturamentoBruto],
+      ["Taxas e comissões", data.taxasEComissoes, expected.taxasEComissoes],
+      ["Serviços e promoções", data.servicosEPromocoes, expected.servicosEPromocoes],
+      ["Ajustes", data.ajustesIfood, expected.ajustesIfood],
+      ["Total faturamento", data.faturamentoLiquido, expected.faturamentoLiquido],
+    ].filter(([, actual, exp]) => Math.abs((actual as number) - (exp as number)) > 0.01);
+
+    if (diffs.length > 0) {
+      warnings.push({
+        level: "error",
+        message: `Reconciliação de aceitação 2026-01 falhou em ${diffs.length} métrica(s).`,
+      });
+      isBlocked = true;
+    }
   }
 
   // WARNING: Cupons > 40% do bruto
