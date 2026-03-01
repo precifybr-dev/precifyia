@@ -289,7 +289,7 @@ export default function IfoodSpreadsheetImportModal({
       ? (data.faturamentoLiquido / data.faturamentoBruto) * 100
       : 0;
 
-    const totalCupons = data.totalCupomLoja + data.totalCupomIfood + data.totalCupomShared;
+    const totalCupons = data.totalCupomLoja + data.totalCupomIfood;
 
     const warnings = data.warnings || [];
     const hasErrors = warnings.some(w => w.level === "error");
@@ -343,217 +343,226 @@ export default function IfoodSpreadsheetImportModal({
           </div>
         )}
 
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-green-500" />
-            <span className="text-sm font-medium">
-              {isNewImport ? "Nova planilha processada" : "Última importação"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs font-mono">
-              {data.mesReferencia}
-            </Badge>
-            {!isNewImport && lastImportDate && (
-              <Badge variant="secondary" className="text-xs">
-                {lastImportDate}
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* Main KPIs */}
-        <div className="grid grid-cols-2 gap-3">
-          <MetricCard
-            icon={DollarSign}
-            label="Faturamento Bruto"
-            value={fmt(data.faturamentoBruto)}
-            variant="success"
-          />
-          <MetricCard
-            icon={ShoppingCart}
-            label="Total de Pedidos"
-            value={data.totalPedidos.toLocaleString("pt-BR")}
-            subValue={`Ticket médio: ${fmt(data.ticketMedio)}`}
-            variant="default"
-          />
-        </div>
-
-        {/* Revenue distribution bar */}
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Distribuição do Faturamento
-          </p>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-green-500 inline-block" />
-                Você recebe
-              </span>
-              <span className="font-mono font-bold text-green-600 dark:text-green-400">
-                {fmtPct(lucroLiquidoPercent)}
-              </span>
-            </div>
-            <Progress
-              value={lucroLiquidoPercent}
-              className="h-3 bg-destructive/15 [&>div]:bg-green-500"
-            />
-            <div className="flex items-center justify-between text-sm">
-              <span className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-destructive inline-block" />
-                iFood retém
-              </span>
-              <span className="font-mono font-bold text-destructive">
-                {fmtPct(descontoPercent)}
-              </span>
-            </div>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Líquido: <strong className="text-foreground">{fmt(data.faturamentoLiquido)}</strong>
-          </p>
-        </div>
-
-        {/* Commissions & taxes */}
-        <div className="grid grid-cols-2 gap-3">
-          <MetricCard
-            icon={Receipt}
-            label="Comissão iFood"
-            value={fmt(data.totalComissao)}
-            subValue={`Média: ${fmtPct(data.percentualMedioComissao)}`}
-            variant="danger"
-          />
-          <MetricCard
-            icon={Percent}
-            label="Taxa Transação"
-            value={fmt(data.totalTaxa)}
-            subValue={`Média: ${fmtPct(data.percentualMedioTaxa)}`}
-            variant="danger"
-          />
-        </div>
-
-        {/* ── COUPON BREAKDOWN ── */}
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Ticket className="h-4 w-4 text-amber-500" />
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Detalhamento de Cupons
-            </p>
-          </div>
-
-          <div className="space-y-1">
-            <MiniStat
-              label="Total de pedidos"
-              value={data.totalPedidos}
-            />
-            <MiniStat
-              label="Pedidos COM cupom"
-              value={data.ordersWithCoupon}
-              sub={data.totalPedidos > 0 ? `(${((data.ordersWithCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
-            />
-            <MiniStat
-              label="Pedidos SEM cupom"
-              value={data.ordersWithoutCoupon}
-              sub={data.totalPedidos > 0 ? `(${((data.ordersWithoutCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
-            />
-          </div>
-
-          <Separator className="my-2" />
-
-          <p className="text-xs font-medium text-muted-foreground">Quem pagou o cupom:</p>
-          <div className="space-y-1">
-            <MiniStat
-              label="🏪 Só eu paguei"
-              value={`${data.ordersWithCouponLojaOnly} pedidos`}
-              sub={data.totalCupomLoja > 0 ? `(${fmt(data.totalCupomLoja)})` : ""}
-            />
-            <MiniStat
-              label="🟠 Só o iFood pagou"
-              value={`${data.ordersWithCouponIfoodOnly} pedidos`}
-              sub={data.totalCupomIfood > 0 ? `(${fmt(data.totalCupomIfood)})` : ""}
-            />
-            <MiniStat
-              label="🤝 Nós dois pagamos"
-              value={`${data.ordersWithCouponShared} pedidos`}
-              sub={data.totalCupomShared > 0 ? `(${fmt(data.totalCupomShared)})` : ""}
-            />
-          </div>
-
-          {totalCupons > 0 && (
-            <>
-              <Separator className="my-2" />
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-xs text-muted-foreground font-medium">Total gasto com cupons</span>
-                <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{fmt(totalCupons)}</span>
+        {!isBlocked && (
+          <>
+            {/* Header */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <span className="text-sm font-medium">
+                  {isNewImport ? "Nova planilha processada" : "Última importação"}
+                </span>
               </div>
-            </>
-          )}
-        </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs font-mono">
+                  {data.mesReferencia}
+                </Badge>
+                {!isNewImport && lastImportDate && (
+                  <Badge variant="secondary" className="text-xs">
+                    {lastImportDate}
+                  </Badge>
+                )}
+              </div>
+            </div>
 
-        {/* ── DELIVERY BREAKDOWN ── */}
-        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-          <div className="flex items-center gap-2 mb-1">
-            <Truck className="h-4 w-4 text-blue-500" />
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              Entrega iFood
-            </p>
-          </div>
-          <div className="space-y-1">
-            <MiniStat
-              label="Pedidos com entrega iFood"
-              value={data.ordersWithIfoodDelivery}
-              sub={data.totalPedidos > 0 ? `(${((data.ordersWithIfoodDelivery / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
-            />
-            <MiniStat
-              label="Custo total com entrega"
-              value={fmt(data.totalDeliveryCost)}
-            />
-          </div>
-          {data.ordersWithIfoodDelivery === 0 && (
-            <p className="text-xs text-muted-foreground italic">
-              Nenhuma entrega via iFood detectada neste período.
-            </p>
-          )}
-        </div>
+            {/* Main KPIs */}
+            <div className="grid grid-cols-2 gap-3">
+              <MetricCard
+                icon={DollarSign}
+                label="Faturamento Bruto"
+                value={fmt(data.faturamentoBruto)}
+                variant="success"
+              />
+              <MetricCard
+                icon={ShoppingCart}
+                label="Total de Pedidos"
+                value={data.totalPedidos.toLocaleString("pt-BR")}
+                subValue={`Ticket médio: ${fmt(data.ticketMedio)}`}
+                variant="default"
+              />
+            </div>
 
-        {/* Ads */}
-        {data.totalAnuncios > 0 && (
-          <MetricCard
-            icon={Megaphone}
-            label="Gasto com Anúncios"
-            value={fmt(data.totalAnuncios)}
-            subValue="Informativo — não entra no plano"
-            variant="muted"
-          />
+            {/* Revenue distribution bar */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Distribuição do Faturamento
+              </p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-full bg-green-500 inline-block" />
+                    Você recebe
+                  </span>
+                  <span className="font-mono font-bold text-green-600 dark:text-green-400">
+                    {fmtPct(lucroLiquidoPercent)}
+                  </span>
+                </div>
+                <Progress
+                  value={lucroLiquidoPercent}
+                  className="h-3 bg-destructive/15 [&>div]:bg-green-500"
+                />
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-full bg-destructive inline-block" />
+                    iFood retém
+                  </span>
+                  <span className="font-mono font-bold text-destructive">
+                    {fmtPct(descontoPercent)}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Líquido: <strong className="text-foreground">{fmt(data.faturamentoLiquido)}</strong>
+              </p>
+            </div>
+
+            {/* Commissions & taxes */}
+            <div className="grid grid-cols-2 gap-3">
+              <MetricCard
+                icon={Receipt}
+                label="Comissão iFood"
+                value={fmt(data.totalComissao)}
+                subValue={`Média: ${fmtPct(data.percentualMedioComissao)}`}
+                variant="danger"
+              />
+              <MetricCard
+                icon={Percent}
+                label="Taxa Transação"
+                value={fmt(data.totalTaxa)}
+                subValue={`Média: ${fmtPct(data.percentualMedioTaxa)}`}
+                variant="danger"
+              />
+            </div>
+
+            {/* ── COUPON BREAKDOWN ── */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Ticket className="h-4 w-4 text-amber-500" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Detalhamento de Cupons
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                <MiniStat
+                  label="Total de pedidos"
+                  value={data.totalPedidos}
+                />
+                <MiniStat
+                  label="Pedidos COM cupom"
+                  value={data.ordersWithCoupon}
+                  sub={data.totalPedidos > 0 ? `(${((data.ordersWithCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
+                />
+                <MiniStat
+                  label="Pedidos SEM cupom"
+                  value={data.ordersWithoutCoupon}
+                  sub={data.totalPedidos > 0 ? `(${((data.ordersWithoutCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
+                />
+              </div>
+
+              <Separator className="my-2" />
+
+              <p className="text-xs font-medium text-muted-foreground">Quem pagou o cupom:</p>
+              <div className="space-y-1">
+                <MiniStat
+                  label="🏪 Só eu paguei"
+                  value={`${data.ordersWithCouponLojaOnly} pedidos`}
+                  sub={data.totalCupomLoja > 0 ? `(${fmt(data.totalCupomLoja)})` : ""}
+                />
+                <MiniStat
+                  label="🟠 Só o iFood pagou"
+                  value={`${data.ordersWithCouponIfoodOnly} pedidos`}
+                  sub={data.totalCupomIfood > 0 ? `(${fmt(data.totalCupomIfood)})` : ""}
+                />
+                <MiniStat
+                  label="🤝 Nós dois pagamos"
+                  value={`${data.ordersWithCouponShared} pedidos`}
+                  sub={data.totalCupomShared > 0 ? `(${fmt(data.totalCupomShared)})` : ""}
+                />
+              </div>
+
+              {totalCupons > 0 && (
+                <>
+                  <Separator className="my-2" />
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-xs text-muted-foreground font-medium">Total gasto com cupons</span>
+                    <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{fmt(totalCupons)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ── DELIVERY BREAKDOWN ── */}
+            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Truck className="h-4 w-4 text-blue-500" />
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Entrega iFood
+                </p>
+              </div>
+              <div className="space-y-1">
+                <MiniStat
+                  label="Pedidos com entrega iFood"
+                  value={data.ordersWithIfoodDelivery}
+                  sub={data.totalPedidos > 0 ? `(${((data.ordersWithIfoodDelivery / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
+                />
+                <MiniStat
+                  label="Custo total com entrega"
+                  value={fmt(data.totalDeliveryCost)}
+                />
+              </div>
+              {data.ordersWithIfoodDelivery === 0 && (
+                <p className="text-xs text-muted-foreground italic">
+                  Nenhuma entrega via iFood detectada neste período.
+                </p>
+              )}
+            </div>
+
+            {/* Ads */}
+            {data.totalAnuncios > 0 && (
+              <MetricCard
+                icon={Megaphone}
+                label="Gasto com Anúncios"
+                value={fmt(data.totalAnuncios)}
+                subValue="Informativo — não entra no plano"
+                variant="muted"
+              />
+            )}
+
+            {/* HIGHLIGHT: Real percentage */}
+            <div className="rounded-xl border-2 border-destructive/30 bg-destructive/5 p-4 text-center space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Percentual Real Pago ao iFood
+              </p>
+              <p className="text-3xl font-extrabold font-mono text-destructive">
+                {fmtPct(data.percentualRealIfood)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                (Comissão + Taxa Transação + Entrega iFood) / Faturamento Bruto
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left">
+                <MiniStat label="Comissão" value={fmt(data.totalComissao)} />
+                <MiniStat label="Taxa transação" value={fmt(data.totalTaxa)} />
+                <MiniStat label="Entrega iFood" value={fmt(data.totalDeliveryCost)} />
+              </div>
+            </div>
+
+            {/* Base rate info */}
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
+              <div className="flex items-center gap-2">
+                <Info className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                  Taxa Base Fixa do Plano iFood
+                </p>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                A taxa base do iFood é fixa: <strong className="text-foreground">12%</strong> (Plano Básico)
+                ou <strong className="text-foreground">23%</strong> (Plano Entrega).
+                Esse valor não muda e já está incluído no cálculo da comissão acima.
+              </p>
+            </div>
+          </>
         )}
-
-        {/* HIGHLIGHT: Real percentage */}
-        <div className="rounded-xl border-2 border-destructive/30 bg-destructive/5 p-4 text-center space-y-1">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            Percentual Real Pago ao iFood
-          </p>
-          <p className="text-3xl font-extrabold font-mono text-destructive">
-            {fmtPct(data.percentualRealIfood)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            (Comissão + Taxa) / Faturamento Bruto
-          </p>
-        </div>
-
-        {/* Base rate info */}
-        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
-          <div className="flex items-center gap-2">
-            <Info className="h-4 w-4 text-amber-500 flex-shrink-0" />
-            <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-              Taxa Base Fixa do Plano iFood
-            </p>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            A taxa base do iFood é fixa: <strong className="text-foreground">12%</strong> (Plano Básico)
-            ou <strong className="text-foreground">23%</strong> (Plano Entrega).
-            Esse valor não muda e já está incluído no cálculo da comissão acima.
-          </p>
-        </div>
 
         {/* Actions */}
         <div className="flex flex-col gap-2 pt-2">
