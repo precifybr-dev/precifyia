@@ -1806,6 +1806,107 @@ export type Database = {
         }
         Relationships: []
       }
+      ifood_monthly_metrics: {
+        Row: {
+          ajustes_total: number
+          anuncios_total: number
+          competencia: string
+          created_at: string
+          cupom_ifood_total: number
+          cupom_loja_total: number
+          custo_extra_percentual: number
+          custo_extra_total: number
+          entrega_ifood_custo_total: number
+          entrega_ifood_pedidos: number
+          id: string
+          pedidos_ambos_cupom: number
+          pedidos_com_cupom_total: number
+          pedidos_sem_cupom_total: number
+          pedidos_so_ifood_cupom: number
+          pedidos_so_loja_cupom: number
+          percentual_real_ifood: number
+          servicos_promocoes_total: number
+          store_id: string | null
+          taxas_comissoes_total: number
+          ticket_medio: number
+          total_comissao: number
+          total_faturamento: number
+          total_pedidos_unicos: number
+          total_taxa_transacao: number
+          updated_at: string
+          user_id: string
+          valor_das_vendas: number
+        }
+        Insert: {
+          ajustes_total?: number
+          anuncios_total?: number
+          competencia: string
+          created_at?: string
+          cupom_ifood_total?: number
+          cupom_loja_total?: number
+          custo_extra_percentual?: number
+          custo_extra_total?: number
+          entrega_ifood_custo_total?: number
+          entrega_ifood_pedidos?: number
+          id?: string
+          pedidos_ambos_cupom?: number
+          pedidos_com_cupom_total?: number
+          pedidos_sem_cupom_total?: number
+          pedidos_so_ifood_cupom?: number
+          pedidos_so_loja_cupom?: number
+          percentual_real_ifood?: number
+          servicos_promocoes_total?: number
+          store_id?: string | null
+          taxas_comissoes_total?: number
+          ticket_medio?: number
+          total_comissao?: number
+          total_faturamento?: number
+          total_pedidos_unicos?: number
+          total_taxa_transacao?: number
+          updated_at?: string
+          user_id: string
+          valor_das_vendas?: number
+        }
+        Update: {
+          ajustes_total?: number
+          anuncios_total?: number
+          competencia?: string
+          created_at?: string
+          cupom_ifood_total?: number
+          cupom_loja_total?: number
+          custo_extra_percentual?: number
+          custo_extra_total?: number
+          entrega_ifood_custo_total?: number
+          entrega_ifood_pedidos?: number
+          id?: string
+          pedidos_ambos_cupom?: number
+          pedidos_com_cupom_total?: number
+          pedidos_sem_cupom_total?: number
+          pedidos_so_ifood_cupom?: number
+          pedidos_so_loja_cupom?: number
+          percentual_real_ifood?: number
+          servicos_promocoes_total?: number
+          store_id?: string | null
+          taxas_comissoes_total?: number
+          ticket_medio?: number
+          total_comissao?: number
+          total_faturamento?: number
+          total_pedidos_unicos?: number
+          total_taxa_transacao?: number
+          updated_at?: string
+          user_id?: string
+          valor_das_vendas?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ifood_monthly_metrics_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           code: number

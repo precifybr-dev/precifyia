@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Zap,
   Upload,
@@ -29,8 +30,11 @@ import {
   RefreshCw,
   Ticket,
   Truck,
-  Package,
   ArrowRight,
+  TrendingUp,
+  Eye,
+  Package,
+  CircleDollarSign,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -39,6 +43,18 @@ import {
   processIfoodSpreadsheet,
   type IfoodConsolidation,
 } from "@/lib/ifood-spreadsheet-processor";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+  Legend,
+} from "recharts";
 
 interface IfoodSpreadsheetImportModalProps {
   userId: string;
@@ -49,6 +65,19 @@ interface IfoodSpreadsheetImportModalProps {
 }
 
 type Step = "upload" | "dashboard" | "done";
+
+interface MonthlyMetric {
+  competencia: string;
+  valor_das_vendas: number;
+  ticket_medio: number;
+  cupom_loja_total: number;
+  cupom_ifood_total: number;
+  custo_extra_percentual: number;
+  total_faturamento: number;
+  total_pedidos_unicos: number;
+}
+
+// ── Small UI Components ──
 
 function MetricCard({
   icon: Icon,
@@ -62,22 +91,24 @@ function MetricCard({
   label: string;
   value: string;
   subValue?: string;
-  variant?: "default" | "danger" | "success" | "warning" | "muted";
+  variant?: "default" | "danger" | "success" | "warning" | "muted" | "info";
   className?: string;
 }) {
-  const variantStyles = {
+  const variantStyles: Record<string, string> = {
     default: "bg-card border-border",
     danger: "bg-destructive/5 border-destructive/20",
     success: "bg-green-500/5 border-green-500/20",
     warning: "bg-amber-500/5 border-amber-500/20",
     muted: "bg-muted/30 border-border",
+    info: "bg-blue-500/5 border-blue-500/20",
   };
-  const iconColors = {
+  const iconColors: Record<string, string> = {
     default: "text-primary",
     danger: "text-destructive",
     success: "text-green-600 dark:text-green-400",
     warning: "text-amber-600 dark:text-amber-400",
     muted: "text-muted-foreground",
+    info: "text-blue-600 dark:text-blue-400",
   };
 
   return (
@@ -86,55 +117,53 @@ function MetricCard({
         <Icon className={`h-4 w-4 ${iconColors[variant]}`} />
         <span className="text-xs text-muted-foreground font-medium truncate">{label}</span>
       </div>
-      <p className="font-bold text-base font-mono">{value}</p>
+      <p className="font-bold text-lg font-mono leading-tight">{value}</p>
       {subValue && <p className="text-xs text-muted-foreground mt-0.5">{subValue}</p>}
     </div>
   );
 }
 
-function MiniStat({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+function StatRow({ label, value, sub, bold }: { label: string; value: string | number; sub?: string; bold?: boolean }) {
   return (
-    <div className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-muted/20">
-      <span className="text-xs text-muted-foreground">{label}</span>
+    <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-muted/30 transition-colors">
+      <span className="text-sm text-muted-foreground">{label}</span>
       <div className="text-right">
-        <span className="text-sm font-mono font-semibold">{value}</span>
-        {sub && <span className="text-xs text-muted-foreground ml-1">{sub}</span>}
+        <span className={`text-sm font-mono ${bold ? "font-bold text-foreground" : "font-semibold"}`}>{value}</span>
+        {sub && <span className="text-xs text-muted-foreground ml-1.5">{sub}</span>}
       </div>
     </div>
   );
 }
 
+// ── Formatters ──
+
+const fmt = (value: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+
+const fmtPct = (value: number) => `${value.toFixed(2)}%`;
+
+const fmtShort = (value: number) => {
+  if (Math.abs(value) >= 1000) return `R$ ${(value / 1000).toFixed(1)}k`;
+  return fmt(value);
+};
+
+// ── Default ──
+
 const DEFAULT_CONSOLIDATION: IfoodConsolidation = {
-  mesReferencia: "",
-  totalPedidos: 0,
-  totalLinhas: 0,
-  faturamentoBruto: 0,
-  faturamentoLiquido: 0,
-  taxasEComissoes: 0,
-  servicosEPromocoes: 0,
-  ajustesIfood: 0,
-  totalCupomLoja: 0,
-  totalCupomIfood: 0,
-  totalComissao: 0,
-  totalTaxa: 0,
-  totalAnuncios: 0,
-  ticketMedio: 0,
-  percentualMedioComissao: 0,
-  percentualMedioTaxa: 0,
-  percentualRealIfood: 0,
-  couponAbsorber: "business",
-  couponType: "fixed",
-  couponAvgValue: 0,
-  ordersWithCoupon: 0,
-  ordersWithCouponLojaOnly: 0,
-  ordersWithCouponIfoodOnly: 0,
-  ordersWithCouponShared: 0,
-  ordersWithoutCoupon: 0,
-  totalCupomShared: 0,
-  ordersWithIfoodDelivery: 0,
-  totalDeliveryCost: 0,
+  mesReferencia: "", totalPedidos: 0, totalLinhas: 0,
+  faturamentoBruto: 0, faturamentoLiquido: 0, taxasEComissoes: 0,
+  servicosEPromocoes: 0, ajustesIfood: 0, totalCupomLoja: 0,
+  totalCupomIfood: 0, totalComissao: 0, totalTaxa: 0, totalAnuncios: 0,
+  ticketMedio: 0, percentualMedioComissao: 0, percentualMedioTaxa: 0,
+  percentualRealIfood: 0, couponAbsorber: "business", couponType: "fixed",
+  couponAvgValue: 0, ordersWithCoupon: 0, ordersWithCouponLojaOnly: 0,
+  ordersWithCouponIfoodOnly: 0, ordersWithCouponShared: 0,
+  ordersWithoutCoupon: 0, totalCupomShared: 0, ordersWithIfoodDelivery: 0,
+  totalDeliveryCost: 0, custoExtraTotal: 0, custoExtraPercentual: 0,
   warnings: [],
 };
+
+// ── Main Component ──
 
 export default function IfoodSpreadsheetImportModal({
   userId,
@@ -150,6 +179,9 @@ export default function IfoodSpreadsheetImportModal({
   const [lastImportDate, setLastImportDate] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showAuditModal, setShowAuditModal] = useState(false);
+  const [monthlyHistory, setMonthlyHistory] = useState<MonthlyMetric[]>([]);
+  const [ifoodPlan, setIfoodPlan] = useState<12 | 23>(12);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadLastImport = useCallback(async () => {
@@ -183,6 +215,28 @@ export default function IfoodSpreadsheetImportModal({
     }
   }, [userId]);
 
+  const loadMonthlyHistory = useCallback(async () => {
+    const { data } = await supabase
+      .from("ifood_monthly_metrics")
+      .select("competencia, valor_das_vendas, ticket_medio, cupom_loja_total, cupom_ifood_total, custo_extra_percentual, total_faturamento, total_pedidos_unicos")
+      .eq("user_id", userId)
+      .order("competencia", { ascending: true })
+      .limit(24);
+
+    if (data) {
+      setMonthlyHistory(data.map(d => ({
+        competencia: d.competencia,
+        valor_das_vendas: Number(d.valor_das_vendas),
+        ticket_medio: Number(d.ticket_medio),
+        cupom_loja_total: Number(d.cupom_loja_total),
+        cupom_ifood_total: Number(d.cupom_ifood_total),
+        custo_extra_percentual: Number(d.custo_extra_percentual),
+        total_faturamento: Number(d.total_faturamento),
+        total_pedidos_unicos: Number(d.total_pedidos_unicos),
+      })));
+    }
+  }, [userId]);
+
   const handleOpenChange = (v: boolean) => {
     if (v) {
       setStep("upload");
@@ -190,6 +244,7 @@ export default function IfoodSpreadsheetImportModal({
       setError(null);
       setShowTutorial(false);
       loadLastImport();
+      loadMonthlyHistory();
     }
     onOpenChange(v);
   };
@@ -234,7 +289,8 @@ export default function IfoodSpreadsheetImportModal({
 
     setIsProcessing(true);
     try {
-      const { error: insertError } = await supabase
+      // Save to ifood_import_logs (legacy)
+      await supabase
         .from("ifood_import_logs")
         .insert({
           user_id: userId,
@@ -254,13 +310,60 @@ export default function IfoodSpreadsheetImportModal({
           percentual_medio_taxa: consolidation.percentualMedioTaxa,
         });
 
-      if (insertError) throw insertError;
+      // Compute custo extra with selected plan
+      const custoBaseEstimado = (ifoodPlan / 100) * consolidation.faturamentoBruto;
+      const custoTotalIfood = Math.abs(consolidation.taxasEComissoes) + Math.abs(consolidation.servicosEPromocoes);
+      const custoExtraTotal = custoTotalIfood - custoBaseEstimado;
+      const custoExtraPercentual = consolidation.faturamentoBruto > 0
+        ? (custoExtraTotal / consolidation.faturamentoBruto) * 100
+        : 0;
+
+      // Upsert to ifood_monthly_metrics
+      const { error: upsertError } = await supabase
+        .from("ifood_monthly_metrics")
+        .upsert({
+          user_id: userId,
+          store_id: storeId || null,
+          competencia: consolidation.mesReferencia,
+          valor_das_vendas: consolidation.faturamentoBruto,
+          taxas_comissoes_total: consolidation.taxasEComissoes,
+          servicos_promocoes_total: consolidation.servicosEPromocoes,
+          ajustes_total: consolidation.ajustesIfood,
+          total_faturamento: consolidation.faturamentoLiquido,
+          total_pedidos_unicos: consolidation.totalPedidos,
+          ticket_medio: consolidation.ticketMedio,
+          cupom_loja_total: consolidation.totalCupomLoja,
+          cupom_ifood_total: consolidation.totalCupomIfood,
+          pedidos_com_cupom_total: consolidation.ordersWithCoupon,
+          pedidos_sem_cupom_total: consolidation.ordersWithoutCoupon,
+          pedidos_so_loja_cupom: consolidation.ordersWithCouponLojaOnly,
+          pedidos_so_ifood_cupom: consolidation.ordersWithCouponIfoodOnly,
+          pedidos_ambos_cupom: consolidation.ordersWithCouponShared,
+          entrega_ifood_pedidos: consolidation.ordersWithIfoodDelivery,
+          entrega_ifood_custo_total: consolidation.totalDeliveryCost,
+          anuncios_total: consolidation.totalAnuncios,
+          custo_extra_total: custoExtraTotal,
+          custo_extra_percentual: custoExtraPercentual,
+          total_comissao: consolidation.totalComissao,
+          total_taxa_transacao: consolidation.totalTaxa,
+          percentual_real_ifood: consolidation.percentualRealIfood,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id,store_id,competencia" });
+
+      if (upsertError) {
+        console.error("Upsert error:", upsertError);
+      }
+
+      // Update consolidation with custo extra values
+      consolidation.custoExtraTotal = custoExtraTotal;
+      consolidation.custoExtraPercentual = custoExtraPercentual;
 
       onApply(consolidation);
       setLastImport(consolidation);
       setLastImportDate(new Date().toLocaleDateString("pt-BR"));
       setStep("done");
       toast.success("Dados importados com sucesso!");
+      loadMonthlyHistory();
     } catch (err: any) {
       toast.error("Erro ao salvar importação: " + (err.message || ""));
     } finally {
@@ -268,37 +371,89 @@ export default function IfoodSpreadsheetImportModal({
     }
   };
 
-  const fmt = (value: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-
-  const fmtPct = (value: number) => `${value.toFixed(2)}%`;
-
   const displayData = consolidation || lastImport;
   const isNewImport = !!consolidation;
 
+  // ── Render: Upload Step ──
+  const renderUpload = () => (
+    <div className="space-y-4">
+      <div
+        className="border-2 border-dashed border-muted-foreground/20 rounded-2xl p-10 text-center cursor-pointer hover:border-primary/40 hover:bg-primary/5 transition-all duration-200"
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <Upload className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+        <p className="text-base font-semibold text-foreground">Selecione a planilha de conciliação</p>
+        <p className="text-sm text-muted-foreground mt-1">Arquivo .xlsx ou .xls do Portal iFood</p>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".xlsx,.xls"
+          className="hidden"
+          onChange={handleFileSelect}
+        />
+      </div>
+
+      {isProcessing && (
+        <div className="flex items-center justify-center gap-2 py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-sm text-muted-foreground">Processando planilha...</span>
+        </div>
+      )}
+
+      {error && (
+        <div className="flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+          <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
+
+      <button
+        onClick={() => setShowTutorial(!showTutorial)}
+        className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors w-full"
+      >
+        <Info className="h-4 w-4" />
+        Como baixar a planilha do iFood
+        {showTutorial ? <ChevronUp className="h-4 w-4 ml-auto" /> : <ChevronDown className="h-4 w-4 ml-auto" />}
+      </button>
+
+      {showTutorial && (
+        <div className="p-4 bg-muted/30 rounded-xl space-y-2 text-sm border border-border">
+          <ol className="list-decimal list-inside space-y-1.5 text-muted-foreground">
+            <li>No Portal do Parceiro iFood, acesse <strong className="text-foreground">Relatórios</strong></li>
+            <li>Clique em <strong className="text-foreground">Vendas → Conciliação</strong></li>
+            <li>Selecione o mês e clique em <strong className="text-foreground">Exportar</strong></li>
+            <li>Vá em <strong className="text-foreground">Relatórios → Exportações → Baixar</strong></li>
+            <li>Envie o arquivo aqui</li>
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+
+  // ── Render: Dashboard Step ──
   const renderDashboard = (data: IfoodConsolidation) => {
     const totalCupons = data.totalCupomLoja + data.totalCupomIfood;
-
     const warnings = data.warnings || [];
     const hasErrors = warnings.some(w => w.level === "error");
     const isBlocked = data.isBlocked === true;
 
+    // Custo extra calculation for display
+    const custoBaseEstimado = (ifoodPlan / 100) * data.faturamentoBruto;
+    const custoTotalIfood = Math.abs(data.taxasEComissoes) + Math.abs(data.servicosEPromocoes);
+    const custoExtraDisplay = custoTotalIfood - custoBaseEstimado;
+    const custoExtraPctDisplay = data.faturamentoBruto > 0
+      ? (custoExtraDisplay / data.faturamentoBruto) * 100
+      : 0;
+
+    // Ads CPA
+    const adsCPA = data.totalPedidos > 0 && data.totalAnuncios > 0
+      ? data.totalAnuncios / data.totalPedidos
+      : 0;
+    const adsCPALabel = adsCPA <= 2 ? "Bom" : adsCPA <= 5 ? "Regular" : "Ruim";
+    const adsCPAColor = adsCPA <= 2 ? "text-green-600" : adsCPA <= 5 ? "text-amber-600" : "text-destructive";
+
     return (
       <div className="space-y-4">
-        {/* Grouping badge */}
-        {data.totalLinhas > 0 && data.totalLinhas !== data.totalPedidos && (
-          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-500/5 border border-blue-500/20">
-            <Package className="h-4 w-4 text-blue-500 flex-shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              <strong className="text-foreground">{data.totalLinhas}</strong> linhas agrupadas em{" "}
-              <strong className="text-foreground">{data.totalPedidos}</strong> pedidos únicos{" "}
-              <span className="text-muted-foreground/70">
-                (média de {(data.totalLinhas / data.totalPedidos).toFixed(1)} linhas/pedido)
-              </span>
-            </p>
-          </div>
-        )}
-
         {/* Blocked banner */}
         {isBlocked && (
           <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-destructive bg-destructive/10">
@@ -306,25 +461,22 @@ export default function IfoodSpreadsheetImportModal({
             <div>
               <p className="text-sm font-semibold text-destructive">Dados bloqueados — inconsistência detectada</p>
               <p className="text-xs text-destructive/80 mt-1">
-                Os dados apresentam erros matemáticos e não podem ser aplicados. Verifique se o arquivo é a planilha de conciliação oficial do iFood.
+                Os dados apresentam erros e não podem ser aplicados. Verifique se é a planilha oficial do iFood.
               </p>
             </div>
           </div>
         )}
 
-        {/* Validation warnings */}
-        {warnings.length > 0 && (
-          <div className="space-y-2">
+        {/* Warnings */}
+        {warnings.length > 0 && !isBlocked && (
+          <div className="space-y-1.5">
             {warnings.map((w, i) => (
-              <div
-                key={i}
-                className={`flex items-start gap-2 p-2.5 rounded-lg border text-xs ${
-                  w.level === "error"
-                    ? "bg-destructive/10 border-destructive/30 text-destructive"
-                    : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
-                }`}
-              >
-                <AlertTriangle className="h-4 w-4 flex-shrink-0 mt-0.5" />
+              <div key={i} className={`flex items-start gap-2 p-2.5 rounded-lg text-xs ${
+                w.level === "error"
+                  ? "bg-destructive/10 border border-destructive/30 text-destructive"
+                  : "bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-400"
+              }`}>
+                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
                 <span>{w.message}</span>
               </div>
             ))}
@@ -336,50 +488,30 @@ export default function IfoodSpreadsheetImportModal({
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-green-500" />
+                <CheckCircle2 className="h-4 w-4 text-green-500" />
                 <span className="text-sm font-medium">
                   {isNewImport ? "Nova planilha processada" : "Última importação"}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs font-mono">
-                  {data.mesReferencia}
-                </Badge>
+                <Badge variant="outline" className="text-xs font-mono">{data.mesReferencia}</Badge>
                 {!isNewImport && lastImportDate && (
-                  <Badge variant="secondary" className="text-xs">
-                    {lastImportDate}
-                  </Badge>
+                  <Badge variant="secondary" className="text-xs">{lastImportDate}</Badge>
                 )}
               </div>
             </div>
 
-            {/* ── OFFICIAL IFOOD RECONCILIATION CARDS ── */}
-            <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-4 space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Reconciliação iFood (deve bater com o Financeiro)
-              </p>
-
-              <div className="space-y-1">
-                <MiniStat label="📊 Valor das Vendas" value={fmt(data.faturamentoBruto)} />
-                <MiniStat label="📉 Taxas e Comissões" value={fmt(data.taxasEComissoes || 0)} />
-                <MiniStat label="🏷️ Serviços e Promoções" value={fmt(data.servicosEPromocoes || 0)} />
-                <MiniStat label="🔄 Ajustes" value={fmt(data.ajustesIfood || 0)} />
+            {/* Grouping info */}
+            {data.totalLinhas > 0 && data.totalLinhas !== data.totalPedidos && (
+              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 border border-border">
+                <Package className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">{data.totalLinhas}</strong> linhas → <strong className="text-foreground">{data.totalPedidos}</strong> pedidos únicos
+                </p>
               </div>
+            )}
 
-              <Separator />
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-foreground flex items-center gap-1">
-                  <ArrowRight className="h-4 w-4" />
-                  Total Faturamento
-                </span>
-                <span className="text-lg font-extrabold font-mono text-primary">
-                  {fmt(data.faturamentoLiquido)}
-                </span>
-              </div>
-            </div>
-
-            {/* Main KPIs */}
+            {/* ── MAIN SUMMARY CARDS ── */}
             <div className="grid grid-cols-2 gap-3">
               <MetricCard
                 icon={DollarSign}
@@ -389,277 +521,343 @@ export default function IfoodSpreadsheetImportModal({
               />
               <MetricCard
                 icon={ShoppingCart}
-                label="Total de Pedidos"
+                label="Pedidos"
                 value={data.totalPedidos.toLocaleString("pt-BR")}
-                subValue={`Ticket médio: ${fmt(data.ticketMedio)}`}
-                variant="default"
+                subValue={`Ticket: ${fmt(data.ticketMedio)}`}
               />
-            </div>
-
-            {/* Revenue distribution bar */}
-            {data.faturamentoBruto > 0 && (
-              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Distribuição do Faturamento
-                </p>
-                <div className="space-y-2">
-                  {(() => {
-                    const recebePercent = data.faturamentoBruto > 0
-                      ? (data.faturamentoLiquido / data.faturamentoBruto) * 100
-                      : 0;
-                    const retemPercent = 100 - recebePercent;
-                    return (
-                      <>
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-3 h-3 rounded-full bg-green-500 inline-block" />
-                            Você recebe
-                          </span>
-                          <span className="font-mono font-bold text-green-600 dark:text-green-400">
-                            {fmtPct(recebePercent)}
-                          </span>
-                        </div>
-                        <Progress
-                          value={Math.max(0, Math.min(100, recebePercent))}
-                          className="h-3 bg-destructive/15 [&>div]:bg-green-500"
-                        />
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="flex items-center gap-1.5">
-                            <span className="w-3 h-3 rounded-full bg-destructive inline-block" />
-                            iFood retém
-                          </span>
-                          <span className="font-mono font-bold text-destructive">
-                            {fmtPct(retemPercent)}
-                          </span>
-                        </div>
-                      </>
-                    );
-                  })()}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Total Faturamento: <strong className="text-foreground">{fmt(data.faturamentoLiquido)}</strong>
-                </p>
-              </div>
-            )}
-
-            {/* Commissions & taxes */}
-            <div className="grid grid-cols-2 gap-3">
+              <MetricCard
+                icon={ArrowRight}
+                label="Você Recebe"
+                value={fmt(data.faturamentoLiquido)}
+                subValue={data.faturamentoBruto > 0 ? `${((data.faturamentoLiquido / data.faturamentoBruto) * 100).toFixed(1)}% do bruto` : ""}
+                variant="info"
+              />
               <MetricCard
                 icon={Receipt}
-                label="Comissão iFood"
-                value={fmt(data.totalComissao)}
-                subValue={`Média: ${fmtPct(data.percentualMedioComissao)}`}
-                variant="danger"
-              />
-              <MetricCard
-                icon={Percent}
-                label="Taxa Transação"
-                value={fmt(data.totalTaxa)}
-                subValue={`Média: ${fmtPct(data.percentualMedioTaxa)}`}
+                label="iFood Retém"
+                value={fmt(data.faturamentoBruto - data.faturamentoLiquido)}
+                subValue={fmtPct(data.percentualRealIfood)}
                 variant="danger"
               />
             </div>
 
-            {/* ── COUPON BREAKDOWN ── */}
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Ticket className="h-4 w-4 text-amber-500" />
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Detalhamento de Cupons
-                </p>
+            {/* Revenue bar */}
+            {data.faturamentoBruto > 0 && (
+              <div className="space-y-1.5">
+                <Progress
+                  value={Math.max(0, Math.min(100, (data.faturamentoLiquido / data.faturamentoBruto) * 100))}
+                  className="h-2.5 bg-destructive/15 [&>div]:bg-green-500"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>Você recebe {((data.faturamentoLiquido / data.faturamentoBruto) * 100).toFixed(1)}%</span>
+                  <span>iFood retém {((1 - data.faturamentoLiquido / data.faturamentoBruto) * 100).toFixed(1)}%</span>
+                </div>
               </div>
-
-              <div className="space-y-1">
-                <MiniStat label="Total de pedidos" value={data.totalPedidos} />
-                <MiniStat
-                  label="Pedidos COM cupom"
-                  value={data.ordersWithCoupon}
-                  sub={data.totalPedidos > 0 ? `(${((data.ordersWithCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
-                />
-                <MiniStat
-                  label="Pedidos SEM cupom"
-                  value={data.ordersWithoutCoupon}
-                  sub={data.totalPedidos > 0 ? `(${((data.ordersWithoutCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
-                />
-              </div>
-
-              <Separator className="my-2" />
-
-              <p className="text-xs font-medium text-muted-foreground">Quem pagou o cupom:</p>
-              <div className="space-y-1">
-                <MiniStat
-                  label="🏪 Só eu paguei"
-                  value={`${data.ordersWithCouponLojaOnly} pedidos`}
-                  sub={data.totalCupomLoja > 0 ? `(${fmt(data.totalCupomLoja)})` : ""}
-                />
-                <MiniStat
-                  label="🟠 Só o iFood pagou"
-                  value={`${data.ordersWithCouponIfoodOnly} pedidos`}
-                  sub={data.totalCupomIfood > 0 ? `(${fmt(data.totalCupomIfood)})` : ""}
-                />
-                <MiniStat
-                  label="🤝 Nós dois pagamos"
-                  value={`${data.ordersWithCouponShared} pedidos`}
-                  sub={data.totalCupomShared > 0 ? `(${fmt(data.totalCupomShared)})` : ""}
-                />
-              </div>
-
-              {totalCupons > 0 && (
-                <>
-                  <Separator className="my-2" />
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-xs text-muted-foreground font-medium">Total gasto com cupons</span>
-                    <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{fmt(totalCupons)}</span>
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* ── DELIVERY BREAKDOWN ── */}
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Truck className="h-4 w-4 text-blue-500" />
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  Entrega iFood
-                </p>
-              </div>
-              <div className="space-y-1">
-                <MiniStat
-                  label="Pedidos com entrega iFood"
-                  value={data.ordersWithIfoodDelivery}
-                  sub={data.totalPedidos > 0 ? `(${((data.ordersWithIfoodDelivery / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
-                />
-                <MiniStat
-                  label="Custo total com entrega"
-                  value={fmt(data.totalDeliveryCost)}
-                />
-              </div>
-              {data.ordersWithIfoodDelivery === 0 && (
-                <p className="text-xs text-muted-foreground italic">
-                  Nenhuma entrega via iFood detectada neste período.
-                </p>
-              )}
-            </div>
-
-            {/* Ads */}
-            {data.totalAnuncios > 0 && (
-              <MetricCard
-                icon={Megaphone}
-                label="Gasto com Anúncios"
-                value={fmt(data.totalAnuncios)}
-                subValue="Informativo — não entra no plano"
-                variant="muted"
-              />
             )}
 
-            {/* HIGHLIGHT: Real percentage */}
-            <div className="rounded-xl border-2 border-destructive/30 bg-destructive/5 p-4 text-center space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                Percentual Real Pago ao iFood
-              </p>
-              <p className="text-3xl font-extrabold font-mono text-destructive">
-                {fmtPct(data.percentualRealIfood)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                (Comissão + Taxa Transação + Entrega iFood) / Valor das Vendas
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-left">
-                <MiniStat label="Comissão" value={fmt(data.totalComissao)} />
-                <MiniStat label="Taxa transação" value={fmt(data.totalTaxa)} />
-                <MiniStat label="Entrega iFood" value={fmt(data.totalDeliveryCost)} />
-              </div>
-            </div>
+            {/* ── TABS ── */}
+            <Tabs defaultValue="details" className="w-full">
+              <TabsList className="w-full grid grid-cols-4 h-9">
+                <TabsTrigger value="details" className="text-xs">Resumo</TabsTrigger>
+                <TabsTrigger value="coupons" className="text-xs">Cupons</TabsTrigger>
+                <TabsTrigger value="costs" className="text-xs">Custos</TabsTrigger>
+                <TabsTrigger value="charts" className="text-xs">Evolução</TabsTrigger>
+              </TabsList>
 
-            {/* Base rate info */}
-            <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3 space-y-1">
-              <div className="flex items-center gap-2">
-                <Info className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-                  Taxa Base Fixa do Plano iFood
-                </p>
-              </div>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                A taxa base do iFood é fixa: <strong className="text-foreground">12%</strong> (Plano Básico)
-                ou <strong className="text-foreground">23%</strong> (Plano Entrega).
-              </p>
-            </div>
-          </>
-        )}
+              {/* ── TAB: Details ── */}
+              <TabsContent value="details" className="space-y-3 mt-3">
+                <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    Reconciliação iFood
+                  </p>
+                  <StatRow label="Valor das Vendas" value={fmt(data.faturamentoBruto)} bold />
+                  <StatRow label="Taxas e Comissões" value={fmt(data.taxasEComissoes)} />
+                  <StatRow label="Serviços e Promoções" value={fmt(data.servicosEPromocoes)} />
+                  <StatRow label="Ajustes" value={fmt(data.ajustesIfood)} />
+                  <Separator className="my-1" />
+                  <StatRow label="Total Faturamento" value={fmt(data.faturamentoLiquido)} bold />
+                </div>
 
-        {/* Actions */}
-        <div className="flex flex-col gap-2 pt-2">
-          {isNewImport && (
-            <DialogFooter className="gap-2">
+                {/* Ads card */}
+                {data.totalAnuncios > 0 && (
+                  <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Megaphone className="h-4 w-4 text-purple-500" />
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Anúncios no Mês
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Total investido</p>
+                        <p className="text-base font-bold font-mono">{fmt(data.totalAnuncios)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">CPA (custo/pedido)</p>
+                        <p className={`text-base font-bold font-mono ${adsCPAColor}`}>
+                          {fmt(adsCPA)} <span className="text-xs font-normal">({adsCPALabel})</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full gap-2 text-muted-foreground"
+                  onClick={() => setShowAuditModal(true)}
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                  Ver auditoria técnica
+                </Button>
+              </TabsContent>
+
+              {/* ── TAB: Coupons ── */}
+              <TabsContent value="coupons" className="space-y-3 mt-3">
+                <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Ticket className="h-4 w-4 text-amber-500" />
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Quem pagou o cupom?
+                    </p>
+                  </div>
+
+                  <StatRow
+                    label="🏪 Só eu paguei"
+                    value={`${data.ordersWithCouponLojaOnly} pedidos`}
+                    sub={data.totalCupomLoja > 0 && data.ordersWithCouponShared === 0 ? fmt(data.totalCupomLoja) : ""}
+                  />
+                  <StatRow
+                    label="🟠 Só iFood pagou"
+                    value={`${data.ordersWithCouponIfoodOnly} pedidos`}
+                    sub={data.totalCupomIfood > 0 && data.ordersWithCouponShared === 0 ? fmt(data.totalCupomIfood) : ""}
+                  />
+                  <StatRow
+                    label="🤝 Nós dois pagamos"
+                    value={`${data.ordersWithCouponShared} pedidos`}
+                    sub={data.totalCupomShared > 0 ? fmt(data.totalCupomShared) : ""}
+                  />
+                  <Separator className="my-1" />
+                  <StatRow
+                    label="Pedidos COM cupom"
+                    value={data.ordersWithCoupon}
+                    sub={data.totalPedidos > 0 ? `(${((data.ordersWithCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
+                  />
+                  <StatRow
+                    label="Pedidos SEM cupom"
+                    value={data.ordersWithoutCoupon}
+                    sub={data.totalPedidos > 0 ? `(${((data.ordersWithoutCoupon / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
+                  />
+                </div>
+
+                {totalCupons > 0 && (
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">Total gasto com cupons</span>
+                      <span className="text-lg font-bold font-mono text-amber-600 dark:text-amber-400">{fmt(totalCupons)}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2 text-xs text-muted-foreground">
+                      <span>Cupom loja: <strong className="text-foreground">{fmt(data.totalCupomLoja)}</strong></span>
+                      <span>Cupom iFood: <strong className="text-foreground">{fmt(data.totalCupomIfood)}</strong></span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Delivery */}
+                <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Truck className="h-4 w-4 text-blue-500" />
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entrega iFood</p>
+                  </div>
+                  <StatRow
+                    label="Pedidos com entrega iFood"
+                    value={data.ordersWithIfoodDelivery}
+                    sub={data.totalPedidos > 0 ? `(${((data.ordersWithIfoodDelivery / data.totalPedidos) * 100).toFixed(1)}%)` : ""}
+                  />
+                  <StatRow label="Custo total entrega" value={fmt(data.totalDeliveryCost)} />
+                  {data.ordersWithIfoodDelivery === 0 && (
+                    <p className="text-xs text-muted-foreground italic">Nenhuma entrega via iFood detectada.</p>
+                  )}
+                </div>
+              </TabsContent>
+
+              {/* ── TAB: Costs ── */}
+              <TabsContent value="costs" className="space-y-3 mt-3">
+                {/* Plan selector */}
+                <div className="rounded-xl border border-border bg-card p-3 space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Seu plano iFood
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      variant={ifoodPlan === 12 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setIfoodPlan(12)}
+                      className="text-xs"
+                    >
+                      Básico (12%)
+                    </Button>
+                    <Button
+                      variant={ifoodPlan === 23 ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => setIfoodPlan(23)}
+                      className="text-xs"
+                    >
+                      Entrega (23%)
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Custo extra card */}
+                <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CircleDollarSign className="h-5 w-5 text-primary" />
+                    <p className="text-sm font-semibold">Custo Extra Real do iFood</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Quanto você paga <strong>além</strong> da taxa base de {ifoodPlan}% (cupons, entrega, serviços).
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-background rounded-lg p-3 border border-border">
+                      <p className="text-xs text-muted-foreground">Taxa base ({ifoodPlan}%)</p>
+                      <p className="text-base font-bold font-mono">{fmt(custoBaseEstimado)}</p>
+                    </div>
+                    <div className="bg-background rounded-lg p-3 border border-border">
+                      <p className="text-xs text-muted-foreground">Custo total iFood</p>
+                      <p className="text-base font-bold font-mono">{fmt(custoTotalIfood)}</p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Custo extra</span>
+                    <div className="text-right">
+                      <p className={`text-xl font-extrabold font-mono ${custoExtraDisplay > 0 ? "text-destructive" : "text-green-600"}`}>
+                        {fmt(custoExtraDisplay)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {fmtPct(custoExtraPctDisplay)} do faturamento
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Breakdown */}
+                <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    Composição
+                  </p>
+                  <StatRow label="Comissão iFood" value={fmt(data.totalComissao)} sub={fmtPct(data.percentualMedioComissao)} />
+                  <StatRow label="Taxa transação" value={fmt(data.totalTaxa)} sub={fmtPct(data.percentualMedioTaxa)} />
+                  <StatRow label="Entrega iFood" value={fmt(data.totalDeliveryCost)} />
+                  <StatRow label="Cupom loja" value={fmt(data.totalCupomLoja)} />
+                  <Separator className="my-1" />
+                  <StatRow label="% real pago ao iFood" value={fmtPct(data.percentualRealIfood)} bold />
+                </div>
+              </TabsContent>
+
+              {/* ── TAB: Charts ── */}
+              <TabsContent value="charts" className="space-y-3 mt-3">
+                {monthlyHistory.length < 2 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <TrendingUp className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm font-medium">Importe pelo menos 2 meses para ver gráficos de evolução.</p>
+                    <p className="text-xs mt-1">Cada planilha importada é salva automaticamente.</p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Sales chart */}
+                    <div className="rounded-xl border border-border bg-card p-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Valor das Vendas por Mês
+                      </p>
+                      <ResponsiveContainer width="100%" height={180}>
+                        <LineChart data={monthlyHistory}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis dataKey="competencia" tick={{ fontSize: 10 }} className="text-muted-foreground" />
+                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmtShort(v)} className="text-muted-foreground" />
+                          <Tooltip formatter={(v: number) => fmt(v)} labelFormatter={(l) => `Mês: ${l}`} />
+                          <Line type="monotone" dataKey="valor_das_vendas" name="Vendas" className="stroke-primary" strokeWidth={2} dot={{ r: 3 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Ticket chart */}
+                    <div className="rounded-xl border border-border bg-card p-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Ticket Médio
+                      </p>
+                      <ResponsiveContainer width="100%" height={150}>
+                        <LineChart data={monthlyHistory}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis dataKey="competencia" tick={{ fontSize: 10 }} />
+                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `R$${v}`} />
+                          <Tooltip formatter={(v: number) => fmt(v)} />
+                          <Line type="monotone" dataKey="ticket_medio" name="Ticket" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    {/* Coupons stacked bar */}
+                    <div className="rounded-xl border border-border bg-card p-3">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                        Cupons: Loja vs iFood
+                      </p>
+                      <ResponsiveContainer width="100%" height={150}>
+                        <BarChart data={monthlyHistory}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                          <XAxis dataKey="competencia" tick={{ fontSize: 10 }} />
+                          <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => fmtShort(v)} />
+                          <Tooltip formatter={(v: number) => fmt(v)} />
+                          <Legend wrapperStyle={{ fontSize: 11 }} />
+                          <Bar dataKey="cupom_loja_total" name="Cupom Loja" stackId="a" fill="hsl(var(--destructive))" radius={[0, 0, 0, 0]} />
+                          <Bar dataKey="cupom_ifood_total" name="Cupom iFood" stackId="a" fill="hsl(25, 95%, 53%)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </>
+                )}
+              </TabsContent>
+            </Tabs>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2 pt-2">
+              {isNewImport && (
+                <DialogFooter className="gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => { setConsolidation(null); setStep("upload"); }}
+                    disabled={isProcessing}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleApply}
+                    disabled={isProcessing || hasErrors || isBlocked}
+                    className="gap-2"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Zap className="h-4 w-4" />
+                    )}
+                    Aplicar ao Plano
+                  </Button>
+                </DialogFooter>
+              )}
+
               <Button
                 variant="outline"
-                onClick={() => { setConsolidation(null); setStep("upload"); }}
+                className="w-full gap-2"
+                onClick={() => fileInputRef.current?.click()}
                 disabled={isProcessing}
               >
-                Cancelar
+                <RefreshCw className="h-4 w-4" />
+                {isNewImport ? "Trocar planilha" : "Importar nova planilha"}
               </Button>
-              <Button
-                onClick={handleApply}
-                disabled={isProcessing || hasErrors || isBlocked}
-                className="gap-2 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
-              >
-                {isProcessing ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Zap className="h-4 w-4" />
-                )}
-                Aplicar ao Plano
-              </Button>
-            </DialogFooter>
-          )}
-
-          <Button
-            variant="outline"
-            className="w-full gap-2"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isProcessing}
-          >
-            <RefreshCw className="h-4 w-4" />
-            {isNewImport ? "Trocar planilha" : "Importar nova planilha"}
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            className="hidden"
-            onChange={handleFileSelect}
-          />
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-destructive" />
-            Raio-X Financeiro iFood
-          </DialogTitle>
-          <DialogDescription>
-            Análise detalhada dos seus dados financeiros do iFood.
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* STEP: Upload */}
-        {step === "upload" && (
-          <div className="space-y-4">
-            <div
-              className="border-2 border-dashed border-muted-foreground/30 rounded-xl p-8 text-center cursor-pointer hover:border-destructive/50 transition-colors"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium text-foreground">
-                Clique para selecionar a planilha
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Aceita arquivos .xlsx ou .xls
-              </p>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -668,83 +866,125 @@ export default function IfoodSpreadsheetImportModal({
                 onChange={handleFileSelect}
               />
             </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
-            {isProcessing && (
-              <div className="flex items-center justify-center gap-2 py-4">
-                <Loader2 className="h-5 w-5 animate-spin text-destructive" />
-                <span className="text-sm text-muted-foreground">Processando planilha...</span>
+  // ── Audit Modal ──
+  const renderAuditModal = () => {
+    const data = displayData;
+    if (!data?.debugInfo) return null;
+    const d = data.debugInfo;
+    const cats = d.descricoesPorCategoria || {};
+
+    return (
+      <Dialog open={showAuditModal} onOpenChange={setShowAuditModal}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm">
+              <Eye className="h-4 w-4" /> Auditoria Técnica — {data.mesReferencia}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-3 text-xs">
+            <div className="rounded-lg border border-border p-3 space-y-1 font-mono">
+              <p>Linhas totais: <strong>{d.totalLinhasRaw}</strong></p>
+              <p>Linhas com pedido: <strong>{d.totalLinhasComPedido}</strong></p>
+              <p>Pedidos únicos: <strong>{d.totalPedidosUnicos}</strong></p>
+              <Separator className="my-2" />
+              <p>Σ Entrada Financeira: <strong>{fmt(d.somaEntradaFinanceira)}</strong></p>
+              <p>Σ MAX(base_calculo): <strong>{fmt(d.somaMaxBaseCalculo)}</strong></p>
+              <p>Valor itens + entrega própria: <strong>{fmt(d.valorItensEEntregaPropria)}</strong></p>
+              <p>Ressarcimentos: <strong>{fmt(d.ressarcimentosCancelados)}</strong></p>
+              <Separator className="my-2" />
+              <p className="font-bold">VALOR DAS VENDAS: {fmt(d.valorDasVendas)}</p>
+              <p>TAXAS E COMISSÕES: {fmt(d.taxasEComissoes)}</p>
+              <p>SERVIÇOS E PROMOÇÕES: {fmt(d.servicosEPromocoes)}</p>
+              <p>AJUSTES: {fmt(d.ajustes)}</p>
+              <p className="font-bold">TOTAL FATURAMENTO: {fmt(d.totalFaturamento)}</p>
+              <Separator className="my-2" />
+              <p>Cupom loja: {fmt(d.somaCupomLoja)}</p>
+              <p>Cupom iFood: {fmt(d.somaCupomIfood)}</p>
+              <p>Comissão: {fmt(d.somaComissao)}</p>
+              <p>Taxa transação: {fmt(d.somaTaxaTransacao)}</p>
+              <p>Entrega iFood: {fmt(d.somaEntregaIfood)}</p>
+              <p>Anúncios: {fmt(d.somaAnuncios)}</p>
+            </div>
+
+            {Object.keys(cats).length > 0 && (
+              <div className="rounded-lg border border-border p-3 space-y-2">
+                <p className="font-semibold text-sm">Descrições encontradas por categoria</p>
+                {Object.entries(cats).map(([cat, descs]) => (
+                  descs.length > 0 && (
+                    <div key={cat}>
+                      <p className="font-medium text-muted-foreground capitalize">{cat} ({descs.length})</p>
+                      <ul className="ml-3 text-muted-foreground">
+                        {descs.map((d, i) => <li key={i}>• {d}</li>)}
+                      </ul>
+                    </div>
+                  )
+                ))}
               </div>
             )}
+          </div>
 
-            {error && (
-              <div className="flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-                <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-destructive">{error}</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAuditModal(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-primary" />
+              Raio-X Financeiro iFood
+            </DialogTitle>
+            <DialogDescription>
+              Análise detalhada dos seus dados financeiros do iFood.
+            </DialogDescription>
+          </DialogHeader>
+
+          {step === "upload" && renderUpload()}
+          {step === "dashboard" && displayData && renderDashboard(displayData)}
+
+          {step === "dashboard" && isProcessing && (
+            <div className="flex items-center justify-center gap-2 py-4">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Processando nova planilha...</span>
+            </div>
+          )}
+
+          {step === "dashboard" && error && (
+            <div className="flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+              <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
+
+          {step === "done" && (
+            <div className="text-center py-8 space-y-4">
+              <CheckCircle2 className="h-14 w-14 text-green-500 mx-auto" />
+              <div>
+                <p className="font-semibold text-lg text-foreground">Dados aplicados com sucesso!</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Os campos do Plano iFood foram atualizados e o histórico mensal foi salvo.
+                </p>
               </div>
-            )}
-
-            {/* Tutorial */}
-            <div>
-              <button
-                onClick={() => setShowTutorial(!showTutorial)}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Info className="h-4 w-4" />
-                📥 Como baixar a planilha do iFood
-                {showTutorial ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
-
-              {showTutorial && (
-                <div className="mt-3 p-4 bg-muted/50 rounded-lg space-y-2 text-sm">
-                  <p className="font-medium text-foreground">Passo a passo:</p>
-                  <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                    <li>No Portal do Parceiro iFood, acesse <strong>Relatórios</strong></li>
-                    <li>Clique em <strong>Vendas</strong></li>
-                    <li>Clique em <strong>Conciliação</strong></li>
-                    <li>Selecione o <strong>mês</strong> no canto superior esquerdo</li>
-                    <li>Clique em <strong>Exportar</strong></li>
-                    <li>Aguarde a notificação verde</li>
-                    <li>Vá em <strong>Relatórios → Exportações</strong></li>
-                    <li>Clique em <strong>Baixar</strong></li>
-                    <li>Envie o arquivo aqui</li>
-                  </ol>
-                </div>
-              )}
+              <Button onClick={() => handleOpenChange(false)}>Fechar</Button>
             </div>
-          </div>
-        )}
+          )}
+        </DialogContent>
+      </Dialog>
 
-        {/* STEP: Dashboard */}
-        {step === "dashboard" && displayData && renderDashboard(displayData)}
-
-        {step === "dashboard" && isProcessing && (
-          <div className="flex items-center justify-center gap-2 py-4">
-            <Loader2 className="h-5 w-5 animate-spin text-destructive" />
-            <span className="text-sm text-muted-foreground">Processando nova planilha...</span>
-          </div>
-        )}
-
-        {step === "dashboard" && error && (
-          <div className="flex items-start gap-3 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
-            <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-destructive">{error}</p>
-          </div>
-        )}
-
-        {/* STEP: Done */}
-        {step === "done" && (
-          <div className="text-center py-6 space-y-4">
-            <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto" />
-            <div>
-              <p className="font-semibold text-foreground">Dados aplicados com sucesso!</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Os campos do Plano iFood foram atualizados com os dados reais da sua planilha.
-              </p>
-            </div>
-            <Button onClick={() => handleOpenChange(false)}>Fechar</Button>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+      {renderAuditModal()}
+    </>
   );
 }
