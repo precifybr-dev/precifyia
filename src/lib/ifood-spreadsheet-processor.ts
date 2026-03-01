@@ -9,8 +9,6 @@
  * SERVICOS_E_PROMOCOES = SUM(valor) das linhas de promoção loja, entrega sob demanda, anúncios
  * AJUSTES = SUM(valor) das linhas de reembolso taxa serviço
  * TOTAL_FATURAMENTO = VALOR_DAS_VENDAS + TAXAS_E_COMISSOES + SERVICOS_E_PROMOCOES + AJUSTES
- *
- * PERCENTUAL_REAL = (|comissão| + |taxa_transação| + |entrega_ifood|) / VALOR_DAS_VENDAS
  */
 
 export interface ValidationWarning {
@@ -36,6 +34,8 @@ export interface IfoodDebugInfo {
   somaComissao: number;
   somaTaxaTransacao: number;
   somaEntregaIfood: number;
+  somaAnuncios: number;
+  descricoesPorCategoria: Record<string, string[]>;
 }
 
 export interface IfoodConsolidation {
@@ -48,7 +48,7 @@ export interface IfoodConsolidation {
   taxasEComissoes: number;
   servicosEPromocoes: number;
   ajustesIfood: number;
-  // Legacy/detail fields
+  // Detail fields
   totalCupomLoja: number;
   totalCupomIfood: number;
   totalComissao: number;
@@ -71,6 +71,9 @@ export interface IfoodConsolidation {
   // Delivery
   ordersWithIfoodDelivery: number;
   totalDeliveryCost: number;
+  // Custo extra
+  custoExtraTotal: number;
+  custoExtraPercentual: number;
   // Validation
   warnings: ValidationWarning[];
   debugInfo?: IfoodDebugInfo;
@@ -108,14 +111,14 @@ const DESC_TAXAS_E_COMISSOES = new Set([
   "mensalidade",
 ]);
 
-// Subset: only commissions (for percentual real)
+// Subset: only commissions
 const DESC_COMISSAO = new Set([
   "comissao do ifood (entrega propria da loja)",
   "comissao do ifood (entrega ifood)",
   "comissao do ifood",
 ]);
 
-// Subset: only transaction fees (for percentual real)
+// Subset: only transaction fees
 const DESC_TAXA_TRANSACAO = new Set([
   "taxa de transacao",
   "taxa de transacao ifood beneficios",
@@ -132,8 +135,21 @@ const DESC_SERVICOS_E_PROMOCOES = new Set([
   "ocorrencia de debito para contratacao do pacote de anuncios por parte do parceiro.",
 ]);
 
+// Delivery descriptions (for the delivery breakdown)
+const DESC_ENTREGA_IFOOD = new Set([
+  "solicitacao de entrega sob demanda on",
+  "solicitacao de entrega sob demanda off",
+  "entrega parceira",
+]);
+
 // "Ajustes"
 const DESC_AJUSTES = new Set(["reembolso taxa de servico ifood cobrada do cliente"]);
+
+// Ads detection
+function isAdLine(desc: string): boolean {
+  return desc.includes("pacote de anuncio") || desc.includes("anuncios") ||
+    desc.includes("ocorrencia de debito para contratacao do pacote de anuncios");
+}
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -245,14 +261,10 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
 
   // ── Separate lines WITH and WITHOUT order id ──
   const orderLines: Array<{ orderId: string; row: Record<string, unknown> }> = [];
-  const noOrderLines: Record<string, unknown>[] = [];
 
   for (const row of normalizedRows) {
     const orderId = normalizeOrderId(row[orderKey]);
-    if (!orderId) {
-      noOrderLines.push(row);
-      continue;
-    }
+    if (!orderId) continue;
     orderLines.push({ orderId, row });
   }
 
@@ -284,13 +296,25 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
   let ordersWithCouponShared = 0;
   let totalCupomShared = 0;
   let ordersWithIfoodDelivery = 0;
-  let totalDeliveryCost = 0;
+  let totalDeliveryCostFromDeliveryLines = 0;
 
   const comissaoPercentages: number[] = [];
   const taxaPercentages: number[] = [];
 
+  // Track descriptions for audit
+  const descriptionsByCategory: Record<string, Set<string>> = {
+    entrada: new Set(),
+    cupomLoja: new Set(),
+    cupomIfood: new Set(),
+    taxasComissoes: new Set(),
+    servicos: new Set(),
+    ajustes: new Set(),
+    entrega: new Set(),
+    anuncios: new Set(),
+    other: new Set(),
+  };
+
   for (const [, lines] of orderGroups) {
-    // Per-order accumulators for VALOR_DAS_VENDAS formula
     let orderEntry = 0;
     let orderCupomIfood = 0;
     let orderCupomLojaRaw = 0;
@@ -299,53 +323,77 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     let orderRessarcCancelado = 0;
     let orderMaxBaseCalculo = 0;
 
-    // Detail accumulators
     let orderComissao = 0;
     let orderTaxaTransacao = 0;
-    let orderDelivery = 0;
+    let orderHasDelivery = false;
+    let orderDeliveryCost = 0;
 
     for (const line of lines) {
       const valor = parseBRValue(line[valorKey]);
       const perc = parseBRPercent(line[percKey]);
       const desc = normalizeDescription(line[descKey]);
+      const rawDesc = String(line[descKey] || "").trim();
       const baseCalculoValue = parseBRValue(line[baseCalculoKey]);
       if (baseCalculoValue > orderMaxBaseCalculo) {
         orderMaxBaseCalculo = baseCalculoValue;
       }
 
+      // Classify description for audit
+      let classified = false;
+
       // ── VALOR DAS VENDAS components ──
       if (DESC_ENTRADA_FINANCEIRA.has(desc)) {
         orderEntry += valor;
+        descriptionsByCategory.entrada.add(rawDesc);
+        classified = true;
       }
       if (DESC_CUPOM_IFOOD.has(desc)) {
         orderCupomIfood += valor;
+        descriptionsByCategory.cupomIfood.add(rawDesc);
+        classified = true;
       }
       if (DESC_CUPOM_LOJA.has(desc)) {
         orderCupomLojaRaw += valor;
+        descriptionsByCategory.cupomLoja.add(rawDesc);
+        classified = true;
       }
       if (DESC_TAXA_SERVICO_CLIENTE.has(desc)) {
         orderTaxaServicoClienteRaw += valor;
+        classified = true;
       }
       if (DESC_TAXA_ENTREGA_IFOOD.has(desc)) {
         orderTaxaEntregaIfoodRaw += valor;
+        classified = true;
       }
       if (DESC_RESSARCIMENTO_CANCELADO.has(desc)) {
         orderRessarcCancelado += valor;
+        classified = true;
       }
 
       // ── Detail: commission vs taxa ──
       if (DESC_COMISSAO.has(desc)) {
         orderComissao += valor;
         if (perc > 0) comissaoPercentages.push(perc);
+        descriptionsByCategory.taxasComissoes.add(rawDesc);
+        classified = true;
       }
       if (DESC_TAXA_TRANSACAO.has(desc)) {
         orderTaxaTransacao += valor;
         if (perc > 0) taxaPercentages.push(perc);
+        descriptionsByCategory.taxasComissoes.add(rawDesc);
+        classified = true;
       }
 
-      // Delivery cost (for iFood delivery orders)
-      if (desc.includes("entrega") && desc.includes("ifood") && !DESC_TAXA_ENTREGA_IFOOD.has(desc)) {
-        orderDelivery += valor;
+      // Delivery lines (Sob Demanda, Entrega Parceira, etc.)
+      if (DESC_ENTREGA_IFOOD.has(desc)) {
+        orderHasDelivery = true;
+        orderDeliveryCost += Math.abs(valor);
+        descriptionsByCategory.entrega.add(rawDesc);
+        classified = true;
+      }
+
+      if (!classified) {
+        descriptionsByCategory.other.add(rawDesc);
       }
     }
 
@@ -353,7 +401,6 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     const taxaServicoClienteAbs = Math.abs(orderTaxaServicoClienteRaw);
     const taxaEntregaIfoodAbs = Math.abs(orderTaxaEntregaIfoodRaw);
 
-    // Valor dos itens e entrega própria (sem ressarcimento)
     const orderValorItensEEntregaPropria =
       orderEntry + orderCupomIfood + cupomLojaAbs - taxaServicoClienteAbs - taxaEntregaIfoodAbs;
 
@@ -363,7 +410,6 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     totalEntradaFinanceira += orderEntry;
     totalSomaMaxBaseCalculo += orderMaxBaseCalculo;
 
-    // Coupons (absolute values for display)
     const cupomIfoodAbs = Math.abs(orderCupomIfood);
     totalCupomLoja += cupomLojaAbs;
     totalCupomIfood += cupomIfoodAbs;
@@ -371,11 +417,10 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     totalTaxaTransacao += Math.abs(orderTaxaTransacao);
 
     // Delivery
-    const deliveryAbs = Math.abs(orderDelivery);
     totalEntregaIfood += taxaEntregaIfoodAbs;
-    if (deliveryAbs > 0 || taxaEntregaIfoodAbs > 0) {
+    if (orderHasDelivery || taxaEntregaIfoodAbs > 0) {
       ordersWithIfoodDelivery++;
-      totalDeliveryCost += deliveryAbs + taxaEntregaIfoodAbs;
+      totalDeliveryCostFromDeliveryLines += orderDeliveryCost + taxaEntregaIfoodAbs;
     }
 
     // Coupon classification per order
@@ -394,37 +439,33 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     }
   }
 
-  // ── Lines WITHOUT order: Serviços e Promoções + Ajustes + Anúncios ──
+  // ── All-lines aggregation for official cards ──
   let totalServicosEPromocoes = 0;
   let totalAjustes = 0;
   let totalAnuncios = 0;
+  let totalTaxasEComissoesAllLines = 0;
 
-  // Also count order-level "Serviços e Promoções" (cupom loja lines are part of this)
   for (const row of normalizedRows) {
     const desc = normalizeDescription(row[descKey]);
     const valor = parseBRValue(row[valorKey]);
+    const rawDesc = String(row[descKey] || "").trim();
 
     if (DESC_SERVICOS_E_PROMOCOES.has(desc)) {
       totalServicosEPromocoes += valor;
+      descriptionsByCategory.servicos.add(rawDesc);
     }
     if (DESC_AJUSTES.has(desc)) {
       totalAjustes += valor;
+      descriptionsByCategory.ajustes.add(rawDesc);
     }
-    // Anúncios (ads) — informational only
-    if (desc.includes("anuncio") || desc.includes("ads") || desc.includes("publicidade") || desc.includes("pacote")) {
-      if (!DESC_SERVICOS_E_PROMOCOES.has(desc)) {
-        totalAnuncios += Math.abs(valor);
-      }
-    }
-  }
-
-  // Reconcile total taxas from all lines (not just order lines)
-  let totalTaxasEComissoesAllLines = 0;
-  for (const row of normalizedRows) {
-    const desc = normalizeDescription(row[descKey]);
-    const valor = parseBRValue(row[valorKey]);
     if (DESC_TAXAS_E_COMISSOES.has(desc)) {
       totalTaxasEComissoesAllLines += valor;
+    }
+
+    // Ads detection
+    if (isAdLine(desc)) {
+      totalAnuncios += Math.abs(valor);
+      descriptionsByCategory.anuncios.add(rawDesc);
     }
   }
 
@@ -450,7 +491,6 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
       ? taxaPercentages.reduce((a, b) => a + b, 0) / taxaPercentages.length
       : 0;
 
-  // PERCENTUAL_REAL = (|comissão| + |taxa_transação| + entrega_ifood) / VALOR_DAS_VENDAS
   const percentualRealIfood =
     faturamentoBruto > 0
       ? ((totalComissao + totalTaxaTransacao + totalEntregaIfood) / faturamentoBruto) * 100
@@ -463,6 +503,10 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
   const totalCouponValue = totalCupomLoja + totalCupomIfood;
   const couponAvgValue = ordersWithCoupon > 0 ? totalCouponValue / ordersWithCoupon : 0;
   const ordersWithoutCoupon = Math.max(0, totalPedidos - ordersWithCoupon);
+
+  // Custo Extra calculation (placeholder — will be computed in UI with user's plan selection)
+  const custoExtraTotal = 0;
+  const custoExtraPercentual = 0;
 
   const debugInfo: IfoodDebugInfo = {
     totalLinhasRaw: normalizedRows.length,
@@ -482,6 +526,10 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     somaComissao: round2(totalComissao),
     somaTaxaTransacao: round2(totalTaxaTransacao),
     somaEntregaIfood: round2(totalEntregaIfood),
+    somaAnuncios: round2(totalAnuncios),
+    descricoesPorCategoria: Object.fromEntries(
+      Object.entries(descriptionsByCategory).map(([k, v]) => [k, Array.from(v)])
+    ),
   };
 
   const result: IfoodConsolidation = {
@@ -512,7 +560,9 @@ export function processIfoodSpreadsheet(rows: Record<string, unknown>[]): IfoodC
     ordersWithoutCoupon,
     totalCupomShared: round2(totalCupomShared),
     ordersWithIfoodDelivery,
-    totalDeliveryCost: round2(totalDeliveryCost),
+    totalDeliveryCost: round2(totalDeliveryCostFromDeliveryLines),
+    custoExtraTotal: round2(custoExtraTotal),
+    custoExtraPercentual: round2(custoExtraPercentual),
     warnings: [],
     debugInfo,
     isBlocked: false,
@@ -640,6 +690,14 @@ function validateConsolidation(data: IfoodConsolidation): { warnings: Validation
     warnings.push({
       level: "warning",
       message: `Ticket médio (${fmt(data.ticketMedio)}) está acima de R$ 500.`,
+    });
+  }
+
+  // WARNING: cupom_ifood > 0 mas 0 pedidos "só iFood pagou"
+  if (data.totalCupomIfood > 0 && data.ordersWithCouponIfoodOnly === 0 && data.ordersWithCouponShared === 0) {
+    warnings.push({
+      level: "warning",
+      message: `Cupom iFood totaliza ${fmt(data.totalCupomIfood)} mas nenhum pedido classificado como "Só iFood pagou". Verifique a nomenclatura dos lançamentos.`,
     });
   }
 
