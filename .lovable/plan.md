@@ -1,35 +1,62 @@
 
 
-## Analysis
+# Validacao Matematica e Guards Anti-Erro na Importacao iFood
 
-There is **no CSP meta tag or header** currently configured in this project. The project is a Vite SPA served from Lovable's preview/published infrastructure. The CSP restrictions you're seeing likely come from Lovable's hosting headers, not from your code.
+## Contexto
 
-However, there's a more immediate issue: the GA4 measurement ID is still the placeholder `G-XXXXXXXXXX` in both `index.html` and `src/hooks/useGoogleAnalytics.ts`. This means GA isn't actually tracking anything regardless of CSP.
+O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
 
-## Plan
+O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
 
-### 1. Add CSP meta tag to `index.html`
+---
 
-Add a `<meta http-equiv="Content-Security-Policy">` tag in the `<head>` section with the following policy:
+## O que sera implementado
 
-```
-script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://www.googletagservices.com https://www.gstatic.com https://www.google.com https://cdn.tailwindcss.com;
-connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://stats.g.doubleclick.net https://*.supabase.co https://*.supabase.in wss://*.supabase.co;
-img-src 'self' data: blob: https://www.google-analytics.com https://www.googletagmanager.com;
-frame-src 'self' https://www.googletagmanager.com https://www.google.com https://challenges.cloudflare.com;
-style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.tailwindcss.com;
-font-src 'self' https://fonts.gstatic.com;
-default-src 'self';
-```
+### 1. Camada de Validacao no Processador
 
-Notes:
-- `'unsafe-inline'` and `'unsafe-eval'` are needed because Vite dev mode injects inline scripts, and the GTM snippet itself is inline.
-- Supabase domains are included in `connect-src` so the backend integration continues working.
-- Cloudflare Turnstile (`challenges.cloudflare.com`) is included in `frame-src` since the project uses `react-turnstile`.
+Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
 
-### 2. Replace placeholder GA ID
+- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
+- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
+- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
+- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
+- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
 
-You'll need to provide your real `G-XXXXXXXXXX` measurement ID. Without it, even with CSP fixed, GA won't track anything. The ID needs updating in two places:
-- `index.html` (lines 8 and 13)
-- `src/hooks/useGoogleAnalytics.ts` (line 4)
+Cada validacao retorna `{ level: "error" | "warning", message: string }`.
+
+A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
+
+### 2. Exibicao de Alertas no Dashboard
+
+No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
+
+- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
+- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
+- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
+- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
+
+### 3. Info de Agrupamento no Dashboard
+
+Adicionar um pequeno badge/info no topo do dashboard mostrando:
+- Linhas na planilha: X
+- Pedidos unicos: Y
+- Media de linhas por pedido: X/Y
+
+Isso da confianca ao usuario de que o agrupamento esta correto.
+
+---
+
+## Arquivos modificados
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
+| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
+
+## O que NAO sera alterado
+
+- Banco de dados (sem migrations)
+- Logica de agrupamento por ID (ja funciona corretamente)
+- Fluxo de autenticacao
+- Nenhuma outra funcionalidade do sistema
 
