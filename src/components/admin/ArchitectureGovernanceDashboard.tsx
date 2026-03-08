@@ -305,7 +305,7 @@ export function ArchitectureGovernanceDashboard() {
   useEffect(() => {
     if (!isLoading && !autoSnapshotDone.current && baseChecks.length > 0) {
       autoSnapshotDone.current = true;
-      saveScoreSnapshot();
+      saveScoreSnapshot(true);
     }
   }, [isLoading, baseChecks, saveScoreSnapshot]);
 
