@@ -41,7 +41,7 @@ serve(async (req) => {
       });
     }
 
-    const { items, strategy, totalAvulso, suggestedPrice, savings } = await req.json();
+    const { items, strategy, totalAvulso, totalCost, minPriceNoLoss, suggestedPrice, aggressivePrice, savings, savingsPercent, estimatedProfit, estimatedMargin, baitItemName, profitDriverName } = await req.json();
 
     if (!items || items.length === 0) {
       return new Response(JSON.stringify({ error: "Itens são obrigatórios" }), {
@@ -60,27 +60,55 @@ serve(async (req) => {
     };
 
     const itemsList = items.map((i: any) => {
-      const ingredientsPart = i.ingredients?.length > 0 ? ` (ingredientes: ${i.ingredients.join(", ")})` : "";
-      return `${i.quantity}x ${i.name}${ingredientsPart}`;
+      const ingredientsPart = i.ingredients?.length > 0 ? ` (ingredientes reais da ficha técnica: ${i.ingredients.join(", ")})` : "";
+      const costPart = i.cost != null ? ` | Custo: R$ ${Number(i.cost).toFixed(2)}` : "";
+      const pricePart = i.price != null ? ` | Preço venda: R$ ${Number(i.price).toFixed(2)}` : "";
+      const marginPart = i.margin != null ? ` | Margem: ${Number(i.margin).toFixed(0)}%` : "";
+      return `- ${i.quantity}x ${i.name}${ingredientsPart}${costPart}${pricePart}${marginPart}`;
     }).join("\n");
 
-    const systemPrompt = `Você é um especialista em naming e copywriting para cardápio de delivery/iFood no Brasil.
-Sua tarefa é criar um NOME e uma DESCRIÇÃO comercial para um combo de delivery.
+    const strategyLabel = strategyLabels[strategy] || strategy;
 
-REGRAS:
-1. Nome: curto (max 5 palavras), forte, chamativo, comercial. Pode usar emojis com moderação.
-2. Descrição: max 2 frases curtas. Deve destacar conveniência, economia e apelo. Pronta para cardápio digital.
-3. Use os ingredientes reais dos itens para enriquecer a descrição quando disponíveis.
-4. Adapte o tom à estratégia escolhida.
-5. Gere também uma lista de ingredientes do item principal para o campo ingredientsDescription.
+    const systemPrompt = `Você é um especialista em precificação, engenharia de cardápio e estratégia de combos para delivery e iFood.
 
-ITENS DO COMBO:
+Analise os itens selecionados manualmente pelo usuário e use os dados reais vindos da ficha técnica e precificação do sistema.
+
+OBJETIVOS:
+- Calcular a lógica comercial do combo
+- Identificar qual item sustenta o lucro
+- Identificar qual item pode entrar com desconto ou preço de custo
+- Sugerir preço final sem prejuízo
+- Criar nome comercial
+- Criar descrição curta, clara e vendedora
+
+REGRAS OBRIGATÓRIAS:
+1. Nunca sugerir preço com prejuízo.
+2. Sempre considerar custo real dos itens.
+3. Considerar a estratégia escolhida pelo usuário.
+4. Explicar de forma simples quem entra com desconto e quem sustenta o lucro.
+5. Criar nome comercial curto e forte (max 5 palavras). Pode usar emojis com moderação.
+6. Criar descrição de no máximo 2 frases, pronta para cardápio digital/iFood.
+7. Linguagem simples e pronta para uso em cardápio digital/iFood.
+8. Não inventar ingredientes que não existam na ficha técnica.
+9. Não exagerar na promessa comercial.
+10. Sempre retornar resposta estruturada via a função generate_combo_analysis.
+
+ITENS DO COMBO (dados reais do sistema):
 ${itemsList}
 
-ESTRATÉGIA: ${strategyLabels[strategy] || strategy}
-PREÇO AVULSO: R$ ${totalAvulso?.toFixed(2)}
-PREÇO COMBO: R$ ${suggestedPrice?.toFixed(2)}
-ECONOMIA: R$ ${savings?.toFixed(2)}`;
+DADOS FINANCEIROS CALCULADOS PELO SISTEMA:
+- Preço Avulso Total: R$ ${Number(totalAvulso || 0).toFixed(2)}
+- Custo Total: R$ ${Number(totalCost || 0).toFixed(2)}
+- Preço Mínimo Sem Prejuízo: R$ ${Number(minPriceNoLoss || 0).toFixed(2)}
+- Preço Recomendado (Seguro): R$ ${Number(suggestedPrice || 0).toFixed(2)}
+- Preço Agressivo: R$ ${Number(aggressivePrice || 0).toFixed(2)}
+- Economia para o Cliente: R$ ${Number(savings || 0).toFixed(2)} (${Number(savingsPercent || 0).toFixed(0)}%)
+- Lucro Estimado: R$ ${Number(estimatedProfit || 0).toFixed(2)}
+- Margem Estimada: ${Number(estimatedMargin || 0).toFixed(1)}%
+- Item Isca (menor margem): ${baitItemName || "Não identificado"}
+- Item que Sustenta o Lucro (maior margem): ${profitDriverName || "Não identificado"}
+
+ESTRATÉGIA ESCOLHIDA: ${strategyLabel}`;
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -92,32 +120,47 @@ ECONOMIA: R$ ${savings?.toFixed(2)}`;
         model: "google/gemini-2.5-flash-lite",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: "Gere o nome, descrição e ingredientes do combo. Use a função suggest_combo_details." },
+          { role: "user", content: `Analise o combo montado pelo usuário com a estratégia "${strategyLabel}" e gere a análise completa usando a função generate_combo_analysis. Use os dados financeiros já calculados pelo sistema e foque em gerar nome, descrição e explicação estratégica de qualidade.` },
         ],
         tools: [
           {
             type: "function",
             function: {
-              name: "suggest_combo_details",
-              description: "Gera nome e descrição comercial do combo",
+              name: "generate_combo_analysis",
+              description: "Gera análise completa do combo com nome, descrição, estratégia e explicação",
               parameters: {
                 type: "object",
                 properties: {
-                  name: { type: "string", description: "Nome comercial curto e chamativo" },
-                  description: { type: "string", description: "Descrição vendedora, max 2 frases, pronta para iFood" },
-                  ingredientsDescription: { type: "string", description: "Lista de ingredientes principais dos itens do combo" },
+                  name: { type: "string", description: "Nome comercial curto e chamativo do combo (max 5 palavras)" },
+                  description: { type: "string", description: "Descrição vendedora, max 2 frases, pronta para iFood/cardápio digital" },
+                  ingredientsDescription: { type: "string", description: "Lista dos ingredientes reais do item principal do combo, baseada na ficha técnica" },
+                  discountItemExplanation: { type: "string", description: "Explicação simples de qual item entra com desconto e por quê" },
+                  profitItemExplanation: { type: "string", description: "Explicação simples de qual item sustenta o lucro do combo" },
+                  strategyExplanation: { type: "string", description: "Explicação estratégica completa: por que essa montagem funciona para o objetivo escolhido, em 2-3 frases" },
                 },
-                required: ["name", "description", "ingredientsDescription"],
+                required: ["name", "description", "ingredientsDescription", "discountItemExplanation", "profitItemExplanation", "strategyExplanation"],
                 additionalProperties: false,
               },
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "suggest_combo_details" } },
+        tool_choice: { type: "function", function: { name: "generate_combo_analysis" } },
       }),
     });
 
     if (!aiResponse.ok) {
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const errorText = await aiResponse.text();
       console.error("AI error:", aiResponse.status, errorText);
       throw new Error("Erro ao gerar detalhes com IA");

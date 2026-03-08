@@ -54,6 +54,9 @@ export interface GeneratedComboDetails {
   name: string;
   description: string;
   ingredientsDescription: string;
+  discountItemExplanation: string;
+  profitItemExplanation: string;
+  strategyExplanation: string;
 }
 
 const STRATEGIES: ComboStrategy[] = [
@@ -183,12 +186,23 @@ export function useManualCombo() {
             name: i.name,
             type: i.type,
             quantity: i.quantity,
+            price: i.price,
+            cost: i.cost,
+            margin: i.margin,
             ingredients: i.ingredients || [],
           })),
           strategy: selectedStrategy,
           totalAvulso: result.totalAvulso,
+          totalCost: result.totalCost,
+          minPriceNoLoss: result.minPriceNoLoss,
           suggestedPrice: result.safePriceSuggestion,
+          aggressivePrice: result.aggressivePriceSuggestion,
           savings: result.clientSavings,
+          savingsPercent: result.clientSavingsPercent,
+          estimatedProfit: result.estimatedProfit,
+          estimatedMargin: result.estimatedMargin,
+          baitItemName: result.analysis.baitItem?.name || null,
+          profitDriverName: result.analysis.profitDriver?.name || null,
         },
       });
 
@@ -201,6 +215,9 @@ export function useManualCombo() {
         name: data.name,
         description: data.description,
         ingredientsDescription: data.ingredientsDescription,
+        discountItemExplanation: data.discountItemExplanation || "",
+        profitItemExplanation: data.profitItemExplanation || "",
+        strategyExplanation: data.strategyExplanation || "",
       });
     } catch {
       toast({ title: "Erro", description: "Erro inesperado ao gerar detalhes.", variant: "destructive" });
@@ -236,7 +253,7 @@ export function useManualCombo() {
           total_cost: result.totalCost,
           estimated_profit: round(profit),
           margin_percent: round(margin),
-          strategy_explanation: `Combo manual com estratégia "${STRATEGIES.find(s => s.id === selectedStrategy)?.label}". Economia de ${result.clientSavingsPercent.toFixed(0)}% para o cliente.`,
+          strategy_explanation: generatedDetails.strategyExplanation || `Combo manual com estratégia "${STRATEGIES.find(s => s.id === selectedStrategy)?.label}". Economia de ${result.clientSavingsPercent.toFixed(0)}% para o cliente.`,
         })
         .select("id")
         .single();

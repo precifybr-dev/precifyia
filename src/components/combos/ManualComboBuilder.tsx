@@ -533,18 +533,46 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
             </Card>
           )}
 
-          {/* AI Generated Name & Description */}
+          {/* AI Generated Analysis */}
           {generatedDetails ? (
             <Card className="border-primary/20 bg-primary/5">
-              <CardContent className="pt-4 space-y-2">
-                <div className="flex items-center gap-2 mb-2">
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="w-4 h-4 text-primary" />
-                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">Nome e descrição gerados</span>
+                  <span className="text-xs font-semibold text-primary uppercase tracking-wider">Análise IA do Combo</span>
                 </div>
                 <h3 className="text-lg font-bold text-foreground">{generatedDetails.name}</h3>
                 <p className="text-sm text-foreground/80">{generatedDetails.description}</p>
                 {generatedDetails.ingredientsDescription && (
                   <p className="text-xs text-muted-foreground italic">🧾 {generatedDetails.ingredientsDescription}</p>
+                )}
+                <Separator className="my-2" />
+                {generatedDetails.discountItemExplanation && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/5 border border-warning/20">
+                    <Tag className="w-4 h-4 text-warning flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[10px] font-semibold text-warning uppercase tracking-wider mb-0.5">Item com desconto</p>
+                      <p className="text-sm text-foreground">{generatedDetails.discountItemExplanation}</p>
+                    </div>
+                  </div>
+                )}
+                {generatedDetails.profitItemExplanation && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-success/5 border border-success/20">
+                    <TrendingUp className="w-4 h-4 text-success flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[10px] font-semibold text-success uppercase tracking-wider mb-0.5">Item que sustenta o lucro</p>
+                      <p className="text-sm text-foreground">{generatedDetails.profitItemExplanation}</p>
+                    </div>
+                  </div>
+                )}
+                {generatedDetails.strategyExplanation && (
+                  <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                    <Target className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[10px] font-semibold text-primary uppercase tracking-wider mb-0.5">Estratégia aplicada</p>
+                      <p className="text-sm text-foreground">{generatedDetails.strategyExplanation}</p>
+                    </div>
+                  </div>
                 )}
               </CardContent>
             </Card>
