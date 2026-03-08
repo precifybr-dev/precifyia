@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Sparkles, AlertTriangle, Crown, Loader2,
-  Plus, History, LayoutList, Settings,
+  Plus, History, LayoutList, Settings, Wrench,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +12,7 @@ import { useCombos } from "@/hooks/useCombos";
 import { ComboCreationWizard } from "@/components/combos/ComboCreationWizard";
 import { ComboHistoryList } from "@/components/combos/ComboHistoryList";
 import { MenuStrategySection } from "@/components/combos/MenuStrategySection";
+import { ManualComboBuilder } from "@/components/combos/ManualComboBuilder";
 import { AppLayout } from "@/components/layout/AppLayout";
 
 export default function Combos() {
@@ -20,9 +21,10 @@ export default function Combos() {
     combos, isLoading, isGenerating, monthlyUsage, usageLimit,
     canGenerate, isFree, availableRecipes, availableBeverages,
     generateCombo, generateMenuStrategy, deleteCombo, objectiveLabels,
+    refresh,
   } = useCombos();
 
-  const [activeTab, setActiveTab] = useState("create");
+  const [activeTab, setActiveTab] = useState("manual");
   const [showWizard, setShowWizard] = useState(false);
 
   const headerActions = (
@@ -61,9 +63,12 @@ export default function Combos() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsList className="grid w-full grid-cols-5 h-auto">
+            <TabsTrigger value="manual" className="gap-1.5 text-xs sm:text-sm py-2.5">
+              <Wrench className="w-4 h-4" /><span className="hidden sm:inline">Montar Combo</span><span className="sm:hidden">Montar</span>
+            </TabsTrigger>
             <TabsTrigger value="create" className="gap-1.5 text-xs sm:text-sm py-2.5">
-              <Plus className="w-4 h-4" /><span className="hidden sm:inline">Criar Combo</span><span className="sm:hidden">Criar</span>
+              <Sparkles className="w-4 h-4" /><span className="hidden sm:inline">IA Automática</span><span className="sm:hidden">IA</span>
             </TabsTrigger>
             <TabsTrigger value="history" className="gap-1.5 text-xs sm:text-sm py-2.5">
               <History className="w-4 h-4" /><span>Histórico</span>
@@ -75,6 +80,14 @@ export default function Combos() {
               <Settings className="w-4 h-4" /><span className="hidden sm:inline">Configurações</span><span className="sm:hidden">Config</span>
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="manual" className="mt-4">
+            <ManualComboBuilder
+              recipes={availableRecipes}
+              beverages={availableBeverages}
+              onSaved={() => { refresh(); setActiveTab("history"); }}
+            />
+          </TabsContent>
 
           <TabsContent value="create" className="mt-4 space-y-4">
             {!showWizard ? (
@@ -146,7 +159,8 @@ export default function Combos() {
               <div className="p-6 rounded-xl border border-border bg-card">
                 <h3 className="font-semibold text-foreground mb-2">Sobre os Limites</h3>
                 <div className="space-y-2 text-sm text-muted-foreground">
-                  <p>• Cada geração de combo = <strong className="text-foreground">1 uso</strong></p>
+                  <p>• <strong className="text-foreground">Montar Combo:</strong> sem limite (usa IA apenas para nome/descrição)</p>
+                  <p>• Cada geração de combo IA = <strong className="text-foreground">1 uso</strong></p>
                   <p>• Cada geração de estratégia de topo = <strong className="text-foreground">1 uso</strong></p>
                   <p>• <strong className="text-foreground">Free:</strong> 1 simulação</p>
                   <p>• <strong className="text-foreground">Básico:</strong> 3 usos/mês</p>
