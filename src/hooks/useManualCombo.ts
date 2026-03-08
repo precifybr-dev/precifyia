@@ -134,6 +134,7 @@ export function useManualCombo() {
 
   const result = useMemo<ManualComboResult | null>(() => {
     if (selectedItems.length === 0) return null;
+    const ifoodRate = ifoodRateFromProfile;
 
     const totalAvulso = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const totalCost = selectedItems.reduce((sum, i) => sum + i.cost * i.quantity, 0);
