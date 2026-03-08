@@ -58,6 +58,8 @@ export interface ManualComboResult {
   clientSavingsPercent: number;
   estimatedProfit: number;
   estimatedMargin: number;
+  ifoodPrice: number;
+  ifoodRate: number;
   analysis: ComboAnalysis;
 }
 
