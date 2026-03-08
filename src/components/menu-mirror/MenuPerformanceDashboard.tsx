@@ -195,8 +195,9 @@ function UsageBadge({ usage }: { usage: AnalysisUsage | null }) {
   );
 }
 
-export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMenu, analysisUsage }: Props) {
+export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMenu, analysisUsage, menuItems }: Props) {
   const [showDetails, setShowDetails] = useState(false);
+  const { diagnostics } = useDeliveryInsights(menuItems);
 
   if (!analysis && !isLoading) {
     return (
