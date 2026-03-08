@@ -13,7 +13,6 @@ export interface DeliveryInsightRule {
   descricao_regra: string;
   impacto: string;
   tags: string[];
-  fonte: string | null;
 }
 
 export interface DiagnosticResult {
