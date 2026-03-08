@@ -37,50 +37,50 @@ export function ComparisonSection() {
         <div className="grid lg:grid-cols-2 gap-10 items-center max-w-6xl mx-auto">
           {/* Comparison table */}
           <div className="w-full">
-            <div className="rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 overflow-hidden shadow-2xl">
+            <div className="rounded-2xl bg-white overflow-hidden shadow-2xl border border-white/50">
               {/* Header */}
               <div className="grid grid-cols-[1fr,120px,120px] sm:grid-cols-[1fr,140px,140px]">
-                <div />
-                <div className="bg-destructive/20 py-3 text-center border-b border-white/10">
+                <div className="bg-white py-3 px-4 sm:px-6" />
+                <div className="bg-red-50 py-3 text-center border-b border-red-100">
                   <div className="flex items-center justify-center gap-1.5">
-                    <FileSpreadsheet className="w-4 h-4 text-primary-foreground/70" />
-                    <span className="text-xs sm:text-sm font-bold text-primary-foreground/90">Planilha</span>
+                    <FileSpreadsheet className="w-4 h-4 text-red-400" />
+                    <span className="text-xs sm:text-sm font-bold text-red-600">Planilha</span>
                   </div>
                 </div>
-                <div className="bg-success/20 py-3 text-center border-b border-white/10">
-                  <span className="text-xs sm:text-sm font-bold text-primary-foreground">Precify</span>
+                <div className="bg-emerald-50 py-3 text-center border-b border-emerald-100">
+                  <span className="text-xs sm:text-sm font-bold text-emerald-600">Precify</span>
                 </div>
               </div>
 
               {/* Rows */}
-              {rows.map((row, i) => (
+              {rows.map((row) => (
                 <div
                   key={row.label}
-                  className="grid grid-cols-[1fr,120px,120px] sm:grid-cols-[1fr,140px,140px] border-b border-white/10 last:border-b-0 hover:bg-white/5 transition-colors"
+                  className="grid grid-cols-[1fr,120px,120px] sm:grid-cols-[1fr,140px,140px] border-b border-gray-100 last:border-b-0 hover:bg-gray-50/50 transition-colors"
                 >
-                  <span className="text-sm font-medium text-primary-foreground py-3.5 px-4 sm:px-6">
+                  <span className="text-sm font-medium text-gray-800 py-3.5 px-4 sm:px-6">
                     {row.label}
                   </span>
 
                   {/* Planilha column */}
-                  <div className="flex items-center justify-center py-3.5 bg-destructive/5 border-l border-white/10">
+                  <div className="flex items-center justify-center py-3.5 bg-red-50/60 border-l border-gray-100">
                     {row.type === "check" ? (
-                      <div className="w-6 h-6 rounded-full bg-destructive/20 flex items-center justify-center">
-                        <X className="w-3.5 h-3.5 text-destructive" strokeWidth={3} />
+                      <div className="w-7 h-7 rounded-full bg-red-100 flex items-center justify-center">
+                        <X className="w-4 h-4 text-red-500" strokeWidth={3} />
                       </div>
                     ) : (
-                      <span className="text-xs sm:text-sm text-primary-foreground/60">{row.planilha}</span>
+                      <span className="text-xs sm:text-sm text-gray-500">{row.planilha}</span>
                     )}
                   </div>
 
                   {/* Precify column */}
-                  <div className="flex items-center justify-center py-3.5 bg-success/5">
+                  <div className="flex items-center justify-center py-3.5 bg-emerald-50/60">
                     {row.type === "check" ? (
-                      <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
-                        <Check className="w-3.5 h-3.5 text-success" strokeWidth={3} />
+                      <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <Check className="w-4 h-4 text-emerald-500" strokeWidth={3} />
                       </div>
                     ) : (
-                      <span className="text-xs sm:text-sm font-semibold text-primary-foreground">{row.precify}</span>
+                      <span className="text-xs sm:text-sm font-semibold text-emerald-700">{row.precify}</span>
                     )}
                   </div>
                 </div>
