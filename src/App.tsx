@@ -30,6 +30,14 @@ import PublicHelp from "./pages/PublicHelp";
 import { ContextualHelp } from "@/components/help/ContextualHelp";
 import { CookieConsent } from "@/components/CookieConsent";
 
+// Feature landing pages
+import PrecificacaoIfood from "./pages/features/PrecificacaoIfood";
+import FichaTecnicaAutomatica from "./pages/features/FichaTecnicaAutomatica";
+import AnaliseInteligenteCardapio from "./pages/features/AnaliseInteligenteCardapio";
+import SimuladorCombos from "./pages/features/SimuladorCombos";
+import ControleRealLucro from "./pages/features/ControleRealLucro";
+import SimulacaoTaxasCustos from "./pages/features/SimulacaoTaxasCustos";
+
 // Auth/Security pages
 import SecurityCheck from "./pages/SecurityCheck";
 import Onboarding from "./pages/Onboarding";
