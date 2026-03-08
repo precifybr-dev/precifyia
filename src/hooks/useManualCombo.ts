@@ -28,10 +28,18 @@ export interface ComboAlert {
   message: string;
 }
 
+export interface ItemRole {
+  item: ManualComboItem;
+  role: "principal" | "complementar" | "isca" | "sustentacao";
+  confidence: "alta" | "media" | "baixa";
+  reason: string;
+}
+
 export interface ComboAnalysis {
   baitItem: ManualComboItem | null;
   profitDriver: ManualComboItem | null;
   costLeader: ManualComboItem | null;
+  itemRoles: ItemRole[];
   isBalanced: boolean;
   alerts: ComboAlert[];
 }
@@ -40,7 +48,10 @@ export interface ManualComboResult {
   items: ManualComboItem[];
   totalAvulso: number;
   totalCost: number;
+  grossProfitAvulso: number;
+  marginAvulso: number;
   minPriceNoLoss: number;
+  minPriceWithSafetyMargin: number;
   safePriceSuggestion: number;
   aggressivePriceSuggestion: number;
   clientSavings: number;
@@ -108,12 +119,17 @@ export function useManualCombo() {
     const totalAvulso = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const totalCost = selectedItems.reduce((sum, i) => sum + i.cost * i.quantity, 0);
     const minPriceNoLoss = totalCost;
+    const grossProfitAvulso = totalAvulso - totalCost;
+    const marginAvulso = totalAvulso > 0 ? (grossProfitAvulso / totalAvulso) * 100 : 0;
 
     const discountFactor = strategy?.discountFactor ?? 0.85;
     const marginFloor = strategy?.marginFloor ?? 20;
 
+    // Min price with safety margin
+    const minPriceWithSafetyMargin = totalCost / (1 - marginFloor / 100);
+
     // Safe: good margin
-    const safeFromMargin = totalCost / (1 - marginFloor / 100);
+    const safeFromMargin = minPriceWithSafetyMargin;
     const safeFromDiscount = totalAvulso * discountFactor;
     const safePriceSuggestion = Math.max(safeFromMargin, Math.min(safeFromDiscount, totalAvulso * 0.95));
 
@@ -133,6 +149,9 @@ export function useManualCombo() {
     const baitItem = sorted[0] || null;
     const profitDriver = sorted[sorted.length - 1] || null;
     const costLeader = [...selectedItems].sort((a, b) => (b.cost * b.quantity) - (a.cost * a.quantity))[0] || null;
+
+    // 4-role classification
+    const itemRoles: ItemRole[] = classifyItemRoles(selectedItems);
 
     const alerts: ComboAlert[] = [];
 
@@ -165,14 +184,17 @@ export function useManualCombo() {
       items: selectedItems,
       totalAvulso: round(totalAvulso),
       totalCost: round(totalCost),
+      grossProfitAvulso: round(grossProfitAvulso),
+      marginAvulso: round(marginAvulso),
       minPriceNoLoss: round(minPriceNoLoss),
+      minPriceWithSafetyMargin: round(minPriceWithSafetyMargin),
       safePriceSuggestion: round(safePriceSuggestion),
       aggressivePriceSuggestion: round(aggressivePriceSuggestion),
       clientSavings: round(clientSavings),
       clientSavingsPercent: round(clientSavingsPercent),
       estimatedProfit: round(estimatedProfit),
       estimatedMargin: round(estimatedMargin),
-      analysis: { baitItem, profitDriver, costLeader, isBalanced, alerts },
+      analysis: { baitItem, profitDriver, costLeader, itemRoles, isBalanced, alerts },
     };
   }, [selectedItems, strategy]);
 
@@ -311,4 +333,59 @@ export function useManualCombo() {
 
 function round(n: number) {
   return Math.round(n * 100) / 100;
+}
+
+function classifyItemRoles(items: ManualComboItem[]): ItemRole[] {
+  if (items.length === 0) return [];
+
+  const avgMargin = items.reduce((s, i) => s + i.margin, 0) / items.length;
+  const avgCost = items.reduce((s, i) => s + i.cost * i.quantity, 0) / items.length;
+  const maxMargin = Math.max(...items.map(i => i.margin));
+  const minMargin = Math.min(...items.map(i => i.margin));
+  const marginSpread = maxMargin - minMargin;
+
+  return items.map(item => {
+    const itemTotalCost = item.cost * item.quantity;
+    const itemTotalPrice = item.price * item.quantity;
+
+    // Principal: highest cost contribution AND decent margin
+    if (itemTotalCost >= avgCost * 1.3 && item.margin >= avgMargin * 0.8) {
+      return {
+        item,
+        role: "principal" as const,
+        confidence: itemTotalCost >= avgCost * 1.8 ? "alta" as const : "media" as const,
+        reason: `Maior peso no combo (${((itemTotalCost / items.reduce((s, i) => s + i.cost * i.quantity, 0)) * 100).toFixed(0)}% do custo)`,
+      };
+    }
+
+    // Sustentação: highest margin item
+    if (item.margin >= avgMargin * 1.3 && item.margin >= 25) {
+      return {
+        item,
+        role: "sustentacao" as const,
+        confidence: marginSpread > 15 ? "alta" as const : "media" as const,
+        reason: `Margem de ${item.margin.toFixed(0)}% sustenta a rentabilidade`,
+      };
+    }
+
+    // Isca: lowest margin, attracts customer
+    if (item.margin <= avgMargin * 0.7 && item.margin < 20) {
+      return {
+        item,
+        role: "isca" as const,
+        confidence: item.margin < 10 ? "alta" as const : "media" as const,
+        reason: `Margem baixa (${item.margin.toFixed(0)}%) atrai o cliente pelo preço`,
+      };
+    }
+
+    // Complementar: everything else
+    return {
+      item,
+      role: "complementar" as const,
+      confidence: (marginSpread < 10 ? "baixa" : "media") as "alta" | "media" | "baixa",
+      reason: items.length <= 2
+        ? "Poucos itens para classificar com segurança"
+        : `Complementa o combo com margem de ${item.margin.toFixed(0)}%`,
+    };
+  });
 }

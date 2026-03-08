@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { useManualCombo, type ManualComboItem } from "@/hooks/useManualCombo";
+import { useManualCombo, type ManualComboItem, type ItemRole } from "@/hooks/useManualCombo";
 import { type AvailableItem } from "@/hooks/useCombos";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -371,7 +371,9 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {selectedItems.map(item => (
+              {selectedItems.map(item => {
+                const itemRole = result.analysis.itemRoles.find(r => r.item.id === item.id);
+                return (
                 <div key={item.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 border border-border">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-primary bg-primary/10 w-6 h-6 rounded-md flex items-center justify-center">
@@ -379,12 +381,21 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                     </span>
                     <div>
                       <p className="text-sm font-medium text-foreground">{item.name}</p>
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                        {item === result.analysis.baitItem && (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-warning/40 text-warning">Isca</Badge>
-                        )}
-                        {item === result.analysis.profitDriver && (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-success/40 text-success">Sustenta lucro</Badge>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
+                        {itemRole && (
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] px-1.5 py-0",
+                            itemRole.role === "principal" && "border-primary/40 text-primary",
+                            itemRole.role === "sustentacao" && "border-success/40 text-success",
+                            itemRole.role === "isca" && "border-warning/40 text-warning",
+                            itemRole.role === "complementar" && "border-muted-foreground/40 text-muted-foreground",
+                          )}>
+                            {itemRole.role === "principal" && "⭐ Principal"}
+                            {itemRole.role === "sustentacao" && "💰 Sustentação"}
+                            {itemRole.role === "isca" && "🎯 Isca"}
+                            {itemRole.role === "complementar" && "➕ Complementar"}
+                            {itemRole.confidence !== "alta" && " (sugestão)"}
+                          </Badge>
                         )}
                         <span>Margem {item.margin.toFixed(0)}%</span>
                       </div>
@@ -395,7 +406,8 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                     <p className="text-[10px] text-muted-foreground">Custo: {formatCurrency(item.cost * item.quantity)}</p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
 
@@ -412,10 +424,22 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                 <SummaryCard label="Preço Avulso" value={formatCurrency(result.totalAvulso)} icon={<ShoppingBag className="w-3.5 h-3.5" />} />
                 <SummaryCard label="Custo Total" value={formatCurrency(result.totalCost)} />
                 <SummaryCard
+                  label="Lucro Bruto Avulso"
+                  value={formatCurrency(result.grossProfitAvulso)}
+                  sublabel={`Margem ${result.marginAvulso.toFixed(1)}%`}
+                />
+                <SummaryCard
                   label="Mín. Sem Prejuízo"
                   value={formatCurrency(result.minPriceNoLoss)}
                   className="border-destructive/20 bg-destructive/5"
                   valueClass="text-destructive"
+                />
+                <SummaryCard
+                  label="Mín. c/ Margem Segura"
+                  value={formatCurrency(result.minPriceWithSafetyMargin)}
+                  className="border-warning/20 bg-warning/5"
+                  valueClass="text-warning"
+                  icon={<Shield className="w-3.5 h-3.5 text-warning" />}
                 />
                 <SummaryCard
                   label="Preço Recomendado"
@@ -448,7 +472,7 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                 <div className="text-center p-3 rounded-lg bg-muted/30">
                   <Percent className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
                   <p className="text-lg font-bold text-foreground">{result.estimatedMargin.toFixed(1)}%</p>
-                  <p className="text-[10px] text-muted-foreground">Margem</p>
+                  <p className="text-[10px] text-muted-foreground">Margem do Combo</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-success/5 border border-success/20">
                   <Tag className="w-4 h-4 mx-auto text-success mb-1" />
@@ -472,22 +496,27 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {result.analysis.baitItem && (
-                <AnalysisRow
-                  icon={<Target className="w-4 h-4 text-warning" />}
-                  label="Item isca (atrai o cliente)"
-                  value={result.analysis.baitItem.name}
-                  detail={`Margem: ${result.analysis.baitItem.margin.toFixed(0)}%`}
-                />
-              )}
-              {result.analysis.profitDriver && (
-                <AnalysisRow
-                  icon={<TrendingUp className="w-4 h-4 text-success" />}
-                  label="Sustenta o lucro"
-                  value={result.analysis.profitDriver.name}
-                  detail={`Margem: ${result.analysis.profitDriver.margin.toFixed(0)}%`}
-                />
-              )}
+              <p className="text-[10px] text-muted-foreground italic mb-2">
+                ⚠️ A classificação abaixo é uma sugestão baseada nas margens e custos dos itens. Não é absoluta.
+              </p>
+              {result.analysis.itemRoles.map((role, idx) => {
+                const roleConfig = {
+                  principal: { icon: <Crown className="w-4 h-4 text-primary" />, label: "Item principal" },
+                  sustentacao: { icon: <TrendingUp className="w-4 h-4 text-success" />, label: "Sustentação de lucro" },
+                  isca: { icon: <Target className="w-4 h-4 text-warning" />, label: "Item isca" },
+                  complementar: { icon: <Plus className="w-4 h-4 text-muted-foreground" />, label: "Item complementar" },
+                };
+                const config = roleConfig[role.role];
+                return (
+                  <AnalysisRow
+                    key={idx}
+                    icon={config.icon}
+                    label={`${config.label}${role.confidence !== "alta" ? " (sugestão)" : ""}`}
+                    value={role.item.name}
+                    detail={role.reason}
+                  />
+                );
+              })}
               {result.analysis.costLeader && (
                 <AnalysisRow
                   icon={<DollarSign className="w-4 h-4 text-muted-foreground" />}
