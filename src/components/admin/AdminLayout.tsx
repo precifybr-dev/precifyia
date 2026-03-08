@@ -55,26 +55,42 @@ interface NavItem {
   permission?: string;
   badge?: number;
   masterOnly?: boolean;
+  group?: string;
 }
 
 const navItems: NavItem[] = [
-  { id: "overview", label: "Visão Geral", icon: LayoutDashboard, section: "overview" },
-  { id: "users", label: "Usuários", icon: Users, section: "management", permission: "view_users" },
-  { id: "collaborators", label: "Colaboradores", icon: UserCog, path: "/admin/collaborators", permission: "manage_collaborators" },
-  { id: "financial", label: "Financeiro", icon: Wallet, section: "financial", permission: "view_financials" },
-  { id: "support", label: "Suporte", icon: Headphones, section: "support", permission: "respond_support" },
-  { id: "metrics", label: "Métricas", icon: BarChart3, section: "usage", permission: "view_metrics" },
-  { id: "combos-ai", label: "Combos IA", icon: Sparkles, section: "combos", permission: "view_metrics" },
-  { id: "affiliates", label: "Cupons & Afiliados", icon: Ticket, section: "affiliates", permission: "view_financials" },
-  { id: "commissions", label: "Comissões", icon: Wallet, section: "commissions", permission: "view_financials", masterOnly: true },
-  { id: "monetization", label: "Monetização", icon: TrendingUp, section: "monetization", permission: "view_financials", masterOnly: true },
-  { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs" },
-  { id: "university", label: "Universidade", icon: GraduationCap, section: "university", masterOnly: true },
-  { id: "governance", label: "Governança", icon: FileCode2, section: "governance", masterOnly: true },
-  { id: "cloud-costs", label: "Custos Cloud & IA", icon: Server, section: "cloud-costs", masterOnly: true },
-  { id: "export", label: "Exportação de Dados", icon: Download, path: "/admin/export", masterOnly: true },
-  { id: "system-book", label: "Livro do Sistema", icon: BookOpen, path: "/admin/system-book", masterOnly: true },
+  // — Principal
+  { id: "overview", label: "Visão Geral", icon: LayoutDashboard, section: "overview", group: "principal" },
+  { id: "users", label: "Usuários", icon: Users, section: "management", permission: "view_users", group: "principal" },
+  { id: "collaborators", label: "Colaboradores", icon: UserCog, path: "/admin/collaborators", permission: "manage_collaborators", group: "principal" },
+  { id: "support", label: "Suporte", icon: Headphones, section: "support", permission: "respond_support", group: "principal" },
+  // — Financeiro & Comercial
+  { id: "financial", label: "Financeiro", icon: Wallet, section: "financial", permission: "view_financials", group: "financeiro" },
+  { id: "controllership", label: "Controladoria", icon: TrendingUp, section: "controllership", permission: "view_financials", masterOnly: true, group: "financeiro" },
+  { id: "pricing", label: "Precificação", icon: DollarSign, section: "pricing", permission: "view_financials", masterOnly: true, group: "financeiro" },
+  { id: "monetization", label: "Monetização", icon: TrendingUp, section: "monetization", permission: "view_financials", masterOnly: true, group: "financeiro" },
+  { id: "affiliates", label: "Cupons & Afiliados", icon: Ticket, section: "affiliates", permission: "view_financials", group: "financeiro" },
+  { id: "commissions", label: "Comissões", icon: Wallet, section: "commissions", permission: "view_financials", masterOnly: true, group: "financeiro" },
+  // — Produto & Métricas
+  { id: "metrics", label: "Métricas de Uso", icon: BarChart3, section: "usage", permission: "view_metrics", group: "produto" },
+  { id: "funnel", label: "Funil", icon: MousePointerClick, section: "funnel", permission: "view_metrics", masterOnly: true, group: "produto" },
+  { id: "combos-ai", label: "Combos IA", icon: Sparkles, section: "combos", permission: "view_metrics", group: "produto" },
+  { id: "university", label: "Universidade", icon: GraduationCap, section: "university", masterOnly: true, group: "produto" },
+  // — Sistema & Infraestrutura
+  { id: "governance", label: "Governança", icon: FileCode2, section: "governance", masterOnly: true, group: "sistema" },
+  { id: "knowledge", label: "Base de Conhecimento", icon: BookOpen, section: "knowledge", masterOnly: true, group: "sistema" },
+  { id: "cloud-costs", label: "Custos Cloud & IA", icon: Server, section: "cloud-costs", masterOnly: true, group: "sistema" },
+  { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs", group: "sistema" },
+  { id: "export", label: "Exportação", icon: Download, path: "/admin/export", masterOnly: true, group: "sistema" },
+  { id: "system-book", label: "Livro do Sistema", icon: BookOpen, path: "/admin/system-book", masterOnly: true, group: "sistema" },
 ];
+
+const GROUP_LABELS: Record<string, string> = {
+  principal: "Principal",
+  financeiro: "Financeiro & Comercial",
+  produto: "Produto & Métricas",
+  sistema: "Sistema",
+};
 
 export function AdminLayout({ children, unreadAlerts = 0, activeSection, onSectionChange }: AdminLayoutProps) {
   const navigate = useNavigate();
