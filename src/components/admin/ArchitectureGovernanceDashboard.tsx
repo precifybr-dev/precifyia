@@ -299,6 +299,15 @@ export function ArchitectureGovernanceDashboard() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const autoSnapshotDone = useRef(false);
+
+  // Auto-save score snapshot on first load
+  useEffect(() => {
+    if (!isLoading && !autoSnapshotDone.current && baseChecks.length > 0) {
+      autoSnapshotDone.current = true;
+      saveScoreSnapshot();
+    }
+  }, [isLoading, baseChecks, saveScoreSnapshot]);
 
   const compliance = getComplianceReport();
   const scores = calculateMaturityScores();
