@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useArchitectureGovernance, CATEGORY_LABELS, STATUS_LABELS, CRITICALITY_LABELS,
   type ArchitecturePrompt, type RiskLevel,
@@ -299,6 +299,15 @@ export function ArchitectureGovernanceDashboard() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
+  const autoSnapshotDone = useRef(false);
+
+  // Auto-save score snapshot on first load
+  useEffect(() => {
+    if (!isLoading && !autoSnapshotDone.current && baseChecks.length > 0) {
+      autoSnapshotDone.current = true;
+      saveScoreSnapshot(true);
+    }
+  }, [isLoading, baseChecks, saveScoreSnapshot]);
 
   const compliance = getComplianceReport();
   const scores = calculateMaturityScores();
@@ -338,7 +347,7 @@ export function ArchitectureGovernanceDashboard() {
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-3">
             <ScoreGauge score={scores.overall} label="Score Geral" size="lg" />
-            <Button size="sm" variant="outline" onClick={saveScoreSnapshot} className="gap-2 text-xs">
+            <Button size="sm" variant="outline" onClick={() => saveScoreSnapshot()} className="gap-2 text-xs">
               <TrendingUp className="h-3.5 w-3.5" /> Registrar Snapshot
             </Button>
           </CardContent>
