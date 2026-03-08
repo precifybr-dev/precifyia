@@ -45,6 +45,7 @@ interface Props {
   onAnalyze: () => void;
   hasMenu: boolean;
   analysisUsage: AnalysisUsage | null;
+  menuItems?: FullMenuItem[];
 }
 
 function getScoreColor(score: number): string {
