@@ -339,6 +339,7 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                 </p>
               </div>
             )}
+            {strategies.map(s => {
               const Icon = STRATEGY_ICONS[s.id] || Target;
               return (
                 <button
