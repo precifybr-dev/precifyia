@@ -371,7 +371,9 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
-              {selectedItems.map(item => (
+              {selectedItems.map(item => {
+                const itemRole = result.analysis.itemRoles.find(r => r.item.id === item.id);
+                return (
                 <div key={item.id} className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/30 border border-border">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-primary bg-primary/10 w-6 h-6 rounded-md flex items-center justify-center">
@@ -379,12 +381,21 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                     </span>
                     <div>
                       <p className="text-sm font-medium text-foreground">{item.name}</p>
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                        {item === result.analysis.baitItem && (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-warning/40 text-warning">Isca</Badge>
-                        )}
-                        {item === result.analysis.profitDriver && (
-                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-success/40 text-success">Sustenta lucro</Badge>
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
+                        {itemRole && (
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] px-1.5 py-0",
+                            itemRole.role === "principal" && "border-primary/40 text-primary",
+                            itemRole.role === "sustentacao" && "border-success/40 text-success",
+                            itemRole.role === "isca" && "border-warning/40 text-warning",
+                            itemRole.role === "complementar" && "border-muted-foreground/40 text-muted-foreground",
+                          )}>
+                            {itemRole.role === "principal" && "⭐ Principal"}
+                            {itemRole.role === "sustentacao" && "💰 Sustentação"}
+                            {itemRole.role === "isca" && "🎯 Isca"}
+                            {itemRole.role === "complementar" && "➕ Complementar"}
+                            {itemRole.confidence !== "alta" && " (sugestão)"}
+                          </Badge>
                         )}
                         <span>Margem {item.margin.toFixed(0)}%</span>
                       </div>
@@ -395,7 +406,8 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                     <p className="text-[10px] text-muted-foreground">Custo: {formatCurrency(item.cost * item.quantity)}</p>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
 
