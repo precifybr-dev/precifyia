@@ -347,7 +347,7 @@ export function ArchitectureGovernanceDashboard() {
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-3">
             <ScoreGauge score={scores.overall} label="Score Geral" size="lg" />
-            <Button size="sm" variant="outline" onClick={saveScoreSnapshot} className="gap-2 text-xs">
+            <Button size="sm" variant="outline" onClick={() => saveScoreSnapshot()} className="gap-2 text-xs">
               <TrendingUp className="h-3.5 w-3.5" /> Registrar Snapshot
             </Button>
           </CardContent>
