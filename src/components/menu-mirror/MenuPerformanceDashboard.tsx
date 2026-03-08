@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import type { AnalysisUsage } from "@/hooks/useMenuMirror";
+import type { FullMenuItem } from "@/hooks/useMenuMirror";
 import { IncrementalRevenueCard } from "./IncrementalRevenueCard";
+import { useDeliveryInsights, type DiagnosticResult } from "@/hooks/useDeliveryInsights";
 import {
   Flame, ChevronDown, ChevronUp, Star, Target, AlertTriangle,
-  TrendingUp, Lightbulb, PenLine, Sparkles, DollarSign,
+  TrendingUp, Lightbulb, PenLine, Sparkles, DollarSign, Search,
+  ShieldAlert, ShieldCheck, Info,
 } from "lucide-react";
 
 export interface PillarScore {
@@ -42,6 +45,7 @@ interface Props {
   onAnalyze: () => void;
   hasMenu: boolean;
   analysisUsage: AnalysisUsage | null;
+  menuItems?: FullMenuItem[];
 }
 
 function getScoreColor(score: number): string {
@@ -191,8 +195,36 @@ function UsageBadge({ usage }: { usage: AnalysisUsage | null }) {
   );
 }
 
-export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMenu, analysisUsage }: Props) {
+function getRiskBadge(level: string) {
+  if (level === "alto") return <Badge variant="destructive" className="text-[10px]">Alto</Badge>;
+  if (level === "medio") return <Badge className="text-[10px] bg-orange-500 hover:bg-orange-600 border-orange-500">Médio</Badge>;
+  return <Badge variant="secondary" className="text-[10px]">Baixo</Badge>;
+}
+
+function DiagnosticItem({ diagnostic }: { diagnostic: DiagnosticResult }) {
+  return (
+    <div className="flex items-start gap-2 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900">
+      <ShieldAlert className={`w-4 h-4 mt-0.5 shrink-0 ${
+        diagnostic.nivel_risco === "alto" ? "text-red-500" :
+        diagnostic.nivel_risco === "medio" ? "text-orange-500" : "text-yellow-500"
+      }`} />
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          {getRiskBadge(diagnostic.nivel_risco)}
+          {diagnostic.produto && (
+            <span className="text-xs font-semibold text-foreground truncate">{diagnostic.produto}</span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">{diagnostic.explicacao}</p>
+        <p className="text-[11px] text-primary font-medium">{diagnostic.recomendacao}</p>
+      </div>
+    </div>
+  );
+}
+
+export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMenu, analysisUsage, menuItems }: Props) {
   const [showDetails, setShowDetails] = useState(false);
+  const { diagnostics } = useDeliveryInsights(menuItems);
 
   if (!analysis && !isLoading) {
     return (
@@ -443,6 +475,38 @@ export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMe
           {/* Incremental Revenue Calculator */}
           {analysis.priceAdjustments && analysis.priceAdjustments.length > 0 && (
             <IncrementalRevenueCard priceAdjustments={analysis.priceAdjustments} />
+          )}
+
+          {/* Financial Diagnostics from Delivery Insights Engine */}
+          {diagnostics.length > 0 && (
+            <Card className="border-rose-200 dark:border-rose-800/50">
+              <CardContent className="p-4">
+                <h4 className="font-bold text-sm text-rose-700 dark:text-rose-400 flex items-center gap-2 mb-3">
+                  <Search className="w-4 h-4" /> Diagnóstico Financeiro do Cardápio
+                </h4>
+                <div className="space-y-2">
+                  {diagnostics.slice(0, 10).map((d, i) => (
+                    <DiagnosticItem key={i} diagnostic={d} />
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-3 flex items-start gap-1">
+                  <Info className="w-3 h-3 mt-0.5 shrink-0" />
+                  Análise baseada em estimativas de custo (CMV ~35%, taxa ~27%). Cadastre seus produtos para diagnóstico preciso.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {diagnostics.length === 0 && menuItems && menuItems.length > 0 && (
+            <Card className="border-emerald-200 dark:border-emerald-800/50">
+              <CardContent className="p-4 flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Nenhum alerta crítico detectado</p>
+                  <p className="text-xs text-muted-foreground">Seu cardápio não apresenta problemas financeiros evidentes.</p>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
           {/* Re-analyze */}

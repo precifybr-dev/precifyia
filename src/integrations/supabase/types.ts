@@ -1486,6 +1486,48 @@ export type Database = {
         }
         Relationships: []
       }
+      delivery_insights: {
+        Row: {
+          categoria: Database["public"]["Enums"]["insight_categoria"]
+          created_at: string | null
+          descricao_regra: string
+          fonte: string | null
+          id: string
+          impacto: Database["public"]["Enums"]["insight_impacto"]
+          insight_text: string
+          tags: string[] | null
+          tipo_regra: Database["public"]["Enums"]["insight_tipo_regra"]
+          valor_max: number | null
+          valor_min: number | null
+        }
+        Insert: {
+          categoria: Database["public"]["Enums"]["insight_categoria"]
+          created_at?: string | null
+          descricao_regra: string
+          fonte?: string | null
+          id?: string
+          impacto?: Database["public"]["Enums"]["insight_impacto"]
+          insight_text: string
+          tags?: string[] | null
+          tipo_regra: Database["public"]["Enums"]["insight_tipo_regra"]
+          valor_max?: number | null
+          valor_min?: number | null
+        }
+        Update: {
+          categoria?: Database["public"]["Enums"]["insight_categoria"]
+          created_at?: string | null
+          descricao_regra?: string
+          fonte?: string | null
+          id?: string
+          impacto?: Database["public"]["Enums"]["insight_impacto"]
+          insight_text?: string
+          tags?: string[] | null
+          tipo_regra?: Database["public"]["Enums"]["insight_tipo_regra"]
+          valor_max?: number | null
+          valor_min?: number | null
+        }
+        Relationships: []
+      }
       fixed_costs: {
         Row: {
           created_at: string
@@ -4239,6 +4281,21 @@ export type Database = {
         | "suporte"
         | "financeiro"
         | "analista"
+      insight_categoria:
+        | "CMV"
+        | "precificacao"
+        | "cardapio"
+        | "ticket_medio"
+        | "operacao"
+        | "logistica"
+        | "cancelamentos"
+      insight_impacto: "baixo" | "medio" | "alto"
+      insight_tipo_regra:
+        | "threshold_min"
+        | "threshold_max"
+        | "intervalo_recomendado"
+        | "regra_operacional"
+        | "boas_praticas"
       store_permission:
         | "view_recipes"
         | "view_ingredients"
@@ -4396,6 +4453,23 @@ export const Constants = {
         "suporte",
         "financeiro",
         "analista",
+      ],
+      insight_categoria: [
+        "CMV",
+        "precificacao",
+        "cardapio",
+        "ticket_medio",
+        "operacao",
+        "logistica",
+        "cancelamentos",
+      ],
+      insight_impacto: ["baixo", "medio", "alto"],
+      insight_tipo_regra: [
+        "threshold_min",
+        "threshold_max",
+        "intervalo_recomendado",
+        "regra_operacional",
+        "boas_praticas",
       ],
       store_permission: [
         "view_recipes",
