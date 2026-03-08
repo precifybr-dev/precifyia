@@ -330,7 +330,7 @@ export function useArchitectureGovernance() {
   };
 
   // ─── Save Score Snapshot ───
-  const saveScoreSnapshot = async () => {
+  const saveScoreSnapshot = useCallback(async (silent = false) => {
     const scores = calculateMaturityScores();
     const risk = calculateRisk();
     const { data: session } = await supabase.auth.getSession();
@@ -355,9 +355,11 @@ export function useArchitectureGovernance() {
       await revokeCertification(activeCert.id, `Score caiu para ${scores.overall}/100 ou risco elevado para ${risk.level}`);
     }
 
-    toast({ title: "Score registrado" });
+    if (!silent) {
+      toast({ title: "Score registrado" });
+    }
     fetchAll();
-  };
+  }, [calculateMaturityScores, calculateRisk, certifications, fetchAll, toast]);
 
   // ─── Existing CRUD methods (unchanged) ───
   const createPrompt = async (data: Partial<ArchitecturePrompt>) => {
