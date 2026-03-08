@@ -20,14 +20,12 @@ import {
   Headphones,
   BarChart3,
   History,
-  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Shield,
   Sun,
   Moon,
-  Bell,
   BookOpen,
   Sparkles,
   Ticket,
@@ -36,6 +34,8 @@ import {
   FileCode2,
   Server,
   Download,
+  MousePointerClick,
+  DollarSign,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
@@ -55,26 +55,42 @@ interface NavItem {
   permission?: string;
   badge?: number;
   masterOnly?: boolean;
+  group?: string;
 }
 
 const navItems: NavItem[] = [
-  { id: "overview", label: "Visão Geral", icon: LayoutDashboard, section: "overview" },
-  { id: "users", label: "Usuários", icon: Users, section: "management", permission: "view_users" },
-  { id: "collaborators", label: "Colaboradores", icon: UserCog, path: "/admin/collaborators", permission: "manage_collaborators" },
-  { id: "financial", label: "Financeiro", icon: Wallet, section: "financial", permission: "view_financials" },
-  { id: "support", label: "Suporte", icon: Headphones, section: "support", permission: "respond_support" },
-  { id: "metrics", label: "Métricas", icon: BarChart3, section: "usage", permission: "view_metrics" },
-  { id: "combos-ai", label: "Combos IA", icon: Sparkles, section: "combos", permission: "view_metrics" },
-  { id: "affiliates", label: "Cupons & Afiliados", icon: Ticket, section: "affiliates", permission: "view_financials" },
-  { id: "commissions", label: "Comissões", icon: Wallet, section: "commissions", permission: "view_financials", masterOnly: true },
-  { id: "monetization", label: "Monetização", icon: TrendingUp, section: "monetization", permission: "view_financials", masterOnly: true },
-  { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs" },
-  { id: "university", label: "Universidade", icon: GraduationCap, section: "university", masterOnly: true },
-  { id: "governance", label: "Governança", icon: FileCode2, section: "governance", masterOnly: true },
-  { id: "cloud-costs", label: "Custos Cloud & IA", icon: Server, section: "cloud-costs", masterOnly: true },
-  { id: "export", label: "Exportação de Dados", icon: Download, path: "/admin/export", masterOnly: true },
-  { id: "system-book", label: "Livro do Sistema", icon: BookOpen, path: "/admin/system-book", masterOnly: true },
+  // — Principal
+  { id: "overview", label: "Visão Geral", icon: LayoutDashboard, section: "overview", group: "principal" },
+  { id: "users", label: "Usuários", icon: Users, section: "management", permission: "view_users", group: "principal" },
+  { id: "collaborators", label: "Colaboradores", icon: UserCog, path: "/admin/collaborators", permission: "manage_collaborators", group: "principal" },
+  { id: "support", label: "Suporte", icon: Headphones, section: "support", permission: "respond_support", group: "principal" },
+  // — Financeiro & Comercial
+  { id: "financial", label: "Financeiro", icon: Wallet, section: "financial", permission: "view_financials", group: "financeiro" },
+  { id: "controllership", label: "Controladoria", icon: TrendingUp, section: "controllership", permission: "view_financials", masterOnly: true, group: "financeiro" },
+  { id: "pricing", label: "Precificação", icon: DollarSign, section: "pricing", permission: "view_financials", masterOnly: true, group: "financeiro" },
+  { id: "monetization", label: "Monetização", icon: TrendingUp, section: "monetization", permission: "view_financials", masterOnly: true, group: "financeiro" },
+  { id: "affiliates", label: "Cupons & Afiliados", icon: Ticket, section: "affiliates", permission: "view_financials", group: "financeiro" },
+  { id: "commissions", label: "Comissões", icon: Wallet, section: "commissions", permission: "view_financials", masterOnly: true, group: "financeiro" },
+  // — Produto & Métricas
+  { id: "metrics", label: "Métricas de Uso", icon: BarChart3, section: "usage", permission: "view_metrics", group: "produto" },
+  { id: "funnel", label: "Funil", icon: MousePointerClick, section: "funnel", permission: "view_metrics", masterOnly: true, group: "produto" },
+  { id: "combos-ai", label: "Combos IA", icon: Sparkles, section: "combos", permission: "view_metrics", group: "produto" },
+  { id: "university", label: "Universidade", icon: GraduationCap, section: "university", masterOnly: true, group: "produto" },
+  // — Sistema & Infraestrutura
+  { id: "governance", label: "Governança", icon: FileCode2, section: "governance", masterOnly: true, group: "sistema" },
+  { id: "knowledge", label: "Base de Conhecimento", icon: BookOpen, section: "knowledge", masterOnly: true, group: "sistema" },
+  { id: "cloud-costs", label: "Custos Cloud & IA", icon: Server, section: "cloud-costs", masterOnly: true, group: "sistema" },
+  { id: "logs", label: "Logs", icon: History, section: "logs", permission: "view_logs", group: "sistema" },
+  { id: "export", label: "Exportação", icon: Download, path: "/admin/export", masterOnly: true, group: "sistema" },
+  { id: "system-book", label: "Livro do Sistema", icon: BookOpen, path: "/admin/system-book", masterOnly: true, group: "sistema" },
 ];
+
+const GROUP_LABELS: Record<string, string> = {
+  principal: "Principal",
+  financeiro: "Financeiro & Comercial",
+  produto: "Produto & Métricas",
+  sistema: "Sistema",
+};
 
 export function AdminLayout({ children, unreadAlerts = 0, activeSection, onSectionChange }: AdminLayoutProps) {
   const navigate = useNavigate();
@@ -214,53 +230,76 @@ export function AdminLayout({ children, unreadAlerts = 0, activeSection, onSecti
           {/* Navigation */}
           <ScrollArea className="flex-1 px-3 py-4">
             <nav className="space-y-1">
-              {navItems.filter(canAccessItem).map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item);
-
-                const button = (
-                  <Button
-                    key={item.id}
-                    variant={active ? "secondary" : "ghost"}
-                    className={cn(
-                      "w-full justify-start gap-3 h-10",
-                      collapsed && "justify-center px-2",
-                      active && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
-                    )}
-                    onClick={() => handleNavClick(item)}
-                  >
-                    <Icon className={cn("h-5 w-5", active && "text-primary")} />
-                    {!collapsed && (
-                      <>
-                        <span className="flex-1 text-left">{item.label}</span>
-                        {item.id === "support" && unreadAlerts > 0 && (
-                          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                            {unreadAlerts}
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                  </Button>
-                );
-
-                if (collapsed) {
+              {(() => {
+                const filteredItems = navItems.filter(canAccessItem);
+                const groups = [...new Set(filteredItems.map(i => i.group))];
+                return groups.map((group, groupIndex) => {
+                  const groupItems = filteredItems.filter(i => i.group === group);
+                  if (groupItems.length === 0) return null;
                   return (
-                    <Tooltip key={item.id} delayDuration={0}>
-                      <TooltipTrigger asChild>{button}</TooltipTrigger>
-                      <TooltipContent side="right" className="flex items-center gap-2">
-                        {item.label}
-                        {item.id === "support" && unreadAlerts > 0 && (
-                          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                            {unreadAlerts}
-                          </Badge>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                }
+                    <div key={group} className={cn(groupIndex > 0 && "pt-3")}>
+                      {!collapsed && group && (
+                        <>
+                          {groupIndex > 0 && <Separator className="mb-3" />}
+                          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {GROUP_LABELS[group!] || group}
+                          </p>
+                        </>
+                      )}
+                      {collapsed && groupIndex > 0 && <Separator className="my-2" />}
+                      <div className="space-y-1">
+                        {groupItems.map((item) => {
+                          const Icon = item.icon;
+                          const active = isActive(item);
 
-                return button;
-              })}
+                          const button = (
+                            <Button
+                              key={item.id}
+                              variant={active ? "secondary" : "ghost"}
+                              className={cn(
+                                "w-full justify-start gap-3 h-9 text-sm",
+                                collapsed && "justify-center px-2",
+                                active && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+                              )}
+                              onClick={() => handleNavClick(item)}
+                            >
+                              <Icon className={cn("h-4 w-4", active && "text-primary")} />
+                              {!collapsed && (
+                                <>
+                                  <span className="flex-1 text-left truncate">{item.label}</span>
+                                  {item.id === "support" && unreadAlerts > 0 && (
+                                    <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                                      {unreadAlerts}
+                                    </Badge>
+                                  )}
+                                </>
+                              )}
+                            </Button>
+                          );
+
+                          if (collapsed) {
+                            return (
+                              <Tooltip key={item.id} delayDuration={0}>
+                                <TooltipTrigger asChild>{button}</TooltipTrigger>
+                                <TooltipContent side="right" className="flex items-center gap-2">
+                                  {item.label}
+                                  {item.id === "support" && unreadAlerts > 0 && (
+                                    <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                                      {unreadAlerts}
+                                    </Badge>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+
+                          return button;
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </nav>
           </ScrollArea>
 

@@ -71,11 +71,6 @@ import {
   Headphones,
   BarChart3,
   LayoutDashboard,
-  Ticket,
-  GraduationCap,
-  MousePointerClick,
-  FileCode2,
-  BookOpen,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -333,81 +328,6 @@ export default function AdminDashboard() {
 
             {/* Main Content Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="bg-muted/50 p-1 h-auto flex-wrap gap-1">
-                <TabsTrigger value="overview" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <LayoutDashboard className="h-4 w-4" />
-                  Visão Geral
-                </TabsTrigger>
-                <TabsTrigger value="management" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <UserCog className="h-4 w-4" />
-                  Usuários
-                </TabsTrigger>
-                <TabsTrigger value="financial" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <Wallet className="h-4 w-4" />
-                  Financeiro
-                </TabsTrigger>
-                <TabsTrigger value="support" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <Headphones className="h-4 w-4" />
-                  Suporte
-                  {unreadAlerts.length > 0 && (
-                    <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
-                      {unreadAlerts.length}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="usage" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <BarChart3 className="h-4 w-4" />
-                  Métricas
-                </TabsTrigger>
-                <TabsTrigger value="combos" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <Sparkles className="h-4 w-4" />
-                  Combos IA
-                </TabsTrigger>
-                <TabsTrigger value="affiliates" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <Ticket className="h-4 w-4" />
-                  Cupons & Afiliados
-                </TabsTrigger>
-                <TabsTrigger value="commissions" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <DollarSign className="h-4 w-4" />
-                  Comissões
-                </TabsTrigger>
-                <TabsTrigger value="monetization" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <TrendingUp className="h-4 w-4" />
-                  Monetização
-                </TabsTrigger>
-                <TabsTrigger value="university" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <GraduationCap className="h-4 w-4" />
-                  Universidade
-                </TabsTrigger>
-                <TabsTrigger value="funnel" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <MousePointerClick className="h-4 w-4" />
-                  Funil
-                </TabsTrigger>
-                <TabsTrigger value="controllership" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <TrendingUp className="h-4 w-4" />
-                  Controladoria
-                </TabsTrigger>
-                <TabsTrigger value="pricing" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <DollarSign className="h-4 w-4" />
-                  Precificação
-                </TabsTrigger>
-                <TabsTrigger value="governance" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <FileCode2 className="h-4 w-4" />
-                  Governança
-                </TabsTrigger>
-                <TabsTrigger value="logs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <History className="h-4 w-4" />
-                  Logs
-                </TabsTrigger>
-                <TabsTrigger value="cloud-costs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <Server className="h-4 w-4" />
-                  Custos
-                </TabsTrigger>
-                <TabsTrigger value="knowledge" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-                  <BookOpen className="h-4 w-4" />
-                  Base de Conhecimento
-                </TabsTrigger>
-              </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
                 {/* Charts */}
