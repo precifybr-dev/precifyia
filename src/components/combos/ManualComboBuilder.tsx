@@ -5,6 +5,7 @@ import {
   AlertTriangle, AlertCircle, Info, Check, Crown, ChefHat,
   DollarSign, Percent, Save, RotateCcw, Smartphone, Search,
 } from "lucide-react";
+import { ComboFinancialSummary } from "./ComboFinancialSummary";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
