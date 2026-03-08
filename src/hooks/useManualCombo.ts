@@ -119,12 +119,17 @@ export function useManualCombo() {
     const totalAvulso = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const totalCost = selectedItems.reduce((sum, i) => sum + i.cost * i.quantity, 0);
     const minPriceNoLoss = totalCost;
+    const grossProfitAvulso = totalAvulso - totalCost;
+    const marginAvulso = totalAvulso > 0 ? (grossProfitAvulso / totalAvulso) * 100 : 0;
 
     const discountFactor = strategy?.discountFactor ?? 0.85;
     const marginFloor = strategy?.marginFloor ?? 20;
 
+    // Min price with safety margin
+    const minPriceWithSafetyMargin = totalCost / (1 - marginFloor / 100);
+
     // Safe: good margin
-    const safeFromMargin = totalCost / (1 - marginFloor / 100);
+    const safeFromMargin = minPriceWithSafetyMargin;
     const safeFromDiscount = totalAvulso * discountFactor;
     const safePriceSuggestion = Math.max(safeFromMargin, Math.min(safeFromDiscount, totalAvulso * 0.95));
 
@@ -144,6 +149,9 @@ export function useManualCombo() {
     const baitItem = sorted[0] || null;
     const profitDriver = sorted[sorted.length - 1] || null;
     const costLeader = [...selectedItems].sort((a, b) => (b.cost * b.quantity) - (a.cost * a.quantity))[0] || null;
+
+    // 4-role classification
+    const itemRoles: ItemRole[] = classifyItemRoles(selectedItems);
 
     const alerts: ComboAlert[] = [];
 
@@ -176,14 +184,17 @@ export function useManualCombo() {
       items: selectedItems,
       totalAvulso: round(totalAvulso),
       totalCost: round(totalCost),
+      grossProfitAvulso: round(grossProfitAvulso),
+      marginAvulso: round(marginAvulso),
       minPriceNoLoss: round(minPriceNoLoss),
+      minPriceWithSafetyMargin: round(minPriceWithSafetyMargin),
       safePriceSuggestion: round(safePriceSuggestion),
       aggressivePriceSuggestion: round(aggressivePriceSuggestion),
       clientSavings: round(clientSavings),
       clientSavingsPercent: round(clientSavingsPercent),
       estimatedProfit: round(estimatedProfit),
       estimatedMargin: round(estimatedMargin),
-      analysis: { baitItem, profitDriver, costLeader, isBalanced, alerts },
+      analysis: { baitItem, profitDriver, costLeader, itemRoles, isBalanced, alerts },
     };
   }, [selectedItems, strategy]);
 
