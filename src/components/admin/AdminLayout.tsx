@@ -230,53 +230,76 @@ export function AdminLayout({ children, unreadAlerts = 0, activeSection, onSecti
           {/* Navigation */}
           <ScrollArea className="flex-1 px-3 py-4">
             <nav className="space-y-1">
-              {navItems.filter(canAccessItem).map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item);
-
-                const button = (
-                  <Button
-                    key={item.id}
-                    variant={active ? "secondary" : "ghost"}
-                    className={cn(
-                      "w-full justify-start gap-3 h-10",
-                      collapsed && "justify-center px-2",
-                      active && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
-                    )}
-                    onClick={() => handleNavClick(item)}
-                  >
-                    <Icon className={cn("h-5 w-5", active && "text-primary")} />
-                    {!collapsed && (
-                      <>
-                        <span className="flex-1 text-left">{item.label}</span>
-                        {item.id === "support" && unreadAlerts > 0 && (
-                          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                            {unreadAlerts}
-                          </Badge>
-                        )}
-                      </>
-                    )}
-                  </Button>
-                );
-
-                if (collapsed) {
+              {(() => {
+                const filteredItems = navItems.filter(canAccessItem);
+                const groups = [...new Set(filteredItems.map(i => i.group))];
+                return groups.map((group, groupIndex) => {
+                  const groupItems = filteredItems.filter(i => i.group === group);
+                  if (groupItems.length === 0) return null;
                   return (
-                    <Tooltip key={item.id} delayDuration={0}>
-                      <TooltipTrigger asChild>{button}</TooltipTrigger>
-                      <TooltipContent side="right" className="flex items-center gap-2">
-                        {item.label}
-                        {item.id === "support" && unreadAlerts > 0 && (
-                          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
-                            {unreadAlerts}
-                          </Badge>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                  );
-                }
+                    <div key={group} className={cn(groupIndex > 0 && "pt-3")}>
+                      {!collapsed && group && (
+                        <>
+                          {groupIndex > 0 && <Separator className="mb-3" />}
+                          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {GROUP_LABELS[group!] || group}
+                          </p>
+                        </>
+                      )}
+                      {collapsed && groupIndex > 0 && <Separator className="my-2" />}
+                      <div className="space-y-1">
+                        {groupItems.map((item) => {
+                          const Icon = item.icon;
+                          const active = isActive(item);
 
-                return button;
-              })}
+                          const button = (
+                            <Button
+                              key={item.id}
+                              variant={active ? "secondary" : "ghost"}
+                              className={cn(
+                                "w-full justify-start gap-3 h-9 text-sm",
+                                collapsed && "justify-center px-2",
+                                active && "bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary"
+                              )}
+                              onClick={() => handleNavClick(item)}
+                            >
+                              <Icon className={cn("h-4 w-4", active && "text-primary")} />
+                              {!collapsed && (
+                                <>
+                                  <span className="flex-1 text-left truncate">{item.label}</span>
+                                  {item.id === "support" && unreadAlerts > 0 && (
+                                    <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                                      {unreadAlerts}
+                                    </Badge>
+                                  )}
+                                </>
+                              )}
+                            </Button>
+                          );
+
+                          if (collapsed) {
+                            return (
+                              <Tooltip key={item.id} delayDuration={0}>
+                                <TooltipTrigger asChild>{button}</TooltipTrigger>
+                                <TooltipContent side="right" className="flex items-center gap-2">
+                                  {item.label}
+                                  {item.id === "support" && unreadAlerts > 0 && (
+                                    <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-xs">
+                                      {unreadAlerts}
+                                    </Badge>
+                                  )}
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          }
+
+                          return button;
+                        })}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </nav>
           </ScrollArea>
 
