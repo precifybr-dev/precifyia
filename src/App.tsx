@@ -30,6 +30,14 @@ import PublicHelp from "./pages/PublicHelp";
 import { ContextualHelp } from "@/components/help/ContextualHelp";
 import { CookieConsent } from "@/components/CookieConsent";
 
+// Feature landing pages
+import PrecificacaoIfood from "./pages/features/PrecificacaoIfood";
+import FichaTecnicaAutomatica from "./pages/features/FichaTecnicaAutomatica";
+import AnaliseInteligenteCardapio from "./pages/features/AnaliseInteligenteCardapio";
+import SimuladorCombos from "./pages/features/SimuladorCombos";
+import ControleRealLucro from "./pages/features/ControleRealLucro";
+import SimulacaoTaxasCustos from "./pages/features/SimulacaoTaxasCustos";
+
 // Auth/Security pages
 import SecurityCheck from "./pages/SecurityCheck";
 import Onboarding from "./pages/Onboarding";
@@ -83,6 +91,14 @@ const App = () => (
             <Route path="/chargeback" element={<ChargebackPolicy />} />
             <Route path="/cookies" element={<CookiePolicy />} />
             <Route path="/ajuda" element={<PublicHelp />} />
+            
+            {/* Feature landing pages */}
+            <Route path="/funcionalidades/precificacao-ifood" element={<PrecificacaoIfood />} />
+            <Route path="/funcionalidades/ficha-tecnica-automatica" element={<FichaTecnicaAutomatica />} />
+            <Route path="/funcionalidades/analise-inteligente-cardapio" element={<AnaliseInteligenteCardapio />} />
+            <Route path="/funcionalidades/simulador-de-combos" element={<SimuladorCombos />} />
+            <Route path="/funcionalidades/controle-real-de-lucro" element={<ControleRealLucro />} />
+            <Route path="/funcionalidades/simulacao-de-taxas-e-custos" element={<SimulacaoTaxasCustos />} />
             <Route 
               path="/login" 
               element={
