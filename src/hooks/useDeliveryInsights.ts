@@ -132,10 +132,10 @@ export function useDeliveryInsights(menuItems: FullMenuItem[] | undefined) {
     queryKey: ["delivery-insights-rules"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("delivery_insights")
+        .from("delivery_insights" as any)
         .select("*");
       if (error) throw error;
-      return (data ?? []) as unknown as DeliveryInsightRule[];
+      return (data ?? []) as DeliveryInsightRule[];
     },
     staleTime: 1000 * 60 * 30,
   });
