@@ -1,4 +1,4 @@
-import { RefreshCw, Package, Check, ArrowRight } from "lucide-react";
+import { ShoppingCart, Package, Check, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface QuickPriceButtonProps {
