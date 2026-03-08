@@ -745,6 +745,10 @@ export default function AdminDashboard() {
               <TabsContent value="cloud-costs">
                 <CloudCostsDashboard />
               </TabsContent>
+
+              <TabsContent value="knowledge">
+                <KnowledgeBaseDashboard />
+              </TabsContent>
             </Tabs>
           </div>
         </AdminLayout>
