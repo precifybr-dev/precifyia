@@ -3985,6 +3985,7 @@ export type Database = {
       }
       current_user_is_master: { Args: never; Returns: boolean }
       delete_store_safe: { Args: { p_store_id: string }; Returns: undefined }
+      generate_schema_ddl: { Args: never; Returns: string }
       get_active_consent: {
         Args: { _user_id: string }
         Returns: {
