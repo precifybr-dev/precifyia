@@ -612,19 +612,6 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
   );
 }
 
-function SummaryCard({ label, value, className, valueClass, icon, sublabel }: {
-  label: string; value: string; className?: string; valueClass?: string; icon?: React.ReactNode; sublabel?: string;
-}) {
-  return (
-    <div className={cn("p-3 rounded-lg border border-border text-center", className)}>
-      {icon && <div className="flex justify-center mb-0.5">{icon}</div>}
-      <p className="text-[10px] text-muted-foreground">{label}</p>
-      <p className={cn("font-bold text-sm", valueClass || "text-foreground")}>{value}</p>
-      {sublabel && <p className="text-[9px] text-muted-foreground">{sublabel}</p>}
-    </div>
-  );
-}
-
 function AnalysisRow({ icon, label, value, detail }: {
   icon: React.ReactNode; label: string; value: string; detail: string;
 }) {
