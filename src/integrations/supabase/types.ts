@@ -897,32 +897,55 @@ export type Database = {
       combo_memory: {
         Row: {
           estrategias_usadas: Json | null
+          faixa_preco_max: number | null
+          faixa_preco_min: number | null
           id: string
           margem_media: number | null
+          padroes_montagem: Json | null
           produtos_frequentes: Json | null
+          store_id: string | null
+          total_combos_criados: number | null
           ultimo_objetivo: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           estrategias_usadas?: Json | null
+          faixa_preco_max?: number | null
+          faixa_preco_min?: number | null
           id?: string
           margem_media?: number | null
+          padroes_montagem?: Json | null
           produtos_frequentes?: Json | null
+          store_id?: string | null
+          total_combos_criados?: number | null
           ultimo_objetivo?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           estrategias_usadas?: Json | null
+          faixa_preco_max?: number | null
+          faixa_preco_min?: number | null
           id?: string
           margem_media?: number | null
+          padroes_montagem?: Json | null
           produtos_frequentes?: Json | null
+          store_id?: string | null
+          total_combos_criados?: number | null
           ultimo_objetivo?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "combo_memory_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       combos: {
         Row: {

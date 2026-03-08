@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useManualCombo, type ManualComboItem, type ItemRole } from "@/hooks/useManualCombo";
 import { type AvailableItem } from "@/hooks/useCombos";
+import { useComboMemory } from "@/hooks/useComboMemory";
 import { supabase } from "@/integrations/supabase/client";
 
 const STRATEGY_ICONS: Record<string, React.ElementType> = {
@@ -38,6 +39,8 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
     addItem, removeItem, updateQuantity, setSelectedStrategy,
     generateDetails, saveCombo, reset,
   } = useManualCombo();
+
+  const { memory, hasMemory, isFrequentItem, getMostUsedStrategy, recordComboSaved } = useComboMemory();
 
   const [step, setStep] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
@@ -85,7 +88,13 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
 
   const handleSave = async () => {
     const ok = await saveCombo();
-    if (ok) {
+    if (ok && result && selectedStrategy) {
+      await recordComboSaved({
+        itemNames: selectedItems.map(i => i.name),
+        strategyId: selectedStrategy,
+        comboPrice: result.safePriceSuggestion,
+        margin: result.estimatedMargin,
+      });
       reset();
       setStep(1);
       onSaved();
@@ -159,6 +168,7 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                     </p>
                     {filteredItems.filter(i => i.type === "recipe").map(item => {
                       const isAdded = selectedItems.some(s => s.id === item.id);
+                      const frequent = isFrequentItem(item.name);
                       return (
                         <button
                           key={item.id}
@@ -169,7 +179,10 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                           )}
                         >
                           <div className="flex-1 min-w-0">
-                            <span className="text-sm font-medium text-foreground block truncate">{item.name}</span>
+                            <span className="text-sm font-medium text-foreground block truncate">
+                              {item.name}
+                              {frequent && <span className="ml-1.5 text-[9px] text-primary">⭐ frequente</span>}
+                            </span>
                             <span className="text-[11px] text-muted-foreground">
                               Custo: {formatCurrency(item.cost)} · Venda: {formatCurrency(item.price)}
                             </span>
@@ -191,6 +204,7 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                     </p>
                     {filteredItems.filter(i => i.type === "beverage").map(item => {
                       const isAdded = selectedItems.some(s => s.id === item.id);
+                      const frequent = isFrequentItem(item.name);
                       return (
                         <button
                           key={item.id}
@@ -201,7 +215,10 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                           )}
                         >
                           <div className="flex-1 min-w-0">
-                            <span className="text-sm font-medium text-foreground block truncate">{item.name}</span>
+                            <span className="text-sm font-medium text-foreground block truncate">
+                              {item.name}
+                              {frequent && <span className="ml-1.5 text-[9px] text-primary">⭐ frequente</span>}
+                            </span>
                             <span className="text-[11px] text-muted-foreground">
                               Custo: {formatCurrency(item.cost)} · Venda: {formatCurrency(item.price)}
                             </span>
@@ -311,6 +328,17 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
+            {hasMemory && getMostUsedStrategy() && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/10 border border-accent/20 mb-2">
+                <Info className="w-4 h-4 text-accent-foreground flex-shrink-0" />
+                <p className="text-xs text-accent-foreground">
+                  Sua estratégia mais usada: <strong>{strategies.find(s => s.id === getMostUsedStrategy())?.label}</strong>
+                  {memory.totalCombosCriados > 0 && (
+                    <span className="text-muted-foreground"> · {memory.totalCombosCriados} combos criados · Margem média {memory.margemMedia.toFixed(0)}%</span>
+                  )}
+                </p>
+              </div>
+            )}
             {strategies.map(s => {
               const Icon = STRATEGY_ICONS[s.id] || Target;
               return (
@@ -331,7 +359,12 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                     <Icon className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <span className="text-sm font-medium text-foreground block">{s.label}</span>
+                    <span className="text-sm font-medium text-foreground block">
+                      {s.label}
+                      {hasMemory && getMostUsedStrategy() === s.id && (
+                        <span className="ml-1.5 text-[9px] text-primary">⭐ mais usada</span>
+                      )}
+                    </span>
                     <span className="text-[11px] text-muted-foreground">{s.description}</span>
                   </div>
                   {selectedStrategy === s.id && (
