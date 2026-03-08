@@ -496,22 +496,27 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {result.analysis.baitItem && (
-                <AnalysisRow
-                  icon={<Target className="w-4 h-4 text-warning" />}
-                  label="Item isca (atrai o cliente)"
-                  value={result.analysis.baitItem.name}
-                  detail={`Margem: ${result.analysis.baitItem.margin.toFixed(0)}%`}
-                />
-              )}
-              {result.analysis.profitDriver && (
-                <AnalysisRow
-                  icon={<TrendingUp className="w-4 h-4 text-success" />}
-                  label="Sustenta o lucro"
-                  value={result.analysis.profitDriver.name}
-                  detail={`Margem: ${result.analysis.profitDriver.margin.toFixed(0)}%`}
-                />
-              )}
+              <p className="text-[10px] text-muted-foreground italic mb-2">
+                ⚠️ A classificação abaixo é uma sugestão baseada nas margens e custos dos itens. Não é absoluta.
+              </p>
+              {result.analysis.itemRoles.map((role, idx) => {
+                const roleConfig = {
+                  principal: { icon: <Crown className="w-4 h-4 text-primary" />, label: "Item principal" },
+                  sustentacao: { icon: <TrendingUp className="w-4 h-4 text-success" />, label: "Sustentação de lucro" },
+                  isca: { icon: <Target className="w-4 h-4 text-warning" />, label: "Item isca" },
+                  complementar: { icon: <Plus className="w-4 h-4 text-muted-foreground" />, label: "Item complementar" },
+                };
+                const config = roleConfig[role.role];
+                return (
+                  <AnalysisRow
+                    key={idx}
+                    icon={config.icon}
+                    label={`${config.label}${role.confidence !== "alta" ? " (sugestão)" : ""}`}
+                    value={role.item.name}
+                    detail={role.reason}
+                  />
+                );
+              })}
               {result.analysis.costLeader && (
                 <AnalysisRow
                   icon={<DollarSign className="w-4 h-4 text-muted-foreground" />}
