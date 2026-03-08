@@ -27,6 +27,8 @@ interface ComboResult {
   estimatedMargin: number;
   clientSavings: number;
   clientSavingsPercent: number;
+  ifoodPrice: number;
+  ifoodRate: number;
 }
 
 interface ComboFinancialSummaryProps {

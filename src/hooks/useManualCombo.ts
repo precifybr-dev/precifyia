@@ -297,7 +297,7 @@ export function useManualCombo() {
           status: "draft",
           individual_total_price: result.totalAvulso,
           combo_price: round(comboPrice),
-          combo_price_ifood: 0,
+          combo_price_ifood: result.ifoodPrice,
           ingredients_description: generatedDetails.ingredientsDescription,
           total_cost: result.totalCost,
           estimated_profit: round(profit),
