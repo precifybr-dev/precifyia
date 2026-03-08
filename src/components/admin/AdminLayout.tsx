@@ -20,14 +20,12 @@ import {
   Headphones,
   BarChart3,
   History,
-  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Shield,
   Sun,
   Moon,
-  Bell,
   BookOpen,
   Sparkles,
   Ticket,
@@ -36,6 +34,8 @@ import {
   FileCode2,
   Server,
   Download,
+  MousePointerClick,
+  DollarSign,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
