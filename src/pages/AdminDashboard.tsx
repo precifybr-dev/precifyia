@@ -403,6 +403,10 @@ export default function AdminDashboard() {
                   <Server className="h-4 w-4" />
                   Custos
                 </TabsTrigger>
+                <TabsTrigger value="knowledge" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <BookOpen className="h-4 w-4" />
+                  Base de Conhecimento
+                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="overview" className="space-y-4">
