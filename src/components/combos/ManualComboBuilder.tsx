@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { useManualCombo, type ManualComboItem, type ItemRole } from "@/hooks/useManualCombo";
 import { type AvailableItem } from "@/hooks/useCombos";
+import { useComboMemory } from "@/hooks/useComboMemory";
 import { supabase } from "@/integrations/supabase/client";
 
 const STRATEGY_ICONS: Record<string, React.ElementType> = {
@@ -38,6 +39,8 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
     addItem, removeItem, updateQuantity, setSelectedStrategy,
     generateDetails, saveCombo, reset,
   } = useManualCombo();
+
+  const { memory, hasMemory, isFrequentItem, getMostUsedStrategy, recordComboSaved } = useComboMemory();
 
   const [step, setStep] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
