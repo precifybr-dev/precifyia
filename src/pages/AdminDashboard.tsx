@@ -54,6 +54,8 @@ import {
   TrendingUp,
   DollarSign,
   Activity,
+  Bell,
+  History,
   UserPlus,
   ArrowLeft,
   RefreshCcw,
