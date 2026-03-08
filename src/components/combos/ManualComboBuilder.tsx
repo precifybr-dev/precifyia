@@ -359,7 +359,12 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                     <Icon className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <span className="text-sm font-medium text-foreground block">{s.label}</span>
+                    <span className="text-sm font-medium text-foreground block">
+                      {s.label}
+                      {hasMemory && getMostUsedStrategy() === s.id && (
+                        <span className="ml-1.5 text-[9px] text-primary">⭐ mais usada</span>
+                      )}
+                    </span>
                     <span className="text-[11px] text-muted-foreground">{s.description}</span>
                   </div>
                   {selectedStrategy === s.id && (
