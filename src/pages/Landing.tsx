@@ -7,7 +7,7 @@ import { SolutionSection } from "@/components/landing/SolutionSection";
 import { DemoSection } from "@/components/landing/DemoSection";
 import { BenefitsSection } from "@/components/landing/BenefitsSection";
 import { SocialProofSection } from "@/components/landing/SocialProofSection";
-import { DifferentialsSection } from "@/components/landing/DifferentialsSection";
+import { FeaturesShowcase } from "@/components/landing/FeaturesShowcase";
 import { PricingSection } from "@/components/landing/PricingSection";
 import { FAQSection } from "@/components/landing/FAQSection";
 import { FinalCTASection } from "@/components/landing/FinalCTASection";
@@ -35,7 +35,7 @@ export default function Landing() {
       <DemoSection />
       <BenefitsSection />
       <SocialProofSection />
-      <DifferentialsSection />
+      <FeaturesShowcase />
       <PricingSection />
       <FAQSection />
       <FinalCTASection />
