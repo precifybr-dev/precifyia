@@ -200,6 +200,11 @@ export function useManualCombo() {
 
     const isBalanced = estimatedMargin >= 15 && clientSavingsPercent >= 8 && clientSavingsPercent <= 30;
 
+    // iFood price calculation
+    const ifoodPrice = ifoodRate > 0 && safePriceSuggestion > 0
+      ? round(safePriceSuggestion / (1 - ifoodRate / 100))
+      : 0;
+
     return {
       items: selectedItems,
       totalAvulso: round(totalAvulso),
@@ -214,9 +219,11 @@ export function useManualCombo() {
       clientSavingsPercent: round(clientSavingsPercent),
       estimatedProfit: round(estimatedProfit),
       estimatedMargin: round(estimatedMargin),
+      ifoodPrice,
+      ifoodRate,
       analysis: { baitItem, profitDriver, costLeader, itemRoles, isBalanced, alerts },
     };
-  }, [selectedItems, strategy]);
+  }, [selectedItems, strategy, ifoodRateFromProfile]);
 
   const generateDetails = useCallback(async () => {
     if (!result || selectedItems.length === 0 || !selectedStrategy) return;
