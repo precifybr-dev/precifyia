@@ -92,7 +92,7 @@ export function useManualCombo() {
   const { activeStore } = useStore();
 
   // Fetch iFood rate from profile
-  useState(() => {
+  useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -105,7 +105,7 @@ export function useManualCombo() {
         setIfoodRateFromProfile(Number(data.ifood_real_percentage));
       }
     })();
-  });
+  }, []);
 
   const strategy = useMemo(() => STRATEGIES.find(s => s.id === selectedStrategy), [selectedStrategy]);
 
