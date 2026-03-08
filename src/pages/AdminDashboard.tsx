@@ -54,8 +54,6 @@ import {
   TrendingUp,
   DollarSign,
   Activity,
-  Bell,
-  History,
   UserPlus,
   ArrowLeft,
   RefreshCcw,
@@ -71,11 +69,6 @@ import {
   Headphones,
   BarChart3,
   LayoutDashboard,
-  Ticket,
-  GraduationCap,
-  MousePointerClick,
-  FileCode2,
-  BookOpen,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
