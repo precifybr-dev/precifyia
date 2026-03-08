@@ -87,8 +87,25 @@ export function useManualCombo() {
   const [isGeneratingDetails, setIsGeneratingDetails] = useState(false);
   const [generatedDetails, setGeneratedDetails] = useState<GeneratedComboDetails | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [ifoodRateFromProfile, setIfoodRateFromProfile] = useState<number>(0);
   const { toast } = useToast();
   const { activeStore } = useStore();
+
+  // Fetch iFood rate from profile
+  useState(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("ifood_real_percentage")
+        .eq("user_id", user.id)
+        .single();
+      if (data?.ifood_real_percentage) {
+        setIfoodRateFromProfile(Number(data.ifood_real_percentage));
+      }
+    })();
+  });
 
   const strategy = useMemo(() => STRATEGIES.find(s => s.id === selectedStrategy), [selectedStrategy]);
 
