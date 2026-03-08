@@ -91,6 +91,14 @@ const App = () => (
             <Route path="/chargeback" element={<ChargebackPolicy />} />
             <Route path="/cookies" element={<CookiePolicy />} />
             <Route path="/ajuda" element={<PublicHelp />} />
+            
+            {/* Feature landing pages */}
+            <Route path="/funcionalidades/precificacao-ifood" element={<PrecificacaoIfood />} />
+            <Route path="/funcionalidades/ficha-tecnica-automatica" element={<FichaTecnicaAutomatica />} />
+            <Route path="/funcionalidades/analise-inteligente-cardapio" element={<AnaliseInteligenteCardapio />} />
+            <Route path="/funcionalidades/simulador-de-combos" element={<SimuladorCombos />} />
+            <Route path="/funcionalidades/controle-real-de-lucro" element={<ControleRealLucro />} />
+            <Route path="/funcionalidades/simulacao-de-taxas-e-custos" element={<SimulacaoTaxasCustos />} />
             <Route 
               path="/login" 
               element={
