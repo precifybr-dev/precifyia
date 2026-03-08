@@ -334,3 +334,58 @@ export function useManualCombo() {
 function round(n: number) {
   return Math.round(n * 100) / 100;
 }
+
+function classifyItemRoles(items: ManualComboItem[]): ItemRole[] {
+  if (items.length === 0) return [];
+
+  const avgMargin = items.reduce((s, i) => s + i.margin, 0) / items.length;
+  const avgCost = items.reduce((s, i) => s + i.cost * i.quantity, 0) / items.length;
+  const maxMargin = Math.max(...items.map(i => i.margin));
+  const minMargin = Math.min(...items.map(i => i.margin));
+  const marginSpread = maxMargin - minMargin;
+
+  return items.map(item => {
+    const itemTotalCost = item.cost * item.quantity;
+    const itemTotalPrice = item.price * item.quantity;
+
+    // Principal: highest cost contribution AND decent margin
+    if (itemTotalCost >= avgCost * 1.3 && item.margin >= avgMargin * 0.8) {
+      return {
+        item,
+        role: "principal" as const,
+        confidence: itemTotalCost >= avgCost * 1.8 ? "alta" as const : "media" as const,
+        reason: `Maior peso no combo (${((itemTotalCost / items.reduce((s, i) => s + i.cost * i.quantity, 0)) * 100).toFixed(0)}% do custo)`,
+      };
+    }
+
+    // Sustentação: highest margin item
+    if (item.margin >= avgMargin * 1.3 && item.margin >= 25) {
+      return {
+        item,
+        role: "sustentacao" as const,
+        confidence: marginSpread > 15 ? "alta" as const : "media" as const,
+        reason: `Margem de ${item.margin.toFixed(0)}% sustenta a rentabilidade`,
+      };
+    }
+
+    // Isca: lowest margin, attracts customer
+    if (item.margin <= avgMargin * 0.7 && item.margin < 20) {
+      return {
+        item,
+        role: "isca" as const,
+        confidence: item.margin < 10 ? "alta" as const : "media" as const,
+        reason: `Margem baixa (${item.margin.toFixed(0)}%) atrai o cliente pelo preço`,
+      };
+    }
+
+    // Complementar: everything else
+    return {
+      item,
+      role: "complementar" as const,
+      confidence: (marginSpread < 10 ? "baixa" : "media") as "alta" | "media" | "baixa",
+      reason: items.length <= 2
+        ? "Poucos itens para classificar com segurança"
+        : `Complementa o combo com margem de ${item.margin.toFixed(0)}%`,
+    };
+  });
+}
