@@ -275,7 +275,7 @@ export function QuickPriceModal({ open, onOpenChange, userId, storeId, onSave }:
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome ou código..."
+              placeholder="Buscar insumo por nome ou código..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pl-9 h-10 text-sm"
