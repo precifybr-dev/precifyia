@@ -450,6 +450,38 @@ export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMe
             <IncrementalRevenueCard priceAdjustments={analysis.priceAdjustments} />
           )}
 
+          {/* Financial Diagnostics from Delivery Insights Engine */}
+          {diagnostics.length > 0 && (
+            <Card className="border-rose-200 dark:border-rose-800/50">
+              <CardContent className="p-4">
+                <h4 className="font-bold text-sm text-rose-700 dark:text-rose-400 flex items-center gap-2 mb-3">
+                  <Search className="w-4 h-4" /> Diagnóstico Financeiro do Cardápio
+                </h4>
+                <div className="space-y-2">
+                  {diagnostics.slice(0, 10).map((d, i) => (
+                    <DiagnosticItem key={i} diagnostic={d} />
+                  ))}
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-3 flex items-start gap-1">
+                  <Info className="w-3 h-3 mt-0.5 shrink-0" />
+                  Análise baseada em estimativas de custo (CMV ~35%, taxa ~27%). Cadastre seus produtos para diagnóstico preciso.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {diagnostics.length === 0 && menuItems && menuItems.length > 0 && (
+            <Card className="border-emerald-200 dark:border-emerald-800/50">
+              <CardContent className="p-4 flex items-center gap-3">
+                <ShieldCheck className="w-5 h-5 text-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Nenhum alerta crítico detectado</p>
+                  <p className="text-xs text-muted-foreground">Seu cardápio não apresenta problemas financeiros evidentes.</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Re-analyze */}
           <div className="text-center pb-2 space-y-2">
             <Button variant="outline" size="sm" onClick={onAnalyze} className="gap-2"

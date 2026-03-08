@@ -137,6 +137,7 @@ export default function MenuMirror() {
             onAnalyze={analyzeMenu}
             hasMenu={!!menuData && menuData.items.length > 0}
             analysisUsage={analysisUsage}
+            menuItems={menuData?.items}
           />
         )}
 
