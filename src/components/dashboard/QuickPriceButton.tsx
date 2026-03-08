@@ -37,7 +37,7 @@ export function QuickPriceButton({
           {hasUpdates ? (
             <Check className="w-6 h-6 sm:w-7 sm:h-7" />
           ) : (
-            <RefreshCw className="w-6 h-6 sm:w-7 sm:h-7 group-hover:rotate-180 transition-transform duration-500" />
+            <ShoppingCart className="w-6 h-6 sm:w-7 sm:h-7 group-hover:scale-110 transition-transform duration-300" />
           )}
         </div>
 
