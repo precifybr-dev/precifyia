@@ -88,7 +88,13 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
 
   const handleSave = async () => {
     const ok = await saveCombo();
-    if (ok) {
+    if (ok && result && selectedStrategy) {
+      await recordComboSaved({
+        itemNames: selectedItems.map(i => i.name),
+        strategyId: selectedStrategy,
+        comboPrice: result.safePriceSuggestion,
+        margin: result.estimatedMargin,
+      });
       reset();
       setStep(1);
       onSaved();
