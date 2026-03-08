@@ -1,7 +1,7 @@
 import {
   ShoppingBag, DollarSign, Tag, Shield, AlertTriangle, Zap,
   TrendingUp, Percent, Info, Star, HelpCircle, Lightbulb,
-  AlertCircle, CheckCircle2,
+  AlertCircle, CheckCircle2, Smartphone, Store,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
