@@ -318,89 +318,15 @@ Deno.serve(async (req) => {
 
     // ── Special module: schema_sql ─────────────────────────────────
     if (moduleName === "schema_sql") {
-      // Query information_schema for all public tables + columns
-      const { data: columns, error: colErr } = await adminClient
-        .from("information_schema.columns" as any)
-        .select("table_name, column_name, data_type, is_nullable, column_default, ordinal_position")
-        .eq("table_schema", "public")
-        .order("table_name")
-        .order("ordinal_position");
+      // Use the database function that queries information_schema properly
+      const { data: schemaResult, error: schemaErr } = await adminClient.rpc("generate_schema_ddl");
 
-      // Fallback: use raw SQL via rpc if the above doesn't work
       let schemaSQL = "";
-
-      if (colErr || !columns || columns.length === 0) {
-        // Build from known tables using pg_catalog
-        const knownTables = [
-          "profiles", "ingredients", "beverages", "recipes", "recipe_ingredients",
-          "fixed_costs", "fixed_expenses", "variable_costs", "variable_expenses",
-          "stores", "store_members", "combos", "combo_items", "combo_memory",
-          "combo_generation_usage", "cmv_periodos", "cmv_categorias",
-          "business_taxes", "card_fees", "deleted_records", "access_logs",
-          "platform_events", "support_tickets", "support_messages", "support_consent",
-          "user_roles", "user_security", "user_permissions", "role_permissions",
-          "collaborators", "sharing_groups", "sharing_group_stores",
-          "cost_allocations", "calculation_history", "data_audit_log",
-          "admin_alerts", "admin_audit_logs", "admin_export_logs",
-          "affiliates", "commissions", "commission_config", "commission_payouts",
-          "coupons", "coupon_uses", "fraud_flags", "contract_acceptances",
-          "funnel_events", "help_content", "ifood_import_usage",
-          "marketing_campaigns", "marketing_monthly_data", "monetization_settings",
-          "payment_links", "pricing_anchoring_config", "pricing_audit_log",
-          "pricing_phrases", "pricing_plans", "plan_features",
-          "rate_limit_entries", "rate_limit_global", "risk_flags",
-          "strategic_usage_logs", "user_payments",
-          "support_abuse_alerts", "support_session_logs",
-          "ticket_messages", "ticket_notes", "topo_cardapio_simulacoes",
-          "university_modules", "university_courses", "university_lessons",
-          "university_progress", "user_lesson_progress", "user_sessions",
-          "monthly_revenues", "sub_recipes", "sub_recipe_ingredients",
-          "architecture_prompts", "architecture_base_checks",
-          "architecture_certifications", "architecture_history",
-          "architecture_score_history", "controllership_config",
-        ];
-
-        schemaSQL = `-- Schema SQL exportado em ${new Date().toISOString()}\n`;
-        schemaSQL += `-- Tabelas do schema public\n\n`;
-
-        for (const tableName of knownTables) {
-          const { data: tblCols } = await adminClient.rpc("get_table_ddl_columns", { p_table: tableName }).maybeSingle();
-          
-          // Simple fallback: just list table name
-          schemaSQL += `-- Tabela: ${tableName}\n`;
-          schemaSQL += `-- (Use \\d ${tableName} no psql para detalhes completos)\n\n`;
-        }
+      if (schemaErr || !schemaResult) {
+        schemaSQL = `-- Erro ao gerar schema: ${schemaErr?.message || "resultado vazio"}\n`;
+        schemaSQL += `-- Tente novamente ou contate o suporte.\n`;
       } else {
-        // Group columns by table
-        const tables: Record<string, any[]> = {};
-        for (const col of columns) {
-          if (!tables[col.table_name]) tables[col.table_name] = [];
-          tables[col.table_name].push(col);
-        }
-
-        schemaSQL = `-- ================================================================\n`;
-        schemaSQL += `-- Schema SQL completo - Exportado em ${new Date().toISOString()}\n`;
-        schemaSQL += `-- Tabelas do schema public (${Object.keys(tables).length} tabelas)\n`;
-        schemaSQL += `-- ================================================================\n\n`;
-
-        for (const [tableName, cols] of Object.entries(tables).sort((a, b) => a[0].localeCompare(b[0]))) {
-          schemaSQL += `-- ────────────────────────────────────────────\n`;
-          schemaSQL += `CREATE TABLE IF NOT EXISTS public.${tableName} (\n`;
-
-          const colDefs = cols.map((c: any) => {
-            let def = `  ${c.column_name} ${c.data_type.toUpperCase()}`;
-            if (c.column_default) {
-              def += ` DEFAULT ${c.column_default}`;
-            }
-            if (c.is_nullable === "NO") {
-              def += " NOT NULL";
-            }
-            return def;
-          });
-
-          schemaSQL += colDefs.join(",\n");
-          schemaSQL += `\n);\n\n`;
-        }
+        schemaSQL = schemaResult;
       }
 
       // Audit log
