@@ -424,10 +424,22 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                 <SummaryCard label="Preço Avulso" value={formatCurrency(result.totalAvulso)} icon={<ShoppingBag className="w-3.5 h-3.5" />} />
                 <SummaryCard label="Custo Total" value={formatCurrency(result.totalCost)} />
                 <SummaryCard
+                  label="Lucro Bruto Avulso"
+                  value={formatCurrency(result.grossProfitAvulso)}
+                  sublabel={`Margem ${result.marginAvulso.toFixed(1)}%`}
+                />
+                <SummaryCard
                   label="Mín. Sem Prejuízo"
                   value={formatCurrency(result.minPriceNoLoss)}
                   className="border-destructive/20 bg-destructive/5"
                   valueClass="text-destructive"
+                />
+                <SummaryCard
+                  label="Mín. c/ Margem Segura"
+                  value={formatCurrency(result.minPriceWithSafetyMargin)}
+                  className="border-warning/20 bg-warning/5"
+                  valueClass="text-warning"
+                  icon={<Shield className="w-3.5 h-3.5 text-warning" />}
                 />
                 <SummaryCard
                   label="Preço Recomendado"
@@ -460,7 +472,7 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                 <div className="text-center p-3 rounded-lg bg-muted/30">
                   <Percent className="w-4 h-4 mx-auto text-muted-foreground mb-1" />
                   <p className="text-lg font-bold text-foreground">{result.estimatedMargin.toFixed(1)}%</p>
-                  <p className="text-[10px] text-muted-foreground">Margem</p>
+                  <p className="text-[10px] text-muted-foreground">Margem do Combo</p>
                 </div>
                 <div className="text-center p-3 rounded-lg bg-success/5 border border-success/20">
                   <Tag className="w-4 h-4 mx-auto text-success mb-1" />
