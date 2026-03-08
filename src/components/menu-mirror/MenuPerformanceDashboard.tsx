@@ -195,6 +195,33 @@ function UsageBadge({ usage }: { usage: AnalysisUsage | null }) {
   );
 }
 
+function getRiskBadge(level: string) {
+  if (level === "alto") return <Badge variant="destructive" className="text-[10px]">Alto</Badge>;
+  if (level === "medio") return <Badge className="text-[10px] bg-orange-500 hover:bg-orange-600 border-orange-500">Médio</Badge>;
+  return <Badge variant="secondary" className="text-[10px]">Baixo</Badge>;
+}
+
+function DiagnosticItem({ diagnostic }: { diagnostic: DiagnosticResult }) {
+  return (
+    <div className="flex items-start gap-2 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-900">
+      <ShieldAlert className={`w-4 h-4 mt-0.5 shrink-0 ${
+        diagnostic.nivel_risco === "alto" ? "text-red-500" :
+        diagnostic.nivel_risco === "medio" ? "text-orange-500" : "text-yellow-500"
+      }`} />
+      <div className="flex-1 min-w-0 space-y-0.5">
+        <div className="flex items-center gap-2 flex-wrap">
+          {getRiskBadge(diagnostic.nivel_risco)}
+          {diagnostic.produto && (
+            <span className="text-xs font-semibold text-foreground truncate">{diagnostic.produto}</span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground leading-relaxed">{diagnostic.explicacao}</p>
+        <p className="text-[11px] text-primary font-medium">{diagnostic.recomendacao}</p>
+      </div>
+    </div>
+  );
+}
+
 export function MenuPerformanceDashboard({ analysis, isLoading, onAnalyze, hasMenu, analysisUsage, menuItems }: Props) {
   const [showDetails, setShowDetails] = useState(false);
   const { diagnostics } = useDeliveryInsights(menuItems);
