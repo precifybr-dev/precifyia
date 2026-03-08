@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AdminSecurityGate } from "@/components/admin/AdminSecurityGate";
 import { RequirePermission } from "@/components/rbac";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -138,7 +138,7 @@ export default function AdminExport() {
     }
   };
 
-  const handleLoadSchema = async () => {
+  const handleLoadSchema = useCallback(async () => {
     setSchemaLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -174,7 +174,12 @@ export default function AdminExport() {
     } finally {
       setSchemaLoading(false);
     }
-  };
+  }, [toast]);
+
+  // Auto-load schema on mount
+  useEffect(() => {
+    handleLoadSchema();
+  }, [handleLoadSchema]);
 
   const handleCopySchema = async () => {
     try {
@@ -232,67 +237,6 @@ export default function AdminExport() {
           />
 
           <div className="p-6 space-y-8">
-            {/* ── SQL Schema Section ──────────────────────────────── */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Code2 className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">SQL das Tabelas (Migração)</CardTitle>
-                      <CardDescription>
-                        Gere o SQL completo (CREATE TABLE) de todas as tabelas do sistema para copiar e migrar.
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {schemaSQL && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={handleCopySchema}
-                      >
-                        {schemaCopied ? (
-                          <CheckCircle2 className="h-4 w-4 text-success" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
-                        )}
-                        {schemaCopied ? "Copiado!" : "Copiar SQL"}
-                      </Button>
-                    )}
-                    <Button
-                      onClick={handleLoadSchema}
-                      disabled={schemaLoading}
-                      className="gap-2"
-                    >
-                      {schemaLoading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : schemaSQL ? (
-                        <RefreshCcw className="h-4 w-4" />
-                      ) : (
-                        <Code2 className="h-4 w-4" />
-                      )}
-                      {schemaLoading ? "Carregando..." : schemaSQL ? "Recarregar" : "Gerar SQL"}
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              {schemaSQL && (
-                <CardContent>
-                  <div className="relative">
-                    <pre className="bg-muted rounded-lg p-4 text-sm font-mono overflow-auto max-h-[500px] whitespace-pre-wrap break-words border">
-                      {schemaSQL}
-                    </pre>
-                  </div>
-                </CardContent>
-              )}
-            </Card>
-
-            <Separator />
-
             {/* ── Export Cards ────────────────────────────────────── */}
             <div>
               <h2 className="text-lg font-semibold mb-4">Exportação CSV por Módulo</h2>
@@ -335,6 +279,76 @@ export default function AdminExport() {
                 })}
               </div>
             </div>
+
+            <Separator />
+
+            {/* ── SQL Schema Section (below CSV) ─────────────────── */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-primary/10">
+                      <Code2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-lg">SQL das Tabelas (Migração)</CardTitle>
+                      <CardDescription>
+                        SQL completo (CREATE TABLE) de todas as tabelas do sistema para copiar e migrar.
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {schemaSQL && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleCopySchema}
+                      >
+                        {schemaCopied ? (
+                          <CheckCircle2 className="h-4 w-4 text-success" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                        {schemaCopied ? "Copiado!" : "Copiar SQL"}
+                      </Button>
+                    )}
+                    <Button
+                      onClick={handleLoadSchema}
+                      disabled={schemaLoading}
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                    >
+                      {schemaLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCcw className="h-4 w-4" />
+                      )}
+                      {schemaLoading ? "Carregando..." : "Atualizar"}
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {schemaLoading && !schemaSQL ? (
+                  <div className="flex items-center justify-center py-12 text-muted-foreground gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Gerando SQL das tabelas...
+                  </div>
+                ) : schemaSQL ? (
+                  <div className="relative">
+                    <pre className="bg-muted rounded-lg p-4 text-sm font-mono overflow-auto max-h-[500px] whitespace-pre-wrap break-words border">
+                      {schemaSQL}
+                    </pre>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center py-12 text-muted-foreground">
+                    Nenhum schema carregado. Clique em "Atualizar" para gerar.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </AdminLayout>
 
