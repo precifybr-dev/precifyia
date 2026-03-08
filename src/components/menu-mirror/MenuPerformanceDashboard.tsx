@@ -4,10 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import type { AnalysisUsage } from "@/hooks/useMenuMirror";
+import type { FullMenuItem } from "@/hooks/useMenuMirror";
 import { IncrementalRevenueCard } from "./IncrementalRevenueCard";
+import { useDeliveryInsights, type DiagnosticResult } from "@/hooks/useDeliveryInsights";
 import {
   Flame, ChevronDown, ChevronUp, Star, Target, AlertTriangle,
-  TrendingUp, Lightbulb, PenLine, Sparkles, DollarSign,
+  TrendingUp, Lightbulb, PenLine, Sparkles, DollarSign, Search,
+  ShieldAlert, ShieldCheck, Info,
 } from "lucide-react";
 
 export interface PillarScore {
