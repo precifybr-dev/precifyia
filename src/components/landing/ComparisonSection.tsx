@@ -1,82 +1,146 @@
-import { Check, X, ArrowRight, FileSpreadsheet, ShieldCheck } from "lucide-react";
+import { Check, X, ArrowRight, FileSpreadsheet, Monitor, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useFunnelTracking } from "@/hooks/useFunnelTracking";
+import devicesMockup from "@/assets/precify-devices-mockup.png";
 
 const rows = [
-  { label: "Processo", planilha: "Manual", precify: "Automático" },
-  { label: "Erro humano", planilha: "Fácil de errar", precify: "Margem protegida" },
-  { label: "Fórmulas", planilha: "Quebram sem aviso", precify: "Calcula comissão, taxa e custo real" },
-  { label: "Custos ocultos", planilha: "Não considera todos", precify: "Mostra lucro real por produto" },
-  { label: "Descoberta do erro", planilha: "Depois de perder dinheiro", precify: "Antes de publicar o preço" },
+  { label: "Precificação", planilha: "Manual", precify: "Automática", type: "text" as const },
+  { label: "Economia de tempo", planilha: "Nenhuma", precify: "Até 6h/semana", type: "text" as const },
+  { label: "Aumento de margem", planilha: "Nenhum", precify: "Até 15%", type: "text" as const },
+  { label: "Erros de cálculo", planilha: "Frequente", precify: "Zero", type: "text" as const },
+  { label: "Custo real do iFood", check: false, precifyCheck: true, type: "check" as const },
+  { label: "DRE simplificado", check: false, precifyCheck: true, type: "check" as const },
+  { label: "Análise de cardápio", check: false, precifyCheck: true, type: "check" as const },
+  { label: "Combos com IA", check: false, precifyCheck: true, type: "check" as const },
 ];
 
 export function ComparisonSection() {
   const { trackEvent } = useFunnelTracking();
+
   return (
-    <section className="py-16 lg:py-24 bg-muted/30">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+    <section className="py-16 lg:py-24 relative overflow-hidden">
+      {/* Gradient background inspired by the reference */}
+      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-success/70" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.1)_0%,_transparent_60%)]" />
+
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-12">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-4">
-            Planilha vs Precify
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-primary-foreground mb-3">
+            Transforme a gestão do seu restaurante com o Precify
           </h2>
+          <p className="text-primary-foreground/80 max-w-2xl mx-auto">
+            Veja a diferença entre depender de planilhas e ter um sistema inteligente.
+          </p>
         </div>
 
-        <div className="max-w-3xl mx-auto">
-          {/* Table header */}
-          <div className="grid grid-cols-3 gap-4 mb-4 px-4">
-            <div />
-            <div className="flex flex-col items-center gap-2">
-              <div className="relative">
-                <FileSpreadsheet className="w-8 h-8 text-destructive" />
-                <X className="w-4 h-4 text-destructive absolute -top-1 -right-1 bg-background rounded-full" strokeWidth={3} />
+        <div className="grid lg:grid-cols-2 gap-10 items-center max-w-6xl mx-auto">
+          {/* Comparison table */}
+          <div className="w-full">
+            <div className="rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 overflow-hidden shadow-2xl">
+              {/* Header */}
+              <div className="grid grid-cols-[1fr,120px,120px] sm:grid-cols-[1fr,140px,140px]">
+                <div />
+                <div className="bg-destructive/20 py-3 text-center border-b border-white/10">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <FileSpreadsheet className="w-4 h-4 text-primary-foreground/70" />
+                    <span className="text-xs sm:text-sm font-bold text-primary-foreground/90">Planilha</span>
+                  </div>
+                </div>
+                <div className="bg-success/20 py-3 text-center border-b border-white/10">
+                  <span className="text-xs sm:text-sm font-bold text-primary-foreground">Precify</span>
+                </div>
               </div>
-              <span className="text-sm font-semibold text-destructive uppercase tracking-wide">Planilha</span>
+
+              {/* Rows */}
+              {rows.map((row, i) => (
+                <div
+                  key={row.label}
+                  className="grid grid-cols-[1fr,120px,120px] sm:grid-cols-[1fr,140px,140px] border-b border-white/10 last:border-b-0 hover:bg-white/5 transition-colors"
+                >
+                  <span className="text-sm font-medium text-primary-foreground py-3.5 px-4 sm:px-6">
+                    {row.label}
+                  </span>
+
+                  {/* Planilha column */}
+                  <div className="flex items-center justify-center py-3.5 bg-destructive/5 border-l border-white/10">
+                    {row.type === "check" ? (
+                      <div className="w-6 h-6 rounded-full bg-destructive/20 flex items-center justify-center">
+                        <X className="w-3.5 h-3.5 text-destructive" strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <span className="text-xs sm:text-sm text-primary-foreground/60">{row.planilha}</span>
+                    )}
+                  </div>
+
+                  {/* Precify column */}
+                  <div className="flex items-center justify-center py-3.5 bg-success/5">
+                    {row.type === "check" ? (
+                      <div className="w-6 h-6 rounded-full bg-success/20 flex items-center justify-center">
+                        <Check className="w-3.5 h-3.5 text-success" strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <span className="text-xs sm:text-sm font-semibold text-primary-foreground">{row.precify}</span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="flex flex-col items-center gap-2">
-              <ShieldCheck className="w-8 h-8 text-success" />
-              <span className="text-sm font-semibold text-success uppercase tracking-wide">Precify</span>
+
+            {/* CTA below table */}
+            <div className="text-center mt-8">
+              <Link to="/register" onClick={() => trackEvent("cta_click", "comparison_cta")}>
+                <Button
+                  size="lg"
+                  data-cta-id="comparison_cta"
+                  className="bg-white text-primary hover:bg-white/90 shadow-xl shadow-black/10 group font-bold"
+                >
+                  Experimentar grátis
+                  <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </Link>
             </div>
           </div>
 
-          {/* Table rows */}
-          <div className="space-y-3">
-            {rows.map((row, index) => (
-              <div
-                key={row.label}
-                className="grid grid-cols-3 gap-0 items-center rounded-xl bg-card border border-border overflow-hidden opacity-0 animate-fade-in hover:scale-[1.01] hover:shadow-card-hover transition-all duration-300"
-                style={{ animationDelay: `${index * 100}ms`, animationFillMode: "forwards" }}
-              >
-                <span className="text-sm font-medium text-foreground p-4">{row.label}</span>
-                <div className="flex items-center justify-center gap-2 p-4 bg-destructive/5 border-l border-r border-border">
-                  <X className="w-4 h-4 text-destructive flex-shrink-0" />
-                  <span className="text-sm text-muted-foreground">{row.planilha}</span>
-                </div>
-                <div className="flex items-center justify-center gap-2 p-4 bg-success/5">
-                  <Check className="w-4 h-4 text-success flex-shrink-0" />
-                  <span className="text-sm text-foreground font-medium">{row.precify}</span>
+          {/* Device mockup */}
+          <div className="relative flex items-center justify-center">
+            <div className="relative">
+              {/* Glow behind */}
+              <div className="absolute inset-0 bg-white/10 rounded-full blur-3xl scale-75 pointer-events-none" />
+
+              <img
+                src={devicesMockup}
+                alt="Precify funcionando no computador e celular — dashboard de precificação de restaurantes"
+                className="relative w-full max-w-lg mx-auto drop-shadow-2xl"
+                loading="lazy"
+              />
+
+              {/* Floating badges */}
+              <div className="absolute -top-2 left-4 sm:left-0 animate-float">
+                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-lg border border-white/50">
+                  <Monitor className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-semibold text-foreground">Desktop</span>
                 </div>
               </div>
-            ))}
-          </div>
 
-          <div className="text-center mt-10">
-            <p className="text-lg font-semibold text-foreground mb-1">
-              Planilha mostra número.
-            </p>
-            <p className="text-lg text-muted-foreground mb-8">
-              Precify mostra <span className="text-success font-semibold">lucro real.</span>
-            </p>
-            <Link to="/register" onClick={() => trackEvent("cta_click", "comparison_cta")}>
-              <Button
-                size="lg"
-                data-cta-id="comparison_cta"
-                className="bg-success hover:bg-success/90 text-success-foreground shadow-lg shadow-success/25 group animate-float"
-              >
-                Experimentar o Precify
-                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
+              <div className="absolute -bottom-2 right-4 sm:right-0 animate-float" style={{ animationDelay: "1s" }}>
+                <div className="flex items-center gap-2 bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2.5 shadow-lg border border-white/50">
+                  <Smartphone className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-semibold text-foreground">Mobile</span>
+                </div>
+              </div>
+
+              {/* "Teste Já" badge */}
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 sm:left-auto sm:translate-x-0 sm:bottom-4 sm:right-16">
+                <Link
+                  to="/register"
+                  className="inline-flex items-center gap-1.5 bg-warning text-warning-foreground rounded-full px-5 py-2 text-sm font-bold shadow-lg hover:scale-105 transition-transform"
+                  onClick={() => trackEvent("cta_click", "comparison_badge_cta")}
+                >
+                  ★ Teste Já
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
