@@ -24,6 +24,7 @@ import { ControllershipDashboard } from "@/components/admin/ControllershipDashbo
 import { StrategicPricingDashboard } from "@/components/admin/StrategicPricingDashboard";
 import { ArchitectureGovernanceDashboard } from "@/components/admin/ArchitectureGovernanceDashboard";
 import { CloudCostsDashboard } from "@/components/admin/CloudCostsDashboard";
+import { KnowledgeBaseDashboard } from "@/components/admin/KnowledgeBaseDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
