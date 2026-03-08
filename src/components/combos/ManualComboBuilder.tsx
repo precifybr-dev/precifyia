@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { useManualCombo, type ManualComboItem } from "@/hooks/useManualCombo";
+import { useManualCombo, type ManualComboItem, type ItemRole } from "@/hooks/useManualCombo";
 import { type AvailableItem } from "@/hooks/useCombos";
 import { supabase } from "@/integrations/supabase/client";
 
