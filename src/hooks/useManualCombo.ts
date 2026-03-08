@@ -28,10 +28,18 @@ export interface ComboAlert {
   message: string;
 }
 
+export interface ItemRole {
+  item: ManualComboItem;
+  role: "principal" | "complementar" | "isca" | "sustentacao";
+  confidence: "alta" | "media" | "baixa";
+  reason: string;
+}
+
 export interface ComboAnalysis {
   baitItem: ManualComboItem | null;
   profitDriver: ManualComboItem | null;
   costLeader: ManualComboItem | null;
+  itemRoles: ItemRole[];
   isBalanced: boolean;
   alerts: ComboAlert[];
 }
@@ -40,7 +48,10 @@ export interface ManualComboResult {
   items: ManualComboItem[];
   totalAvulso: number;
   totalCost: number;
+  grossProfitAvulso: number;
+  marginAvulso: number;
   minPriceNoLoss: number;
+  minPriceWithSafetyMargin: number;
   safePriceSuggestion: number;
   aggressivePriceSuggestion: number;
   clientSavings: number;
