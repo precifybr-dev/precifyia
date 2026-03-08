@@ -1,7 +1,7 @@
 import {
   ShoppingBag, DollarSign, Tag, Shield, AlertTriangle, Zap,
   TrendingUp, Percent, Info, Star, HelpCircle, Lightbulb,
-  AlertCircle, CheckCircle2,
+  AlertCircle, CheckCircle2, Smartphone, Store,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +27,8 @@ interface ComboResult {
   estimatedMargin: number;
   clientSavings: number;
   clientSavingsPercent: number;
+  ifoodPrice: number;
+  ifoodRate: number;
 }
 
 interface ComboFinancialSummaryProps {
@@ -140,16 +142,46 @@ export function ComboFinancialSummary({ result }: ComboFinancialSummaryProps) {
           description="Veja o limite mínimo e os preços sugeridos para vender com segurança e estratégia."
         />
 
-        {/* Preço Recomendado — destaque principal */}
-        <div className="relative mb-4 p-4 rounded-2xl border-2 border-primary bg-primary/5 text-center space-y-1">
-          <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] px-3 py-0.5 gap-1">
-            <Star className="w-3 h-3" /> Mais indicado
-          </Badge>
-          <p className="text-xs text-muted-foreground pt-1">Preço recomendado</p>
-          <p className="text-3xl font-black text-primary">{fmt(result.safePriceSuggestion)}</p>
-          <p className="text-xs text-muted-foreground max-w-xs mx-auto">
-            Melhor equilíbrio entre percepção de vantagem, conversão e lucro.
-          </p>
+        {/* Preço Recomendado — Balcão + iFood side by side */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+          {/* Preço Balcão / Cardápio Digital */}
+          <div className="relative p-4 rounded-2xl border-2 border-primary bg-primary/5 text-center space-y-1">
+            <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-[10px] px-3 py-0.5 gap-1">
+              <Star className="w-3 h-3" /> Recomendado
+            </Badge>
+            <div className="flex items-center justify-center gap-1.5 pt-1">
+              <Store className="w-4 h-4 text-primary" />
+              <p className="text-xs text-muted-foreground">Balcão / Cardápio Digital</p>
+            </div>
+            <p className="text-3xl font-black text-primary">{fmt(result.safePriceSuggestion)}</p>
+            <p className="text-[10px] text-muted-foreground">Preço para venda direta</p>
+          </div>
+
+          {/* Preço iFood */}
+          <div className="relative p-4 rounded-2xl border-2 border-destructive/40 bg-destructive/5 text-center space-y-1">
+            <Badge className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-destructive text-destructive-foreground text-[10px] px-3 py-0.5 gap-1">
+              <Smartphone className="w-3 h-3" /> iFood
+            </Badge>
+            <div className="flex items-center justify-center gap-1.5 pt-1">
+              <Smartphone className="w-4 h-4 text-destructive" />
+              <p className="text-xs text-muted-foreground">Preço no iFood</p>
+            </div>
+            {result.ifoodRate > 0 ? (
+              <>
+                <p className="text-3xl font-black text-destructive">{fmt(result.ifoodPrice)}</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Taxa {result.ifoodRate.toFixed(1)}% já embutida
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="text-lg font-semibold text-muted-foreground pt-1">—</p>
+                <p className="text-[10px] text-muted-foreground">
+                  Configure a taxa iFood na Área do Negócio
+                </p>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-3">

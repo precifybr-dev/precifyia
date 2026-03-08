@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/contexts/StoreContext";
@@ -58,6 +58,8 @@ export interface ManualComboResult {
   clientSavingsPercent: number;
   estimatedProfit: number;
   estimatedMargin: number;
+  ifoodPrice: number;
+  ifoodRate: number;
   analysis: ComboAnalysis;
 }
 
@@ -85,8 +87,25 @@ export function useManualCombo() {
   const [isGeneratingDetails, setIsGeneratingDetails] = useState(false);
   const [generatedDetails, setGeneratedDetails] = useState<GeneratedComboDetails | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [ifoodRateFromProfile, setIfoodRateFromProfile] = useState<number>(0);
   const { toast } = useToast();
   const { activeStore } = useStore();
+
+  // Fetch iFood rate from profile
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("profiles")
+        .select("ifood_real_percentage")
+        .eq("user_id", user.id)
+        .single();
+      if (data?.ifood_real_percentage) {
+        setIfoodRateFromProfile(Number(data.ifood_real_percentage));
+      }
+    })();
+  }, []);
 
   const strategy = useMemo(() => STRATEGIES.find(s => s.id === selectedStrategy), [selectedStrategy]);
 
@@ -115,6 +134,7 @@ export function useManualCombo() {
 
   const result = useMemo<ManualComboResult | null>(() => {
     if (selectedItems.length === 0) return null;
+    const ifoodRate = ifoodRateFromProfile;
 
     const totalAvulso = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const totalCost = selectedItems.reduce((sum, i) => sum + i.cost * i.quantity, 0);
@@ -180,6 +200,11 @@ export function useManualCombo() {
 
     const isBalanced = estimatedMargin >= 15 && clientSavingsPercent >= 8 && clientSavingsPercent <= 30;
 
+    // iFood price calculation
+    const ifoodPrice = ifoodRate > 0 && safePriceSuggestion > 0
+      ? round(safePriceSuggestion / (1 - ifoodRate / 100))
+      : 0;
+
     return {
       items: selectedItems,
       totalAvulso: round(totalAvulso),
@@ -194,9 +219,11 @@ export function useManualCombo() {
       clientSavingsPercent: round(clientSavingsPercent),
       estimatedProfit: round(estimatedProfit),
       estimatedMargin: round(estimatedMargin),
+      ifoodPrice,
+      ifoodRate,
       analysis: { baitItem, profitDriver, costLeader, itemRoles, isBalanced, alerts },
     };
-  }, [selectedItems, strategy]);
+  }, [selectedItems, strategy, ifoodRateFromProfile]);
 
   const generateDetails = useCallback(async () => {
     if (!result || selectedItems.length === 0 || !selectedStrategy) return;
@@ -270,7 +297,7 @@ export function useManualCombo() {
           status: "draft",
           individual_total_price: result.totalAvulso,
           combo_price: round(comboPrice),
-          combo_price_ifood: 0,
+          combo_price_ifood: result.ifoodPrice,
           ingredients_description: generatedDetails.ingredientsDescription,
           total_cost: result.totalCost,
           estimated_profit: round(profit),
