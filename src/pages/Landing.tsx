@@ -17,6 +17,15 @@ import { WhatsAppButton } from "@/components/landing/WhatsAppButton";
 export default function Landing() {
   useEffect(() => {
     document.documentElement.classList.remove("dark");
+
+    // Scroll to hash section if present (e.g. navigated from feature page)
+    if (window.location.hash) {
+      const id = window.location.hash.replace("#", "");
+      setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+
     return () => {
       const savedTheme = localStorage.getItem("theme");
       if (savedTheme === "dark") {
