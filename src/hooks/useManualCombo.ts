@@ -253,7 +253,7 @@ export function useManualCombo() {
           total_cost: result.totalCost,
           estimated_profit: round(profit),
           margin_percent: round(margin),
-          strategy_explanation: `Combo manual com estratégia "${STRATEGIES.find(s => s.id === selectedStrategy)?.label}". Economia de ${result.clientSavingsPercent.toFixed(0)}% para o cliente.`,
+          strategy_explanation: generatedDetails.strategyExplanation || `Combo manual com estratégia "${STRATEGIES.find(s => s.id === selectedStrategy)?.label}". Economia de ${result.clientSavingsPercent.toFixed(0)}% para o cliente.`,
         })
         .select("id")
         .single();
