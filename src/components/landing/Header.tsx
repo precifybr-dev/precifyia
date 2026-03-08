@@ -57,8 +57,14 @@ export function Header() {
   ) => {
     e.preventDefault();
     setIsOpen(false);
-    const el = document.getElementById(href.replace("#", ""));
-    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    const sectionId = href.replace("#", "");
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    } else {
+      // Navigate to home with hash so the section scrolls into view
+      navigate("/" + href);
+    }
   };
 
   return (
