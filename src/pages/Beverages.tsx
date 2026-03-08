@@ -49,6 +49,7 @@ import { SearchAndFilter, BEVERAGE_CATEGORIES } from "@/components/ui/SearchAndF
 import { normalizeText } from "@/lib/utils";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { useDataProtection } from "@/hooks/useDataProtection";
+import BeveragePricingPanel from "@/components/beverages/BeveragePricingPanel";
 
 type Beverage = {
   id: string;
@@ -592,6 +593,7 @@ export default function Beverages() {
                 </Button>
               </div>
 
+              {/* === ENTRADAS === */}
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 <div className="space-y-2">
                   <Label>Número *</Label>
@@ -604,7 +606,7 @@ export default function Beverages() {
                 </div>
 
                 <div className="space-y-2 col-span-2">
-                  <Label>Nome *</Label>
+                  <Label>Nome do produto *</Label>
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -627,7 +629,7 @@ export default function Beverages() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Qtd Compra *</Label>
+                  <Label>Qtd comprada *</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -639,7 +641,7 @@ export default function Beverages() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Custo Total *</Label>
+                  <Label>Custo total *</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -651,7 +653,10 @@ export default function Beverages() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>CMV Desejado %</Label>
+                  <Label className="flex items-center gap-1">
+                    Meta de custo máximo
+                    <span className="text-xs text-muted-foreground">(CMV %)</span>
+                  </Label>
                   <Input
                     type="number"
                     step="1"
@@ -661,12 +666,22 @@ export default function Beverages() {
                     onChange={(e) => setFormData({ ...formData, cmv_target: e.target.value })}
                     placeholder="35"
                   />
+                  <p className="text-[10px] text-muted-foreground">Quanto do preço pode ser custo</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              {/* Custo unitário calculado */}
+              <div className="mt-3 p-3 bg-muted/50 rounded-lg flex items-center gap-3">
+                <span className="text-sm text-muted-foreground">Custo unitário calculado:</span>
+                <span className="font-mono font-bold text-lg text-primary">{calculateUnitPrice() !== "—" ? `R$ ${calculateUnitPrice()}` : "—"}</span>
+              </div>
+
+              {/* Preço de venda + iFood */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-normal text-muted-foreground">Preço de Venda Loja</Label>
+                  <Label className="text-sm font-medium flex items-center gap-1">
+                    💳 Preço de venda — Loja / Cardápio Digital
+                  </Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -674,14 +689,16 @@ export default function Beverages() {
                     value={formData.selling_price}
                     onChange={(e) => setFormData({ ...formData, selling_price: e.target.value })}
                     placeholder="R$ 0,00"
+                    className="text-lg font-bold border-2 border-success/30"
                   />
+                  <p className="text-[10px] text-muted-foreground">Por quanto você vende na loja, balcão ou cardápio digital</p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm font-normal text-muted-foreground flex items-center gap-1">
-                    Preço de Venda iFood
+                  <Label className="text-sm font-medium flex items-center gap-1">
+                    📱 Preço no iFood
                     {ifoodRealPercentage > 0 && (
-                      <span className="text-xs opacity-60">(taxa {ifoodRealPercentage.toFixed(1)}%)</span>
+                      <span className="text-xs text-destructive font-normal">(taxa {ifoodRealPercentage.toFixed(1)}%)</span>
                     )}
                   </Label>
                   <Input
@@ -693,24 +710,17 @@ export default function Beverages() {
                       : "")}
                     onChange={(e) => setFormData({ ...formData, ifood_selling_price: e.target.value })}
                     placeholder="R$ 0,00"
-                    className={!formData.ifood_selling_price && formData.selling_price && ifoodRealPercentage > 0 ? "text-muted-foreground" : ""}
+                    className={`text-lg font-bold border-2 border-destructive/30 ${!formData.ifood_selling_price && formData.selling_price && ifoodRealPercentage > 0 ? "text-muted-foreground" : ""}`}
                   />
-                  {!formData.ifood_selling_price && formData.selling_price && ifoodRealPercentage > 0 && (
-                    <p className="text-[11px] text-muted-foreground">
-                      Sugerido com base no CMV desejado
-                    </p>
-                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    {!formData.ifood_selling_price && formData.selling_price && ifoodRealPercentage > 0
+                      ? "Sugerido para manter o mesmo lucro da loja"
+                      : "Preço que aparece no iFood para o cliente"}
+                  </p>
                 </div>
               </div>
 
-              {ifoodRealPercentage > 0 && (
-                <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                  <p className="text-xs text-muted-foreground">
-                    💡 O lucro líquido do iFood já considera a taxa real de <strong>{ifoodRealPercentage.toFixed(1)}%</strong> configurada na Área do Negócio.
-                  </p>
-                </div>
-              )}
-
+              {/* Cor e Categoria */}
               <div className="flex items-center gap-4 mt-4 flex-wrap">
                 <div className="flex items-center gap-2">
                   <Label className="text-sm text-muted-foreground">Cor:</Label>
@@ -737,13 +747,20 @@ export default function Beverages() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="flex items-center gap-2 ml-auto">
-                  <div className="text-sm text-muted-foreground">
-                    Custo Unit.: <span className="font-mono font-semibold text-primary">{calculateUnitPrice()}</span>
-                  </div>
-                </div>
               </div>
+
+              {/* === PAINEL DE PRECIFICAÇÃO === */}
+              <BeveragePricingPanel
+                unitCost={
+                  (parseFloat(formData.purchase_quantity) || 0) > 0 && (parseFloat(formData.purchase_price) || 0) > 0
+                    ? (parseFloat(formData.purchase_price)) / (parseFloat(formData.purchase_quantity))
+                    : 0
+                }
+                sellingPrice={parseFloat(formData.selling_price) || 0}
+                ifoodRate={ifoodRealPercentage}
+                ifoodSellingPrice={formData.ifood_selling_price}
+                setIfoodSellingPrice={(val) => setFormData({ ...formData, ifood_selling_price: val })}
+              />
 
               <div className="flex justify-end gap-2 mt-6">
                 <Button variant="outline" onClick={resetForm}>Cancelar</Button>
