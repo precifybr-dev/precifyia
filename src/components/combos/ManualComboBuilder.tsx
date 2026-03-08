@@ -328,7 +328,17 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {strategies.map(s => {
+            {hasMemory && getMostUsedStrategy() && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-accent/10 border border-accent/20 mb-2">
+                <Info className="w-4 h-4 text-accent-foreground flex-shrink-0" />
+                <p className="text-xs text-accent-foreground">
+                  Sua estratégia mais usada: <strong>{strategies.find(s => s.id === getMostUsedStrategy())?.label}</strong>
+                  {memory.totalCombosCriados > 0 && (
+                    <span className="text-muted-foreground"> · {memory.totalCombosCriados} combos criados · Margem média {memory.margemMedia.toFixed(0)}%</span>
+                  )}
+                </p>
+              </div>
+            )}
               const Icon = STRATEGY_ICONS[s.id] || Target;
               return (
                 <button
