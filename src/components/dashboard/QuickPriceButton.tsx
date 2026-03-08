@@ -1,4 +1,4 @@
-import { ShoppingCart, Package, Check } from "lucide-react";
+import { RefreshCw, Package, Check, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface QuickPriceButtonProps {
@@ -20,49 +20,83 @@ export function QuickPriceButton({
     <button
       onClick={onClick}
       className={cn(
-        "w-full group relative overflow-hidden rounded-xl p-4 sm:p-5 text-left transition-all duration-300",
-        "active:scale-[0.97] hover:shadow-lg",
+        "w-full group relative rounded-xl border transition-all duration-200",
+        "active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50",
+        "p-3.5 sm:p-4",
         hasUpdates
-          ? "bg-success text-success-foreground hover:brightness-110"
-          : "bg-success text-success-foreground hover:brightness-110"
+          ? "bg-success/10 border-success/20 hover:bg-success/15"
+          : "bg-card border-border hover:border-primary/40 hover:bg-primary/5 shadow-card hover:shadow-card-hover"
       )}
     >
-      <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-      <div className="relative flex items-start gap-3 sm:gap-4">
-        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-          <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6" />
+      <div className="flex items-center gap-3">
+        {/* Icon */}
+        <div
+          className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+            hasUpdates
+              ? "bg-success/15 text-success"
+              : "bg-primary/10 text-primary"
+          )}
+        >
+          {hasUpdates ? (
+            <Check className="w-5 h-5" />
+          ) : (
+            <RefreshCw className="w-5 h-5 group-hover:rotate-45 transition-transform duration-300" />
+          )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-0.5">
-            <h3 className="font-display font-bold text-sm sm:text-base">
-              Atualizar Preços
+        {/* Text */}
+        <div className="flex-1 min-w-0 text-left">
+          <div className="flex items-center gap-2">
+            <h3
+              className={cn(
+                "font-semibold text-sm",
+                hasUpdates ? "text-success" : "text-foreground"
+              )}
+            >
+              {hasUpdates ? "Preços atualizados" : "Atualizar Preços"}
             </h3>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-semibold bg-white/20">
-              <Package className="w-3 h-3" />
+            <span
+              className={cn(
+                "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-medium",
+                hasUpdates
+                  ? "bg-success/10 text-success"
+                  : "bg-muted text-muted-foreground"
+              )}
+            >
+              <Package className="w-2.5 h-2.5" />
               {ingredientsCount}
             </span>
           </div>
 
-          {hasUpdates ? (
-            <p className="text-xs sm:text-sm opacity-90 font-medium">
-              <span className="inline-flex items-center gap-1">
-                <Check className="w-3.5 h-3.5" />
+          <p
+            className={cn(
+              "text-xs mt-0.5 leading-snug",
+              hasUpdates ? "text-success/80" : "text-muted-foreground"
+            )}
+          >
+            {hasUpdates ? (
+              <>
                 {updatedCount} insumo{updatedCount > 1 ? "s" : ""} atualizado{updatedCount > 1 ? "s" : ""}
-              </span>
-              {recipesAffectedCount > 0 && (
-                <span className="opacity-75">
-                  {" "}· {recipesAffectedCount} ficha{recipesAffectedCount > 1 ? "s" : ""} recalculada{recipesAffectedCount > 1 ? "s" : ""}
-                </span>
-              )}
-            </p>
-          ) : (
-            <p className="text-xs sm:text-sm opacity-80">
-              Mantenha seus custos em dia e não perca dinheiro
-            </p>
-          )}
+                {recipesAffectedCount > 0 && (
+                  <span className="opacity-70">
+                    {" · "}{recipesAffectedCount} ficha{recipesAffectedCount > 1 ? "s" : ""} recalculada{recipesAffectedCount > 1 ? "s" : ""}
+                  </span>
+                )}
+              </>
+            ) : (
+              "Mantenha seus custos em dia"
+            )}
+          </p>
         </div>
+
+        {/* Arrow */}
+        <ChevronRight
+          className={cn(
+            "w-4 h-4 flex-shrink-0 transition-transform group-hover:translate-x-0.5",
+            hasUpdates ? "text-success/60" : "text-muted-foreground/50"
+          )}
+        />
       </div>
     </button>
   );
