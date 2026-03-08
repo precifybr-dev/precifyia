@@ -49,6 +49,7 @@ import { SearchAndFilter, BEVERAGE_CATEGORIES } from "@/components/ui/SearchAndF
 import { normalizeText } from "@/lib/utils";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { useDataProtection } from "@/hooks/useDataProtection";
+import BeveragePricingPanel from "@/components/beverages/BeveragePricingPanel";
 
 type Beverage = {
   id: string;
