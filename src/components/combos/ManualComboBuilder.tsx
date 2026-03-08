@@ -168,6 +168,7 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                     </p>
                     {filteredItems.filter(i => i.type === "recipe").map(item => {
                       const isAdded = selectedItems.some(s => s.id === item.id);
+                      const frequent = isFrequentItem(item.name);
                       return (
                         <button
                           key={item.id}
@@ -178,7 +179,10 @@ export function ManualComboBuilder({ recipes, beverages, onSaved }: ManualComboB
                           )}
                         >
                           <div className="flex-1 min-w-0">
-                            <span className="text-sm font-medium text-foreground block truncate">{item.name}</span>
+                            <span className="text-sm font-medium text-foreground block truncate">
+                              {item.name}
+                              {frequent && <span className="ml-1.5 text-[9px] text-primary">⭐ frequente</span>}
+                            </span>
                             <span className="text-[11px] text-muted-foreground">
                               Custo: {formatCurrency(item.cost)} · Venda: {formatCurrency(item.price)}
                             </span>
