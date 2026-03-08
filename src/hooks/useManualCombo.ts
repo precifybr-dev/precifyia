@@ -1,0 +1,297 @@
+import { useState, useMemo, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useStore } from "@/contexts/StoreContext";
+
+export interface ManualComboItem {
+  id: string;
+  name: string;
+  type: "recipe" | "beverage";
+  price: number;        // selling price
+  cost: number;         // total cost
+  quantity: number;
+  category?: string;
+  margin: number;       // individual margin %
+  ingredients?: string[];
+}
+
+export interface ComboStrategy {
+  id: string;
+  label: string;
+  description: string;
+  discountFactor: number;   // multiplier for suggested price
+  marginFloor: number;      // minimum margin % for this strategy
+}
+
+export interface ComboAlert {
+  type: "danger" | "warning" | "info";
+  message: string;
+}
+
+export interface ComboAnalysis {
+  baitItem: ManualComboItem | null;
+  profitDriver: ManualComboItem | null;
+  costLeader: ManualComboItem | null;
+  isBalanced: boolean;
+  alerts: ComboAlert[];
+}
+
+export interface ManualComboResult {
+  items: ManualComboItem[];
+  totalAvulso: number;
+  totalCost: number;
+  minPriceNoLoss: number;
+  safePriceSuggestion: number;
+  aggressivePriceSuggestion: number;
+  clientSavings: number;
+  clientSavingsPercent: number;
+  estimatedProfit: number;
+  estimatedMargin: number;
+  analysis: ComboAnalysis;
+}
+
+export interface GeneratedComboDetails {
+  name: string;
+  description: string;
+  ingredientsDescription: string;
+}
+
+const STRATEGIES: ComboStrategy[] = [
+  { id: "ticket_medio", label: "Aumentar ticket médio", description: "Desconto menor, margem melhor. Foco em pedidos maiores.", discountFactor: 0.90, marginFloor: 25 },
+  { id: "percepcao_vantagem", label: "Criar percepção de vantagem", description: "Desconto mais visível, economia clara para o cliente.", discountFactor: 0.82, marginFloor: 18 },
+  { id: "dias_fracos", label: "Vender mais em dias fracos", description: "Preço mais agressivo, mas sem prejuízo.", discountFactor: 0.75, marginFloor: 12 },
+  { id: "combo_familia", label: "Criar combo família", description: "Foco em volume e conveniência.", discountFactor: 0.80, marginFloor: 15 },
+  { id: "item_isca", label: "Atrair com item isca", description: "Um item sai barato para atrair, os outros sustentam.", discountFactor: 0.78, marginFloor: 15 },
+  { id: "promo_controlada", label: "Promoção controlada", description: "Desconto planejado com margem garantida.", discountFactor: 0.85, marginFloor: 20 },
+];
+
+export function useManualCombo() {
+  const [selectedItems, setSelectedItems] = useState<ManualComboItem[]>([]);
+  const [selectedStrategy, setSelectedStrategy] = useState<string | null>(null);
+  const [isGeneratingDetails, setIsGeneratingDetails] = useState(false);
+  const [generatedDetails, setGeneratedDetails] = useState<GeneratedComboDetails | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const { toast } = useToast();
+  const { activeStore } = useStore();
+
+  const strategy = useMemo(() => STRATEGIES.find(s => s.id === selectedStrategy), [selectedStrategy]);
+
+  const addItem = useCallback((item: Omit<ManualComboItem, "quantity" | "margin" | "ingredients">, ingredients?: string[]) => {
+    setSelectedItems(prev => {
+      const exists = prev.find(i => i.id === item.id);
+      if (exists) {
+        return prev.map(i => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      const margin = item.price > 0 ? ((item.price - item.cost) / item.price) * 100 : 0;
+      return [...prev, { ...item, quantity: 1, margin, ingredients }];
+    });
+    setGeneratedDetails(null);
+  }, []);
+
+  const removeItem = useCallback((id: string) => {
+    setSelectedItems(prev => prev.filter(i => i.id !== id));
+    setGeneratedDetails(null);
+  }, []);
+
+  const updateQuantity = useCallback((id: string, qty: number) => {
+    if (qty < 1) return;
+    setSelectedItems(prev => prev.map(i => i.id === id ? { ...i, quantity: qty } : i));
+    setGeneratedDetails(null);
+  }, []);
+
+  const result = useMemo<ManualComboResult | null>(() => {
+    if (selectedItems.length === 0) return null;
+
+    const totalAvulso = selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+    const totalCost = selectedItems.reduce((sum, i) => sum + i.cost * i.quantity, 0);
+    const minPriceNoLoss = totalCost;
+
+    const discountFactor = strategy?.discountFactor ?? 0.85;
+    const marginFloor = strategy?.marginFloor ?? 20;
+
+    // Safe: good margin
+    const safeFromMargin = totalCost / (1 - marginFloor / 100);
+    const safeFromDiscount = totalAvulso * discountFactor;
+    const safePriceSuggestion = Math.max(safeFromMargin, Math.min(safeFromDiscount, totalAvulso * 0.95));
+
+    // Aggressive: lower margin but still positive
+    const aggressiveMarginFloor = Math.max(marginFloor - 8, 8);
+    const aggressiveFromMargin = totalCost / (1 - aggressiveMarginFloor / 100);
+    const aggressiveFromDiscount = totalAvulso * (discountFactor - 0.08);
+    const aggressivePriceSuggestion = Math.max(aggressiveFromMargin, Math.min(aggressiveFromDiscount, totalAvulso * 0.85));
+
+    const clientSavings = totalAvulso - safePriceSuggestion;
+    const clientSavingsPercent = totalAvulso > 0 ? (clientSavings / totalAvulso) * 100 : 0;
+    const estimatedProfit = safePriceSuggestion - totalCost;
+    const estimatedMargin = safePriceSuggestion > 0 ? (estimatedProfit / safePriceSuggestion) * 100 : 0;
+
+    // Strategic analysis
+    const sorted = [...selectedItems].sort((a, b) => a.margin - b.margin);
+    const baitItem = sorted[0] || null;
+    const profitDriver = sorted[sorted.length - 1] || null;
+    const costLeader = [...selectedItems].sort((a, b) => (b.cost * b.quantity) - (a.cost * a.quantity))[0] || null;
+
+    const alerts: ComboAlert[] = [];
+
+    if (estimatedMargin < 10) {
+      alerts.push({ type: "danger", message: "Margem muito baixa! O combo está perto do prejuízo." });
+    } else if (estimatedMargin < 18) {
+      alerts.push({ type: "warning", message: "Margem abaixo do ideal. Considere ajustar os itens ou o preço." });
+    }
+
+    if (safePriceSuggestion <= totalCost * 1.05) {
+      alerts.push({ type: "danger", message: "Preço final muito próximo do custo. Risco de prejuízo com qualquer variação." });
+    }
+
+    const allDiscounted = selectedItems.every(i => i.margin < 20);
+    if (allDiscounted && selectedItems.length > 1) {
+      alerts.push({ type: "warning", message: "Todos os itens têm margem baixa. Falta um item sustentando o lucro." });
+    }
+
+    if (clientSavingsPercent < 5 && selectedItems.length > 1) {
+      alerts.push({ type: "info", message: "Percepção de economia fraca. O cliente pode não ver vantagem no combo." });
+    }
+
+    if (clientSavingsPercent > 35) {
+      alerts.push({ type: "warning", message: "Desconto excessivo! Verifique se a margem está realmente segura." });
+    }
+
+    const isBalanced = estimatedMargin >= 15 && clientSavingsPercent >= 8 && clientSavingsPercent <= 30;
+
+    return {
+      items: selectedItems,
+      totalAvulso: round(totalAvulso),
+      totalCost: round(totalCost),
+      minPriceNoLoss: round(minPriceNoLoss),
+      safePriceSuggestion: round(safePriceSuggestion),
+      aggressivePriceSuggestion: round(aggressivePriceSuggestion),
+      clientSavings: round(clientSavings),
+      clientSavingsPercent: round(clientSavingsPercent),
+      estimatedProfit: round(estimatedProfit),
+      estimatedMargin: round(estimatedMargin),
+      analysis: { baitItem, profitDriver, costLeader, isBalanced, alerts },
+    };
+  }, [selectedItems, strategy]);
+
+  const generateDetails = useCallback(async () => {
+    if (!result || selectedItems.length === 0 || !selectedStrategy) return;
+    setIsGeneratingDetails(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-combo-details", {
+        body: {
+          items: selectedItems.map(i => ({
+            name: i.name,
+            type: i.type,
+            quantity: i.quantity,
+            ingredients: i.ingredients || [],
+          })),
+          strategy: selectedStrategy,
+          totalAvulso: result.totalAvulso,
+          suggestedPrice: result.safePriceSuggestion,
+          savings: result.clientSavings,
+        },
+      });
+
+      if (error || data?.error) {
+        toast({ title: "Erro", description: data?.error || "Erro ao gerar nome e descrição.", variant: "destructive" });
+        return;
+      }
+
+      setGeneratedDetails({
+        name: data.name,
+        description: data.description,
+        ingredientsDescription: data.ingredientsDescription,
+      });
+    } catch {
+      toast({ title: "Erro", description: "Erro inesperado ao gerar detalhes.", variant: "destructive" });
+    } finally {
+      setIsGeneratingDetails(false);
+    }
+  }, [result, selectedItems, selectedStrategy, toast]);
+
+  const saveCombo = useCallback(async () => {
+    if (!result || !generatedDetails) return false;
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Não autenticado");
+
+      const comboPrice = result.safePriceSuggestion;
+      const profit = comboPrice - result.totalCost;
+      const margin = comboPrice > 0 ? (profit / comboPrice) * 100 : 0;
+
+      const { data: savedCombo, error: saveError } = await supabase
+        .from("combos")
+        .insert({
+          user_id: user.id,
+          store_id: activeStore?.id || null,
+          name: generatedDetails.name,
+          description: generatedDetails.description,
+          objective: selectedStrategy || "manual",
+          status: "draft",
+          individual_total_price: result.totalAvulso,
+          combo_price: round(comboPrice),
+          combo_price_ifood: 0,
+          ingredients_description: generatedDetails.ingredientsDescription,
+          total_cost: result.totalCost,
+          estimated_profit: round(profit),
+          margin_percent: round(margin),
+          strategy_explanation: `Combo manual com estratégia "${STRATEGIES.find(s => s.id === selectedStrategy)?.label}". Economia de ${result.clientSavingsPercent.toFixed(0)}% para o cliente.`,
+        })
+        .select("id")
+        .single();
+
+      if (saveError) throw saveError;
+
+      // Save items
+      const itemsToInsert = selectedItems.map(item => ({
+        combo_id: savedCombo.id,
+        item_type: item.type,
+        item_name: `${item.quantity}x ${item.name}`,
+        individual_price: round(item.price * item.quantity),
+        cost: round(item.cost * item.quantity),
+        role: item.margin >= 25 ? "main" : item.type === "beverage" ? "beverage" : "accompaniment",
+        is_bait: item === result.analysis.baitItem,
+      }));
+
+      await supabase.from("combo_items").insert(itemsToInsert);
+
+      toast({ title: "Combo salvo! ✅", description: `"${generatedDetails.name}" foi criado com sucesso.` });
+      return true;
+    } catch (err) {
+      console.error("Error saving manual combo:", err);
+      toast({ title: "Erro", description: "Erro ao salvar combo.", variant: "destructive" });
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [result, generatedDetails, selectedItems, selectedStrategy, activeStore?.id, toast]);
+
+  const reset = useCallback(() => {
+    setSelectedItems([]);
+    setSelectedStrategy(null);
+    setGeneratedDetails(null);
+  }, []);
+
+  return {
+    selectedItems,
+    selectedStrategy,
+    strategy,
+    strategies: STRATEGIES,
+    result,
+    generatedDetails,
+    isGeneratingDetails,
+    isSaving,
+    addItem,
+    removeItem,
+    updateQuantity,
+    setSelectedStrategy,
+    generateDetails,
+    saveCombo,
+    reset,
+  };
+}
+
+function round(n: number) {
+  return Math.round(n * 100) / 100;
+}
