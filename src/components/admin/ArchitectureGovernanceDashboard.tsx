@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   useArchitectureGovernance, CATEGORY_LABELS, STATUS_LABELS, CRITICALITY_LABELS,
   type ArchitecturePrompt, type RiskLevel,
