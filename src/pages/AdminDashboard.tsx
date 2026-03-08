@@ -24,6 +24,7 @@ import { ControllershipDashboard } from "@/components/admin/ControllershipDashbo
 import { StrategicPricingDashboard } from "@/components/admin/StrategicPricingDashboard";
 import { ArchitectureGovernanceDashboard } from "@/components/admin/ArchitectureGovernanceDashboard";
 import { CloudCostsDashboard } from "@/components/admin/CloudCostsDashboard";
+import { KnowledgeBaseDashboard } from "@/components/admin/KnowledgeBaseDashboard";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -74,6 +75,7 @@ import {
   GraduationCap,
   MousePointerClick,
   FileCode2,
+  BookOpen,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -400,6 +402,10 @@ export default function AdminDashboard() {
                 <TabsTrigger value="cloud-costs" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                   <Server className="h-4 w-4" />
                   Custos
+                </TabsTrigger>
+                <TabsTrigger value="knowledge" className="gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <BookOpen className="h-4 w-4" />
+                  Base de Conhecimento
                 </TabsTrigger>
               </TabsList>
 
@@ -738,6 +744,10 @@ export default function AdminDashboard() {
 
               <TabsContent value="cloud-costs">
                 <CloudCostsDashboard />
+              </TabsContent>
+
+              <TabsContent value="knowledge">
+                <KnowledgeBaseDashboard />
               </TabsContent>
             </Tabs>
           </div>
