@@ -508,11 +508,13 @@ function EmptyHint() {
 // ── Main component ───────────────────────────────────────────────────────
 export default function MarginConsultant() {
   const [expanded, setExpanded] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [simState, setSimState] = useState<SimState>("idle");
   const [result, setResult] = useState<SimResult | null>(null);
   const [previousResult, setPreviousResult] = useState<SimResult | null>(null);
   const [lastSaved, setLastSaved] = useState<SimResult | null>(null);
   const [recipes, setRecipes] = useState<RecipeOption[]>([]);
+  const [prefillPayload, setPrefillPayload] = useState<DrMargemTestPayload | null>(null);
   const isMobile = useIsMobile();
   const { activeStore } = useStore();
 
@@ -539,6 +541,30 @@ export default function MarginConsultant() {
 
     fetchRecipes();
   }, [activeStore?.id]);
+
+  useEffect(() => {
+    const handleDrMargemTest = (e: Event) => {
+      const { productName, price, cost } = (e as CustomEvent).detail ?? {};
+
+      setPrefillPayload({
+        productName: typeof productName === "string" ? productName : "",
+        price: Number(price) || 0,
+        cost: Number(cost) || 0,
+        nonce: Date.now(),
+      });
+
+      setSimState("idle");
+      setResult(null);
+      setExpanded(true);
+
+      if (isMobile) {
+        setDrawerOpen(true);
+      }
+    };
+
+    window.addEventListener("dr-margem-test", handleDrMargemTest);
+    return () => window.removeEventListener("dr-margem-test", handleDrMargemTest);
+  }, [isMobile]);
 
   const handleFormSubmit = useCallback(
     (formData: SimFormData) => {
