@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Stethoscope } from "lucide-react";
 import {
   Calculator,
   TrendingUp,
