@@ -119,7 +119,7 @@ export function calculate(
 
   const profit = price - totalCost;
   const margin = price > 0 ? (profit / price) * 100 : 0;
-  const cmv = price > 0 ? (productCost / price) * 100 : 0;
+  const cmv = price > 0 ? ((productCost + packagingCost) / price) * 100 : 0;
 
   const cls = classify(margin);
 
