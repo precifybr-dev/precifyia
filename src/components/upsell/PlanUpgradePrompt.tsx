@@ -40,9 +40,9 @@ const fallbackPlans: PricingPlan[] = [
     real_price_monthly: 0, anchored_price_monthly: 0,
     real_price_yearly: 0, anchored_price_yearly: 0, yearly_discount_percent: 0,
     features: [
-      { text: "Até 2 fichas técnicas", included: true },
-      { text: "Até 35 insumos", included: true },
-      { text: "Dashboard básico", included: true },
+      { text: "Até 10 fichas técnicas", included: true },
+      { text: "Até 80 insumos", included: true },
+      { text: "Dashboard Avançado + DRE", included: true },
       { text: "1 análise de cardápio", included: true },
     ],
     is_popular: false, is_active: true, sort_order: 0,
@@ -52,8 +52,8 @@ const fallbackPlans: PricingPlan[] = [
     real_price_monthly: 97, anchored_price_monthly: 147,
     real_price_yearly: 932, anchored_price_yearly: 1411, yearly_discount_percent: 20,
     features: [
-      { text: "Até 8 fichas técnicas", included: true },
-      { text: "Até 100 insumos", included: true },
+      { text: "Até 40 fichas técnicas", included: true },
+      { text: "Até 200 insumos", included: true },
       { text: "5 análises de cardápio/mês", included: true },
       { text: "Sub-receitas e exportação", included: true },
     ],
@@ -65,7 +65,7 @@ const fallbackPlans: PricingPlan[] = [
     real_price_yearly: 1411, anchored_price_yearly: 2851, yearly_discount_percent: 20,
     features: [
       { text: "Fichas técnicas ilimitadas", included: true },
-      { text: "10 análises de cardápio/mês", included: true },
+      { text: "15 análises de cardápio/mês", included: true },
       { text: "Até 3 lojas", included: true },
       { text: "Colaboradores + WhatsApp", included: true },
     ],
