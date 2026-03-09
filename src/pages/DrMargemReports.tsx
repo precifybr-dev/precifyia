@@ -131,10 +131,24 @@ export default function DrMargemReports() {
   const { toast } = useToast();
 
   useEffect(() => {
-    fetchReports();
+    initPage();
   }, [activeStore?.id]);
 
-  const fetchReports = async () => {
+  const fetchReportsData = async (userId: string) => {
+    let query = supabase
+      .from("dr_margem_reports")
+      .select("*")
+      .eq("user_id", userId)
+      .order("generated_at", { ascending: false })
+      .limit(12);
+
+    if (activeStore?.id) query = query.eq("store_id", activeStore.id);
+
+    const { data } = await query;
+    return data || [];
+  };
+
+  const initPage = async () => {
     setLoading(true);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.user) { setLoading(false); navigate("/login"); return; }
@@ -144,31 +158,36 @@ export default function DrMargemReports() {
       .from("profiles").select("*").eq("user_id", session.user.id).maybeSingle();
     setProfile(profileData);
 
-    let query = supabase
-      .from("dr_margem_reports")
-      .select("*")
-      .eq("user_id", session.user.id)
-      .order("generated_at", { ascending: false })
-      .limit(12);
+    const data = await fetchReportsData(session.user.id);
 
-    if (activeStore?.id) query = query.eq("store_id", activeStore.id);
+    const isStale = data.length === 0 ||
+      (Date.now() - new Date(data[0].generated_at).getTime()) > ONE_HOUR;
 
-    const { data } = await query;
-    if (data && data.length > 0) {
-      const mapped = data.map((r: any) => ({
-        ...r,
-        summary: r.summary as ReportSummary,
-        critical_products: r.critical_products as ProductDetail[],
-        improvement_opportunities: r.improvement_opportunities as ProductDetail[],
-        strong_products: r.strong_products as ProductDetail[],
-      }));
+    if (isStale) {
+      setLoading(false);
+      setGenerating(true);
+      try {
+        await supabase.functions.invoke("generate-weekly-report", {
+          body: { store_id: activeStore?.id || null },
+        });
+        const freshData = await fetchReportsData(session.user.id);
+        const mapped = mapReports(freshData);
+        setReports(mapped);
+        setSelectedReport(mapped[0] || null);
+      } catch {
+        // Fallback: show existing data
+        const mapped = mapReports(data);
+        setReports(mapped);
+        setSelectedReport(mapped[0] || null);
+      } finally {
+        setGenerating(false);
+      }
+    } else {
+      const mapped = mapReports(data);
       setReports(mapped);
       setSelectedReport(mapped[0]);
-    } else {
-      setReports([]);
-      setSelectedReport(null);
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleGenerate = async () => {
