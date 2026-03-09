@@ -131,7 +131,8 @@ export function calculate(
 
   // ── Price suggestions for target margins ──
   const costWithoutIfood = productCost + packagingCost + discount + adCost + otherCosts;
-  const priceSuggestions = getSuggestedPrices(costWithoutIfood, ifoodFeePercent);
+  const allSuggestions = getSuggestedPrices(costWithoutIfood, ifoodFeePercent);
+  const priceSuggestions = allSuggestions.filter(s => s.price > price);
 
   // ── Scenario comparison ──
   let comparison: ScenarioComparison | null = null;
