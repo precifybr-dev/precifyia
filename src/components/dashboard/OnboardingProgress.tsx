@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { capitalizeWords } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { 
   Building2, 
@@ -84,7 +85,7 @@ export default function OnboardingProgress({ profile, userId, storeId, storeName
       icon: Building2,
       title: "Configurar Negócio",
       description: getBusinessStatus() === "completed" 
-        ? `${storeName || profile?.business_name} configurado` 
+        ? `${capitalizeWords(storeName || profile?.business_name || "")} configurado` 
         : "Configure os dados do seu negócio",
       status: getBusinessStatus(),
       path: "/business",

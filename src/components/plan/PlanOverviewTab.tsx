@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { capitalizeWords } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -367,7 +368,7 @@ export function PlanOverviewTab() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground truncate">{store.name}</span>
+                            <span className="text-sm font-medium text-foreground truncate">{capitalizeWords(store.name)}</span>
                             {isPrimary && (
                               <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Principal</Badge>
                             )}
@@ -387,7 +388,7 @@ export function PlanOverviewTab() {
                             size="sm"
                             className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
                             onClick={() => {
-                              setStoreToDelete({ id: store.id, name: store.name });
+                              setStoreToDelete({ id: store.id, name: capitalizeWords(store.name) });
                               setDeleteConfirmText("");
                             }}
                           >

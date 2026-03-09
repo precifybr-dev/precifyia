@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Store } from "@/contexts/StoreContext";
 import { Loader2, Store as StoreIcon, ChefHat } from "lucide-react";
-import { normalizeText } from "@/lib/utils";
+import { normalizeText, capitalizeWords } from "@/lib/utils";
 
 type CopyMode = "recipes" | "sub-recipes";
 
@@ -460,7 +460,7 @@ export function CopyRecipesFromStoreModal({
     }
   };
 
-  const activeStoreName = stores.find((s) => s.id === activeStoreId)?.name || "loja atual";
+  const activeStoreName = capitalizeWords(stores.find((s) => s.id === activeStoreId)?.name || "loja atual");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -485,7 +485,7 @@ export function CopyRecipesFromStoreModal({
               <SelectContent>
                 {otherStores.map((store) => (
                   <SelectItem key={store.id} value={store.id}>
-                    {store.name}
+                    {capitalizeWords(store.name)}
                   </SelectItem>
                 ))}
               </SelectContent>
