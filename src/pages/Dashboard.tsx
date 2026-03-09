@@ -379,6 +379,11 @@ export default function Dashboard() {
             ))}
           </div>
 
+          {/* Consultor de Margem */}
+          <div className="mb-6">
+            <MarginConsultant />
+          </div>
+
           {/* Quick Actions - only show when onboarding is NOT complete */}
           {!isOnboardingComplete && (
             <div className="bg-card rounded-xl border border-border p-6 shadow-card">
