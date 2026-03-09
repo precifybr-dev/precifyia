@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { capitalizeWords } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { 
   Building2, 

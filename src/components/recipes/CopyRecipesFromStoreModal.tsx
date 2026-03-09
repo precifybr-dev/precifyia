@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Store } from "@/contexts/StoreContext";
 import { Loader2, Store as StoreIcon, ChefHat } from "lucide-react";
-import { normalizeText } from "@/lib/utils";
+import { normalizeText, capitalizeWords } from "@/lib/utils";
 
 type CopyMode = "recipes" | "sub-recipes";
 

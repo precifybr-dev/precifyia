@@ -19,6 +19,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useStore } from "@/contexts/StoreContext";
+import { capitalizeWords } from "@/lib/utils";
 import { Logo } from "@/components/ui/Logo";
 import { CreateStoreModal } from "@/components/store/CreateStoreModal";
 import { Badge } from "@/components/ui/badge";
