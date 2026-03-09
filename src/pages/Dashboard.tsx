@@ -382,7 +382,7 @@ export default function Dashboard() {
           </div>
 
           {/* Consultor de Margem */}
-          <div className="mb-6">
+          <div className="mb-6" id="margin-consultant">
             <MarginConsultant />
           </div>
 
