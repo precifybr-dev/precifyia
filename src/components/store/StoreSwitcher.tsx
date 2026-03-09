@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useStore } from "@/contexts/StoreContext";
 import { CreateStoreModal } from "./CreateStoreModal";
-import { cn } from "@/lib/utils";
+import { cn, capitalizeWords } from "@/lib/utils";
 
 export function StoreSwitcher() {
   const navigate = useNavigate();
