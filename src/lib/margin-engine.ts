@@ -177,43 +177,43 @@ function getRecommendation(cls: MarginClass): { recommendation: string; suggesti
   switch (cls) {
     case "loss":
       return {
-        recommendation: "Você pode estar pagando para vender esse produto.",
+        recommendation: "Você pode estar pagando para vender esse item.",
         suggestions: [
-          "Aumente o preço de venda",
-          "Reduza o custo do produto",
-          "Reveja o desconto aplicado",
+          "Aumentar preço",
+          "Revisar custo",
+          "Reduzir desconto",
         ],
       };
     case "critical":
       return {
-        recommendation: "A margem está muito próxima do prejuízo.",
+        recommendation: "Esse item está muito próximo do prejuízo.",
         suggestions: [
-          "Considere um pequeno aumento de preço",
-          "Revise o custo dos insumos",
+          "Subir preço levemente",
+          "Revisar custos",
         ],
       };
     case "tight":
       return {
-        recommendation: "O item ainda dá lucro, mas com margem pequena.",
+        recommendation: "O item ainda dá lucro, mas sobra pouco no final.",
         suggestions: [
-          "Teste um preço levemente maior",
-          "Use este produto em um combo para diluir custo",
+          "Testar preço maior",
+          "Usar em combo",
         ],
       };
     case "ok":
       return {
-        recommendation: "Margem equilibrada para operação.",
+        recommendation: "A margem está equilibrada para operação.",
         suggestions: [
-          "Monitore variações de custo",
-          "Avalie uma promoção leve sem comprometer margem",
+          "Avaliar promoção leve",
+          "Monitorar custos",
         ],
       };
     case "healthy":
       return {
         recommendation: "Boa margem para operação.",
         suggestions: [
-          "Use em promoção controlada para atrair clientes",
-          "Considere destaque no cardápio",
+          "Usar em promoção controlada",
+          "Destacar no cardápio",
         ],
       };
   }
