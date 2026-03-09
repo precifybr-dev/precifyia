@@ -59,6 +59,7 @@ import MenuMirror from "./pages/MenuMirror";
 import CMVGlobal from "./pages/CMVGlobal";
 import MyPlan from "./pages/MyPlan";
 import Packagings from "./pages/Packagings";
+import DrMargemReports from "./pages/DrMargemReports";
 
 // Admin pages (master/collaborators)
 import AdminDashboard from "./pages/AdminDashboard";
