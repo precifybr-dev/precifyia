@@ -224,20 +224,20 @@ function getAlerts(form: SimFormData, price: number, cmv: number): ConditionalAl
   const alerts: ConditionalAlert[] = [];
   if (price <= 0) return alerts;
 
-  if (form.ifoodFeePercent > 25) {
-    alerts.push({ message: `Taxa iFood de ${form.ifoodFeePercent.toFixed(1)}% está acima de 25%. Revise o plano com a plataforma.`, type: "danger" });
+  if (form.ifoodFeePercent >= 25) {
+    alerts.push({ message: "A taxa aplicada está alta e impacta fortemente o lucro.", type: "danger" });
   }
-  if (form.discount > price * 0.10) {
-    alerts.push({ message: `Desconto acima de 10% do preço de venda (${((form.discount / price) * 100).toFixed(1)}%).`, type: "warning" });
+  if (form.packagingCost >= price * 0.08) {
+    alerts.push({ message: "O custo de embalagem está consumindo parte relevante da venda.", type: "warning" });
   }
-  if (form.packagingCost > price * 0.08) {
-    alerts.push({ message: `Embalagem acima de 8% do preço (${((form.packagingCost / price) * 100).toFixed(1)}%).`, type: "warning" });
+  if (form.discount >= price * 0.10) {
+    alerts.push({ message: "O desconto deste cenário está alto e reduz sua margem.", type: "warning" });
   }
-  if (form.adCost > price * 0.06) {
-    alerts.push({ message: `Custo de anúncio acima de 6% do preço (${((form.adCost / price) * 100).toFixed(1)}%).`, type: "warning" });
+  if (form.adCost >= price * 0.06) {
+    alerts.push({ message: "O custo de anúncio está pressionando o resultado.", type: "warning" });
   }
-  if (cmv > 40) {
-    alerts.push({ message: `CMV de ${cmv.toFixed(1)}% está acima de 40%. Revise o custo dos insumos.`, type: "danger" });
+  if (cmv >= 40) {
+    alerts.push({ message: "O custo base do produto já está alto antes das taxas.", type: "danger" });
   }
 
   return alerts;
