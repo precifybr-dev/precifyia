@@ -59,6 +59,13 @@ interface RecipeOption {
   servings: number;
 }
 
+interface DrMargemTestPayload {
+  productName: string;
+  price: number;
+  cost: number;
+  nonce: number;
+}
+
 // ── Visual config per classification ─────────────────────────────────────
 const classificationConfig: Record<
   MarginClass,
