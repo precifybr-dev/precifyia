@@ -1,62 +1,65 @@
 
 
-# Validacao Matematica e Guards Anti-Erro na Importacao iFood
+## Plan: Dr. Margem Alerts with Dismiss/Ignore System
 
-## Contexto
+### What exists
+- `src/lib/dr-margem-engine.ts` — rule-based engine generating recommendations per recipe (loss, critical, tight, CMV high, healthy)
+- `src/components/dashboard/DrMargemAdvisor.tsx` — dashboard widget showing top 3 recommendations (expand/collapse)
+- No persistence of alert state (ignored/resolved) — all computed on-the-fly
 
-O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
+### What to build
 
-O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
+**1. Alert state persistence via localStorage**
+- Key: `precify_dr_margem_ignored_{storeId}` storing `Record<string, { ignoredAt: string, productName: string, type: string, conditionHash: string }>`
+- `conditionHash` = simple hash of `productName + type + priceRange` so if the product's price/cost changes significantly, the alert can resurface
+- No database table needed — this is user-preference UX state
 
----
+**2. Update `src/lib/dr-margem-engine.ts`**
+- Add `id` field to `DrMargemRecommendation` (deterministic: `${productName}-${type}`)
+- Add `details` object with `price`, `cmv`, `estimatedProfit`, `margin` for display
+- Add `conditionHash` for ignore tracking
+- Add helper `generateAlertId(rec)` and `generateConditionHash(rec)`
+- Export new `filterIgnoredRecommendations(recs, ignoredMap)` function
 
-## O que sera implementado
+**3. Rewrite `src/components/dashboard/DrMargemAdvisor.tsx`**
+- Each recommendation card gets 3 action buttons (stacked on mobile):
+  - "Testar solução" → navigates to MarginConsultant or recipe page
+  - "Ver ficha técnica" → navigates to `/app/recipes`
+  - "Ignorar" → adds to localStorage ignored map, removes from view with animation
+- Show financial details in each card (price, CMV%, estimated profit)
+- Filter out ignored alerts before rendering
+- "Ver todas recomendações" button when `hasMore`
+- Show ignored count with "Mostrar ignorados" toggle to review/restore
+- Pass `maxVisible` as unlimited when "Ver todas" is clicked
 
-### 1. Camada de Validacao no Processador
+**4. Update `src/pages/Dashboard.tsx`**
+- No structural changes needed (DrMargemAdvisor already placed)
 
-Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
+### Technical details
 
-- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
-- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
-- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
-- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
-- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
+**Alert ID generation:**
+```typescript
+// Deterministic ID from product + type
+const alertId = `${recipe.name.toLowerCase().replace(/\s+/g, '-')}-${type}`;
+```
 
-Cada validacao retorna `{ level: "error" | "warning", message: string }`.
+**Condition hash (for re-alerting after changes):**
+```typescript
+// Round price to nearest 1 to detect meaningful changes
+const hash = `${recipe.name}-${type}-${Math.round(price)}-${Math.round(cost)}`;
+```
 
-A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
+**Ignore logic:**
+- On ignore: store `{ alertId, conditionHash, ignoredAt }` in localStorage
+- On next load: if conditionHash changed (price/cost changed), remove from ignored → alert resurfaces
+- If conditionHash same → stay ignored
 
-### 2. Exibicao de Alertas no Dashboard
+**Action buttons per card (mobile-first, stacked):**
+- "Testar solução" (primary outline) → navigate to simulator
+- "Ver ficha" (ghost) → navigate to recipes
+- "Ignorar" (ghost, muted) → dismiss with confirmation-free click
 
-No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
-
-- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
-- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
-- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
-- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
-
-### 3. Info de Agrupamento no Dashboard
-
-Adicionar um pequeno badge/info no topo do dashboard mostrando:
-- Linhas na planilha: X
-- Pedidos unicos: Y
-- Media de linhas por pedido: X/Y
-
-Isso da confianca ao usuario de que o agrupamento esta correto.
-
----
-
-## Arquivos modificados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
-| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
-
-## O que NAO sera alterado
-
-- Banco de dados (sem migrations)
-- Logica de agrupamento por ID (ja funciona corretamente)
-- Fluxo de autenticacao
-- Nenhuma outra funcionalidade do sistema
+### Files to change
+- **Edit**: `src/lib/dr-margem-engine.ts` — add `id`, `details`, `conditionHash` fields
+- **Edit**: `src/components/dashboard/DrMargemAdvisor.tsx` — full rewrite with ignore system and action buttons
 
