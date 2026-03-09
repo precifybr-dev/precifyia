@@ -145,6 +145,15 @@ function RecommendationCard({
               size="sm"
               className="h-8 text-xs"
               onClick={() => {
+                window.dispatchEvent(
+                  new CustomEvent("dr-margem-test", {
+                    detail: {
+                      productName: rec.productName || rec.title,
+                      price: d.price,
+                      cost: d.totalCost ?? d.price * (d.cmv / 100),
+                    },
+                  })
+                );
                 const el = document.getElementById("margin-consultant");
                 if (el) {
                   el.scrollIntoView({ behavior: "smooth", block: "start" });

@@ -182,6 +182,22 @@ function SimulatorForm({
     setAutoFilled(true);
   };
 
+  // Listen for Dr. Margem "Testar solução" events
+  useEffect(() => {
+    const handleDrMargemTest = (e: Event) => {
+      const { productName, price, cost } = (e as CustomEvent).detail;
+      setForm({
+        ...initialForm,
+        productName: productName || "",
+        sellingPrice: price ? price.toFixed(2).replace(".", ",") : "",
+        productCost: cost ? cost.toFixed(2).replace(".", ",") : "",
+      });
+      setAutoFilled(true);
+    };
+    window.addEventListener("dr-margem-test", handleDrMargemTest);
+    return () => window.removeEventListener("dr-margem-test", handleDrMargemTest);
+  }, []);
+
   const handleCalculate = () => {
     const selling = num(form.sellingPrice);
     if (selling <= 0) return;
