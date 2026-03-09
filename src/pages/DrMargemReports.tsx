@@ -53,6 +53,18 @@ interface FullReport {
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+const ONE_HOUR = 60 * 60 * 1000;
+
+function mapReports(data: any[]): FullReport[] {
+  return data.map((r: any) => ({
+    ...r,
+    summary: r.summary as ReportSummary,
+    critical_products: r.critical_products as ProductDetail[],
+    improvement_opportunities: r.improvement_opportunities as ProductDetail[],
+    strong_products: r.strong_products as ProductDetail[],
+  }));
+}
+
 function ProductCard({
   product,
   variant,
