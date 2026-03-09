@@ -140,17 +140,22 @@ export function calculate(
     const marginDiff = margin - previousResult.margin;
     const priceDiff = price - previousResult.sellingPrice;
     const improved = profit > previousResult.profit;
-    comparison = {
-      profitDiff,
-      marginDiff,
-      priceDiff,
-      improved,
-      message: improved
-        ? "O novo cenário melhora o lucro por venda."
-        : profitDiff === 0
-          ? "Cenários com resultado idêntico."
-          : "O novo cenário reduz sua margem.",
-    };
+    const prevCls = previousResult.classification;
+
+    let message: string;
+    if (profitDiff === 0) {
+      message = "Cenários com resultado idêntico.";
+    } else if (improved && cls !== prevCls) {
+      message = `O produto saiu de ${MARGIN_BANDS[prevCls].label.toLowerCase()} para ${MARGIN_BANDS[cls].label.toLowerCase()}.`;
+    } else if (!improved && cls !== prevCls) {
+      message = "O produto caiu para faixa de risco.";
+    } else if (improved) {
+      message = "O novo cenário melhora o lucro por venda.";
+    } else {
+      message = "O novo cenário reduz sua margem.";
+    }
+
+    comparison = { profitDiff, marginDiff, priceDiff, improved, message };
   }
 
   return {
@@ -177,43 +182,43 @@ function getRecommendation(cls: MarginClass): { recommendation: string; suggesti
   switch (cls) {
     case "loss":
       return {
-        recommendation: "Você pode estar pagando para vender esse produto.",
+        recommendation: "Você pode estar pagando para vender esse item.",
         suggestions: [
-          "Aumente o preço de venda",
-          "Reduza o custo do produto",
-          "Reveja o desconto aplicado",
+          "Aumentar preço",
+          "Revisar custo",
+          "Reduzir desconto",
         ],
       };
     case "critical":
       return {
-        recommendation: "A margem está muito próxima do prejuízo.",
+        recommendation: "Esse item está muito próximo do prejuízo.",
         suggestions: [
-          "Considere um pequeno aumento de preço",
-          "Revise o custo dos insumos",
+          "Subir preço levemente",
+          "Revisar custos",
         ],
       };
     case "tight":
       return {
-        recommendation: "O item ainda dá lucro, mas com margem pequena.",
+        recommendation: "O item ainda dá lucro, mas sobra pouco no final.",
         suggestions: [
-          "Teste um preço levemente maior",
-          "Use este produto em um combo para diluir custo",
+          "Testar preço maior",
+          "Usar em combo",
         ],
       };
     case "ok":
       return {
-        recommendation: "Margem equilibrada para operação.",
+        recommendation: "A margem está equilibrada para operação.",
         suggestions: [
-          "Monitore variações de custo",
-          "Avalie uma promoção leve sem comprometer margem",
+          "Avaliar promoção leve",
+          "Monitorar custos",
         ],
       };
     case "healthy":
       return {
         recommendation: "Boa margem para operação.",
         suggestions: [
-          "Use em promoção controlada para atrair clientes",
-          "Considere destaque no cardápio",
+          "Usar em promoção controlada",
+          "Destacar no cardápio",
         ],
       };
   }
@@ -224,20 +229,20 @@ function getAlerts(form: SimFormData, price: number, cmv: number): ConditionalAl
   const alerts: ConditionalAlert[] = [];
   if (price <= 0) return alerts;
 
-  if (form.ifoodFeePercent > 25) {
-    alerts.push({ message: `Taxa iFood de ${form.ifoodFeePercent.toFixed(1)}% está acima de 25%. Revise o plano com a plataforma.`, type: "danger" });
+  if (form.ifoodFeePercent >= 25) {
+    alerts.push({ message: "A taxa aplicada está alta e impacta fortemente o lucro.", type: "danger" });
   }
-  if (form.discount > price * 0.10) {
-    alerts.push({ message: `Desconto acima de 10% do preço de venda (${((form.discount / price) * 100).toFixed(1)}%).`, type: "warning" });
+  if (form.packagingCost >= price * 0.08) {
+    alerts.push({ message: "O custo de embalagem está consumindo parte relevante da venda.", type: "warning" });
   }
-  if (form.packagingCost > price * 0.08) {
-    alerts.push({ message: `Embalagem acima de 8% do preço (${((form.packagingCost / price) * 100).toFixed(1)}%).`, type: "warning" });
+  if (form.discount >= price * 0.10) {
+    alerts.push({ message: "O desconto deste cenário está alto e reduz sua margem.", type: "warning" });
   }
-  if (form.adCost > price * 0.06) {
-    alerts.push({ message: `Custo de anúncio acima de 6% do preço (${((form.adCost / price) * 100).toFixed(1)}%).`, type: "warning" });
+  if (form.adCost >= price * 0.06) {
+    alerts.push({ message: "O custo de anúncio está pressionando o resultado.", type: "warning" });
   }
-  if (cmv > 40) {
-    alerts.push({ message: `CMV de ${cmv.toFixed(1)}% está acima de 40%. Revise o custo dos insumos.`, type: "danger" });
+  if (cmv >= 40) {
+    alerts.push({ message: "O custo base do produto já está alto antes das taxas.", type: "danger" });
   }
 
   return alerts;
