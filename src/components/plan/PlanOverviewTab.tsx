@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Crown, ArrowRight, FileSpreadsheet, Package, BarChart3, Sparkles, Upload, Info, Store, Trash2, AlertTriangle, TrendingUp } from "lucide-react";
+import { Crown, ArrowRight, FileSpreadsheet, Package, BarChart3, Sparkles, Upload, Info, Store, Trash2, AlertTriangle, TrendingUp, Check, X, Users, MessageCircle, Download, ChefHat } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useStore } from "@/contexts/StoreContext";
