@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Calculator,
   TrendingUp,
@@ -12,6 +12,13 @@ import {
   Percent,
   ShieldCheck,
   Package,
+  ArrowRight,
+  ArrowUpRight,
+  ArrowDownRight,
+  Clock,
+  Tag,
+  Info,
+  Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,37 +30,28 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from "@/components/ui/drawer";
+import {
+  type SimResult,
+  type SimFormData,
+  type MarginClass,
+  calculate,
+  saveLastSimulation,
+  loadLastSimulation,
+  clearLastSimulation,
+} from "@/lib/margin-engine";
 
 type SimState = "idle" | "calculating" | "result" | "error";
 
-interface SimResult {
-  profit: number;
-  margin: number;
-  classification: "healthy" | "tight" | "risk";
-}
-
-const classificationConfig = {
-  healthy: {
-    label: "Saudável",
-    color: "text-success",
-    bg: "bg-success/10",
-    border: "border-success/30",
-    icon: ShieldCheck,
-  },
-  tight: {
-    label: "Margem apertada",
-    color: "text-warning-foreground",
-    bg: "bg-warning/10",
-    border: "border-warning/30",
-    icon: AlertTriangle,
-  },
-  risk: {
-    label: "Risco / Prejuízo",
-    color: "text-destructive",
-    bg: "bg-destructive/10",
-    border: "border-destructive/30",
-    icon: TrendingDown,
-  },
+// ── Visual config per classification ─────────────────────────────────────
+const classificationConfig: Record<
+  MarginClass,
+  { color: string; bg: string; border: string; icon: typeof ShieldCheck }
+> = {
+  healthy:  { color: "text-success",           bg: "bg-success/10",     border: "border-success/30",     icon: ShieldCheck },
+  ok:       { color: "text-primary",           bg: "bg-primary/10",     border: "border-primary/30",     icon: TrendingUp },
+  tight:    { color: "text-warning-foreground", bg: "bg-warning/10",    border: "border-warning/30",     icon: AlertTriangle },
+  critical: { color: "text-destructive",       bg: "bg-destructive/10", border: "border-destructive/30", icon: TrendingDown },
+  loss:     { color: "text-destructive",       bg: "bg-destructive/10", border: "border-destructive/30", icon: TrendingDown },
 };
 
 const initialForm = {
@@ -67,46 +65,44 @@ const initialForm = {
   otherCosts: "",
 };
 
+// ── Helpers ──────────────────────────────────────────────────────────────
+const num = (v: string) => {
+  if (!v) return 0;
+  return parseFloat(v.replace(",", ".")) || 0;
+};
+
+const formatCurrency = (v: number) =>
+  new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+// ── Form ─────────────────────────────────────────────────────────────────
 function SimulatorForm({
   onResult,
   simState,
 }: {
-  onResult: (r: SimResult) => void;
+  onResult: (form: SimFormData) => void;
   simState: SimState;
 }) {
   const [form, setForm] = useState(initialForm);
 
   const update = (field: string, value: string) => {
-    // allow only numbers, comma, dot
     const sanitized = value.replace(/[^0-9.,]/g, "");
     setForm((prev) => ({ ...prev, [field]: sanitized }));
-  };
-
-  const num = (v: string) => {
-    if (!v) return 0;
-    return parseFloat(v.replace(",", ".")) || 0;
   };
 
   const handleCalculate = () => {
     const selling = num(form.sellingPrice);
     if (selling <= 0) return;
 
-    const totalCost =
-      num(form.productCost) +
-      num(form.packagingCost) +
-      selling * (num(form.ifoodFee) / 100) +
-      num(form.discount) +
-      num(form.adCost) +
-      num(form.otherCosts);
-
-    const profit = selling - totalCost;
-    const margin = (profit / selling) * 100;
-
-    let classification: SimResult["classification"] = "healthy";
-    if (margin < 0) classification = "risk";
-    else if (margin < 15) classification = "tight";
-
-    onResult({ profit, margin, classification });
+    onResult({
+      productName: form.productName.trim(),
+      sellingPrice: selling,
+      productCost: num(form.productCost),
+      packagingCost: num(form.packagingCost),
+      ifoodFeePercent: num(form.ifoodFee),
+      discount: num(form.discount),
+      adCost: num(form.adCost),
+      otherCosts: num(form.otherCosts),
+    });
   };
 
   const handleClear = () => setForm(initialForm);
@@ -168,16 +164,14 @@ function SimulatorForm({
   );
 }
 
+// ── Result display ───────────────────────────────────────────────────────
 function ResultCards({ result, onReset }: { result: SimResult; onReset: () => void }) {
   const cfg = classificationConfig[result.classification];
   const ClassIcon = cfg.icon;
 
-  const formatCurrency = (v: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
-
   return (
-    <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Result cards */}
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      {/* Core metrics */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center gap-2 mb-1">
@@ -194,7 +188,7 @@ function ResultCards({ result, onReset }: { result: SimResult; onReset: () => vo
             <TrendingUp className="w-4 h-4 text-primary" />
             <span className="text-xs text-muted-foreground">Margem estimada</span>
           </div>
-          <p className={`text-xl font-bold ${result.margin >= 15 ? "text-success" : result.margin >= 0 ? "text-warning-foreground" : "text-destructive"}`}>
+          <p className={`text-xl font-bold ${result.margin >= 20 ? "text-success" : result.margin >= 5 ? "text-warning-foreground" : "text-destructive"}`}>
             {result.margin.toFixed(1)}%
           </p>
         </div>
@@ -204,26 +198,105 @@ function ResultCards({ result, onReset }: { result: SimResult; onReset: () => vo
             <ClassIcon className={`w-4 h-4 ${cfg.color}`} />
             <span className="text-xs text-muted-foreground">Classificação</span>
           </div>
-          <p className={`text-lg font-bold ${cfg.color}`}>{cfg.label}</p>
+          <p className={`text-lg font-bold ${cfg.color}`}>{result.classLabel}</p>
         </div>
       </div>
 
       {/* Recommendation */}
       <div className="rounded-xl border border-border bg-muted/50 p-4">
-        <h4 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
+        <h4 className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
           Recomendação
         </h4>
-        <p className="text-sm text-muted-foreground leading-relaxed">
-          {result.classification === "healthy"
-            ? "Boa margem! Considere otimizar custos de embalagem ou anúncio para maximizar ainda mais o lucro."
-            : result.classification === "tight"
-              ? "Margem apertada. Revise o preço de venda ou reduza custos para melhorar a rentabilidade."
-              : "Atenção: este cenário gera prejuízo. Ajuste o preço de venda ou reduza custos urgentemente."}
-        </p>
+        <p className="text-sm text-foreground leading-relaxed mb-2">{result.recommendation}</p>
+        {result.suggestions.length > 0 && (
+          <ul className="space-y-1">
+            {result.suggestions.map((s, i) => (
+              <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                <ArrowRight className="w-3 h-3 mt-0.5 text-primary flex-shrink-0" />
+                {s}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      {/* Action buttons */}
+      {/* Conditional alerts */}
+      {result.alerts.length > 0 && (
+        <div className="space-y-2">
+          {result.alerts.map((alert, i) => (
+            <div
+              key={i}
+              className={`rounded-lg p-3 flex items-start gap-2 text-xs ${
+                alert.type === "danger"
+                  ? "bg-destructive/10 text-destructive border border-destructive/20"
+                  : "bg-warning/10 text-warning-foreground border border-warning/20"
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" />
+              <span>{alert.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Price suggestions */}
+      {result.priceSuggestions.some((ps) => ps.price > 0) && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Target className="w-4 h-4 text-primary" />
+            Sugestão de preço
+          </h4>
+          <div className="grid grid-cols-3 gap-2">
+            {result.priceSuggestions.map((ps) =>
+              ps.price > 0 ? (
+                <div key={ps.label} className="text-center rounded-lg bg-muted/50 p-2.5">
+                  <p className="text-[10px] text-muted-foreground mb-0.5">{ps.label}</p>
+                  <p className="text-sm font-bold text-foreground">{formatCurrency(ps.price)}</p>
+                  <p className="text-[10px] text-muted-foreground">margem {ps.targetMargin}%</p>
+                </div>
+              ) : null
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Scenario comparison */}
+      {result.comparison && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Info className="w-4 h-4 text-primary" />
+            Comparação com cenário anterior
+          </h4>
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground">Lucro</p>
+              <p className={`text-sm font-bold flex items-center justify-center gap-0.5 ${result.comparison.profitDiff >= 0 ? "text-success" : "text-destructive"}`}>
+                {result.comparison.profitDiff >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                {formatCurrency(Math.abs(result.comparison.profitDiff))}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground">Margem</p>
+              <p className={`text-sm font-bold flex items-center justify-center gap-0.5 ${result.comparison.marginDiff >= 0 ? "text-success" : "text-destructive"}`}>
+                {result.comparison.marginDiff >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                {Math.abs(result.comparison.marginDiff).toFixed(1)}%
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] text-muted-foreground">Preço</p>
+              <p className="text-sm font-bold text-foreground">
+                {result.comparison.priceDiff >= 0 ? "+" : ""}{formatCurrency(result.comparison.priceDiff)}
+              </p>
+            </div>
+          </div>
+          <p className={`text-xs font-medium ${result.comparison.improved ? "text-success" : "text-destructive"}`}>
+            {result.comparison.message}
+          </p>
+        </div>
+      )}
+
+      {/* Actions */}
       <div className="flex gap-2">
         <Button variant="outline" className="flex-1 h-11" onClick={onReset}>
           <RotateCcw className="w-4 h-4 mr-2" />
@@ -234,24 +307,70 @@ function ResultCards({ result, onReset }: { result: SimResult; onReset: () => vo
   );
 }
 
+// ── Last simulation summary card ─────────────────────────────────────────
+function LastSimCard({ sim, onNew }: { sim: SimResult; onNew: () => void }) {
+  const cfg = classificationConfig[sim.classification];
+
+  return (
+    <div className="flex items-center gap-3 mt-3 rounded-lg border border-border bg-muted/30 p-3">
+      <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs text-muted-foreground">Última simulação</p>
+        <p className="text-sm font-semibold text-foreground truncate">{sim.productName}</p>
+        <div className="flex items-center gap-3 mt-0.5">
+          <span className={`text-xs font-medium ${cfg.color}`}>{sim.margin.toFixed(1)}%</span>
+          <span className="text-xs text-muted-foreground">{formatCurrency(sim.profit)}</span>
+        </div>
+      </div>
+      <Button variant="ghost" size="sm" className="flex-shrink-0 text-xs" onClick={onNew}>
+        Simular
+      </Button>
+    </div>
+  );
+}
+
+// ── Main component ───────────────────────────────────────────────────────
 export default function MarginConsultant() {
   const [expanded, setExpanded] = useState(false);
   const [simState, setSimState] = useState<SimState>("idle");
   const [result, setResult] = useState<SimResult | null>(null);
+  const [previousResult, setPreviousResult] = useState<SimResult | null>(null);
+  const [lastSaved, setLastSaved] = useState<SimResult | null>(null);
   const isMobile = useIsMobile();
 
-  const handleResult = useCallback((r: SimResult) => {
-    setSimState("calculating");
-    // Simulate brief calculation delay
-    setTimeout(() => {
-      setResult(r);
-      setSimState("result");
-    }, 400);
+  // Load last simulation on mount
+  useEffect(() => {
+    const saved = loadLastSimulation();
+    if (saved) setLastSaved(saved);
   }, []);
 
+  const handleFormSubmit = useCallback(
+    (formData: SimFormData) => {
+      setSimState("calculating");
+      // Keep previous result for comparison
+      const prev = result || lastSaved;
+      setTimeout(() => {
+        const r = calculate(formData, prev);
+        setPreviousResult(prev);
+        setResult(r);
+        saveLastSimulation(r);
+        setLastSaved(r);
+        setSimState("result");
+      }, 350);
+    },
+    [result, lastSaved],
+  );
+
   const handleReset = () => {
+    // Keep previous result for comparison on next calculation
+    if (result) setPreviousResult(result);
     setResult(null);
     setSimState("idle");
+  };
+
+  const openSimulator = () => {
+    setExpanded(true);
+    handleReset();
   };
 
   // Mobile: use Drawer (bottom sheet)
@@ -272,13 +391,17 @@ export default function MarginConsultant() {
           </div>
         </div>
 
-        <p className="text-xs text-muted-foreground/70 mt-3 italic">
-          Exemplo: produto vendido por R$32,90 pode gerar lucro de R$4,10 dependendo do custo.
-        </p>
+        {!lastSaved && (
+          <p className="text-xs text-muted-foreground/70 mt-3 italic">
+            Exemplo: produto vendido por R$32,90 pode gerar lucro de R$4,10 dependendo do custo.
+          </p>
+        )}
+
+        {lastSaved && !expanded && <LastSimCard sim={lastSaved} onNew={() => {}} />}
 
         <Drawer>
           <DrawerTrigger asChild>
-            <Button className="w-full mt-3 h-11 text-base font-semibold" onClick={handleReset}>
+            <Button className="w-full mt-3 h-11 text-base font-semibold" onClick={() => { handleReset(); }}>
               <Sparkles className="w-4 h-4 mr-2" />
               Simular cenário
             </Button>
@@ -291,16 +414,15 @@ export default function MarginConsultant() {
               </DrawerTitle>
             </DrawerHeader>
             <div className="px-4 pb-6 overflow-y-auto">
-              {simState === "result" && result ? (
-                <ResultCards result={result} onReset={handleReset} />
-              ) : (
-                <SimulatorForm onResult={handleResult} simState={simState} />
-              )}
-              {simState === "calculating" && (
+              {simState === "calculating" ? (
                 <div className="flex items-center justify-center py-8">
                   <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
                   <span className="ml-3 text-sm text-muted-foreground">Calculando...</span>
                 </div>
+              ) : simState === "result" && result ? (
+                <ResultCards result={result} onReset={handleReset} />
+              ) : (
+                <SimulatorForm onResult={handleFormSubmit} simState={simState} />
               )}
             </div>
           </DrawerContent>
@@ -327,11 +449,12 @@ export default function MarginConsultant() {
           <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
             Simule preço, custo e taxas para entender se o produto realmente dá lucro.
           </p>
-          {!expanded && (
+          {!expanded && !lastSaved && (
             <p className="text-xs text-muted-foreground/70 mt-2 italic">
               Exemplo: produto vendido por R$32,90 pode gerar lucro de R$4,10 dependendo do custo.
             </p>
           )}
+          {!expanded && lastSaved && <LastSimCard sim={lastSaved} onNew={openSimulator} />}
         </div>
         <div className="flex-shrink-0 mt-1">
           {expanded ? (
@@ -354,7 +477,7 @@ export default function MarginConsultant() {
             <ResultCards result={result} onReset={handleReset} />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-              <SimulatorForm onResult={handleResult} simState={simState} />
+              <SimulatorForm onResult={handleFormSubmit} simState={simState} />
             </div>
           )}
         </div>
@@ -365,7 +488,7 @@ export default function MarginConsultant() {
         <div className="px-5 sm:px-6 pb-5 sm:pb-6">
           <Button
             className="w-full sm:w-auto h-11 text-base font-semibold"
-            onClick={() => { setExpanded(true); handleReset(); }}
+            onClick={openSimulator}
           >
             <Sparkles className="w-4 h-4 mr-2" />
             Simular cenário
