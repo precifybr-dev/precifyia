@@ -150,7 +150,7 @@ function RecommendationCard({
                     detail: {
                       productName: rec.productName || rec.title,
                       price: d.price,
-                      cost: d.totalCost ?? d.price * (d.cmv / 100),
+                      cost: d.cost,
                     },
                   })
                 );
