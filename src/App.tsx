@@ -333,6 +333,14 @@ const App = () => (
               }
             />
             <Route
+              path="/app/reports"
+              element={
+                <AppRoute>
+                  <DrMargemReports />
+                </AppRoute>
+              }
+            />
+            <Route
               path="/app/backup"
               element={
                 <AppRoute>

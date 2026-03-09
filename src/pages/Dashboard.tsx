@@ -391,6 +391,11 @@ export default function Dashboard() {
             <DrMargemAdvisor />
           </div>
 
+          {/* Relatório Semanal do Dr. Margem */}
+          <div className="mb-6">
+            <WeeklyReportCard />
+          </div>
+
           {/* Quick Actions - only show when onboarding is NOT complete */}
           {!isOnboardingComplete && (
             <div className="bg-card rounded-xl border border-border p-6 shadow-card">
