@@ -610,7 +610,12 @@ export default function MarginConsultant() {
       ) : simState === "result" && result ? (
         <ResultCards result={result} onReset={handleFullClear} onNewScenario={handleReset} />
       ) : (
-        <SimulatorForm onResult={handleFormSubmit} simState={simState} recipes={recipes} />
+        <SimulatorForm
+          onResult={handleFormSubmit}
+          simState={simState}
+          recipes={recipes}
+          prefillPayload={prefillPayload}
+        />
       )}
     </>
   );
