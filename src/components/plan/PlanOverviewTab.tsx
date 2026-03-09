@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
-import { Crown, ArrowRight, FileSpreadsheet, Package, BarChart3, Sparkles, Upload, Info, Store, Trash2, AlertTriangle, TrendingUp } from "lucide-react";
+import { Crown, ArrowRight, FileSpreadsheet, Package, BarChart3, Sparkles, Upload, Info, Store, Trash2, AlertTriangle, TrendingUp, Check, X, Users, MessageCircle, Download, ChefHat } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useStore } from "@/contexts/StoreContext";
@@ -34,6 +34,25 @@ const PLAN_LABELS: Record<string, string> = {
   basic: "Plano Essencial",
   pro: "Plano Pro",
 };
+
+function getPlanChecklist(plan: string) {
+  const items = [
+    { label: "Fichas técnicas" + (plan === "free" ? " (até 10)" : plan === "basic" ? " (até 40)" : " (ilimitadas)"), included: true },
+    { label: "Insumos" + (plan === "free" ? " (até 80)" : plan === "basic" ? " (até 200)" : " (ilimitados)"), included: true },
+    { label: "Dashboard Avançado + DRE", included: true },
+    { label: "Sub-receitas" + (plan === "free" ? " (até 3)" : " ilimitadas"), included: true },
+    { label: "Análise de cardápio (IA)" + (plan === "free" ? " — 1 total" : plan === "basic" ? " — 5/mês" : " — 15/mês"), included: true },
+    { label: "Combos estratégicos (IA)" + (plan === "free" ? " — 1 total" : plan === "basic" ? " — 3/mês" : " — 10/mês"), included: true },
+    { label: "Importação iFood" + (plan === "free" ? " — 1 total" : plan === "basic" ? " — 5/mês" : " ilimitada"), included: true },
+    { label: "Importação de planilha" + (plan === "free" ? " — 2 totais" : plan === "basic" ? " — 7/mês" : " ilimitada"), included: true },
+    { label: "Receita incremental" + (plan === "free" ? " (até 5)" : " ilimitada"), included: true },
+    { label: "Exportação de dados", included: plan !== "free" },
+    { label: "Multi-loja (até 3)", included: plan === "pro" },
+    { label: "Colaboradores", included: plan === "pro" },
+    { label: "Suporte prioritário WhatsApp", included: plan === "pro" },
+  ];
+  return items;
+}
 
 export function PlanOverviewTab() {
   const { features, userPlan, loading: planLoading, getFeatureLimit } = usePlanFeatures();
@@ -232,6 +251,29 @@ export function PlanOverviewTab() {
               );
             })}
           </div>
+        </div>
+
+        {/* What your plan includes - Checklist */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">O que seu plano inclui</h2>
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {getPlanChecklist(userPlan).map((item) => (
+                  <div key={item.label} className="flex items-center gap-2 text-sm">
+                    {item.included ? (
+                      <Check className="h-4 w-4 text-primary shrink-0" />
+                    ) : (
+                      <X className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                    )}
+                    <span className={item.included ? "text-foreground" : "text-muted-foreground/60 line-through"}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Strategic Potential Alert for Free/Basic users */}

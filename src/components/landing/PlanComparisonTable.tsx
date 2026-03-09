@@ -8,19 +8,19 @@ interface ComparisonRow {
 }
 
 const comparisonData: ComparisonRow[] = [
-  { feature: "Fichas técnicas (receitas)", free: "2", essencial: "8", pro: "Ilimitadas" },
-  { feature: "Insumos cadastrados", free: "35", essencial: "100", pro: "Ilimitados" },
-  { feature: "Dashboard", free: "Básico", essencial: "Completo", pro: "Avançado + DRE" },
-  { feature: "Análise de cardápio (IA)", free: "1 (única)", essencial: "5/mês", pro: "10/mês" },
-  { feature: "Combos estratégicos (IA)", free: "1 (único)", essencial: "3/mês", pro: "5/mês" },
-  { feature: "Importação iFood", free: "1 (única)", essencial: "5/mês", pro: "Ilimitada" },
-  { feature: "Importação de planilha", free: "1 (única, até 35 insumos)", essencial: "3/mês", pro: "Ilimitada" },
+  { feature: "Fichas técnicas (receitas)", free: "Até 10", essencial: "Até 40", pro: "Ilimitadas" },
+  { feature: "Insumos cadastrados", free: "Até 80", essencial: "Até 200", pro: "Ilimitados" },
+  { feature: "Dashboard", free: "Avançado + DRE", essencial: "Avançado + DRE", pro: "Avançado + DRE" },
+  { feature: "Análise de cardápio (IA)", free: "1 (total no período)", essencial: "5/mês", pro: "15/mês" },
+  { feature: "Combos estratégicos (IA)", free: "1 (total no período)", essencial: "3/mês", pro: "10/mês" },
+  { feature: "Importação iFood", free: "1 (total no período)", essencial: "5/mês", pro: "Ilimitada" },
+  { feature: "Importação de planilha", free: "2 (total no período)", essencial: "7/mês", pro: "Ilimitada" },
   { feature: "Sub-receitas", free: "Até 3", essencial: true, pro: true },
   { feature: "Receita incremental", free: "Até 5 análises", essencial: true, pro: true },
   { feature: "Exportação de dados", free: false, essencial: true, pro: true },
   { feature: "Multi-loja", free: false, essencial: false, pro: "Até 3 lojas" },
-  
-  { feature: "Suporte", free: "Padrão", essencial: "Padrão", pro: "Via WhatsApp" },
+  { feature: "Colaboradores", free: false, essencial: false, pro: true },
+  { feature: "Suporte", free: "Padrão", essencial: "Padrão", pro: "Prioritário WhatsApp" },
 ];
 
 function CellValue({ value }: { value: string | boolean }) {
