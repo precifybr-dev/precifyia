@@ -30,6 +30,7 @@ import { differenceInDays } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import MarginConsultant from "@/components/dashboard/MarginConsultant";
 import DrMargemAdvisor from "@/components/dashboard/DrMargemAdvisor";
+import WeeklyReportCard from "@/components/dashboard/WeeklyReportCard";
 
 const TRIAL_DURATION_DAYS = 7;
 
