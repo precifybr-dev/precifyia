@@ -144,7 +144,14 @@ function RecommendationCard({
               variant="outline"
               size="sm"
               className="h-8 text-xs"
-              onClick={() => navigate("/app/dashboard")}
+              onClick={() => {
+                const el = document.getElementById("margin-consultant");
+                if (el) {
+                  el.scrollIntoView({ behavior: "smooth", block: "start" });
+                } else {
+                  navigate("/app/dashboard");
+                }
+              }}
             >
               <FlaskConical className="w-3 h-3 mr-1" />
               Testar solução
