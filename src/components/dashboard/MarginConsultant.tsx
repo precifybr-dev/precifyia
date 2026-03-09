@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Calculator,
   TrendingUp,
@@ -16,9 +17,12 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Clock,
-  Tag,
-  Info,
   Target,
+  Search,
+  FileSpreadsheet,
+  Layers,
+  Eye,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +33,7 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
+  DrawerClose,
 } from "@/components/ui/drawer";
 import {
   type SimResult,
@@ -37,21 +42,31 @@ import {
   calculate,
   saveLastSimulation,
   loadLastSimulation,
-  clearLastSimulation,
 } from "@/lib/margin-engine";
+import { supabase } from "@/integrations/supabase/client";
+import { useStore } from "@/contexts/StoreContext";
 
 type SimState = "idle" | "calculating" | "result" | "error";
+
+interface RecipeOption {
+  id: string;
+  name: string;
+  total_cost: number;
+  selling_price: number | null;
+  cost_per_serving: number;
+  servings: number;
+}
 
 // ── Visual config per classification ─────────────────────────────────────
 const classificationConfig: Record<
   MarginClass,
-  { color: string; bg: string; border: string; icon: typeof ShieldCheck }
+  { color: string; bg: string; border: string; icon: typeof ShieldCheck; emoji: string }
 > = {
-  healthy:  { color: "text-success",           bg: "bg-success/10",     border: "border-success/30",     icon: ShieldCheck },
-  ok:       { color: "text-primary",           bg: "bg-primary/10",     border: "border-primary/30",     icon: TrendingUp },
-  tight:    { color: "text-warning-foreground", bg: "bg-warning/10",    border: "border-warning/30",     icon: AlertTriangle },
-  critical: { color: "text-destructive",       bg: "bg-destructive/10", border: "border-destructive/30", icon: TrendingDown },
-  loss:     { color: "text-destructive",       bg: "bg-destructive/10", border: "border-destructive/30", icon: TrendingDown },
+  healthy:  { color: "text-success",            bg: "bg-success/10",      border: "border-success/30",      icon: ShieldCheck,   emoji: "🟢" },
+  ok:       { color: "text-primary",            bg: "bg-primary/10",      border: "border-primary/30",      icon: TrendingUp,    emoji: "🔵" },
+  tight:    { color: "text-warning-foreground",  bg: "bg-warning/10",     border: "border-warning/30",      icon: AlertTriangle, emoji: "🟡" },
+  critical: { color: "text-destructive",        bg: "bg-destructive/10",  border: "border-destructive/30",  icon: TrendingDown,  emoji: "🔴" },
+  loss:     { color: "text-destructive",        bg: "bg-destructive/15",  border: "border-destructive/40",  icon: TrendingDown,  emoji: "🔴" },
 };
 
 const initialForm = {
@@ -74,19 +89,95 @@ const num = (v: string) => {
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 
+// ── Product Selector ─────────────────────────────────────────────────────
+function ProductSelector({
+  recipes,
+  onSelect,
+}: {
+  recipes: RecipeOption[];
+  onSelect: (recipe: RecipeOption) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return recipes.slice(0, 8);
+    const q = search.toLowerCase();
+    return recipes.filter((r) => r.name.toLowerCase().includes(q)).slice(0, 8);
+  }, [recipes, search]);
+
+  if (!recipes.length) return null;
+
+  return (
+    <div className="relative">
+      <div
+        className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+        onClick={() => setOpen(!open)}
+      >
+        <Search className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+        <span className="text-sm text-muted-foreground">Preencher com produto cadastrado</span>
+        <ChevronDown className={`w-4 h-4 text-muted-foreground ml-auto transition-transform ${open ? "rotate-180" : ""}`} />
+      </div>
+      {open && (
+        <div className="absolute z-20 top-full left-0 right-0 mt-1 rounded-lg border border-border bg-card shadow-lg max-h-56 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
+          <div className="p-2 border-b border-border">
+            <Input
+              placeholder="Buscar produto..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-9 text-sm"
+              autoFocus
+            />
+          </div>
+          {filtered.length === 0 ? (
+            <p className="p-3 text-xs text-muted-foreground text-center">Nenhum produto encontrado</p>
+          ) : (
+            filtered.map((r) => (
+              <button
+                key={r.id}
+                className="w-full px-3 py-2.5 text-left hover:bg-muted/50 transition-colors flex items-center justify-between gap-2"
+                onClick={() => { onSelect(r); setOpen(false); setSearch(""); }}
+              >
+                <span className="text-sm font-medium text-foreground truncate">{r.name}</span>
+                <span className="text-xs text-muted-foreground flex-shrink-0">
+                  {formatCurrency(r.cost_per_serving)}
+                </span>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Form ─────────────────────────────────────────────────────────────────
 function SimulatorForm({
   onResult,
   simState,
+  recipes,
 }: {
   onResult: (form: SimFormData) => void;
   simState: SimState;
+  recipes: RecipeOption[];
 }) {
   const [form, setForm] = useState(initialForm);
+  const [autoFilled, setAutoFilled] = useState(false);
 
   const update = (field: string, value: string) => {
     const sanitized = value.replace(/[^0-9.,]/g, "");
     setForm((prev) => ({ ...prev, [field]: sanitized }));
+    setAutoFilled(false);
+  };
+
+  const handleSelectRecipe = (recipe: RecipeOption) => {
+    setForm({
+      ...initialForm,
+      productName: recipe.name,
+      productCost: recipe.cost_per_serving.toFixed(2).replace(".", ","),
+      sellingPrice: recipe.selling_price ? recipe.selling_price.toFixed(2).replace(".", ",") : "",
+    });
+    setAutoFilled(true);
   };
 
   const handleCalculate = () => {
@@ -105,43 +196,55 @@ function SimulatorForm({
     });
   };
 
-  const handleClear = () => setForm(initialForm);
+  const handleClear = () => { setForm(initialForm); setAutoFilled(false); };
 
   const fields: { key: string; label: string; placeholder: string; icon: typeof DollarSign; suffix?: string }[] = [
-    { key: "productName", label: "Produto (opcional)", placeholder: "Ex: X-Burguer", icon: Package },
     { key: "sellingPrice", label: "Preço de venda", placeholder: "0,00", icon: DollarSign },
     { key: "productCost", label: "Custo do produto", placeholder: "0,00", icon: DollarSign },
-    { key: "packagingCost", label: "Custo de embalagem", placeholder: "0,00", icon: DollarSign },
+    { key: "packagingCost", label: "Embalagem", placeholder: "0,00", icon: Package },
     { key: "ifoodFee", label: "Taxa iFood", placeholder: "0", icon: Percent, suffix: "%" },
-    { key: "discount", label: "Desconto aplicado", placeholder: "0,00", icon: DollarSign },
-    { key: "adCost", label: "Custo de anúncio", placeholder: "0,00", icon: DollarSign },
+    { key: "discount", label: "Desconto", placeholder: "0,00", icon: DollarSign },
+    { key: "adCost", label: "Anúncio", placeholder: "0,00", icon: DollarSign },
     { key: "otherCosts", label: "Outros custos", placeholder: "0,00", icon: DollarSign },
   ];
 
   return (
     <div className="space-y-3">
+      {/* Product selector */}
+      <ProductSelector recipes={recipes} onSelect={handleSelectRecipe} />
+
+      {/* Product name */}
+      <div>
+        <label className="text-xs font-medium text-muted-foreground mb-1 block">Produto</label>
+        <Input
+          className="h-11 text-base"
+          placeholder="Ex: X-Burguer"
+          value={form.productName}
+          onChange={(e) => setForm((prev) => ({ ...prev, productName: e.target.value }))}
+        />
+        {autoFilled && (
+          <p className="text-[10px] text-primary mt-0.5 flex items-center gap-1">
+            <Zap className="w-3 h-3" />
+            Preenchido automaticamente — edite à vontade sem alterar seu cadastro
+          </p>
+        )}
+      </div>
+
+      {/* Input fields */}
       {fields.map((f) => (
         <div key={f.key}>
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">
-            {f.label}
-          </label>
+          <label className="text-xs font-medium text-muted-foreground mb-1 block">{f.label}</label>
           <div className="relative">
             <f.icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              inputMode={f.key === "productName" ? "text" : "decimal"}
+              inputMode="decimal"
               className="pl-9 h-11 text-base"
               placeholder={f.placeholder}
               value={(form as any)[f.key]}
-              onChange={(e) =>
-                f.key === "productName"
-                  ? setForm((prev) => ({ ...prev, productName: e.target.value }))
-                  : update(f.key, e.target.value)
-              }
+              onChange={(e) => update(f.key, e.target.value)}
             />
             {f.suffix && (
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                {f.suffix}
-              </span>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{f.suffix}</span>
             )}
           </div>
         </div>
@@ -156,54 +259,51 @@ function SimulatorForm({
           <Calculator className="w-4 h-4 mr-2" />
           Calcular resultado
         </Button>
-        <Button variant="outline" size="icon" className="h-12 w-12" onClick={handleClear}>
+        <Button variant="outline" size="icon" className="h-12 w-12" onClick={handleClear} title="Limpar">
           <RotateCcw className="w-4 h-4" />
         </Button>
       </div>
+
+      <p className="text-[10px] text-muted-foreground text-center">
+        Simulação apenas — nenhum dado do seu cadastro será alterado
+      </p>
     </div>
   );
 }
 
 // ── Result display ───────────────────────────────────────────────────────
-function ResultCards({ result, onReset }: { result: SimResult; onReset: () => void }) {
+function ResultCards({ result, onReset, onNewScenario }: { result: SimResult; onReset: () => void; onNewScenario: () => void }) {
   const cfg = classificationConfig[result.classification];
   const ClassIcon = cfg.icon;
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
-      {/* Core metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <DollarSign className="w-4 h-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Lucro estimado</span>
-          </div>
+      {/* Classification hero */}
+      <div className={`rounded-xl ${cfg.bg} ${cfg.border} border p-4 text-center`}>
+        <span className="text-2xl">{cfg.emoji}</span>
+        <p className={`text-lg font-bold ${cfg.color} mt-1`}>{result.classLabel}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{result.productName}</p>
+      </div>
+
+      {/* Core metrics — 2 columns mobile */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-xl border border-border bg-card p-3.5">
+          <p className="text-[10px] text-muted-foreground mb-0.5">Lucro estimado</p>
           <p className={`text-xl font-bold ${result.profit >= 0 ? "text-success" : "text-destructive"}`}>
             {formatCurrency(result.profit)}
           </p>
         </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Margem estimada</span>
-          </div>
+        <div className="rounded-xl border border-border bg-card p-3.5">
+          <p className="text-[10px] text-muted-foreground mb-0.5">Margem estimada</p>
           <p className={`text-xl font-bold ${result.margin >= 20 ? "text-success" : result.margin >= 5 ? "text-warning-foreground" : "text-destructive"}`}>
             {result.margin.toFixed(1)}%
           </p>
         </div>
-
-        <div className={`rounded-xl border ${cfg.border} ${cfg.bg} p-4`}>
-          <div className="flex items-center gap-2 mb-1">
-            <ClassIcon className={`w-4 h-4 ${cfg.color}`} />
-            <span className="text-xs text-muted-foreground">Classificação</span>
-          </div>
-          <p className={`text-lg font-bold ${cfg.color}`}>{result.classLabel}</p>
-        </div>
       </div>
 
       {/* Recommendation */}
-      <div className="rounded-xl border border-border bg-muted/50 p-4">
+      <div className="rounded-xl border border-border bg-muted/40 p-4">
         <h4 className="text-sm font-semibold text-foreground mb-1.5 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-primary" />
           Recomendação
@@ -263,10 +363,10 @@ function ResultCards({ result, onReset }: { result: SimResult; onReset: () => vo
 
       {/* Scenario comparison */}
       {result.comparison && (
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
           <h4 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
-            <Info className="w-4 h-4 text-primary" />
-            Comparação com cenário anterior
+            <Layers className="w-4 h-4 text-primary" />
+            Teste de cenário
           </h4>
           <div className="grid grid-cols-3 gap-2 mb-2">
             <div className="text-center">
@@ -284,7 +384,7 @@ function ResultCards({ result, onReset }: { result: SimResult; onReset: () => vo
               </p>
             </div>
             <div className="text-center">
-              <p className="text-[10px] text-muted-foreground">Preço</p>
+              <p className="text-[10px] text-muted-foreground">Impacto</p>
               <p className="text-sm font-bold text-foreground">
                 {result.comparison.priceDiff >= 0 ? "+" : ""}{formatCurrency(result.comparison.priceDiff)}
               </p>
@@ -296,36 +396,61 @@ function ResultCards({ result, onReset }: { result: SimResult; onReset: () => vo
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex gap-2">
-        <Button variant="outline" className="flex-1 h-11" onClick={onReset}>
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Testar novo cenário
+      {/* Action buttons — grid 2x2 on mobile */}
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant="outline" className="h-11 text-sm" onClick={onNewScenario}>
+          <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
+          Novo cenário
+        </Button>
+        <Button variant="outline" className="h-11 text-sm" onClick={() => navigate("/app/recipes")}>
+          <Eye className="w-3.5 h-3.5 mr-1.5" />
+          Fichas técnicas
+        </Button>
+        <Button variant="outline" className="h-11 text-sm" onClick={() => navigate("/app/combos")}>
+          <Layers className="w-3.5 h-3.5 mr-1.5" />
+          Criar combo
+        </Button>
+        <Button variant="outline" className="h-11 text-sm" onClick={onReset}>
+          <Calculator className="w-3.5 h-3.5 mr-1.5" />
+          Limpar tudo
         </Button>
       </div>
     </div>
   );
 }
 
-// ── Last simulation summary card ─────────────────────────────────────────
-function LastSimCard({ sim, onNew }: { sim: SimResult; onNew: () => void }) {
+// ── Last simulation summary ──────────────────────────────────────────────
+function LastSimSummary({ sim }: { sim: SimResult }) {
   const cfg = classificationConfig[sim.classification];
 
   return (
-    <div className="flex items-center gap-3 mt-3 rounded-lg border border-border bg-muted/30 p-3">
-      <Clock className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-xs text-muted-foreground">Última simulação</p>
-        <p className="text-sm font-semibold text-foreground truncate">{sim.productName}</p>
-        <div className="flex items-center gap-3 mt-0.5">
-          <span className={`text-xs font-medium ${cfg.color}`}>{sim.margin.toFixed(1)}%</span>
-          <span className="text-xs text-muted-foreground">{formatCurrency(sim.profit)}</span>
+    <div className="mt-3 rounded-xl border border-border bg-muted/30 p-3.5">
+      <div className="flex items-center gap-2 mb-2">
+        <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+        <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Última simulação</span>
+      </div>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground truncate">{sim.productName}</p>
+          <p className="text-xs text-muted-foreground">
+            {formatCurrency(sim.sellingPrice)} · Lucro {formatCurrency(sim.profit)}
+          </p>
+        </div>
+        <div className={`text-right flex-shrink-0`}>
+          <span className="text-lg">{cfg.emoji}</span>
+          <p className={`text-xs font-bold ${cfg.color}`}>{sim.margin.toFixed(0)}%</p>
         </div>
       </div>
-      <Button variant="ghost" size="sm" className="flex-shrink-0 text-xs" onClick={onNew}>
-        Simular
-      </Button>
     </div>
+  );
+}
+
+// ── Empty state ──────────────────────────────────────────────────────────
+function EmptyHint() {
+  return (
+    <p className="text-xs text-muted-foreground/70 mt-3 italic leading-relaxed">
+      Veja em segundos se esse preço dá lucro, margem apertada ou prejuízo.
+    </p>
   );
 }
 
@@ -336,18 +461,37 @@ export default function MarginConsultant() {
   const [result, setResult] = useState<SimResult | null>(null);
   const [previousResult, setPreviousResult] = useState<SimResult | null>(null);
   const [lastSaved, setLastSaved] = useState<SimResult | null>(null);
+  const [recipes, setRecipes] = useState<RecipeOption[]>([]);
   const isMobile = useIsMobile();
+  const { activeStore } = useStore();
 
-  // Load last simulation on mount
+  // Load last simulation + recipes
   useEffect(() => {
     const saved = loadLastSimulation();
     if (saved) setLastSaved(saved);
-  }, []);
+
+    const fetchRecipes = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      let query = supabase
+        .from("recipes")
+        .select("id, name, total_cost, selling_price, cost_per_serving, servings")
+        .eq("user_id", session.user.id)
+        .order("name");
+
+      if (activeStore?.id) query = query.eq("store_id", activeStore.id);
+
+      const { data } = await query;
+      if (data) setRecipes(data as RecipeOption[]);
+    };
+
+    fetchRecipes();
+  }, [activeStore?.id]);
 
   const handleFormSubmit = useCallback(
     (formData: SimFormData) => {
       setSimState("calculating");
-      // Keep previous result for comparison
       const prev = result || lastSaved;
       setTimeout(() => {
         const r = calculate(formData, prev);
@@ -356,14 +500,19 @@ export default function MarginConsultant() {
         saveLastSimulation(r);
         setLastSaved(r);
         setSimState("result");
-      }, 350);
+      }, 300);
     },
     [result, lastSaved],
   );
 
   const handleReset = () => {
-    // Keep previous result for comparison on next calculation
     if (result) setPreviousResult(result);
+    setResult(null);
+    setSimState("idle");
+  };
+
+  const handleFullClear = () => {
+    setPreviousResult(null);
     setResult(null);
     setSimState("idle");
   };
@@ -373,68 +522,73 @@ export default function MarginConsultant() {
     handleReset();
   };
 
-  // Mobile: use Drawer (bottom sheet)
+  // ── Simulator content (shared between mobile drawer and desktop expand)
+  const simulatorContent = (
+    <>
+      {simState === "calculating" ? (
+        <div className="flex items-center justify-center py-12">
+          <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
+          <span className="ml-3 text-sm text-muted-foreground">Calculando...</span>
+        </div>
+      ) : simState === "result" && result ? (
+        <ResultCards result={result} onReset={handleFullClear} onNewScenario={handleReset} />
+      ) : (
+        <SimulatorForm onResult={handleFormSubmit} simState={simState} recipes={recipes} />
+      )}
+    </>
+  );
+
+  // ── Card header (shared) ──
+  const cardHeader = (
+    <div className="flex items-start gap-3">
+      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <Calculator className="w-5 h-5 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="font-display font-semibold text-base sm:text-lg text-foreground">
+          Simulador de Lucro
+        </h3>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+          Descubra em segundos se esse produto dá lucro, margem apertada ou prejuízo.
+        </p>
+      </div>
+    </div>
+  );
+
+  // ── Mobile: bottom sheet ──
   if (isMobile) {
     return (
       <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-            <Calculator className="w-5 h-5 text-primary" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-display font-semibold text-base text-foreground">
-              Consultor de Margem
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              Simule preço, custo e taxas para entender se o produto realmente dá lucro.
-            </p>
-          </div>
-        </div>
+        {cardHeader}
 
-        {!lastSaved && (
-          <p className="text-xs text-muted-foreground/70 mt-3 italic">
-            Exemplo: produto vendido por R$32,90 pode gerar lucro de R$4,10 dependendo do custo.
-          </p>
-        )}
-
-        {lastSaved && !expanded && <LastSimCard sim={lastSaved} onNew={() => {}} />}
+        {lastSaved && <LastSimSummary sim={lastSaved} />}
+        {!lastSaved && <EmptyHint />}
 
         <Drawer>
           <DrawerTrigger asChild>
-            <Button className="w-full mt-3 h-11 text-base font-semibold" onClick={() => { handleReset(); }}>
+            <Button className="w-full mt-3 h-12 text-base font-semibold" onClick={handleReset}>
               <Sparkles className="w-4 h-4 mr-2" />
-              Simular cenário
+              {lastSaved ? "Testar cenário" : "Simular agora"}
             </Button>
           </DrawerTrigger>
-          <DrawerContent className="max-h-[90vh]">
+          <DrawerContent className="max-h-[92vh]">
             <DrawerHeader className="pb-2">
-              <DrawerTitle className="flex items-center gap-2">
+              <DrawerTitle className="flex items-center gap-2 text-base">
                 <Calculator className="w-5 h-5 text-primary" />
-                Consultor de Margem
+                Simulador de Lucro
               </DrawerTitle>
             </DrawerHeader>
-            <div className="px-4 pb-6 overflow-y-auto">
-              {simState === "calculating" ? (
-                <div className="flex items-center justify-center py-8">
-                  <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
-                  <span className="ml-3 text-sm text-muted-foreground">Calculando...</span>
-                </div>
-              ) : simState === "result" && result ? (
-                <ResultCards result={result} onReset={handleReset} />
-              ) : (
-                <SimulatorForm onResult={handleFormSubmit} simState={simState} />
-              )}
-            </div>
+            <div className="px-4 pb-6 overflow-y-auto">{simulatorContent}</div>
           </DrawerContent>
         </Drawer>
       </div>
     );
   }
 
-  // Desktop: expand inline
+  // ── Desktop: expandable card ──
   return (
     <div className="rounded-2xl border border-border bg-card shadow-card overflow-hidden transition-all duration-300">
-      {/* Header */}
+      {/* Header — clickable */}
       <button
         className="w-full p-5 sm:p-6 flex items-start gap-4 text-left hover:bg-muted/30 transition-colors"
         onClick={() => { setExpanded(!expanded); if (!expanded) handleReset(); }}
@@ -444,17 +598,13 @@ export default function MarginConsultant() {
         </div>
         <div className="flex-1 min-w-0">
           <h3 className="font-display font-semibold text-lg text-foreground">
-            Consultor de Margem
+            Simulador de Lucro
           </h3>
           <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">
-            Simule preço, custo e taxas para entender se o produto realmente dá lucro.
+            Descubra em segundos se esse produto dá lucro, margem apertada ou prejuízo.
           </p>
-          {!expanded && !lastSaved && (
-            <p className="text-xs text-muted-foreground/70 mt-2 italic">
-              Exemplo: produto vendido por R$32,90 pode gerar lucro de R$4,10 dependendo do custo.
-            </p>
-          )}
-          {!expanded && lastSaved && <LastSimCard sim={lastSaved} onNew={openSimulator} />}
+          {!expanded && lastSaved && <LastSimSummary sim={lastSaved} />}
+          {!expanded && !lastSaved && <EmptyHint />}
         </div>
         <div className="flex-shrink-0 mt-1">
           {expanded ? (
@@ -468,30 +618,16 @@ export default function MarginConsultant() {
       {/* Expanded content */}
       {expanded && (
         <div className="px-5 sm:px-6 pb-5 sm:pb-6 border-t border-border pt-4 animate-in fade-in slide-in-from-top-2 duration-200">
-          {simState === "calculating" ? (
-            <div className="flex items-center justify-center py-12">
-              <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full" />
-              <span className="ml-3 text-sm text-muted-foreground">Calculando...</span>
-            </div>
-          ) : simState === "result" && result ? (
-            <ResultCards result={result} onReset={handleReset} />
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6">
-              <SimulatorForm onResult={handleFormSubmit} simState={simState} />
-            </div>
-          )}
+          <div className="max-w-lg">{simulatorContent}</div>
         </div>
       )}
 
       {/* CTA when collapsed */}
       {!expanded && (
         <div className="px-5 sm:px-6 pb-5 sm:pb-6">
-          <Button
-            className="w-full sm:w-auto h-11 text-base font-semibold"
-            onClick={openSimulator}
-          >
+          <Button className="w-full sm:w-auto h-11 text-base font-semibold" onClick={openSimulator}>
             <Sparkles className="w-4 h-4 mr-2" />
-            Simular cenário
+            {lastSaved ? "Testar cenário" : "Simular agora"}
           </Button>
         </div>
       )}
