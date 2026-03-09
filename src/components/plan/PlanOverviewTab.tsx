@@ -35,6 +35,25 @@ const PLAN_LABELS: Record<string, string> = {
   pro: "Plano Pro",
 };
 
+function getPlanChecklist(plan: string) {
+  const items = [
+    { label: "Fichas técnicas" + (plan === "free" ? " (até 10)" : plan === "basic" ? " (até 40)" : " (ilimitadas)"), included: true },
+    { label: "Insumos" + (plan === "free" ? " (até 80)" : plan === "basic" ? " (até 200)" : " (ilimitados)"), included: true },
+    { label: "Dashboard Avançado + DRE", included: true },
+    { label: "Sub-receitas" + (plan === "free" ? " (até 3)" : " ilimitadas"), included: true },
+    { label: "Análise de cardápio (IA)" + (plan === "free" ? " — 1 total" : plan === "basic" ? " — 5/mês" : " — 15/mês"), included: true },
+    { label: "Combos estratégicos (IA)" + (plan === "free" ? " — 1 total" : plan === "basic" ? " — 3/mês" : " — 10/mês"), included: true },
+    { label: "Importação iFood" + (plan === "free" ? " — 1 total" : plan === "basic" ? " — 5/mês" : " ilimitada"), included: true },
+    { label: "Importação de planilha" + (plan === "free" ? " — 2 totais" : plan === "basic" ? " — 7/mês" : " ilimitada"), included: true },
+    { label: "Receita incremental" + (plan === "free" ? " (até 5)" : " ilimitada"), included: true },
+    { label: "Exportação de dados", included: plan !== "free" },
+    { label: "Multi-loja (até 3)", included: plan === "pro" },
+    { label: "Colaboradores", included: plan === "pro" },
+    { label: "Suporte prioritário WhatsApp", included: plan === "pro" },
+  ];
+  return items;
+}
+
 export function PlanOverviewTab() {
   const { features, userPlan, loading: planLoading, getFeatureLimit } = usePlanFeatures();
   const { stores, deleteStore, activeStore, setActiveStore, refreshStores } = useStore();
