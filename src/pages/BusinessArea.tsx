@@ -159,6 +159,8 @@ export default function BusinessArea() {
   const [fixedExpensesTotal, setFixedExpensesTotal] = useState(0);
   const [variableExpensesTotal, setVariableExpensesTotal] = useState(0);
   const [sharedExpensesTotal, setSharedExpensesTotal] = useState(0);
+  const [cmvDialogOpen, setCmvDialogOpen] = useState(false);
+  const [pendingCmvUpdate, setPendingCmvUpdate] = useState<{ oldCmv: number | null; newCmv: number } | null>(null);
   const [calculatedMonthlyRevenue, setCalculatedMonthlyRevenue] = useState<number | null>(null);
   const [formData, setFormData] = useState({
     business_name: "",
