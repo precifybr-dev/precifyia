@@ -1,29 +1,62 @@
 
 
-## Plan: Make "Testar solução" Pre-fill the Margin Simulator
+# Validacao Matematica e Guards Anti-Erro na Importacao iFood
 
-### Problem
-The "Testar solução" button just scrolls to the simulator but doesn't pre-fill it with the product's data. The user has to manually enter everything — defeating the purpose.
+## Contexto
 
-### Solution
-Use a custom event to pass the product data from DrMargemAdvisor to MarginConsultant, pre-filling the form automatically.
+O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
 
-### Changes
+O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
 
-**1. `src/components/dashboard/DrMargemAdvisor.tsx`**
-- Change the "Testar solução" onClick to dispatch a `CustomEvent` with the recommendation's financial data (product name, price, cost) before scrolling:
-```typescript
-window.dispatchEvent(new CustomEvent("dr-margem-test", { detail: { productName, price, cost } }));
-```
+---
 
-**2. `src/components/dashboard/MarginConsultant.tsx`**
-- In the `SimulatorForm` component, add a `useEffect` listening for `dr-margem-test` events
-- When received, auto-fill `productName`, `sellingPrice`, and `productCost` fields from the event detail
-- Set `autoFilled = true` to show the "preenchido automaticamente" hint
-- This reuses the exact same pattern as `handleSelectRecipe` (line 175-183)
+## O que sera implementado
 
-### Technical details
-- No new dependencies or database changes
-- The custom event approach avoids prop-drilling or context — both components are siblings on the Dashboard page
-- The simulator form already supports external pre-filling via `handleSelectRecipe`, so the pattern is proven
+### 1. Camada de Validacao no Processador
+
+Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
+
+- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
+- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
+- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
+- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
+- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
+
+Cada validacao retorna `{ level: "error" | "warning", message: string }`.
+
+A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
+
+### 2. Exibicao de Alertas no Dashboard
+
+No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
+
+- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
+- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
+- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
+- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
+
+### 3. Info de Agrupamento no Dashboard
+
+Adicionar um pequeno badge/info no topo do dashboard mostrando:
+- Linhas na planilha: X
+- Pedidos unicos: Y
+- Media de linhas por pedido: X/Y
+
+Isso da confianca ao usuario de que o agrupamento esta correto.
+
+---
+
+## Arquivos modificados
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
+| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
+
+## O que NAO sera alterado
+
+- Banco de dados (sem migrations)
+- Logica de agrupamento por ID (ja funciona corretamente)
+- Fluxo de autenticacao
+- Nenhuma outra funcionalidade do sistema
 
