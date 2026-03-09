@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Stethoscope } from "lucide-react";
 import {
   Calculator,
   TrendingUp,
@@ -45,6 +46,7 @@ import {
 } from "@/lib/margin-engine";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/contexts/StoreContext";
+import { generateSingleRecommendation, type DrMargemRecommendation } from "@/lib/dr-margem-engine";
 
 type SimState = "idle" | "calculating" | "result" | "error";
 
@@ -277,6 +279,16 @@ function ResultCards({ result, onReset, onNewScenario }: { result: SimResult; on
   const ClassIcon = cfg.icon;
   const navigate = useNavigate();
 
+  // Dr. Margem inline recommendation
+  const drRec = useMemo(() => {
+    return generateSingleRecommendation({
+      name: result.productName,
+      total_cost: result.totalCost,
+      selling_price: result.sellingPrice,
+      cost_per_serving: result.totalCost,
+    });
+  }, [result]);
+
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* Classification hero */}
@@ -337,6 +349,24 @@ function ResultCards({ result, onReset, onNewScenario }: { result: SimResult; on
               <span>{alert.message}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Dr. Margem inline */}
+      {drRec && (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+          <div className="flex items-start gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Stethoscope className="w-4 h-4 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-primary mb-0.5">Dr. Margem diz:</p>
+              <p className="text-sm text-foreground leading-relaxed">{drRec.message}</p>
+              {drRec.priceSuggestion && (
+                <p className="text-xs text-primary font-medium mt-1.5">{drRec.priceSuggestion}</p>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
