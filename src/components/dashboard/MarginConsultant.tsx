@@ -646,7 +646,7 @@ export default function MarginConsultant() {
         {lastSaved && <LastSimSummary sim={lastSaved} />}
         {!lastSaved && <EmptyHint />}
 
-        <Drawer>
+        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
           <DrawerTrigger asChild>
             <Button className="w-full mt-3 h-12 text-base font-semibold" onClick={handleReset}>
               <Sparkles className="w-4 h-4 mr-2" />
