@@ -13,7 +13,16 @@ export type DrMargemType =
   | "taxa_ifood_alta"
   | "margem_saudavel";
 
+export interface DrMargemDetails {
+  price: number;
+  cost: number;
+  cmv: number;
+  margin: number;
+  estimatedProfit: number;
+}
+
 export interface DrMargemRecommendation {
+  id: string;
   advisor: "Dr. Margem";
   priority: DrMargemPriority;
   type: DrMargemType;
@@ -23,6 +32,8 @@ export interface DrMargemRecommendation {
   productName?: string;
   /** Optional: suggestion like "Se subir R$2, margem sobe de X% para Y%" */
   priceSuggestion?: string;
+  details: DrMargemDetails;
+  conditionHash: string;
 }
 
 export interface DrMargemResult {
@@ -40,8 +51,25 @@ export interface RecipeInput {
   cmv_target?: number | null;
 }
 
+export interface IgnoredAlert {
+  ignoredAt: string;
+  productName: string;
+  type: string;
+  conditionHash: string;
+}
+
+export type IgnoredAlertsMap = Record<string, IgnoredAlert>;
+
 const formatCurrency = (v: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+
+function generateAlertId(name: string, type: DrMargemType): string {
+  return `${name.toLowerCase().replace(/\s+/g, "-")}-${type}`;
+}
+
+function generateConditionHash(name: string, type: DrMargemType, price: number, cost: number): string {
+  return `${name}-${type}-${Math.round(price)}-${Math.round(cost)}`;
+}
 
 function analyzeRecipe(recipe: RecipeInput): DrMargemRecommendation | null {
   const price = recipe.selling_price || 0;
@@ -53,13 +81,23 @@ function analyzeRecipe(recipe: RecipeInput): DrMargemRecommendation | null {
   const margin = (profit / price) * 100;
   const cmv = (cost / price) * 100;
 
+  const baseDetails: DrMargemDetails = {
+    price,
+    cost,
+    cmv: Math.round(cmv * 10) / 10,
+    margin: Math.round(margin * 10) / 10,
+    estimatedProfit: Math.round(profit * 100) / 100,
+  };
+
   // Loss
   if (profit < 0) {
+    const type: DrMargemType = "prejuizo";
     const increase = Math.ceil((cost * 1.1 - price) * 100) / 100;
     return {
+      id: generateAlertId(recipe.name, type),
       advisor: "Dr. Margem",
       priority: "alta",
-      type: "prejuizo",
+      type,
       title: `${recipe.name} está dando prejuízo`,
       message: "Você pode estar pagando para vender esse produto.",
       actions: [
@@ -70,17 +108,21 @@ function analyzeRecipe(recipe: RecipeInput): DrMargemRecommendation | null {
       ],
       productName: recipe.name,
       priceSuggestion: `Para sair do prejuízo, o preço mínimo seria ${formatCurrency(cost * 1.1)}.`,
+      details: baseDetails,
+      conditionHash: generateConditionHash(recipe.name, type, price, cost),
     };
   }
 
   // Critical margin < 5%
   if (margin < 5) {
+    const type: DrMargemType = "margem_critica";
     const targetPrice = cost / (1 - 0.15);
     const diff = targetPrice - price;
     return {
+      id: generateAlertId(recipe.name, type),
       advisor: "Dr. Margem",
       priority: "alta",
-      type: "margem_critica",
+      type,
       title: `${recipe.name} com margem crítica`,
       message: "Esse produto está muito perto do prejuízo.",
       actions: [
@@ -92,15 +134,19 @@ function analyzeRecipe(recipe: RecipeInput): DrMargemRecommendation | null {
       priceSuggestion: diff > 0
         ? `Se subir ${formatCurrency(diff)}, a margem sobe de ${margin.toFixed(0)}% para 15%.`
         : undefined,
+      details: baseDetails,
+      conditionHash: generateConditionHash(recipe.name, type, price, cost),
     };
   }
 
   // CMV > 40%
   if (cmv > 40) {
+    const type: DrMargemType = "cmv_alto";
     return {
+      id: generateAlertId(recipe.name, type),
       advisor: "Dr. Margem",
       priority: "media",
-      type: "cmv_alto",
+      type,
       title: `CMV alto no ${recipe.name}`,
       message: "O custo base deste produto está alto.",
       actions: [
@@ -109,17 +155,21 @@ function analyzeRecipe(recipe: RecipeInput): DrMargemRecommendation | null {
         "Revisar receita",
       ],
       productName: recipe.name,
+      details: baseDetails,
+      conditionHash: generateConditionHash(recipe.name, type, price, cost),
     };
   }
 
   // Tight margin 5-12%
   if (margin < 12) {
+    const type: DrMargemType = "margem_apertada";
     const increase = 2;
     const newMargin = ((price + increase - cost) / (price + increase)) * 100;
     return {
+      id: generateAlertId(recipe.name, type),
       advisor: "Dr. Margem",
       priority: "media",
-      type: "margem_apertada",
+      type,
       title: `${recipe.name} com margem apertada`,
       message: "Esse produto vende, mas sobra pouco no final.",
       actions: [
@@ -129,15 +179,19 @@ function analyzeRecipe(recipe: RecipeInput): DrMargemRecommendation | null {
       ],
       productName: recipe.name,
       priceSuggestion: `Se subir ${formatCurrency(increase)}, a margem sobe de ${margin.toFixed(0)}% para ${newMargin.toFixed(0)}%.`,
+      details: baseDetails,
+      conditionHash: generateConditionHash(recipe.name, type, price, cost),
     };
   }
 
   // Healthy margin >= 20%
   if (margin >= 20) {
+    const type: DrMargemType = "margem_saudavel";
     return {
+      id: generateAlertId(recipe.name, type),
       advisor: "Dr. Margem",
       priority: "baixa",
-      type: "margem_saudavel",
+      type,
       title: `${recipe.name} com boa margem`,
       message: "Esse produto tem margem saudável para operação.",
       actions: [
@@ -146,6 +200,8 @@ function analyzeRecipe(recipe: RecipeInput): DrMargemRecommendation | null {
         "Criar combo com ele",
       ],
       productName: recipe.name,
+      details: baseDetails,
+      conditionHash: generateConditionHash(recipe.name, type, price, cost),
     };
   }
 
@@ -159,8 +215,24 @@ const priorityOrder: Record<DrMargemPriority, number> = {
 };
 
 /**
+ * Filter out recommendations that the user has ignored,
+ * but resurface them if conditions changed.
+ */
+export function filterIgnoredRecommendations(
+  recs: DrMargemRecommendation[],
+  ignoredMap: IgnoredAlertsMap,
+): DrMargemRecommendation[] {
+  return recs.filter((rec) => {
+    const ignored = ignoredMap[rec.id];
+    if (!ignored) return true;
+    // If conditions changed, resurface
+    return ignored.conditionHash !== rec.conditionHash;
+  });
+}
+
+/**
  * Generate recommendations from an array of recipes.
- * Returns top 3 by priority with a flag if there are more.
+ * Returns top N by priority with a flag if there are more.
  */
 export function generateRecommendations(
   recipes: RecipeInput[],
@@ -181,6 +253,21 @@ export function generateRecommendations(
     hasMore: all.length > maxVisible,
     totalCount: all.length,
   };
+}
+
+/**
+ * Generate ALL recommendations (no limit).
+ */
+export function generateAllRecommendations(
+  recipes: RecipeInput[],
+): DrMargemRecommendation[] {
+  const all: DrMargemRecommendation[] = [];
+  for (const recipe of recipes) {
+    const rec = analyzeRecipe(recipe);
+    if (rec) all.push(rec);
+  }
+  all.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+  return all;
 }
 
 /**
