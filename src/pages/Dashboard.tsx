@@ -28,6 +28,7 @@ import { SpreadsheetImportModal } from "@/components/spreadsheet-import/Spreadsh
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { differenceInDays } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import MarginConsultant from "@/components/dashboard/MarginConsultant";
 
 const TRIAL_DURATION_DAYS = 7;
 
