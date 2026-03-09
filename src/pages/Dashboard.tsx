@@ -29,6 +29,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { differenceInDays } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import MarginConsultant from "@/components/dashboard/MarginConsultant";
+import DrMargemAdvisor from "@/components/dashboard/DrMargemAdvisor";
 
 const TRIAL_DURATION_DAYS = 7;
 
