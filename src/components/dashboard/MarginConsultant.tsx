@@ -59,6 +59,13 @@ interface RecipeOption {
   servings: number;
 }
 
+interface DrMargemTestPayload {
+  productName: string;
+  price: number;
+  cost: number;
+  nonce: number;
+}
+
 // ── Visual config per classification ─────────────────────────────────────
 const classificationConfig: Record<
   MarginClass,
@@ -158,10 +165,12 @@ function SimulatorForm({
   onResult,
   simState,
   recipes,
+  prefillPayload,
 }: {
   onResult: (form: SimFormData) => void;
   simState: SimState;
   recipes: RecipeOption[];
+  prefillPayload: DrMargemTestPayload | null;
 }) {
   const [form, setForm] = useState(initialForm);
   const [autoFilled, setAutoFilled] = useState(false);
@@ -182,21 +191,17 @@ function SimulatorForm({
     setAutoFilled(true);
   };
 
-  // Listen for Dr. Margem "Testar solução" events
   useEffect(() => {
-    const handleDrMargemTest = (e: Event) => {
-      const { productName, price, cost } = (e as CustomEvent).detail;
-      setForm({
-        ...initialForm,
-        productName: productName || "",
-        sellingPrice: price ? price.toFixed(2).replace(".", ",") : "",
-        productCost: cost ? cost.toFixed(2).replace(".", ",") : "",
-      });
-      setAutoFilled(true);
-    };
-    window.addEventListener("dr-margem-test", handleDrMargemTest);
-    return () => window.removeEventListener("dr-margem-test", handleDrMargemTest);
-  }, []);
+    if (!prefillPayload) return;
+
+    setForm({
+      ...initialForm,
+      productName: prefillPayload.productName || "",
+      sellingPrice: prefillPayload.price > 0 ? prefillPayload.price.toFixed(2).replace(".", ",") : "",
+      productCost: prefillPayload.cost > 0 ? prefillPayload.cost.toFixed(2).replace(".", ",") : "",
+    });
+    setAutoFilled(true);
+  }, [prefillPayload]);
 
   const handleCalculate = () => {
     const selling = num(form.sellingPrice);
@@ -503,11 +508,13 @@ function EmptyHint() {
 // ── Main component ───────────────────────────────────────────────────────
 export default function MarginConsultant() {
   const [expanded, setExpanded] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [simState, setSimState] = useState<SimState>("idle");
   const [result, setResult] = useState<SimResult | null>(null);
   const [previousResult, setPreviousResult] = useState<SimResult | null>(null);
   const [lastSaved, setLastSaved] = useState<SimResult | null>(null);
   const [recipes, setRecipes] = useState<RecipeOption[]>([]);
+  const [prefillPayload, setPrefillPayload] = useState<DrMargemTestPayload | null>(null);
   const isMobile = useIsMobile();
   const { activeStore } = useStore();
 
@@ -534,6 +541,30 @@ export default function MarginConsultant() {
 
     fetchRecipes();
   }, [activeStore?.id]);
+
+  useEffect(() => {
+    const handleDrMargemTest = (e: Event) => {
+      const { productName, price, cost } = (e as CustomEvent).detail ?? {};
+
+      setPrefillPayload({
+        productName: typeof productName === "string" ? productName : "",
+        price: Number(price) || 0,
+        cost: Number(cost) || 0,
+        nonce: Date.now(),
+      });
+
+      setSimState("idle");
+      setResult(null);
+      setExpanded(true);
+
+      if (isMobile) {
+        setDrawerOpen(true);
+      }
+    };
+
+    window.addEventListener("dr-margem-test", handleDrMargemTest);
+    return () => window.removeEventListener("dr-margem-test", handleDrMargemTest);
+  }, [isMobile]);
 
   const handleFormSubmit = useCallback(
     (formData: SimFormData) => {
@@ -579,7 +610,12 @@ export default function MarginConsultant() {
       ) : simState === "result" && result ? (
         <ResultCards result={result} onReset={handleFullClear} onNewScenario={handleReset} />
       ) : (
-        <SimulatorForm onResult={handleFormSubmit} simState={simState} recipes={recipes} />
+        <SimulatorForm
+          onResult={handleFormSubmit}
+          simState={simState}
+          recipes={recipes}
+          prefillPayload={prefillPayload}
+        />
       )}
     </>
   );
@@ -610,7 +646,7 @@ export default function MarginConsultant() {
         {lastSaved && <LastSimSummary sim={lastSaved} />}
         {!lastSaved && <EmptyHint />}
 
-        <Drawer>
+        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
           <DrawerTrigger asChild>
             <Button className="w-full mt-3 h-12 text-base font-semibold" onClick={handleReset}>
               <Sparkles className="w-4 h-4 mr-2" />
