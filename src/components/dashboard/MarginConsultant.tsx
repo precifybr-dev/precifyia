@@ -279,6 +279,16 @@ function ResultCards({ result, onReset, onNewScenario }: { result: SimResult; on
   const ClassIcon = cfg.icon;
   const navigate = useNavigate();
 
+  // Dr. Margem inline recommendation
+  const drRec = useMemo(() => {
+    return generateSingleRecommendation({
+      name: result.productName,
+      total_cost: result.totalCost,
+      selling_price: result.sellingPrice,
+      cost_per_serving: result.totalCost,
+    });
+  }, [result]);
+
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
       {/* Classification hero */}
