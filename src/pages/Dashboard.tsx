@@ -28,6 +28,7 @@ import { SpreadsheetImportModal } from "@/components/spreadsheet-import/Spreadsh
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { differenceInDays } from "date-fns";
 import { Badge } from "@/components/ui/badge";
+import MarginConsultant from "@/components/dashboard/MarginConsultant";
 
 const TRIAL_DURATION_DAYS = 7;
 
@@ -376,6 +377,11 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{stat.change}</p>
               </div>
             ))}
+          </div>
+
+          {/* Consultor de Margem */}
+          <div className="mb-6">
+            <MarginConsultant />
           </div>
 
           {/* Quick Actions - only show when onboarding is NOT complete */}
