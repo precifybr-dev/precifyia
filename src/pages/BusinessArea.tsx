@@ -293,6 +293,41 @@ export default function BusinessArea() {
     navigate("/");
   };
 
+  const saveBusinessData = async (propagateCmv: boolean = false) => {
+    if (!activeStore || !user) return;
+    setIsSaving(true);
+
+    const newCmv = formData.default_cmv ? parseFloat(formData.default_cmv) : null;
+
+    const storeUpdateData: any = {
+      name: formData.business_name,
+      business_type: formData.business_type,
+      default_cmv: newCmv,
+    };
+
+    const success = await updateStore(activeStore.id, storeUpdateData);
+
+    if (success && propagateCmv && newCmv !== null) {
+      const [recipesResult, beveragesResult] = await Promise.all([
+        supabase.from("recipes").update({ cmv_target: newCmv }).eq("user_id", user.id).eq("store_id", activeStore.id),
+        supabase.from("beverages").update({ cmv_target: newCmv }).eq("user_id", user.id).eq("store_id", activeStore.id),
+      ]);
+
+      const hasError = recipesResult.error || beveragesResult.error;
+      if (hasError) {
+        toast({ title: "Aviso", description: "Configurações salvas, mas houve erro ao atualizar algumas fichas técnicas.", variant: "destructive" });
+      } else {
+        toast({ title: "Sucesso!", description: "Configurações e todas as fichas técnicas atualizadas com o novo CMV." });
+      }
+    } else if (success) {
+      toast({ title: "Sucesso!", description: "Configurações atualizadas." });
+    }
+
+    setIsEditing(false);
+    setIsSaving(false);
+    setPendingCmvUpdate(null);
+  };
+
   const handleSave = async () => {
     if (!formData.business_name.trim()) {
       toast({ title: "Erro", description: "Nome do negócio é obrigatório", variant: "destructive" });
@@ -301,22 +336,17 @@ export default function BusinessArea() {
 
     if (!activeStore) return;
 
-    setIsSaving(true);
+    const newCmv = formData.default_cmv ? parseFloat(formData.default_cmv) : null;
+    const oldCmv = activeStore.default_cmv;
+    const cmvChanged = newCmv !== null && newCmv !== oldCmv;
 
-    const storeUpdateData: any = {
-      name: formData.business_name,
-      business_type: formData.business_type,
-      default_cmv: formData.default_cmv ? parseFloat(formData.default_cmv) : null,
-    };
-
-    const success = await updateStore(activeStore.id, storeUpdateData);
-
-    if (success) {
-      toast({ title: "Sucesso!", description: "Configurações atualizadas" });
-      setIsEditing(false);
+    if (cmvChanged) {
+      setPendingCmvUpdate({ oldCmv, newCmv });
+      setCmvDialogOpen(true);
+      return;
     }
 
-    setIsSaving(false);
+    await saveBusinessData(false);
   };
 
   const handleCancel = () => {
