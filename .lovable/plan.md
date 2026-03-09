@@ -1,62 +1,56 @@
 
 
-# Validacao Matematica e Guards Anti-Erro na Importacao iFood
+## Plan: Implement "Dr. Margem" Advisor Character
 
-## Contexto
+### Overview
+Create a recommendation engine persona called "Dr. Margem" that analyzes the user's recipe/pricing data and surfaces actionable recommendations. This is NOT a chatbot — it's a rule-based recommendation system (like Google Ads suggestions) wrapped in a consultive persona.
 
-O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
+### Architecture
 
-O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
+**1. New file: `src/lib/dr-margem-engine.ts`** — Recommendation engine
+- Takes array of recipes (with costs, prices, margins) and generates prioritized recommendations
+- Each recommendation: `{ advisor: "Dr. Margem", priority: "alta"|"media"|"baixa", title, message, actions[], type }`
+- Rules based on existing margin bands from `margin-engine.ts`:
+  - Loss (lucro < 0) → priority alta
+  - Critical (margin < 5%) → priority alta  
+  - Tight (5-12%) → priority media
+  - CMV > 40% → priority media
+  - iFood fee ≥ 25% → priority media
+  - Healthy (≥ 20%) → priority baixa (opportunity)
+- Price adjustment suggestions: "Se subir R$2, margem sobe de X% para Y%"
+- Limit output to top 3 by priority, with flag for "has more"
 
----
+**2. New component: `src/components/dashboard/DrMargemAdvisor.tsx`** — Dashboard widget
+- Fetches user's recipes from Supabase (reusing existing pattern from MarginConsultant)
+- Passes recipe data through the engine
+- Shows card with Dr. Margem identity: avatar/icon, name, speech bubble style
+- Collapsed: shows top recommendation + "Ver recomendações" button
+- Expanded: shows up to 3 recommendations with actions
+- "Ver todas" button if more exist
+- Empty state when no recipes: "Cadastre seus produtos para receber recomendações"
+- Mobile-first: stacked cards, large touch targets
 
-## O que sera implementado
+**3. Integration in `src/pages/Dashboard.tsx`**
+- Add DrMargemAdvisor below MarginConsultant (between Consultor de Margem and post-onboarding sections)
 
-### 1. Camada de Validacao no Processador
+**4. Integration in `src/components/dashboard/MarginConsultant.tsx`**
+- After simulation result, show a Dr. Margem recommendation bubble below the existing recommendation section
+- Reuse the engine with the single simulated product
 
-Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
+**5. Integration in `src/components/menu-mirror/MenuPerformanceDashboard.tsx`**
+- Add a Dr. Margem section when menu items have risk diagnostics
+- Reuse the engine filtered by items flagged as risky
 
-- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
-- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
-- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
-- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
-- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
+### Visual Identity
+- Icon: `Stethoscope` from lucide-react (medical/consultant metaphor)
+- Name always shown: "Dr. Margem"
+- Speech bubble styling: rounded card with left accent border in primary color
+- Persona tone: direct, simple, consultive Portuguese
 
-Cada validacao retorna `{ level: "error" | "warning", message: string }`.
-
-A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
-
-### 2. Exibicao de Alertas no Dashboard
-
-No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
-
-- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
-- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
-- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
-- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
-
-### 3. Info de Agrupamento no Dashboard
-
-Adicionar um pequeno badge/info no topo do dashboard mostrando:
-- Linhas na planilha: X
-- Pedidos unicos: Y
-- Media de linhas por pedido: X/Y
-
-Isso da confianca ao usuario de que o agrupamento esta correto.
-
----
-
-## Arquivos modificados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
-| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
-
-## O que NAO sera alterado
-
-- Banco de dados (sem migrations)
-- Logica de agrupamento por ID (ja funciona corretamente)
-- Fluxo de autenticacao
-- Nenhuma outra funcionalidade do sistema
+### Key Design Decisions
+- Engine is pure functions (no side effects), easily testable
+- Reuses `MARGIN_BANDS` from existing `margin-engine.ts`
+- No database tables needed — recommendations are computed on-the-fly from existing recipe data
+- No AI/LLM needed — purely rule-based heuristics
+- Max 3 recommendations visible by default to avoid visual pollution
 
