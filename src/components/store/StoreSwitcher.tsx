@@ -61,7 +61,7 @@ export function StoreSwitcher() {
           >
             <Store className="h-4 w-4 text-primary" />
             <span className="max-w-[120px] truncate text-sm font-medium">
-              {activeStore?.name || "Selecionar Loja"}
+              {activeStore?.name ? capitalizeWords(activeStore.name) : "Selecionar Loja"}
             </span>
             <ChevronDown className="h-4 w-4 text-muted-foreground" />
           </Button>
