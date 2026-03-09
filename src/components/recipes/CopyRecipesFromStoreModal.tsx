@@ -460,7 +460,7 @@ export function CopyRecipesFromStoreModal({
     }
   };
 
-  const activeStoreName = stores.find((s) => s.id === activeStoreId)?.name || "loja atual";
+  const activeStoreName = capitalizeWords(stores.find((s) => s.id === activeStoreId)?.name || "loja atual");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
