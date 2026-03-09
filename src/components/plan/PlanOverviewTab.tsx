@@ -234,6 +234,29 @@ export function PlanOverviewTab() {
           </div>
         </div>
 
+        {/* What your plan includes - Checklist */}
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-foreground">O que seu plano inclui</h2>
+          <Card>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {getPlanChecklist(userPlan).map((item) => (
+                  <div key={item.label} className="flex items-center gap-2 text-sm">
+                    {item.included ? (
+                      <Check className="h-4 w-4 text-primary shrink-0" />
+                    ) : (
+                      <X className="h-4 w-4 text-muted-foreground/40 shrink-0" />
+                    )}
+                    <span className={item.included ? "text-foreground" : "text-muted-foreground/60 line-through"}>
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         {/* Strategic Potential Alert for Free/Basic users */}
         {userPlan !== "pro" && (
           <Card className="border-primary/20 bg-primary/5">
