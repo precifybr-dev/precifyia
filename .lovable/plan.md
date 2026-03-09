@@ -1,62 +1,25 @@
 
 
-# Validacao Matematica e Guards Anti-Erro na Importacao iFood
+## Plano: Auto-gerar Relatório do Dr. Margem ao Abrir a Página
 
-## Contexto
+### Problema
+O usuário precisa clicar manualmente em "Novo relatório" para ver dados atualizados. O relatório deveria se atualizar automaticamente ao abrir a página.
 
-O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
+### Alterações
 
-O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
+**`src/pages/DrMargemReports.tsx`**
 
----
+1. Extrair função `mapReports` e `fetchReportsData` para reutilização
+2. Substituir `fetchReports` por `initPage` que:
+   - Busca os relatórios existentes
+   - Verifica se o mais recente tem mais de 1 hora (`ONE_HOUR = 60 * 60 * 1000`)
+   - Se estiver desatualizado ou não existir → chama `generate-weekly-report` silenciosamente (sem toast), depois recarrega
+   - Se falhar a geração automática → exibe os dados existentes como fallback
+3. O botão "Novo relatório" continua funcionando normalmente com toast de confirmação
+4. Durante a geração automática, mostrar o estado `generating` (spinner) para feedback visual
 
-## O que sera implementado
-
-### 1. Camada de Validacao no Processador
-
-Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
-
-- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
-- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
-- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
-- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
-- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
-
-Cada validacao retorna `{ level: "error" | "warning", message: string }`.
-
-A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
-
-### 2. Exibicao de Alertas no Dashboard
-
-No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
-
-- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
-- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
-- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
-- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
-
-### 3. Info de Agrupamento no Dashboard
-
-Adicionar um pequeno badge/info no topo do dashboard mostrando:
-- Linhas na planilha: X
-- Pedidos unicos: Y
-- Media de linhas por pedido: X/Y
-
-Isso da confianca ao usuario de que o agrupamento esta correto.
-
----
-
-## Arquivos modificados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
-| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
-
-## O que NAO sera alterado
-
-- Banco de dados (sem migrations)
-- Logica de agrupamento por ID (ja funciona corretamente)
-- Fluxo de autenticacao
-- Nenhuma outra funcionalidade do sistema
+### Detalhes técnicos
+- A edge function já busca dados frescos das receitas a cada chamada
+- Threshold de 1 hora evita gerar relatórios duplicados em acessos consecutivos
+- Geração automática é silenciosa (sem toast), manual mantém toast
 
