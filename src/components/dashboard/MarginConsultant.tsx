@@ -165,10 +165,12 @@ function SimulatorForm({
   onResult,
   simState,
   recipes,
+  prefillPayload,
 }: {
   onResult: (form: SimFormData) => void;
   simState: SimState;
   recipes: RecipeOption[];
+  prefillPayload: DrMargemTestPayload | null;
 }) {
   const [form, setForm] = useState(initialForm);
   const [autoFilled, setAutoFilled] = useState(false);
@@ -189,21 +191,17 @@ function SimulatorForm({
     setAutoFilled(true);
   };
 
-  // Listen for Dr. Margem "Testar solução" events
   useEffect(() => {
-    const handleDrMargemTest = (e: Event) => {
-      const { productName, price, cost } = (e as CustomEvent).detail;
-      setForm({
-        ...initialForm,
-        productName: productName || "",
-        sellingPrice: price ? price.toFixed(2).replace(".", ",") : "",
-        productCost: cost ? cost.toFixed(2).replace(".", ",") : "",
-      });
-      setAutoFilled(true);
-    };
-    window.addEventListener("dr-margem-test", handleDrMargemTest);
-    return () => window.removeEventListener("dr-margem-test", handleDrMargemTest);
-  }, []);
+    if (!prefillPayload) return;
+
+    setForm({
+      ...initialForm,
+      productName: prefillPayload.productName || "",
+      sellingPrice: prefillPayload.price > 0 ? prefillPayload.price.toFixed(2).replace(".", ",") : "",
+      productCost: prefillPayload.cost > 0 ? prefillPayload.cost.toFixed(2).replace(".", ",") : "",
+    });
+    setAutoFilled(true);
+  }, [prefillPayload]);
 
   const handleCalculate = () => {
     const selling = num(form.sellingPrice);
