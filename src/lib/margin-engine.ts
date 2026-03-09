@@ -140,17 +140,22 @@ export function calculate(
     const marginDiff = margin - previousResult.margin;
     const priceDiff = price - previousResult.sellingPrice;
     const improved = profit > previousResult.profit;
-    comparison = {
-      profitDiff,
-      marginDiff,
-      priceDiff,
-      improved,
-      message: improved
-        ? "O novo cenário melhora o lucro por venda."
-        : profitDiff === 0
-          ? "Cenários com resultado idêntico."
-          : "O novo cenário reduz sua margem.",
-    };
+    const prevCls = previousResult.classification;
+
+    let message: string;
+    if (profitDiff === 0) {
+      message = "Cenários com resultado idêntico.";
+    } else if (improved && cls !== prevCls) {
+      message = `O produto saiu de ${MARGIN_BANDS[prevCls].label.toLowerCase()} para ${MARGIN_BANDS[cls].label.toLowerCase()}.`;
+    } else if (!improved && cls !== prevCls) {
+      message = "O produto caiu para faixa de risco.";
+    } else if (improved) {
+      message = "O novo cenário melhora o lucro por venda.";
+    } else {
+      message = "O novo cenário reduz sua margem.";
+    }
+
+    comparison = { profitDiff, marginDiff, priceDiff, improved, message };
   }
 
   return {
