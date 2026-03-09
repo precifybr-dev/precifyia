@@ -3,6 +3,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { QuickPriceButton } from "./QuickPriceButton";
 import { QuickPriceModal } from "./QuickPriceModal";
 
+const STATS_KEY = "precify_price_update_stats";
+
+interface UpdateStats {
+  totalUpdates: number;
+  totalRecipesRecalculated: number;
+}
+
+function loadStats(): UpdateStats {
+  try {
+    const raw = localStorage.getItem(STATS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { totalUpdates: 0, totalRecipesRecalculated: 0 };
+}
+
+function saveStats(stats: UpdateStats) {
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+  } catch {}
+}
+
 interface QuickPriceUpdateProps {
   userId: string;
   storeId: string | null;
@@ -14,6 +35,7 @@ export function QuickPriceUpdate({ userId, storeId, onPriceUpdated }: QuickPrice
   const [ingredientsCount, setIngredientsCount] = useState(0);
   const [updatedCount, setUpdatedCount] = useState(0);
   const [recipesAffectedCount, setRecipesAffectedCount] = useState(0);
+  const [stats, setStats] = useState<UpdateStats>(loadStats);
 
   useEffect(() => {
     const fetchCount = async () => {
@@ -36,6 +58,8 @@ export function QuickPriceUpdate({ userId, storeId, onPriceUpdated }: QuickPrice
         ingredientsCount={ingredientsCount}
         updatedCount={updatedCount}
         recipesAffectedCount={recipesAffectedCount}
+        totalUpdates={stats.totalUpdates}
+        totalRecipesRecalculated={stats.totalRecipesRecalculated}
         onClick={() => setModalOpen(true)}
       />
       <QuickPriceModal
@@ -46,6 +70,12 @@ export function QuickPriceUpdate({ userId, storeId, onPriceUpdated }: QuickPrice
         onSave={(result) => {
           setUpdatedCount((c) => c + 1);
           setRecipesAffectedCount((c) => c + result.recipesCount);
+          const newStats: UpdateStats = {
+            totalUpdates: stats.totalUpdates + 1,
+            totalRecipesRecalculated: stats.totalRecipesRecalculated + result.recipesCount,
+          };
+          setStats(newStats);
+          saveStats(newStats);
           onPriceUpdated?.();
         }}
       />
