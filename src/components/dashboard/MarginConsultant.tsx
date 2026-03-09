@@ -46,6 +46,7 @@ import {
 } from "@/lib/margin-engine";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/contexts/StoreContext";
+import { generateSingleRecommendation, type DrMargemRecommendation } from "@/lib/dr-margem-engine";
 
 type SimState = "idle" | "calculating" | "result" | "error";
 
