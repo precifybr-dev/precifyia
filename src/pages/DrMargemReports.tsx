@@ -198,7 +198,7 @@ export default function DrMargemReports() {
       });
       if (error) throw error;
       toast({ title: "Relatório gerado!", description: "Dr. Margem analisou seu cardápio." });
-      await fetchReports();
+      await initPage();
     } catch (err: any) {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     } finally {
