@@ -1,10 +1,12 @@
-import { ShoppingCart, Package, Check, ArrowRight } from "lucide-react";
+import { ShoppingCart, Package, Check, ArrowRight, RefreshCw, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface QuickPriceButtonProps {
   ingredientsCount: number;
   updatedCount: number;
   recipesAffectedCount: number;
+  totalUpdates: number;
+  totalRecipesRecalculated: number;
   onClick: () => void;
 }
 
@@ -12,6 +14,8 @@ export function QuickPriceButton({
   ingredientsCount,
   updatedCount,
   recipesAffectedCount,
+  totalUpdates,
+  totalRecipesRecalculated,
   onClick,
 }: QuickPriceButtonProps) {
   const hasUpdates = updatedCount > 0;
@@ -43,14 +47,23 @@ export function QuickPriceButton({
 
         {/* Text */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex items-center gap-2 mb-1 flex-wrap">
             <h3 className="font-display font-bold text-base sm:text-lg">
               {hasUpdates ? "Preços Atualizados ✓" : "Atualizar Preços"}
             </h3>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold bg-white/20 backdrop-blur-sm">
-              <Package className="w-3 h-3" />
-              {ingredientsCount}
-            </span>
+            {/* Lifetime stats badges */}
+            {totalUpdates > 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold bg-white/20 backdrop-blur-sm">
+                <RefreshCw className="w-3 h-3" />
+                {totalUpdates}
+              </span>
+            )}
+            {totalUpdates === 0 && (
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold bg-white/20 backdrop-blur-sm">
+                <Package className="w-3 h-3" />
+                {ingredientsCount}
+              </span>
+            )}
           </div>
 
           <p className="text-xs sm:text-sm opacity-90 leading-snug">
@@ -67,6 +80,22 @@ export function QuickPriceButton({
               "Mantenha seus custos em dia e não perca dinheiro"
             )}
           </p>
+
+          {/* Lifetime summary line */}
+          {totalUpdates > 0 && (
+            <p className="text-[10px] sm:text-xs opacity-70 mt-1 flex items-center gap-3 flex-wrap">
+              <span className="inline-flex items-center gap-1">
+                <RefreshCw className="w-2.5 h-2.5" />
+                {totalUpdates} atualização{totalUpdates !== 1 ? "ões" : ""} rápida{totalUpdates !== 1 ? "s" : ""}
+              </span>
+              {totalRecipesRecalculated > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <FileSpreadsheet className="w-2.5 h-2.5" />
+                  {totalRecipesRecalculated} ficha{totalRecipesRecalculated !== 1 ? "s" : ""} recalculada{totalRecipesRecalculated !== 1 ? "s" : ""} automaticamente
+                </span>
+              )}
+            </p>
+          )}
         </div>
 
         {/* Arrow */}
