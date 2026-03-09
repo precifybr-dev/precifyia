@@ -48,7 +48,7 @@ function getPlanChecklist(plan: string) {
     { label: "Receita incremental" + (plan === "free" ? " (até 5)" : " ilimitada"), included: true },
     { label: "Exportação de dados", included: plan !== "free" },
     { label: "Multi-loja (até 3)", included: plan === "pro" },
-    { label: "Colaboradores", included: plan === "pro" },
+    
     { label: "Suporte prioritário WhatsApp", included: plan === "pro" },
   ];
   return items;

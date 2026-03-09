@@ -62,7 +62,7 @@ const fallbackPlans: PricingPlan[] = [
       { text: "Importação iFood ilimitada", included: true },
       { text: "Importação de planilha ilimitada", included: true },
       { text: "Até 3 lojas", included: true },
-      { text: "Colaboradores", included: true },
+      
       { text: "Suporte prioritário WhatsApp", included: true },
     ],
     is_popular: true, is_active: true, sort_order: 2,

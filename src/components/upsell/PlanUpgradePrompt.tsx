@@ -67,7 +67,7 @@ const fallbackPlans: PricingPlan[] = [
       { text: "Fichas técnicas ilimitadas", included: true },
       { text: "15 análises de cardápio/mês", included: true },
       { text: "Até 3 lojas", included: true },
-      { text: "Colaboradores + WhatsApp", included: true },
+      { text: "Suporte prioritário WhatsApp", included: true },
     ],
     is_popular: true, is_active: true, sort_order: 2,
   },
