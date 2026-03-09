@@ -185,7 +185,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold truncate text-foreground">
-                  {activeStore?.name || "Minha Loja"}
+                  {activeStore?.name ? capitalizeWords(activeStore.name) : "Minha Loja"}
                 </p>
                 <p className="text-xs text-muted-foreground truncate">
                   {activeStore?.business_type

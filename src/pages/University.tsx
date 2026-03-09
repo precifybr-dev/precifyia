@@ -375,7 +375,7 @@ export default function University() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold truncate text-foreground">{activeStore?.name || "Minha Loja"}</p>
+                <p className="text-sm font-semibold truncate text-foreground">{activeStore?.name ? capitalizeWords(activeStore.name) : "Minha Loja"}</p>
                 <p className="text-xs text-muted-foreground truncate">
                   {activeStore?.business_type
                     ? activeStore.business_type.charAt(0).toUpperCase() + activeStore.business_type.slice(1).replace(/_/g, ' ')

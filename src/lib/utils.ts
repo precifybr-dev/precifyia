@@ -10,7 +10,15 @@ export function cn(...inputs: ClassValue[]) {
  * Útil para buscas insensíveis a acentos
  * Ex: "Açúcar" → "acucar", "Macarrão" → "macarrao"
  */
+export function capitalizeWords(text: string): string {
+  return text.replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export function normalizeText(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
   return text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")

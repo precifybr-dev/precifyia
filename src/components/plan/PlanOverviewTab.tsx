@@ -387,7 +387,7 @@ export function PlanOverviewTab() {
                             size="sm"
                             className="text-destructive hover:text-destructive hover:bg-destructive/10 gap-1.5"
                             onClick={() => {
-                              setStoreToDelete({ id: store.id, name: store.name });
+                              setStoreToDelete({ id: store.id, name: capitalizeWords(store.name) });
                               setDeleteConfirmText("");
                             }}
                           >

@@ -90,7 +90,7 @@ export function StoreSwitcher() {
                 <div className="w-6 h-6 rounded bg-primary/10 flex items-center justify-center shrink-0">
                   <Store className="h-3 w-3 text-primary" />
                 </div>
-                <span className="flex-1 truncate">{store.name}</span>
+                <span className="flex-1 truncate">{capitalizeWords(store.name)}</span>
                 {isActive && <Check className="h-4 w-4 text-primary" />}
                 {isBlocked && <Lock className="h-3 w-3 text-muted-foreground" />}
               </DropdownMenuItem>
