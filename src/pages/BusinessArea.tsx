@@ -833,6 +833,38 @@ export default function BusinessArea() {
           </div>
         </div>
       </main>
+
+      <AlertDialog open={cmvDialogOpen} onOpenChange={setCmvDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Atualizar fichas técnicas?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você alterou o CMV de{" "}
+              <strong>{pendingCmvUpdate?.oldCmv ?? "—"}%</strong> para{" "}
+              <strong>{pendingCmvUpdate?.newCmv}%</strong>. Deseja atualizar
+              todas as fichas técnicas e bebidas com o novo CMV?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => {
+                setCmvDialogOpen(false);
+                saveBusinessData(false);
+              }}
+            >
+              Não, manter como está
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setCmvDialogOpen(false);
+                saveBusinessData(true);
+              }}
+            >
+              Sim, atualizar todas
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
