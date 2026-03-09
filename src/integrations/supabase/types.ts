@@ -1528,6 +1528,56 @@ export type Database = {
         }
         Relationships: []
       }
+      dr_margem_reports: {
+        Row: {
+          advisor_message: string
+          created_at: string
+          critical_products: Json
+          generated_at: string
+          id: string
+          improvement_opportunities: Json
+          store_id: string | null
+          strong_products: Json
+          summary: Json
+          total_products_analyzed: number
+          user_id: string
+        }
+        Insert: {
+          advisor_message?: string
+          created_at?: string
+          critical_products?: Json
+          generated_at?: string
+          id?: string
+          improvement_opportunities?: Json
+          store_id?: string | null
+          strong_products?: Json
+          summary?: Json
+          total_products_analyzed?: number
+          user_id: string
+        }
+        Update: {
+          advisor_message?: string
+          created_at?: string
+          critical_products?: Json
+          generated_at?: string
+          id?: string
+          improvement_opportunities?: Json
+          store_id?: string | null
+          strong_products?: Json
+          summary?: Json
+          total_products_analyzed?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dr_margem_reports_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fixed_costs: {
         Row: {
           created_at: string
