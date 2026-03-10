@@ -67,14 +67,14 @@ export default function IngredientsSpreadsheetTable({
           <Table>
             <TableHeader>
               <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
-                <TableHead className="text-primary-foreground font-semibold w-20">Código</TableHead>
-                <TableHead className="text-primary-foreground font-semibold min-w-[200px]">INGREDIENTES</TableHead>
-                <TableHead className="text-primary-foreground font-semibold w-24 text-center">QTD LIQ</TableHead>
-                <TableHead className="text-primary-foreground font-semibold w-20 text-center">UND</TableHead>
-                <TableHead className="text-primary-foreground font-semibold w-20 text-center">FAT.C</TableHead>
-                <TableHead className="text-primary-foreground font-semibold w-28 text-right">CUSTO UN</TableHead>
-                <TableHead className="text-primary-foreground font-semibold w-24 text-right">CUSTO</TableHead>
-                <TableHead className="w-10"></TableHead>
+                <TableHead className="text-primary-foreground font-medium text-xs w-16">Código</TableHead>
+                <TableHead className="text-primary-foreground font-medium text-xs min-w-[160px]">INGREDIENTES</TableHead>
+                <TableHead className="text-primary-foreground font-medium text-xs w-20 text-center">QTD LIQ</TableHead>
+                <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">UND</TableHead>
+                <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">FAT.C</TableHead>
+                <TableHead className="text-primary-foreground font-medium text-xs w-24 text-right">CUSTO UN</TableHead>
+                <TableHead className="text-primary-foreground font-medium text-xs w-20 text-right">CUSTO</TableHead>
+                <TableHead className="w-8"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
