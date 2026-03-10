@@ -1221,7 +1221,7 @@ export default function Recipes() {
               </div>
 
               {/* Market Analysis */}
-              <Accordion type="multiple" className="mb-6">
+              <Accordion type="multiple" className="mb-4">
                 {/* Análise de Mercado */}
                 <AccordionItem value="market">
                   <AccordionTrigger className="text-sm font-semibold">
