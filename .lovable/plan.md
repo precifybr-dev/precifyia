@@ -1,62 +1,37 @@
 
 
-# Validacao Matematica e Guards Anti-Erro na Importacao iFood
+## Plano: Melhorias no Simulador de Lucro + Clareza do Dr. Margem
 
-## Contexto
+### 1. Puxar taxa iFood cadastrada automaticamente
+**`src/components/dashboard/MarginConsultant.tsx`**
+- No `useEffect` que busca receitas, também buscar `ifood_real_percentage` do perfil (`profiles`)
+- Pré-preencher o campo "Taxa iFood" com esse valor quando o formulário for carregado ou quando selecionar um produto
+- O campo continua editável — o usuário pode sobrescrever
+- Mostrar hint: "Do seu cadastro: X%" quando o valor vier do perfil
 
-O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
+### 2. Seletor de embalagem cadastrada
+**`src/components/dashboard/MarginConsultant.tsx`**
+- Buscar embalagens ativas via `packagings` (tabela existente, filtrada por `store_id` e `is_active = true`)
+- Adicionar um select/dropdown acima do campo "Embalagem" com as embalagens cadastradas
+- Ao selecionar uma embalagem, preencher o campo `packagingCost` com o `cost_total` da embalagem
+- Manter campo editável para ajuste manual
+- Hint: "Da embalagem: NomeEmbalagem" quando selecionada
 
-O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
+### 3. Tooltips explicativos para Anúncio e Desconto
+**`src/components/dashboard/MarginConsultant.tsx`**
+- No campo "Anúncio": adicionar texto explicativo abaixo — "Custo pago em anúncios do iFood ou redes sociais para promover este produto. Ex: Entrega Grátis patrocinada, Ads."
+- No campo "Desconto": adicionar texto explicativo — "Valor em R$ de desconto aplicado na venda deste produto. Ex: cupom, promoção do dia."
+- Usar `<p className="text-[10px] text-muted-foreground">` para manter visual consistente
 
----
+### 4. Melhorar mensagem do Dr. Margem para CMV alto
+**`src/lib/dr-margem-engine.ts`**
+- Alterar a mensagem do tipo `cmv_alto` (CMV > 40%) de genérica para explicativa:
+  - **message**: `"O custo dos insumos representa {cmv}% do preço de venda (acima de 40%). Isso significa que sobra pouco para cobrir taxas, embalagem e lucro."`
+  - **priceSuggestion**: Adicionar sugestão de preço mínimo para atingir CMV de 35%: `"Para um CMV de 35%, o preço mínimo seria {formatCurrency(cost / 0.35)}."`
+- Também melhorar a mensagem no `margin-engine.ts` (alert de CMV >= 40): `"O custo dos insumos já representa {cmv.toFixed(0)}% do preço — acima do ideal de 35%."`
 
-## O que sera implementado
-
-### 1. Camada de Validacao no Processador
-
-Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
-
-- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
-- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
-- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
-- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
-- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
-
-Cada validacao retorna `{ level: "error" | "warning", message: string }`.
-
-A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
-
-### 2. Exibicao de Alertas no Dashboard
-
-No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
-
-- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
-- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
-- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
-- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
-
-### 3. Info de Agrupamento no Dashboard
-
-Adicionar um pequeno badge/info no topo do dashboard mostrando:
-- Linhas na planilha: X
-- Pedidos unicos: Y
-- Media de linhas por pedido: X/Y
-
-Isso da confianca ao usuario de que o agrupamento esta correto.
-
----
-
-## Arquivos modificados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
-| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
-
-## O que NAO sera alterado
-
-- Banco de dados (sem migrations)
-- Logica de agrupamento por ID (ja funciona corretamente)
-- Fluxo de autenticacao
-- Nenhuma outra funcionalidade do sistema
+### Arquivos editados
+- `src/components/dashboard/MarginConsultant.tsx` — taxa iFood, seletor embalagem, tooltips
+- `src/lib/dr-margem-engine.ts` — mensagem CMV alto com contexto numérico
+- `src/lib/margin-engine.ts` — alert CMV com percentual real
 
