@@ -186,31 +186,54 @@ export default function IfoodSpreadsheetImportModal({
 
   const loadLastImport = useCallback(async () => {
     const { data } = await supabase
-      .from("ifood_import_logs")
+      .from("ifood_monthly_metrics")
       .select("*")
       .eq("user_id", userId)
-      .order("created_at", { ascending: false })
+      .order("updated_at", { ascending: false })
       .limit(1);
 
     if (data && data.length > 0) {
       const row = data[0];
+      const bruto = Number(row.valor_das_vendas);
+      const taxasEComissoes = Number(row.taxas_comissoes_total);
+      const servicosEPromocoes = Number(row.servicos_promocoes_total);
+      const ajustes = Number(row.ajustes_total);
+      const liquido = Number(row.total_faturamento);
+      const totalComissao = Number(row.total_comissao);
+      const totalTaxa = Number(row.total_taxa_transacao);
+      const totalPedidos = Number(row.total_pedidos_unicos);
+      const percentualMedioComissao = totalPedidos > 0 && bruto > 0 ? (totalComissao / bruto) * 100 : 0;
+      const percentualMedioTaxa = totalPedidos > 0 && bruto > 0 ? (totalTaxa / bruto) * 100 : 0;
+
       setLastImport({
         ...DEFAULT_CONSOLIDATION,
-        mesReferencia: row.mes_referencia,
-        totalPedidos: row.total_pedidos,
-        faturamentoBruto: Number(row.faturamento_bruto),
-        faturamentoLiquido: Number(row.faturamento_liquido),
-        totalCupomLoja: Number(row.total_cupom_loja),
-        totalCupomIfood: Number(row.total_cupom_ifood),
-        totalComissao: Number(row.total_comissao),
-        totalTaxa: Number(row.total_taxa),
-        totalAnuncios: Number(row.total_anuncios),
+        mesReferencia: row.competencia,
+        totalPedidos,
+        faturamentoBruto: bruto,
+        faturamentoLiquido: liquido,
+        taxasEComissoes,
+        servicosEPromocoes,
+        ajustesIfood: ajustes,
+        totalCupomLoja: Number(row.cupom_loja_total),
+        totalCupomIfood: Number(row.cupom_ifood_total),
+        totalComissao,
+        totalTaxa,
+        totalAnuncios: Number(row.anuncios_total),
+        totalDeliveryCost: Number(row.entrega_ifood_custo_total),
+        ordersWithIfoodDelivery: Number(row.entrega_ifood_pedidos),
+        ordersWithCoupon: Number(row.pedidos_com_cupom_total),
+        ordersWithoutCoupon: Number(row.pedidos_sem_cupom_total),
+        ordersWithCouponLojaOnly: Number(row.pedidos_so_loja_cupom),
+        ordersWithCouponIfoodOnly: Number(row.pedidos_so_ifood_cupom),
+        ordersWithCouponShared: Number(row.pedidos_ambos_cupom),
         ticketMedio: Number(row.ticket_medio),
-        percentualMedioComissao: Number(row.percentual_medio_comissao),
-        percentualMedioTaxa: Number(row.percentual_medio_taxa),
+        percentualMedioComissao,
+        percentualMedioTaxa,
         percentualRealIfood: Number(row.percentual_real_ifood),
+        custoExtraTotal: Number(row.custo_extra_total),
+        custoExtraPercentual: Number(row.custo_extra_percentual),
       });
-      setLastImportDate(new Date(row.created_at).toLocaleDateString("pt-BR"));
+      setLastImportDate(new Date(row.updated_at).toLocaleDateString("pt-BR"));
       setStep("dashboard");
     }
   }, [userId]);
