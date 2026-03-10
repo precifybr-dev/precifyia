@@ -1037,7 +1037,7 @@ export default function Recipes() {
         <div className="p-3 sm:p-6">
           {showForm ? (
             <div className="bg-card rounded-xl border border-border p-4 shadow-card">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                     <FileSpreadsheet className="w-4 h-4 text-primary" />
@@ -1055,7 +1055,7 @@ export default function Recipes() {
               </div>
 
               {/* Dica de uso */}
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4 flex items-start gap-2">
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-2 flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                 <div className="text-xs">
                   <p className="font-medium text-foreground mb-0.5">Dica: Use o código do insumo</p>
@@ -1066,17 +1066,17 @@ export default function Recipes() {
               </div>
 
               {/* Recipe info - Header with Name, Servings, CMV */}
-              <div className="grid sm:grid-cols-3 gap-3 mb-4">
-                <div className="space-y-2">
-                  <Label>Nome do Produto *</Label>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-2 mb-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Nome do Produto *</Label>
                   <Input
                     placeholder="Ex: X-Bacon Especial"
                     value={recipeName}
                     onChange={(e) => setRecipeName(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Rendimento (porções)</Label>
+                <div className="space-y-1 w-24">
+                  <Label className="text-xs">Rendimento</Label>
                   <Input
                     type="number"
                     min="1"
@@ -1084,8 +1084,8 @@ export default function Recipes() {
                     onChange={(e) => setServings(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>CMV Desejado (%)</Label>
+                <div className="space-y-1 w-28">
+                  <Label className="text-xs">CMV Desejado (%)</Label>
                   <div className="relative">
                     <Input
                       type="number"
@@ -1102,7 +1102,7 @@ export default function Recipes() {
               </div>
 
               {/* Ingredients Table */}
-              <div className="mb-4">
+              <div className="mb-2">
                 <Label className="mb-1.5 block text-sm">Tabela de Insumos</Label>
                 <IngredientsSpreadsheetTable
                   ingredients={ingredients}
@@ -1116,7 +1116,7 @@ export default function Recipes() {
               </div>
 
               {/* Packaging Toggle */}
-              <div className="mb-4 space-y-2">
+              <div className="mb-2 space-y-2">
                 <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
                   <Switch
                     id="includePackaging"
@@ -1181,7 +1181,7 @@ export default function Recipes() {
               </div>
 
               {/* Pricing Summary Panel */}
-              <div className="mb-4">
+              <div className="mb-2">
               <PricingSummaryPanel
                   ingredientsCost={pricingResult?.ingredients_cost_per_serving ?? ingredientsCostPerServing}
                   costWithLoss={costWithLoss}
@@ -1221,7 +1221,7 @@ export default function Recipes() {
               </div>
 
               {/* Market Analysis */}
-              <Accordion type="multiple" className="mb-4">
+              <Accordion type="multiple" className="mb-2">
                 {/* Análise de Mercado */}
                 <AccordionItem value="market">
                   <AccordionTrigger className="text-sm font-semibold">
@@ -1348,7 +1348,6 @@ export default function Recipes() {
                     <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
                       <TableHead className="text-primary-foreground font-medium text-xs w-10 text-center">#</TableHead>
                       <TableHead className="text-primary-foreground font-medium text-xs min-w-[150px]">Produto</TableHead>
-                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">Rend.</TableHead>
                       <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Custo Un.</TableHead>
                       <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">CMV Des.</TableHead>
                       <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Preço Loja</TableHead>
@@ -1405,8 +1404,10 @@ export default function Recipes() {
                           className={index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50"}
                         >
                           <TableCell className="text-center font-mono text-muted-foreground text-xs">{index + 1}</TableCell>
-                          <TableCell className="font-medium text-foreground text-xs">{recipe.name}</TableCell>
-                          <TableCell className="text-center font-mono text-muted-foreground text-xs">{recipe.servings}</TableCell>
+                          <TableCell className="font-medium text-foreground text-xs">
+                            {recipe.name}
+                            <span className="text-muted-foreground font-normal ml-1.5">(rend. {recipe.servings})</span>
+                          </TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {formatCurrency(costPerServing)}
                           </TableCell>

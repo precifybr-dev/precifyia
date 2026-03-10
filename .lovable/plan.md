@@ -1,23 +1,62 @@
 
 
-## Plano: Reduzir espaçamentos na Ficha Técnica e aproximar Rendimento do Nome
+# Validacao Matematica e Guards Anti-Erro na Importacao iFood
 
-### 1. Ficha Técnica — reduzir espaço entre blocos (`src/pages/Recipes.tsx`)
-- Trocar todos os `mb-4` internos do formulário para `mb-2` (entre: header → dica → grid nome/rendimento → tabela insumos → embalagem → pricing)
-- Manter `p-4` do card externo
+## Contexto
 
-### 2. Listagem de receitas — Rendimento junto do Nome (`src/pages/Recipes.tsx`)
-- Remover a coluna separada "Rend." da tabela
-- Exibir o rendimento como badge/texto secundário ao lado do nome do produto na mesma célula:
-  ```
-  X-Bacon Especial  (rend. 2)
-  ```
-- Isso libera uma coluna e aproxima visualmente as duas informações
+O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
 
-### 3. Grid Nome + Rendimento + CMV no formulário (`src/pages/Recipes.tsx`)
-- Mudar o grid de `sm:grid-cols-3 gap-3` para layout inline: Nome ocupa mais espaço (`col-span-2`), Rendimento e CMV ficam menores lado a lado
-- Grid: `grid-cols-[1fr_auto_auto] gap-2` para manter tudo numa linha compacta
+O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
 
-### Arquivos editados
-- `src/pages/Recipes.tsx`
+---
+
+## O que sera implementado
+
+### 1. Camada de Validacao no Processador
+
+Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
+
+- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
+- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
+- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
+- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
+- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
+
+Cada validacao retorna `{ level: "error" | "warning", message: string }`.
+
+A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
+
+### 2. Exibicao de Alertas no Dashboard
+
+No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
+
+- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
+- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
+- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
+- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
+
+### 3. Info de Agrupamento no Dashboard
+
+Adicionar um pequeno badge/info no topo do dashboard mostrando:
+- Linhas na planilha: X
+- Pedidos unicos: Y
+- Media de linhas por pedido: X/Y
+
+Isso da confianca ao usuario de que o agrupamento esta correto.
+
+---
+
+## Arquivos modificados
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
+| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
+
+## O que NAO sera alterado
+
+- Banco de dados (sem migrations)
+- Logica de agrupamento por ID (ja funciona corretamente)
+- Fluxo de autenticacao
+- Nenhuma outra funcionalidade do sistema
 
