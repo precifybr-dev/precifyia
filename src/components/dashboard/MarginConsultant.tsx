@@ -24,10 +24,18 @@ import {
   Layers,
   Eye,
   Zap,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Drawer,
   DrawerContent,
@@ -57,6 +65,12 @@ interface RecipeOption {
   selling_price: number | null;
   cost_per_serving: number;
   servings: number;
+}
+
+interface PackagingOption {
+  id: string;
+  name: string;
+  cost_total: number;
 }
 
 interface DrMargemTestPayload {
@@ -166,14 +180,29 @@ function SimulatorForm({
   simState,
   recipes,
   prefillPayload,
+  packagings,
+  profileIfoodFee,
 }: {
   onResult: (form: SimFormData) => void;
   simState: SimState;
   recipes: RecipeOption[];
   prefillPayload: DrMargemTestPayload | null;
+  packagings: PackagingOption[];
+  profileIfoodFee: number | null;
 }) {
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState({
+    ...initialForm,
+    ifoodFee: profileIfoodFee ? profileIfoodFee.toString().replace(".", ",") : "",
+  });
   const [autoFilled, setAutoFilled] = useState(false);
+  const [selectedPackaging, setSelectedPackaging] = useState<string>("");
+
+  // Sync profileIfoodFee when it loads
+  useEffect(() => {
+    if (profileIfoodFee && !form.ifoodFee) {
+      setForm((prev) => ({ ...prev, ifoodFee: profileIfoodFee.toString().replace(".", ",") }));
+    }
+  }, [profileIfoodFee]);
 
   const update = (field: string, value: string) => {
     const sanitized = value.replace(/[^0-9.,]/g, "");
@@ -187,8 +216,21 @@ function SimulatorForm({
       productName: recipe.name,
       productCost: recipe.cost_per_serving.toFixed(2).replace(".", ","),
       sellingPrice: recipe.selling_price ? recipe.selling_price.toFixed(2).replace(".", ",") : "",
+      ifoodFee: profileIfoodFee ? profileIfoodFee.toString().replace(".", ",") : "",
     });
     setAutoFilled(true);
+  };
+
+  const handleSelectPackaging = (packagingId: string) => {
+    setSelectedPackaging(packagingId);
+    if (packagingId === "none") {
+      setForm((prev) => ({ ...prev, packagingCost: "" }));
+      return;
+    }
+    const pkg = packagings.find((p) => p.id === packagingId);
+    if (pkg) {
+      setForm((prev) => ({ ...prev, packagingCost: pkg.cost_total.toFixed(2).replace(".", ",") }));
+    }
   };
 
   useEffect(() => {
@@ -199,6 +241,7 @@ function SimulatorForm({
       productName: prefillPayload.productName || "",
       sellingPrice: prefillPayload.price > 0 ? prefillPayload.price.toFixed(2).replace(".", ",") : "",
       productCost: prefillPayload.cost > 0 ? prefillPayload.cost.toFixed(2).replace(".", ",") : "",
+      ifoodFee: profileIfoodFee ? profileIfoodFee.toString().replace(".", ",") : "",
     });
     setAutoFilled(true);
   }, [prefillPayload]);
@@ -219,7 +262,16 @@ function SimulatorForm({
     });
   };
 
-  const handleClear = () => { setForm(initialForm); setAutoFilled(false); };
+  const handleClear = () => {
+    setForm({ ...initialForm, ifoodFee: profileIfoodFee ? profileIfoodFee.toString().replace(".", ",") : "" });
+    setAutoFilled(false);
+    setSelectedPackaging("");
+  };
+
+  const fieldHints: Record<string, string> = {
+    adCost: "Custo pago em anúncios do iFood ou redes sociais para promover este produto. Ex: Entrega Grátis patrocinada, Ads.",
+    discount: "Valor em R$ de desconto aplicado na venda deste produto. Ex: cupom, promoção do dia.",
+  };
 
   const fields: { key: string; label: string; placeholder: string; icon: typeof DollarSign; suffix?: string }[] = [
     { key: "sellingPrice", label: "Preço de venda", placeholder: "0,00", icon: DollarSign },
@@ -257,6 +309,26 @@ function SimulatorForm({
       {fields.map((f) => (
         <div key={f.key}>
           <label className="text-xs font-medium text-muted-foreground mb-1 block">{f.label}</label>
+
+          {/* Packaging selector before packaging cost field */}
+          {f.key === "packagingCost" && packagings.length > 0 && (
+            <div className="mb-1.5">
+              <Select value={selectedPackaging} onValueChange={handleSelectPackaging}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue placeholder="Selecionar embalagem cadastrada" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma (digitar manual)</SelectItem>
+                  {packagings.map((pkg) => (
+                    <SelectItem key={pkg.id} value={pkg.id}>
+                      {pkg.name} — {formatCurrency(pkg.cost_total)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="relative">
             <f.icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
@@ -270,6 +342,30 @@ function SimulatorForm({
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">{f.suffix}</span>
             )}
           </div>
+
+          {/* iFood fee hint */}
+          {f.key === "ifoodFee" && profileIfoodFee && (
+            <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+              <Info className="w-3 h-3" />
+              Do seu cadastro: {profileIfoodFee}%
+            </p>
+          )}
+
+          {/* Packaging hint */}
+          {f.key === "packagingCost" && selectedPackaging && selectedPackaging !== "none" && (
+            <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+              <Package className="w-3 h-3" />
+              Da embalagem: {packagings.find((p) => p.id === selectedPackaging)?.name}
+            </p>
+          )}
+
+          {/* Field description hints */}
+          {fieldHints[f.key] && (
+            <p className="text-[10px] text-muted-foreground mt-0.5 flex items-start gap-1">
+              <Info className="w-3 h-3 mt-0.5 flex-shrink-0" />
+              {fieldHints[f.key]}
+            </p>
+          )}
         </div>
       ))}
 
@@ -514,32 +610,54 @@ export default function MarginConsultant() {
   const [previousResult, setPreviousResult] = useState<SimResult | null>(null);
   const [lastSaved, setLastSaved] = useState<SimResult | null>(null);
   const [recipes, setRecipes] = useState<RecipeOption[]>([]);
+  const [packagings, setPackagings] = useState<PackagingOption[]>([]);
+  const [profileIfoodFee, setProfileIfoodFee] = useState<number | null>(null);
   const [prefillPayload, setPrefillPayload] = useState<DrMargemTestPayload | null>(null);
   const isMobile = useIsMobile();
   const { activeStore } = useStore();
 
-  // Load last simulation + recipes
+  // Load last simulation + recipes + packagings + profile ifood fee
   useEffect(() => {
     const saved = loadLastSimulation();
     if (saved) setLastSaved(saved);
 
-    const fetchRecipes = async () => {
+    const fetchData = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) return;
 
+      // Fetch recipes
       let query = supabase
         .from("recipes")
         .select("id, name, total_cost, selling_price, cost_per_serving, servings")
         .eq("user_id", session.user.id)
         .order("name");
-
       if (activeStore?.id) query = query.eq("store_id", activeStore.id);
+      const { data: recipesData } = await query;
+      if (recipesData) setRecipes(recipesData as RecipeOption[]);
 
-      const { data } = await query;
-      if (data) setRecipes(data as RecipeOption[]);
+      // Fetch profile ifood_real_percentage
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("ifood_real_percentage")
+        .eq("user_id", session.user.id)
+        .single();
+      if (profile?.ifood_real_percentage) {
+        setProfileIfoodFee(profile.ifood_real_percentage);
+      }
+
+      // Fetch packagings
+      let pkgQuery = supabase
+        .from("packagings")
+        .select("id, name, cost_total")
+        .eq("user_id", session.user.id)
+        .eq("is_active", true)
+        .order("name");
+      if (activeStore?.id) pkgQuery = pkgQuery.eq("store_id", activeStore.id);
+      const { data: pkgData } = await pkgQuery;
+      if (pkgData) setPackagings(pkgData as PackagingOption[]);
     };
 
-    fetchRecipes();
+    fetchData();
   }, [activeStore?.id]);
 
   useEffect(() => {
@@ -615,6 +733,8 @@ export default function MarginConsultant() {
           simState={simState}
           recipes={recipes}
           prefillPayload={prefillPayload}
+          packagings={packagings}
+          profileIfoodFee={profileIfoodFee}
         />
       )}
     </>
