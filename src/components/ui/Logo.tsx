@@ -31,7 +31,9 @@ export function Logo({
       <img 
         src={logoImage} 
         alt="PRECIFY" 
-        className={`${sizeMap[size]} object-contain`}
+        width={sizeMap[size].width}
+        height={sizeMap[size].height}
+        className={`${sizeMap[size].className} object-contain`}
       />
       {showText && (
         <span 

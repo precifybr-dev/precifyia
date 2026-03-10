@@ -111,6 +111,8 @@ export function ComparisonSection() {
               <img
                 src={devicesMockup}
                 alt="Precify funcionando no computador e celular — dashboard de precificação de restaurantes"
+                width={512}
+                height={512}
                 className="relative w-full max-w-lg mx-auto drop-shadow-2xl"
                 loading="lazy"
               />
