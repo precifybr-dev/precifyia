@@ -766,6 +766,13 @@ export default function IfoodSpreadsheetImportModal({
                       </p>
                     </div>
                   </div>
+
+                  <div className="rounded-lg bg-muted/40 border border-border p-2.5 mt-1">
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      <Info className="h-3 w-3 inline-block mr-1 -mt-0.5" />
+                      O custo total pago ao iFood é fixo ({fmt(custoTotalIfood)}). O "custo extra" é quanto você paga <strong>além</strong> da taxa base do plano selecionado. No plano de 12%, a base é menor, então o extra parece maior. No de 23%, a base já cobre mais do total.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Breakdown */}
