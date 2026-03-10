@@ -1,62 +1,88 @@
 
 
-# Validacao Matematica e Guards Anti-Erro na Importacao iFood
+## Plano: Menu fixo com shimmer no conteudo durante navegacao
 
-## Contexto
+### Problema
 
-O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
+Cada pagina renderiza sua propria sidebar e estado de autenticacao independentemente. Quando o React Suspense carrega uma nova pagina (lazy load), o fallback substitui **tudo** — incluindo a sidebar — causando um flash. Nao ha continuidade visual.
 
-O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
+### Solucao
 
----
+Criar um **shell compartilhado** (`AppShell`) que fica montado permanentemente para todas as rotas `/app/*`. A sidebar e o header ficam fixos, e apenas a area de conteudo troca com um fallback de shimmer.
 
-## O que sera implementado
+```text
+┌──────────────────────────────────────────────┐
+│  AppShell (monta uma vez, nunca desmonta)     │
+│ ┌────────┬──────────────────────────────────┐ │
+│ │        │  Header (sticky)                 │ │
+│ │Sidebar │─────────────────────────────────── │
+│ │ (fixo) │  <Suspense fallback={Shimmer}>   │ │
+│ │        │    <Outlet /> ← pagina atual     │ │
+│ │        │  </Suspense>                     │ │
+│ └────────┴──────────────────────────────────┘ │
+└──────────────────────────────────────────────┘
+```
 
-### 1. Camada de Validacao no Processador
+### Alteracoes
 
-Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
+#### 1. Criar `src/components/layout/AppShell.tsx`
+- Move a logica de auth, sidebar e header que hoje esta duplicada em cada pagina
+- Usa `<Outlet />` do React Router para renderizar a rota filha
+- Envolve o Outlet em `<Suspense fallback={<PageSkeleton />}>`
+- A sidebar permanece montada enquanto apenas o conteudo muda
 
-- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
-- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
-- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
-- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
-- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
+#### 2. Criar `src/components/layout/PageSkeleton.tsx`
+- Componente com shimmer skeletons simulando um layout generico de pagina
+- Blocos de Skeleton para titulo, cards, tabela — visual similar ao screenshot do iFood
 
-Cada validacao retorna `{ level: "error" | "warning", message: string }`.
+#### 3. Alterar `src/App.tsx`
+- Substituir as rotas individuais `/app/*` por uma rota pai com `AppShell` como layout:
+```tsx
+<Route path="/app" element={<AppRoute><AppShell /></AppRoute>}>
+  <Route index element={<Dashboard />} />
+  <Route path="ingredients" element={<Ingredients />} />
+  ...
+</Route>
+```
+- O Suspense com `PageLoader` generico fica apenas para rotas fora do `/app`
 
-A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
+#### 4. Refatorar as 8 paginas que usam `AppSidebar` diretamente
+Paginas: Dashboard, Ingredients, Recipes, Beverages, BusinessArea, CMVGlobal, SubRecipes, DrMargemReports
 
-### 2. Exibicao de Alertas no Dashboard
+Para cada uma:
+- Remover import do `AppSidebar`
+- Remover estado `sidebarOpen`, `user`, `profile`, `isLoading` e `checkAuth`
+- Remover o wrapper `<div className="min-h-screen bg-background flex">` + `<AppSidebar ...>`
+- Manter apenas o conteudo dentro do `<main>`, sem o `lg:ml-64`
 
-No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
+#### 5. Refatorar as 6 paginas que usam `AppLayout`
+Paginas: MyPlan, MenuMirror, Combos, UserSupport, RecycleBin, Packagings
 
-- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
-- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
-- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
-- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
+- Remover o wrapper `<AppLayout>` — o shell ja fornece sidebar + header
+- Manter apenas o conteudo interno
 
-### 3. Info de Agrupamento no Dashboard
+### Resultado
+- Sidebar **nunca desmonta** ao navegar entre paginas
+- Ao clicar em um item do menu, a area de conteudo mostra shimmer skeletons ate a pagina carregar
+- Paginas ficam mais leves (sem duplicar auth/sidebar/layout)
+- Experiencia identica ao Portal do iFood
 
-Adicionar um pequeno badge/info no topo do dashboard mostrando:
-- Linhas na planilha: X
-- Pedidos unicos: Y
-- Media de linhas por pedido: X/Y
-
-Isso da confianca ao usuario de que o agrupamento esta correto.
-
----
-
-## Arquivos modificados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
-| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
-
-## O que NAO sera alterado
-
-- Banco de dados (sem migrations)
-- Logica de agrupamento por ID (ja funciona corretamente)
-- Fluxo de autenticacao
-- Nenhuma outra funcionalidade do sistema
+### Arquivos editados
+- `src/components/layout/AppShell.tsx` (novo)
+- `src/components/layout/PageSkeleton.tsx` (novo)
+- `src/App.tsx`
+- `src/pages/Dashboard.tsx`
+- `src/pages/Ingredients.tsx`
+- `src/pages/Recipes.tsx`
+- `src/pages/Beverages.tsx`
+- `src/pages/BusinessArea.tsx`
+- `src/pages/CMVGlobal.tsx`
+- `src/pages/SubRecipes.tsx`
+- `src/pages/DrMargemReports.tsx`
+- `src/pages/MyPlan.tsx`
+- `src/pages/MenuMirror.tsx`
+- `src/pages/Combos.tsx`
+- `src/pages/UserSupport.tsx`
+- `src/pages/RecycleBin.tsx`
+- `src/pages/Packagings.tsx`
 
