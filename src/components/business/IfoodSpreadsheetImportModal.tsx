@@ -247,10 +247,18 @@ export default function IfoodSpreadsheetImportModal({
   }, [userId, storeId]);
 
   const loadMonthlyHistory = useCallback(async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("ifood_monthly_metrics")
       .select("competencia, valor_das_vendas, ticket_medio, cupom_loja_total, cupom_ifood_total, custo_extra_percentual, total_faturamento, total_pedidos_unicos")
-      .eq("user_id", userId)
+      .eq("user_id", userId);
+
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data } = await query
       .order("competencia", { ascending: true })
       .limit(24);
 
@@ -266,7 +274,7 @@ export default function IfoodSpreadsheetImportModal({
         total_pedidos_unicos: Number(d.total_pedidos_unicos),
       })));
     }
-  }, [userId]);
+  }, [userId, storeId]);
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
