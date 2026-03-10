@@ -13,7 +13,7 @@ import { ComboCreationWizard } from "@/components/combos/ComboCreationWizard";
 import { ComboHistoryList } from "@/components/combos/ComboHistoryList";
 import { MenuStrategySection } from "@/components/combos/MenuStrategySection";
 import { ManualComboBuilder } from "@/components/combos/ManualComboBuilder";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader } from "@/components/layout/AppShell";
 
 export default function Combos() {
   const navigate = useNavigate();
@@ -35,14 +35,15 @@ export default function Combos() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center py-20">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
 
   return (
-    <AppLayout title="Combos Inteligentes" subtitle="Combos + Estratégia de Topo · Delivery & iFood" headerActions={headerActions}>
+    <>
+      <PageHeader title="Combos Inteligentes" subtitle="Combos + Estratégia de Topo · Delivery & iFood" headerActions={headerActions} />
       <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
         {/* Beta Warning */}
         <Alert className="border-warning/30 bg-warning/5">
@@ -172,6 +173,6 @@ export default function Combos() {
           </TabsContent>
         </Tabs>
       </div>
-    </AppLayout>
+    </>
   );
 }

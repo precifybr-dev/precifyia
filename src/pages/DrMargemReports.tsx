@@ -1,23 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Stethoscope,
-  AlertTriangle,
-  TrendingUp,
-  Sparkles,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  RefreshCw,
-  Calendar,
-  ArrowRight,
+  Stethoscope, AlertTriangle, TrendingUp, Sparkles,
+  ChevronLeft, Menu, RefreshCw, Calendar, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
+import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -65,13 +58,7 @@ function mapReports(data: any[]): FullReport[] {
   }));
 }
 
-function ProductCard({
-  product,
-  variant,
-}: {
-  product: ProductDetail;
-  variant: "critical" | "improvement" | "strong";
-}) {
+function ProductCard({ product, variant }: { product: ProductDetail; variant: "critical" | "improvement" | "strong" }) {
   const config = {
     critical: { bg: "bg-destructive/5", border: "border-destructive/20", icon: AlertTriangle, color: "text-destructive" },
     improvement: { bg: "bg-warning/5", border: "border-warning/20", icon: TrendingUp, color: "text-warning-foreground" },
@@ -92,14 +79,10 @@ function ProductCard({
               Preço: <span className="font-medium text-foreground">{formatCurrency(product.price)}</span>
             </span>
             <span className="text-xs text-muted-foreground">
-              Margem: <span className={`font-medium ${product.margin < 0 ? "text-destructive" : "text-foreground"}`}>
-                {product.margin.toFixed(1)}%
-              </span>
+              Margem: <span className={`font-medium ${product.margin < 0 ? "text-destructive" : "text-foreground"}`}>{product.margin.toFixed(1)}%</span>
             </span>
             <span className="text-xs text-muted-foreground">
-              Lucro: <span className={`font-medium ${product.estimatedProfit < 0 ? "text-destructive" : "text-success"}`}>
-                {formatCurrency(product.estimatedProfit)}
-              </span>
+              Lucro: <span className={`font-medium ${product.estimatedProfit < 0 ? "text-destructive" : "text-success"}`}>{formatCurrency(product.estimatedProfit)}</span>
             </span>
           </div>
           <p className="text-xs text-foreground/80 italic mb-1">
@@ -119,20 +102,18 @@ function ProductCard({
 }
 
 export default function DrMargemReports() {
+  const { user, openSidebar } = useShell();
   const [reports, setReports] = useState<FullReport[]>([]);
   const [selectedReport, setSelectedReport] = useState<FullReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
   const { activeStore } = useStore();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    initPage();
-  }, [activeStore?.id]);
+    if (user?.id) initPage();
+  }, [activeStore?.id, user?.id]);
 
   const fetchReportsData = async (userId: string) => {
     let query = supabase
@@ -141,41 +122,26 @@ export default function DrMargemReports() {
       .eq("user_id", userId)
       .order("generated_at", { ascending: false })
       .limit(12);
-
     if (activeStore?.id) query = query.eq("store_id", activeStore.id);
-
     const { data } = await query;
     return data || [];
   };
 
   const initPage = async () => {
     setLoading(true);
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session?.user) { setLoading(false); navigate("/login"); return; }
-    setUser(session.user);
-
-    const { data: profileData } = await supabase
-      .from("profiles").select("*").eq("user_id", session.user.id).maybeSingle();
-    setProfile(profileData);
-
-    const data = await fetchReportsData(session.user.id);
-
-    const isStale = data.length === 0 ||
-      (Date.now() - new Date(data[0].generated_at).getTime()) > ONE_HOUR;
+    const data = await fetchReportsData(user.id);
+    const isStale = data.length === 0 || (Date.now() - new Date(data[0].generated_at).getTime()) > ONE_HOUR;
 
     if (isStale) {
       setLoading(false);
       setGenerating(true);
       try {
-        await supabase.functions.invoke("generate-weekly-report", {
-          body: { store_id: activeStore?.id || null },
-        });
-        const freshData = await fetchReportsData(session.user.id);
+        await supabase.functions.invoke("generate-weekly-report", { body: { store_id: activeStore?.id || null } });
+        const freshData = await fetchReportsData(user.id);
         const mapped = mapReports(freshData);
         setReports(mapped);
         setSelectedReport(mapped[0] || null);
       } catch {
-        // Fallback: show existing data
         const mapped = mapReports(data);
         setReports(mapped);
         setSelectedReport(mapped[0] || null);
@@ -193,9 +159,7 @@ export default function DrMargemReports() {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const { error } = await supabase.functions.invoke("generate-weekly-report", {
-        body: { store_id: activeStore?.id || null },
-      });
+      const { error } = await supabase.functions.invoke("generate-weekly-report", { body: { store_id: activeStore?.id || null } });
       if (error) throw error;
       toast({ title: "Relatório gerado!", description: "Dr. Margem analisou seu cardápio." });
       await initPage();
@@ -209,165 +173,133 @@ export default function DrMargemReports() {
   const r = selectedReport;
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} profile={profile} />
+    <>
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
+        <div className="flex items-center gap-3">
+          <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={openSidebar}>
+            <Menu className="w-5 h-5" />
+          </button>
+          <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-1">
+            <ChevronLeft className="w-4 h-4" /> Dashboard
+          </Button>
+          <div className="flex-1 min-w-0">
+            <h1 className="font-display text-lg sm:text-xl font-bold text-foreground">
+              Relatórios do Dr. Margem
+            </h1>
+          </div>
+          <Button onClick={handleGenerate} disabled={generating} size="sm">
+            {generating ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Stethoscope className="w-4 h-4 mr-1" />}
+            {generating ? "Gerando..." : "Novo relatório"}
+          </Button>
+        </div>
+      </header>
 
-      <main className="flex-1 lg:ml-64">
-        <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
-              <Menu className="w-5 h-5" />
-            </button>
-            <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-1">
-              <ChevronLeft className="w-4 h-4" /> Dashboard
-            </Button>
-            <div className="flex-1 min-w-0">
-              <h1 className="font-display text-lg sm:text-xl font-bold text-foreground">
-                Relatórios do Dr. Margem
-              </h1>
-            </div>
-            <Button onClick={handleGenerate} disabled={generating} size="sm">
-              {generating ? <RefreshCw className="w-4 h-4 mr-1 animate-spin" /> : <Stethoscope className="w-4 h-4 mr-1" />}
-              {generating ? "Gerando..." : "Novo relatório"}
+      <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-24 bg-muted rounded-xl animate-pulse" />
+            ))}
+          </div>
+        ) : !r ? (
+          <div className="text-center py-16">
+            <Stethoscope className="w-12 h-12 text-primary/30 mx-auto mb-4" />
+            <h2 className="font-display font-semibold text-lg text-foreground mb-2">Nenhum relatório ainda</h2>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
+              Gere seu primeiro relatório para receber um diagnóstico completo do cardápio pelo Dr. Margem.
+            </p>
+            <Button onClick={handleGenerate} disabled={generating}>
+              {generating ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Stethoscope className="w-4 h-4 mr-2" />}
+              Gerar primeiro relatório
             </Button>
           </div>
-        </header>
+        ) : (
+          <>
+            {reports.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-minimal">
+                {reports.map((rep) => (
+                  <button key={rep.id} onClick={() => setSelectedReport(rep)} className={`flex-shrink-0 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${selectedReport?.id === rep.id ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
+                    <Calendar className="w-3 h-3 inline mr-1" />
+                    {format(new Date(rep.generated_at), "dd MMM yyyy", { locale: ptBR })}
+                  </button>
+                ))}
+              </div>
+            )}
 
-        <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-          {loading ? (
-            <div className="space-y-4">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-24 bg-muted rounded-xl animate-pulse" />
-              ))}
-            </div>
-          ) : !r ? (
-            <div className="text-center py-16">
-              <Stethoscope className="w-12 h-12 text-primary/30 mx-auto mb-4" />
-              <h2 className="font-display font-semibold text-lg text-foreground mb-2">
-                Nenhum relatório ainda
-              </h2>
-              <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto">
-                Gere seu primeiro relatório para receber um diagnóstico completo do cardápio pelo Dr. Margem.
-              </p>
-              <Button onClick={handleGenerate} disabled={generating}>
-                {generating ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Stethoscope className="w-4 h-4 mr-2" />}
-                Gerar primeiro relatório
-              </Button>
-            </div>
-          ) : (
-            <>
-              {/* Report selector */}
-              {reports.length > 1 && (
-                <div className="flex gap-2 overflow-x-auto pb-3 mb-6 scrollbar-minimal">
-                  {reports.map((rep) => (
-                    <button
-                      key={rep.id}
-                      onClick={() => setSelectedReport(rep)}
-                      className={`flex-shrink-0 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${
-                        selectedReport?.id === rep.id
-                          ? "bg-primary/10 border-primary/30 text-primary"
-                          : "bg-card border-border text-muted-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <Calendar className="w-3 h-3 inline mr-1" />
-                      {format(new Date(rep.generated_at), "dd MMM yyyy", { locale: ptBR })}
-                    </button>
-                  ))}
+            <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-card mb-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Stethoscope className="w-5 h-5 text-primary" />
                 </div>
-              )}
-
-              {/* Section 1: Diagnóstico */}
-              <div className="rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-card mb-6">
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <Stethoscope className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <h2 className="font-display font-semibold text-lg text-foreground">
-                      Diagnóstico do Cardápio
-                    </h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {format(new Date(r.generated_at), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR })}
-                      {" · "}{r.total_products_analyzed} produtos analisados
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                  <div className="text-center p-3 rounded-xl bg-destructive/5 border border-destructive/10">
-                    <p className="text-2xl font-bold text-destructive">{r.summary.loss_products}</p>
-                    <p className="text-[10px] text-destructive/80 mt-0.5">Em prejuízo</p>
-                  </div>
-                  <div className="text-center p-3 rounded-xl bg-warning/5 border border-warning/10">
-                    <p className="text-2xl font-bold text-warning-foreground">{r.summary.low_margin_products}</p>
-                    <p className="text-[10px] text-warning-foreground/80 mt-0.5">Margem baixa</p>
-                  </div>
-                  <div className="text-center p-3 rounded-xl bg-muted">
-                    <p className="text-2xl font-bold text-foreground">{r.summary.balanced_products}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">Equilibrado</p>
-                  </div>
-                  <div className="text-center p-3 rounded-xl bg-success/5 border border-success/10">
-                    <p className="text-2xl font-bold text-success">{r.summary.healthy_products}</p>
-                    <p className="text-[10px] text-success/80 mt-0.5">Saudável</p>
-                  </div>
-                </div>
-
-                <div className="rounded-xl bg-primary/5 border border-primary/10 p-4">
-                  <p className="text-sm text-foreground/90 italic flex items-start gap-2">
-                    <Stethoscope className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                    "{r.advisor_message}"
+                <div>
+                  <h2 className="font-display font-semibold text-lg text-foreground">Diagnóstico do Cardápio</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {format(new Date(r.generated_at), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR })}
+                    {" · "}{r.total_products_analyzed} produtos analisados
                   </p>
                 </div>
               </div>
-
-              {/* Section 2: Critical */}
-              {r.critical_products.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-display font-semibold text-base text-foreground mb-3 flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-destructive" />
-                    Atenção Urgente
-                  </h3>
-                  <div className="space-y-3">
-                    {r.critical_products.map((p, i) => (
-                      <ProductCard key={i} product={p} variant="critical" />
-                    ))}
-                  </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div className="text-center p-3 rounded-xl bg-destructive/5 border border-destructive/10">
+                  <p className="text-2xl font-bold text-destructive">{r.summary.loss_products}</p>
+                  <p className="text-[10px] text-destructive/80 mt-0.5">Em prejuízo</p>
                 </div>
-              )}
-
-              {/* Section 3: Improvement */}
-              {r.improvement_opportunities.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-display font-semibold text-base text-foreground mb-3 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-warning-foreground" />
-                    Oportunidades de Melhoria
-                  </h3>
-                  <div className="space-y-3">
-                    {r.improvement_opportunities.map((p, i) => (
-                      <ProductCard key={i} product={p} variant="improvement" />
-                    ))}
-                  </div>
+                <div className="text-center p-3 rounded-xl bg-warning/5 border border-warning/10">
+                  <p className="text-2xl font-bold text-warning-foreground">{r.summary.low_margin_products}</p>
+                  <p className="text-[10px] text-warning-foreground/80 mt-0.5">Margem baixa</p>
                 </div>
-              )}
-
-              {/* Section 4: Strong */}
-              {r.strong_products.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="font-display font-semibold text-base text-foreground mb-3 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-success" />
-                    Produtos Fortes
-                  </h3>
-                  <div className="space-y-3">
-                    {r.strong_products.map((p, i) => (
-                      <ProductCard key={i} product={p} variant="strong" />
-                    ))}
-                  </div>
+                <div className="text-center p-3 rounded-xl bg-muted">
+                  <p className="text-2xl font-bold text-foreground">{r.summary.balanced_products}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Equilibrado</p>
                 </div>
-              )}
-            </>
-          )}
-        </div>
-      </main>
-    </div>
+                <div className="text-center p-3 rounded-xl bg-success/5 border border-success/10">
+                  <p className="text-2xl font-bold text-success">{r.summary.healthy_products}</p>
+                  <p className="text-[10px] text-success/80 mt-0.5">Saudável</p>
+                </div>
+              </div>
+              <div className="rounded-xl bg-primary/5 border border-primary/10 p-4">
+                <p className="text-sm text-foreground/90 italic flex items-start gap-2">
+                  <Stethoscope className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+                  "{r.advisor_message}"
+                </p>
+              </div>
+            </div>
+
+            {r.critical_products.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-display font-semibold text-base text-foreground mb-3 flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-destructive" /> Atenção Urgente
+                </h3>
+                <div className="space-y-3">
+                  {r.critical_products.map((p, i) => <ProductCard key={i} product={p} variant="critical" />)}
+                </div>
+              </div>
+            )}
+
+            {r.improvement_opportunities.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-display font-semibold text-base text-foreground mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-warning-foreground" /> Oportunidades de Melhoria
+                </h3>
+                <div className="space-y-3">
+                  {r.improvement_opportunities.map((p, i) => <ProductCard key={i} product={p} variant="improvement" />)}
+                </div>
+              </div>
+            )}
+
+            {r.strong_products.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-display font-semibold text-base text-foreground mb-3 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-success" /> Produtos Fortes
+                </h3>
+                <div className="space-y-3">
+                  {r.strong_products.map((p, i) => <ProductCard key={i} product={p} variant="strong" />)}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
   );
 }

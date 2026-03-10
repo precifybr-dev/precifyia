@@ -238,71 +238,7 @@ const App = () => (
               <Route path="/sub-recipes" element={<Navigate to="/app/sub-recipes" replace />} />
               <Route path="/collaborators" element={<Navigate to="/admin/collaborators" replace />} />
 
-              {/* ========== HELP CENTER ========== */}
-              <Route
-                path="/app/help"
-                element={
-                  <AppRoute>
-                    <HelpCenter />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/support"
-                element={
-                  <AppRoute>
-                    <UserSupport />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/menu"
-                element={
-                  <AppRoute>
-                    <MenuMirror />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/universidade"
-                element={
-                  <AppRoute>
-                    <University />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/cmv"
-                element={
-                  <AppRoute>
-                    <CMVGlobal />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/plan"
-                element={
-                  <AppRoute>
-                    <MyPlan />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/reports"
-                element={
-                  <AppRoute>
-                    <DrMargemReports />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/backup"
-                element={
-                  <AppRoute>
-                    <BackupRestore />
-                  </AppRoute>
-                }
-              />
+              {/* Help/Support/etc routes are now nested under /app shell above */}
 
               {/* ========== ERROR PAGES ========== */}
               <Route path="/403" element={<Forbidden />} />
