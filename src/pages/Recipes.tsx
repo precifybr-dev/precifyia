@@ -1404,8 +1404,10 @@ export default function Recipes() {
                           className={index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50"}
                         >
                           <TableCell className="text-center font-mono text-muted-foreground text-xs">{index + 1}</TableCell>
-                          <TableCell className="font-medium text-foreground text-xs">{recipe.name}</TableCell>
-                          <TableCell className="text-center font-mono text-muted-foreground text-xs">{recipe.servings}</TableCell>
+                          <TableCell className="font-medium text-foreground text-xs">
+                            {recipe.name}
+                            <span className="text-muted-foreground font-normal ml-1.5">(rend. {recipe.servings})</span>
+                          </TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {formatCurrency(costPerServing)}
                           </TableCell>
