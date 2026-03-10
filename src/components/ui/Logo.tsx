@@ -10,10 +10,10 @@ interface LogoProps {
 }
 
 const sizeMap = {
-  sm: "w-8 h-8",
-  md: "w-10 h-10",
-  lg: "w-16 h-16",
-  xl: "w-24 h-24",
+  sm: { className: "w-8 h-8", width: 32, height: 32 },
+  md: { className: "w-10 h-10", width: 40, height: 40 },
+  lg: { className: "w-16 h-16", width: 64, height: 64 },
+  xl: { className: "w-24 h-24", width: 96, height: 96 },
 };
 
 export function Logo({ 
@@ -31,7 +31,9 @@ export function Logo({
       <img 
         src={logoImage} 
         alt="PRECIFY" 
-        className={`${sizeMap[size]} object-contain`}
+        width={sizeMap[size].width}
+        height={sizeMap[size].height}
+        className={`${sizeMap[size].className} object-contain`}
       />
       {showText && (
         <span 
