@@ -1348,7 +1348,6 @@ export default function Recipes() {
                     <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
                       <TableHead className="text-primary-foreground font-medium text-xs w-10 text-center">#</TableHead>
                       <TableHead className="text-primary-foreground font-medium text-xs min-w-[150px]">Produto</TableHead>
-                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">Rend.</TableHead>
                       <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Custo Un.</TableHead>
                       <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">CMV Des.</TableHead>
                       <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Preço Loja</TableHead>
