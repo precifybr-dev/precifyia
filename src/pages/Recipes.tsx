@@ -1037,7 +1037,7 @@ export default function Recipes() {
         <div className="p-3 sm:p-6">
           {showForm ? (
             <div className="bg-card rounded-xl border border-border p-4 shadow-card">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                     <FileSpreadsheet className="w-4 h-4 text-primary" />
