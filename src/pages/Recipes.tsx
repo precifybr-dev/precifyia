@@ -1181,7 +1181,7 @@ export default function Recipes() {
               </div>
 
               {/* Pricing Summary Panel */}
-              <div className="mb-6">
+              <div className="mb-4">
               <PricingSummaryPanel
                   ingredientsCost={pricingResult?.ingredients_cost_per_serving ?? ingredientsCostPerServing}
                   costWithLoss={costWithLoss}
