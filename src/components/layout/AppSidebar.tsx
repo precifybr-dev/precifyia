@@ -233,7 +233,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1 overflow-y-auto scrollbar-minimal">
+          <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto scrollbar-minimal">
             {navEntries.map((entry) => {
               if (isGroup(entry)) {
                 const groupOpen = isGroupOpen(entry.key);
