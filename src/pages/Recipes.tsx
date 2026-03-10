@@ -1036,17 +1036,17 @@ export default function Recipes() {
 
         <div className="p-3 sm:p-6">
           {showForm ? (
-            <div className="bg-card rounded-xl border border-border p-6 shadow-card">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FileSpreadsheet className="w-5 h-5 text-primary" />
+            <div className="bg-card rounded-xl border border-border p-4 shadow-card">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileSpreadsheet className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-display text-lg font-bold text-foreground">
+                    <h2 className="font-display text-base font-bold text-foreground">
                       {editingId ? "Editar Ficha Técnica" : "Nova Ficha Técnica"}
                     </h2>
-                    <p className="text-sm text-muted-foreground">Selecione insumos pelo código para montagem rápida</p>
+                    <p className="text-xs text-muted-foreground">Selecione insumos pelo código para montagem rápida</p>
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" onClick={resetForm}>
@@ -1055,19 +1055,18 @@ export default function Recipes() {
               </div>
 
               {/* Dica de uso */}
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-foreground mb-1">Dica: Use o código do insumo</p>
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="font-medium text-foreground mb-0.5">Dica: Use o código do insumo</p>
                   <p className="text-muted-foreground">
-                    Digite o número do insumo (ex: 1) para selecionar rapidamente. O custo é calculado automaticamente
-                    baseado na quantidade usada. Ex: 50g de um insumo a R$ 11,20/kg = R$ 0,56
+                    Digite o número do insumo (ex: 1) para selecionar rapidamente. Ex: 50g a R$ 11,20/kg = R$ 0,56
                   </p>
                 </div>
               </div>
 
               {/* Recipe info - Header with Name, Servings, CMV */}
-              <div className="grid sm:grid-cols-3 gap-4 mb-6">
+              <div className="grid sm:grid-cols-3 gap-3 mb-4">
                 <div className="space-y-2">
                   <Label>Nome do Produto *</Label>
                   <Input
@@ -1103,8 +1102,8 @@ export default function Recipes() {
               </div>
 
               {/* Ingredients Table */}
-              <div className="mb-6">
-                <Label className="mb-2 block">Tabela de Insumos</Label>
+              <div className="mb-4">
+                <Label className="mb-1.5 block text-sm">Tabela de Insumos</Label>
                 <IngredientsSpreadsheetTable
                   ingredients={ingredients}
                   recipeIngredients={recipeIngredients}
@@ -1117,7 +1116,7 @@ export default function Recipes() {
               </div>
 
               {/* Packaging Toggle */}
-              <div className="mb-6 space-y-3">
+              <div className="mb-4 space-y-2">
                 <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
                   <Switch
                     id="includePackaging"
@@ -1182,7 +1181,7 @@ export default function Recipes() {
               </div>
 
               {/* Pricing Summary Panel */}
-              <div className="mb-6">
+              <div className="mb-4">
               <PricingSummaryPanel
                   ingredientsCost={pricingResult?.ingredients_cost_per_serving ?? ingredientsCostPerServing}
                   costWithLoss={costWithLoss}
@@ -1222,7 +1221,7 @@ export default function Recipes() {
               </div>
 
               {/* Market Analysis */}
-              <Accordion type="multiple" className="mb-6">
+              <Accordion type="multiple" className="mb-4">
                 {/* Análise de Mercado */}
                 <AccordionItem value="market">
                   <AccordionTrigger className="text-sm font-semibold">
@@ -1347,18 +1346,18 @@ export default function Recipes() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
-                      <TableHead className="text-primary-foreground font-medium w-14 text-center">#</TableHead>
-                      <TableHead className="text-primary-foreground font-medium min-w-[180px]">Produto</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-20 text-center">Rend.</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Custo Un.</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Des.</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço Loja</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Loja</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro/Produto</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço iFood</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV iFood</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro/Produto</TableHead>
-                      <TableHead className="w-28"></TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-10 text-center">#</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs min-w-[150px]">Produto</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">Rend.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Custo Un.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">CMV Des.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Preço Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">CMV Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-24 text-right">Lucro/Prod.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Preço iFood</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">CMV iFood</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-24 text-right">Lucro/Prod.</TableHead>
+                      <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1405,9 +1404,9 @@ export default function Recipes() {
                           key={recipe.id}
                           className={index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50"}
                         >
-                          <TableCell className="text-center font-mono text-muted-foreground text-sm">{index + 1}</TableCell>
-                          <TableCell className="font-medium text-foreground">{recipe.name}</TableCell>
-                          <TableCell className="text-center font-mono text-muted-foreground">{recipe.servings}</TableCell>
+                          <TableCell className="text-center font-mono text-muted-foreground text-xs">{index + 1}</TableCell>
+                          <TableCell className="font-medium text-foreground text-xs">{recipe.name}</TableCell>
+                          <TableCell className="text-center font-mono text-muted-foreground text-xs">{recipe.servings}</TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {formatCurrency(costPerServing)}
                           </TableCell>
@@ -1494,33 +1493,33 @@ export default function Recipes() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-0.5">
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-7 w-7"
                                 onClick={() => handleEditRecipe(recipe)}
                                 title="Editar ficha"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <Pencil className="w-3.5 h-3.5" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
                                 onClick={() => handleDuplicateClick(recipe)}
                                 title="Duplicar ficha"
                               >
-                                <Copy className="w-4 h-4" />
+                                <Copy className="w-3.5 h-3.5" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive" 
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive" 
                                 onClick={() => handleDeleteClick(recipe)}
                                 title="Excluir ficha"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </Button>
                             </div>
                           </TableCell>
