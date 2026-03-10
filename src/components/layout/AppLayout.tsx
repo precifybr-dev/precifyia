@@ -77,7 +77,7 @@ export function AppLayout({ children, title, subtitle, headerActions, hideHeader
         profile={profile}
       />
 
-      <main className="flex-1 lg:ml-64">
+      <main className="flex-1 lg:ml-56">
         {!hideHeader && (
           <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
             <div className="flex items-center gap-3">

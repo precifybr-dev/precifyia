@@ -297,7 +297,7 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
           </nav>
 
           {/* Footer: Theme + User Menu */}
-          <div className="p-4 border-t border-border space-y-2">
+          <div className="px-3 py-2.5 border-t border-border space-y-1.5">
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
