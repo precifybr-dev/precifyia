@@ -185,10 +185,18 @@ export default function IfoodSpreadsheetImportModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadLastImport = useCallback(async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("ifood_monthly_metrics")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", userId);
+
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data } = await query
       .order("updated_at", { ascending: false })
       .limit(1);
 
@@ -236,7 +244,7 @@ export default function IfoodSpreadsheetImportModal({
       setLastImportDate(new Date(row.updated_at).toLocaleDateString("pt-BR"));
       setStep("dashboard");
     }
-  }, [userId]);
+  }, [userId, storeId]);
 
   const loadMonthlyHistory = useCallback(async () => {
     const { data } = await supabase
