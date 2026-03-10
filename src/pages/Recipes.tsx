@@ -1404,9 +1404,9 @@ export default function Recipes() {
                           key={recipe.id}
                           className={index % 2 === 0 ? "bg-card hover:bg-muted/50" : "bg-muted/30 hover:bg-muted/50"}
                         >
-                          <TableCell className="text-center font-mono text-muted-foreground text-sm">{index + 1}</TableCell>
-                          <TableCell className="font-medium text-foreground">{recipe.name}</TableCell>
-                          <TableCell className="text-center font-mono text-muted-foreground">{recipe.servings}</TableCell>
+                          <TableCell className="text-center font-mono text-muted-foreground text-xs">{index + 1}</TableCell>
+                          <TableCell className="font-medium text-foreground text-xs">{recipe.name}</TableCell>
+                          <TableCell className="text-center font-mono text-muted-foreground text-xs">{recipe.servings}</TableCell>
                           <TableCell className="text-right font-mono text-muted-foreground">
                             {formatCurrency(costPerServing)}
                           </TableCell>
