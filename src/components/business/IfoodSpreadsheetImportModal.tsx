@@ -358,16 +358,20 @@ export default function IfoodSpreadsheetImportModal({
         : 0;
 
       // Delete existing row then insert (avoids NULL store_id upsert issues)
-      const deleteQuery = supabase
-        .from("ifood_monthly_metrics")
-        .delete()
-        .eq("user_id", userId)
-        .eq("competencia", consolidation.mesReferencia);
-
       if (storeId) {
-        await deleteQuery.eq("store_id", storeId);
+        await supabase
+          .from("ifood_monthly_metrics")
+          .delete()
+          .eq("user_id", userId)
+          .eq("competencia", consolidation.mesReferencia)
+          .eq("store_id", storeId);
       } else {
-        await deleteQuery.is("store_id", null);
+        await supabase
+          .from("ifood_monthly_metrics")
+          .delete()
+          .eq("user_id", userId)
+          .eq("competencia", consolidation.mesReferencia)
+          .is("store_id", null);
       }
 
       const { error: upsertError } = await supabase
