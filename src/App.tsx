@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { AdminRoute, AppRoute, AuthenticatedRoute, PublicOnlyRoute } from "@/components/routes/ProtectedRoutes";
+import { AppShell } from "@/components/layout/AppShell";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { ReadOnlyModeInterceptor } from "@/components/support/ReadOnlyModeInterceptor";
 import { GoogleAnalyticsTracker } from "@/components/GoogleAnalyticsTracker";
