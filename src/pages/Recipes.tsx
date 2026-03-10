@@ -1346,18 +1346,18 @@ export default function Recipes() {
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-primary dark:bg-primary hover:bg-primary dark:hover:bg-primary">
-                      <TableHead className="text-primary-foreground font-medium w-14 text-center">#</TableHead>
-                      <TableHead className="text-primary-foreground font-medium min-w-[180px]">Produto</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-20 text-center">Rend.</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Custo Un.</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Des.</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço Loja</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV Loja</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro/Produto</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-24 text-right">Preço iFood</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-20 text-center">CMV iFood</TableHead>
-                      <TableHead className="text-primary-foreground font-medium w-28 text-right">Lucro/Produto</TableHead>
-                      <TableHead className="w-28"></TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-10 text-center">#</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs min-w-[150px]">Produto</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">Rend.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Custo Un.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">CMV Des.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Preço Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">CMV Loja</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-24 text-right">Lucro/Prod.</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-22 text-right">Preço iFood</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-16 text-center">CMV iFood</TableHead>
+                      <TableHead className="text-primary-foreground font-medium text-xs w-24 text-right">Lucro/Prod.</TableHead>
+                      <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
