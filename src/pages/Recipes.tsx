@@ -1493,33 +1493,33 @@ export default function Recipes() {
                             )}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-0.5">
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-7 w-7"
                                 onClick={() => handleEditRecipe(recipe)}
                                 title="Editar ficha"
                               >
-                                <Pencil className="w-4 h-4" />
+                                <Pencil className="w-3.5 h-3.5" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                                className="h-7 w-7 text-muted-foreground hover:text-primary"
                                 onClick={() => handleDuplicateClick(recipe)}
                                 title="Duplicar ficha"
                               >
-                                <Copy className="w-4 h-4" />
+                                <Copy className="w-3.5 h-3.5" />
                               </Button>
                               <Button 
                                 variant="ghost" 
                                 size="icon"
-                                className="h-8 w-8 text-muted-foreground hover:text-destructive" 
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive" 
                                 onClick={() => handleDeleteClick(recipe)}
                                 title="Excluir ficha"
                               >
-                                <Trash2 className="w-4 h-4" />
+                                <Trash2 className="w-3.5 h-3.5" />
                               </Button>
                             </div>
                           </TableCell>

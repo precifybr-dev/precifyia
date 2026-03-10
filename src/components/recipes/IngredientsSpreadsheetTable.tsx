@@ -127,7 +127,7 @@ export default function IngredientsSpreadsheetTable({
                       value={ing.unit}
                       onValueChange={(value) => onUnitChange(index, value)}
                     >
-                      <SelectTrigger className="h-8 text-sm">
+                      <SelectTrigger className="h-7 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
