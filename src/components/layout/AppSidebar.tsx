@@ -282,13 +282,13 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
                 <button
                   key={item.path}
                   onClick={() => handleNavClick(item)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-colors ${
                     activeNav === item.path
                       ? "bg-primary/10 text-primary font-medium"
                       : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
-                  <item.icon className="w-5 h-5" />
+                  <item.icon className="w-4 h-4" />
                   <span>{item.label}</span>
                   {activeNav !== item.path && <ChevronRight className="w-4 h-4 ml-auto opacity-50" />}
                 </button>
