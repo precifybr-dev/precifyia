@@ -1,56 +1,62 @@
 
 
-## Plano: Corrigir persistência da última importação iFood
+# Validacao Matematica e Guards Anti-Erro na Importacao iFood
 
-### Problema identificado
+## Contexto
 
-O upsert na tabela `ifood_monthly_metrics` usa `onConflict: "user_id,store_id,competencia"`, mas `store_id` é `NULL` na maioria dos casos. Em PostgreSQL, `NULL ≠ NULL`, então o upsert **nunca detecta conflito** e cria uma nova linha a cada "Aplicar ao Plano". Confirmado: existem **3 linhas duplicadas** no banco para o mesmo usuário/mês.
+O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
 
-Apesar dos duplicados, o `loadLastImport` com `ORDER BY updated_at DESC LIMIT 1` deveria retornar a linha mais recente. Porém, a função `loadLastImport` não filtra por `store_id`, o que pode retornar dados de outra loja.
+O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
 
-### Correções
+---
 
-#### 1. Migração SQL — corrigir unique constraint para NULL store_id
+## O que sera implementado
 
-Remover o índice existente e criar um que trate `NULL` como valor:
+### 1. Camada de Validacao no Processador
 
-```sql
-DROP INDEX IF EXISTS ifood_monthly_metrics_user_id_store_id_competencia_key;
+Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
 
-CREATE UNIQUE INDEX ifood_monthly_metrics_user_store_comp_key
-  ON public.ifood_monthly_metrics (user_id, COALESCE(store_id, '00000000-0000-0000-0000-000000000000'), competencia);
-```
+- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
+- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
+- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
+- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
+- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
 
-Limpar duplicatas mantendo apenas a mais recente:
+Cada validacao retorna `{ level: "error" | "warning", message: string }`.
 
-```sql
-DELETE FROM ifood_monthly_metrics a
-USING ifood_monthly_metrics b
-WHERE a.user_id = b.user_id
-  AND a.competencia = b.competencia
-  AND a.store_id IS NOT DISTINCT FROM b.store_id
-  AND a.updated_at < b.updated_at;
-```
+A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
 
-#### 2. Código — ajustar upsert para usar COALESCE no store_id (`IfoodSpreadsheetImportModal.tsx`)
+### 2. Exibicao de Alertas no Dashboard
 
-Trocar `store_id: storeId || null` por `store_id: storeId || '00000000-0000-0000-0000-000000000000'` (sentinel UUID) para que o upsert funcione. Alternativamente, usar um insert manual com `ON CONFLICT` via RPC.
+No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
 
-**Abordagem mais simples:** Em vez de depender do upsert do Supabase SDK (que não lida bem com NULLs), fazer um delete+insert:
-- Deletar a linha existente com `user_id` + `store_id IS NULL` + `competencia`
-- Inserir a nova linha
+- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
+- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
+- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
+- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
 
-#### 3. Código — `loadLastImport` filtrar por store_id
+### 3. Info de Agrupamento no Dashboard
 
-Adicionar filtro de `store_id` no `loadLastImport`:
-```ts
-let query = supabase.from("ifood_monthly_metrics").select("*").eq("user_id", userId);
-if (storeId) query = query.eq("store_id", storeId);
-else query = query.is("store_id", null);
-query = query.order("updated_at", { ascending: false }).limit(1);
-```
+Adicionar um pequeno badge/info no topo do dashboard mostrando:
+- Linhas na planilha: X
+- Pedidos unicos: Y
+- Media de linhas por pedido: X/Y
 
-### Arquivo editado
-- `src/components/business/IfoodSpreadsheetImportModal.tsx`
-- Migração SQL para corrigir duplicatas e constraint
+Isso da confianca ao usuario de que o agrupamento esta correto.
+
+---
+
+## Arquivos modificados
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
+| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
+
+## O que NAO sera alterado
+
+- Banco de dados (sem migrations)
+- Logica de agrupamento por ID (ja funciona corretamente)
+- Fluxo de autenticacao
+- Nenhuma outra funcionalidade do sistema
 

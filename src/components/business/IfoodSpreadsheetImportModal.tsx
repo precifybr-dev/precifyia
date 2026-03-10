@@ -185,10 +185,18 @@ export default function IfoodSpreadsheetImportModal({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadLastImport = useCallback(async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("ifood_monthly_metrics")
       .select("*")
-      .eq("user_id", userId)
+      .eq("user_id", userId);
+
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data } = await query
       .order("updated_at", { ascending: false })
       .limit(1);
 
@@ -236,13 +244,21 @@ export default function IfoodSpreadsheetImportModal({
       setLastImportDate(new Date(row.updated_at).toLocaleDateString("pt-BR"));
       setStep("dashboard");
     }
-  }, [userId]);
+  }, [userId, storeId]);
 
   const loadMonthlyHistory = useCallback(async () => {
-    const { data } = await supabase
+    let query = supabase
       .from("ifood_monthly_metrics")
       .select("competencia, valor_das_vendas, ticket_medio, cupom_loja_total, cupom_ifood_total, custo_extra_percentual, total_faturamento, total_pedidos_unicos")
-      .eq("user_id", userId)
+      .eq("user_id", userId);
+
+    if (storeId) {
+      query = query.eq("store_id", storeId);
+    } else {
+      query = query.is("store_id", null);
+    }
+
+    const { data } = await query
       .order("competencia", { ascending: true })
       .limit(24);
 
@@ -258,7 +274,7 @@ export default function IfoodSpreadsheetImportModal({
         total_pedidos_unicos: Number(d.total_pedidos_unicos),
       })));
     }
-  }, [userId]);
+  }, [userId, storeId]);
 
   const handleOpenChange = (v: boolean) => {
     if (v) {
@@ -341,10 +357,26 @@ export default function IfoodSpreadsheetImportModal({
         ? (custoExtraTotal / consolidation.faturamentoBruto) * 100
         : 0;
 
-      // Upsert to ifood_monthly_metrics
+      // Delete existing row then insert (avoids NULL store_id upsert issues)
+      if (storeId) {
+        await supabase
+          .from("ifood_monthly_metrics")
+          .delete()
+          .eq("user_id", userId)
+          .eq("competencia", consolidation.mesReferencia)
+          .eq("store_id", storeId);
+      } else {
+        await supabase
+          .from("ifood_monthly_metrics")
+          .delete()
+          .eq("user_id", userId)
+          .eq("competencia", consolidation.mesReferencia)
+          .is("store_id", null);
+      }
+
       const { error: upsertError } = await supabase
         .from("ifood_monthly_metrics")
-        .upsert({
+        .insert({
           user_id: userId,
           store_id: storeId || null,
           competencia: consolidation.mesReferencia,
@@ -371,7 +403,7 @@ export default function IfoodSpreadsheetImportModal({
           total_taxa_transacao: consolidation.totalTaxa,
           percentual_real_ifood: consolidation.percentualRealIfood,
           updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id,store_id,competencia" });
+        });
 
       if (upsertError) {
         console.error("Upsert error:", upsertError);
