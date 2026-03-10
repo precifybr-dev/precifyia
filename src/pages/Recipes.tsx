@@ -1102,7 +1102,7 @@ export default function Recipes() {
               </div>
 
               {/* Ingredients Table */}
-              <div className="mb-4">
+              <div className="mb-2">
                 <Label className="mb-1.5 block text-sm">Tabela de Insumos</Label>
                 <IngredientsSpreadsheetTable
                   ingredients={ingredients}
