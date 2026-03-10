@@ -242,13 +242,13 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
                   <div key={entry.key}>
                     <button
                       onClick={() => toggleGroup(entry.key)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] transition-colors ${
                         groupActive
                           ? "text-primary font-medium"
                           : "text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
-                      <entry.icon className="w-5 h-5" />
+                      <entry.icon className="w-4 h-4" />
                       <span>{entry.label}</span>
                       {groupOpen ? (
                         <ChevronDown className="w-4 h-4 ml-auto opacity-50" />
