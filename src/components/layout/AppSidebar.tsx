@@ -257,18 +257,18 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
                       )}
                     </button>
                     {groupOpen && (
-                      <div className="ml-4 pl-4 border-l border-border space-y-0.5 mt-0.5">
+                      <div className="ml-3 pl-3 border-l border-border space-y-0.5 mt-0.5">
                         {entry.children.map((child) => (
                           <button
                             key={child.path}
                             onClick={() => handleNavClick(child)}
-                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
                               activeNav === child.path
                                 ? "bg-primary/10 text-primary font-medium"
                                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
                             }`}
                           >
-                            <child.icon className="w-4 h-4" />
+                            <child.icon className="w-3.5 h-3.5" />
                             <span>{child.label}</span>
                           </button>
                         ))}
