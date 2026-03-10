@@ -23,9 +23,9 @@ import { ptBR } from "date-fns/locale";
 import { PageHeader } from "@/components/layout/AppShell";
 
 const STATUS_CONFIG: Record<TicketStatus, { label: string; icon: any; className: string }> = {
-  open: { label: "Aberto", icon: Clock, className: "bg-amber-500 text-white" },
-  in_progress: { label: "Em andamento", icon: RefreshCcw, className: "bg-blue-500 text-white" },
-  resolved: { label: "Resolvido", icon: CheckCircle2, className: "bg-emerald-500 text-white" },
+  open: { label: "Aberto", icon: Clock, className: "bg-warning text-warning-foreground" },
+  in_progress: { label: "Em andamento", icon: RefreshCcw, className: "bg-primary text-primary-foreground" },
+  resolved: { label: "Resolvido", icon: CheckCircle2, className: "bg-success text-success-foreground" },
 };
 
 const TYPE_CONFIG: Record<TicketType, { label: string; icon: any }> = {
