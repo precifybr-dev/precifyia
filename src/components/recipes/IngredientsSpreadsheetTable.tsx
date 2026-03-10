@@ -117,7 +117,7 @@ export default function IngredientsSpreadsheetTable({
                       placeholder="0"
                       value={ing.quantity}
                       onChange={(e) => onQuantityChange(index, e.target.value)}
-                      className="h-8 text-center font-mono text-sm"
+                      className="h-7 text-center font-mono text-xs"
                     />
                   </TableCell>
 
