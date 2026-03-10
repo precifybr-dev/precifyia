@@ -142,19 +142,21 @@ function analyzeRecipe(recipe: RecipeInput): DrMargemRecommendation | null {
   // CMV > 40%
   if (cmv > 40) {
     const type: DrMargemType = "cmv_alto";
+    const suggestedPrice = cost / 0.35;
     return {
       id: generateAlertId(recipe.name, type),
       advisor: "Dr. Margem",
       priority: "media",
       type,
       title: `CMV alto no ${recipe.name}`,
-      message: "O custo base deste produto está alto.",
+      message: `O custo dos insumos representa ${cmv.toFixed(0)}% do preço de venda (acima de 40%). Isso significa que sobra pouco para cobrir taxas, embalagem e lucro.`,
       actions: [
         "Revisar gramatura dos insumos",
         "Negociar com fornecedor",
         "Revisar receita",
       ],
       productName: recipe.name,
+      priceSuggestion: `Para um CMV de 35%, o preço mínimo seria ${formatCurrency(suggestedPrice)}.`,
       details: baseDetails,
       conditionHash: generateConditionHash(recipe.name, type, price, cost),
     };

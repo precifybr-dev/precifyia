@@ -243,7 +243,7 @@ function getAlerts(form: SimFormData, price: number, cmv: number): ConditionalAl
     alerts.push({ message: "O custo de anúncio está pressionando o resultado.", type: "warning" });
   }
   if (cmv >= 40) {
-    alerts.push({ message: "O custo base do produto já está alto antes das taxas.", type: "danger" });
+    alerts.push({ message: `O custo dos insumos já representa ${cmv.toFixed(0)}% do preço — acima do ideal de 35%.`, type: "danger" });
   }
 
   return alerts;
