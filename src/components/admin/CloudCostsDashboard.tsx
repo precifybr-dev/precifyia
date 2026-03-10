@@ -45,12 +45,28 @@ const formatUSD2 = (value: number) =>
 
 export function CloudCostsDashboard() {
   const [daysBack, setDaysBack] = useState(30);
-  const { data, isLoading, refetch } = useCloudCosts(daysBack);
+  const { data, isLoading, error, refetch } = useCloudCosts(daysBack);
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+        <Server className="h-10 w-10 text-muted-foreground" />
+        <div>
+          <p className="text-sm font-medium text-foreground">Não foi possível carregar os custos</p>
+          <p className="text-xs text-muted-foreground mt-1">{error || "Nenhum dado retornado"}</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={refetch}>
+          <RefreshCcw className="h-4 w-4 mr-2" />
+          Tentar novamente
+        </Button>
       </div>
     );
   }
