@@ -1,62 +1,35 @@
 
 
-# Validacao Matematica e Guards Anti-Erro na Importacao iFood
+## Plano: Texto explicativo no Custo Extra + Persistir última importação
 
-## Contexto
+### Problema 1: Custo Extra sem explicação
+O card "Custo Extra Real do iFood" confunde o usuário porque o valor muda ao trocar entre plano 12% e 23% sem explicação visível.
 
-O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
+**Solução:** Adicionar texto explicativo abaixo do resultado do custo extra, explicando que o custo total pago ao iFood é fixo e o "extra" é a diferença em relação à taxa base do plano selecionado. Quanto maior a taxa base, menor o "extra".
 
-O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
+### Problema 2: Dados da última importação incompletos
+A função `loadLastImport` carrega de `ifood_import_logs`, que não possui campos essenciais como `taxasEComissoes` e `servicosEPromocoes`. Isso faz o card de Custo Extra mostrar valores zerados ao reabrir o modal.
 
----
+**Solução:** Alterar `loadLastImport` para carregar da tabela `ifood_monthly_metrics` (que tem todos os campos), mapeando corretamente todos os campos do `IfoodConsolidation`, incluindo:
+- `taxas_comissoes_total` → `taxasEComissoes`
+- `servicos_promocoes_total` → `servicosEPromocoes`
+- `entrega_ifood_custo_total` → `totalDeliveryCost`
+- `anuncios_total` → `totalAnuncios`
+- `pedidos_com_cupom_total`, `pedidos_sem_cupom_total`, etc.
+- `custo_extra_total`, `custo_extra_percentual`
 
-## O que sera implementado
+### Alterações em `src/components/business/IfoodSpreadsheetImportModal.tsx`
 
-### 1. Camada de Validacao no Processador
+1. **`loadLastImport`**: Trocar query de `ifood_import_logs` para `ifood_monthly_metrics` com `order("updated_at", desc).limit(1)`. Mapear todos os campos disponíveis para o objeto `IfoodConsolidation`.
 
-Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
+2. **Card "Custo Extra Real"** (linhas ~745): Adicionar após o valor do custo extra um bloco explicativo:
+   ```
+   "O custo total pago ao iFood é fixo (R$ X). O 'custo extra' é quanto 
+   você paga além da taxa base do plano selecionado. No plano de 12%, 
+   a base é menor, então o extra parece maior. No de 23%, a base já 
+   cobre mais do total."
+   ```
 
-- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
-- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
-- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
-- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
-- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
-
-Cada validacao retorna `{ level: "error" | "warning", message: string }`.
-
-A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
-
-### 2. Exibicao de Alertas no Dashboard
-
-No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
-
-- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
-- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
-- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
-- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
-
-### 3. Info de Agrupamento no Dashboard
-
-Adicionar um pequeno badge/info no topo do dashboard mostrando:
-- Linhas na planilha: X
-- Pedidos unicos: Y
-- Media de linhas por pedido: X/Y
-
-Isso da confianca ao usuario de que o agrupamento esta correto.
-
----
-
-## Arquivos modificados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
-| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
-
-## O que NAO sera alterado
-
-- Banco de dados (sem migrations)
-- Logica de agrupamento por ID (ja funciona corretamente)
-- Fluxo de autenticacao
-- Nenhuma outra funcionalidade do sistema
+### Arquivo editado
+- `src/components/business/IfoodSpreadsheetImportModal.tsx`
 
