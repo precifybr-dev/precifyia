@@ -357,10 +357,22 @@ export default function IfoodSpreadsheetImportModal({
         ? (custoExtraTotal / consolidation.faturamentoBruto) * 100
         : 0;
 
-      // Upsert to ifood_monthly_metrics
+      // Delete existing row then insert (avoids NULL store_id upsert issues)
+      const deleteQuery = supabase
+        .from("ifood_monthly_metrics")
+        .delete()
+        .eq("user_id", userId)
+        .eq("competencia", consolidation.mesReferencia);
+
+      if (storeId) {
+        await deleteQuery.eq("store_id", storeId);
+      } else {
+        await deleteQuery.is("store_id", null);
+      }
+
       const { error: upsertError } = await supabase
         .from("ifood_monthly_metrics")
-        .upsert({
+        .insert({
           user_id: userId,
           store_id: storeId || null,
           competencia: consolidation.mesReferencia,
@@ -387,7 +399,7 @@ export default function IfoodSpreadsheetImportModal({
           total_taxa_transacao: consolidation.totalTaxa,
           percentual_real_ifood: consolidation.percentualRealIfood,
           updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id,store_id,competencia" });
+        });
 
       if (upsertError) {
         console.error("Upsert error:", upsertError);
