@@ -1066,17 +1066,17 @@ export default function Recipes() {
               </div>
 
               {/* Recipe info - Header with Name, Servings, CMV */}
-              <div className="grid sm:grid-cols-3 gap-3 mb-4">
-                <div className="space-y-2">
-                  <Label>Nome do Produto *</Label>
+              <div className="grid grid-cols-[1fr_auto_auto] gap-2 mb-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Nome do Produto *</Label>
                   <Input
                     placeholder="Ex: X-Bacon Especial"
                     value={recipeName}
                     onChange={(e) => setRecipeName(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Rendimento (porções)</Label>
+                <div className="space-y-1 w-24">
+                  <Label className="text-xs">Rendimento</Label>
                   <Input
                     type="number"
                     min="1"
@@ -1084,8 +1084,8 @@ export default function Recipes() {
                     onChange={(e) => setServings(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>CMV Desejado (%)</Label>
+                <div className="space-y-1 w-28">
+                  <Label className="text-xs">CMV Desejado (%)</Label>
                   <div className="relative">
                     <Input
                       type="number"
