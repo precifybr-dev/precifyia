@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { StoreProvider } from "@/contexts/StoreContext";
 import { AdminRoute, AppRoute, AuthenticatedRoute, PublicOnlyRoute } from "@/components/routes/ProtectedRoutes";
+import { AppShell } from "@/components/layout/AppShell";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { ReadOnlyModeInterceptor } from "@/components/support/ReadOnlyModeInterceptor";
 import { GoogleAnalyticsTracker } from "@/components/GoogleAnalyticsTracker";
@@ -170,87 +171,27 @@ const App = () => (
               />
 
               {/* ========== APP ROUTES (End Users Only) ========== */}
-              {/* Master and collaborators will be automatically redirected to /admin */}
-              <Route 
-                path="/app" 
-                element={
-                  <AppRoute>
-                    <Dashboard />
-                  </AppRoute>
-                } 
-              />
-              <Route 
-                path="/app/dashboard" 
-                element={
-                  <AppRoute>
-                    <Dashboard />
-                  </AppRoute>
-                } 
-              />
-              <Route 
-                path="/app/business" 
-                element={
-                  <AppRoute>
-                    <BusinessArea />
-                  </AppRoute>
-                } 
-              />
-              <Route 
-                path="/app/ingredients" 
-                element={
-                  <AppRoute>
-                    <Ingredients />
-                  </AppRoute>
-                } 
-              />
-              <Route 
-                path="/app/beverages" 
-                element={
-                  <AppRoute>
-                    <Beverages />
-                  </AppRoute>
-                } 
-              />
-              <Route 
-                path="/app/recipes" 
-                element={
-                  <AppRoute>
-                    <Recipes />
-                  </AppRoute>
-                } 
-              />
-              <Route 
-                path="/app/sub-recipes" 
-                element={
-                  <AppRoute>
-                    <SubRecipes />
-                  </AppRoute>
-                } 
-              />
-              <Route 
-                path="/app/packagings" 
-                element={
-                  <AppRoute>
-                    <Packagings />
-                  </AppRoute>
-                } 
-              />
-              <Route
-                path="/app/combos" 
-                element={
-                  <AppRoute>
-                    <Combos />
-                  </AppRoute>
-                } 
-              />
-              <Route 
-                path="/app/recycle-bin" 
-                element={
-                  <AppRoute>
-                    <RecycleBin />
-                  </AppRoute>
-                } 
-              />
+              {/* Shell layout: sidebar stays mounted, only content swaps with shimmer */}
+              <Route path="/app" element={<AppRoute><AppShell /></AppRoute>}>
+                <Route index element={<Dashboard />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="business" element={<BusinessArea />} />
+                <Route path="ingredients" element={<Ingredients />} />
+                <Route path="beverages" element={<Beverages />} />
+                <Route path="recipes" element={<Recipes />} />
+                <Route path="sub-recipes" element={<SubRecipes />} />
+                <Route path="packagings" element={<Packagings />} />
+                <Route path="combos" element={<Combos />} />
+                <Route path="recycle-bin" element={<RecycleBin />} />
+                <Route path="help" element={<HelpCenter />} />
+                <Route path="support" element={<UserSupport />} />
+                <Route path="menu" element={<MenuMirror />} />
+                <Route path="universidade" element={<University />} />
+                <Route path="cmv" element={<CMVGlobal />} />
+                <Route path="plan" element={<MyPlan />} />
+                <Route path="reports" element={<DrMargemReports />} />
+                <Route path="backup" element={<BackupRestore />} />
+              </Route>
 
               {/* ========== ADMIN ROUTES (Master/Collaborators Only) ========== */}
               {/* Regular users cannot access these routes */}
@@ -297,71 +238,7 @@ const App = () => (
               <Route path="/sub-recipes" element={<Navigate to="/app/sub-recipes" replace />} />
               <Route path="/collaborators" element={<Navigate to="/admin/collaborators" replace />} />
 
-              {/* ========== HELP CENTER ========== */}
-              <Route
-                path="/app/help"
-                element={
-                  <AppRoute>
-                    <HelpCenter />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/support"
-                element={
-                  <AppRoute>
-                    <UserSupport />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/menu"
-                element={
-                  <AppRoute>
-                    <MenuMirror />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/universidade"
-                element={
-                  <AppRoute>
-                    <University />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/cmv"
-                element={
-                  <AppRoute>
-                    <CMVGlobal />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/plan"
-                element={
-                  <AppRoute>
-                    <MyPlan />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/reports"
-                element={
-                  <AppRoute>
-                    <DrMargemReports />
-                  </AppRoute>
-                }
-              />
-              <Route
-                path="/app/backup"
-                element={
-                  <AppRoute>
-                    <BackupRestore />
-                  </AppRoute>
-                }
-              />
+              {/* Help/Support/etc routes are now nested under /app shell above */}
 
               {/* ========== ERROR PAGES ========== */}
               <Route path="/403" element={<Forbidden />} />

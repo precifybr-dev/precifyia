@@ -11,11 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import {
   MessageSquare, Bug, HelpCircle, CreditCard, Clock,
@@ -24,12 +20,12 @@ import {
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader } from "@/components/layout/AppShell";
 
 const STATUS_CONFIG: Record<TicketStatus, { label: string; icon: any; className: string }> = {
-  open: { label: "Aberto", icon: Clock, className: "bg-amber-500 text-white" },
-  in_progress: { label: "Em andamento", icon: RefreshCcw, className: "bg-blue-500 text-white" },
-  resolved: { label: "Resolvido", icon: CheckCircle2, className: "bg-emerald-500 text-white" },
+  open: { label: "Aberto", icon: Clock, className: "bg-warning text-warning-foreground" },
+  in_progress: { label: "Em andamento", icon: RefreshCcw, className: "bg-primary text-primary-foreground" },
+  resolved: { label: "Resolvido", icon: CheckCircle2, className: "bg-success text-success-foreground" },
 };
 
 const TYPE_CONFIG: Record<TicketType, { label: string; icon: any }> = {
@@ -95,7 +91,8 @@ export default function UserSupport() {
   );
 
   return (
-    <AppLayout title="Suporte" subtitle="Abra tickets e acompanhe o atendimento" headerActions={headerActions}>
+    <>
+      <PageHeader title="Suporte" subtitle="Abra tickets e acompanhe o atendimento" headerActions={headerActions} />
       <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-6">
         {/* New Ticket Form */}
         {showNewTicket && (
@@ -247,6 +244,6 @@ export default function UserSupport() {
           </DialogContent>
         </Dialog>
       </div>
-    </AppLayout>
+    </>
   );
 }

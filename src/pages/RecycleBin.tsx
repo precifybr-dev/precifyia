@@ -1,15 +1,14 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Trash2, RotateCcw, Clock, Package, ChefHat, Wine, FileText, Loader2, AlertTriangle, ArrowLeft } from "lucide-react";
+import { Trash2, RotateCcw, Clock, Package, ChefHat, Wine, FileText, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useDataProtection, ProtectedTable } from "@/hooks/useDataProtection";
 import { DestructiveActionDialog } from "@/components/security/DestructiveActionDialog";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader } from "@/components/layout/AppShell";
 
 interface DeletedRecord {
   id: string;
@@ -34,7 +33,6 @@ const TABLE_LABELS: Record<string, { label: string; icon: React.ReactNode }> = {
 };
 
 export default function RecycleBin() {
-  const navigate = useNavigate();
   const [deletedItems, setDeletedItems] = useState<DeletedRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<string>("all");
@@ -81,8 +79,6 @@ export default function RecycleBin() {
     setSelectedItem(item);
     setDependencyInfo(null);
     setDeleteDialogOpen(true);
-    
-    // Check dependencies in background
     const deps = await checkDependencies(item.original_table, item.original_id);
     setDependencyInfo(deps);
   };
@@ -108,119 +104,93 @@ export default function RecycleBin() {
   }, {} as Record<string, DeletedRecord[]>);
 
   return (
-    <AppLayout title="Lixeira" subtitle="Itens excluídos são mantidos por 30 dias">
+    <>
+      <PageHeader title="Lixeira" subtitle="Itens excluídos são mantidos por 30 dias" />
       <div className="container mx-auto py-6 px-4 max-w-6xl">
-
-      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList className="mb-4 flex-wrap h-auto gap-1">
-          <TabsTrigger value="all" className="gap-2">
-            Todos
-            {deletedItems.length > 0 && (
-              <Badge variant="secondary" className="ml-1">
-                {deletedItems.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-          {Object.entries(TABLE_LABELS).map(([key, { label, icon }]) => (
-            <TabsTrigger key={key} value={key} className="gap-2">
-              {icon}
-              {label}
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="mb-4 flex-wrap h-auto gap-1">
+            <TabsTrigger value="all" className="gap-2">
+              Todos
+              {deletedItems.length > 0 && (
+                <Badge variant="secondary" className="ml-1">{deletedItems.length}</Badge>
+              )}
             </TabsTrigger>
-          ))}
-        </TabsList>
+            {Object.entries(TABLE_LABELS).map(([key, { label, icon }]) => (
+              <TabsTrigger key={key} value={key} className="gap-2">
+                {icon}
+                {label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-        <TabsContent value={selectedTab}>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : deletedItems.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Trash2 className="w-12 h-12 text-muted-foreground/50 mb-4" />
-                <p className="text-lg font-medium text-muted-foreground">
-                  Lixeira vazia
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Nenhum item foi excluído recentemente
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-6">
-              {selectedTab === "all" ? (
-                Object.entries(groupedItems).map(([table, items]) => (
-                  <Card key={table}>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="flex items-center gap-2 text-lg">
-                        {TABLE_LABELS[table]?.icon}
-                        {TABLE_LABELS[table]?.label || table}
-                        <Badge variant="outline">{items.length}</Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+          <TabsContent value={selectedTab}>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : deletedItems.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <Trash2 className="w-12 h-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-lg font-medium text-muted-foreground">Lixeira vazia</p>
+                  <p className="text-sm text-muted-foreground">Nenhum item foi excluído recentemente</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-6">
+                {selectedTab === "all" ? (
+                  Object.entries(groupedItems).map(([table, items]) => (
+                    <Card key={table}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-lg">
+                          {TABLE_LABELS[table]?.icon}
+                          {TABLE_LABELS[table]?.label || table}
+                          <Badge variant="outline">{items.length}</Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {items.map((item) => (
+                            <RecycleBinItem key={item.id} item={item} onRestore={handleRestore} onDelete={openDeleteDialog} isRestoring={restoringId === item.id} getDaysRemaining={getDaysRemaining} getItemName={getItemName} />
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <Card>
+                    <CardContent className="pt-6">
                       <div className="space-y-2">
-                        {items.map((item) => (
-                          <RecycleBinItem
-                            key={item.id}
-                            item={item}
-                            onRestore={handleRestore}
-                            onDelete={openDeleteDialog}
-                            isRestoring={restoringId === item.id}
-                            getDaysRemaining={getDaysRemaining}
-                            getItemName={getItemName}
-                          />
+                        {deletedItems.map((item) => (
+                          <RecycleBinItem key={item.id} item={item} onRestore={handleRestore} onDelete={openDeleteDialog} isRestoring={restoringId === item.id} getDaysRemaining={getDaysRemaining} getItemName={getItemName} />
                         ))}
                       </div>
                     </CardContent>
                   </Card>
-                ))
-              ) : (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="space-y-2">
-                      {deletedItems.map((item) => (
-                        <RecycleBinItem
-                          key={item.id}
-                          item={item}
-                          onRestore={handleRestore}
-                          onDelete={openDeleteDialog}
-                          isRestoring={restoringId === item.id}
-                          getDaysRemaining={getDaysRemaining}
-                          getItemName={getItemName}
-                        />
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
+                )}
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
 
-      {/* Permanent Delete Dialog */}
-      <DestructiveActionDialog
-        open={deleteDialogOpen}
-        onOpenChange={(open) => {
-          setDeleteDialogOpen(open);
-          if (!open) setDependencyInfo(null);
-        }}
-        title="Excluir Permanentemente"
-        itemName={selectedItem ? getItemName(selectedItem) : ""}
-        warningMessage={
-          dependencyInfo && dependencyInfo.total > 0
-            ? `⚠️ Este item está vinculado a ${dependencyInfo.details.join(", ")}. Ao excluir permanentemente, esses vínculos serão perdidos e não poderão ser recuperados.`
-            : "Este item será excluído permanentemente e não poderá ser recuperado."
-        }
-        confirmationWord="EXCLUIR"
-        timerSeconds={5}
-        onConfirm={handlePermanentDelete}
-        isLoading={isProcessing}
-        canRestore={false}
-      />
+        <DestructiveActionDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => { setDeleteDialogOpen(open); if (!open) setDependencyInfo(null); }}
+          title="Excluir Permanentemente"
+          itemName={selectedItem ? getItemName(selectedItem) : ""}
+          warningMessage={
+            dependencyInfo && dependencyInfo.total > 0
+              ? `⚠️ Este item está vinculado a ${dependencyInfo.details.join(", ")}. Ao excluir permanentemente, esses vínculos serão perdidos e não poderão ser recuperados.`
+              : "Este item será excluído permanentemente e não poderá ser recuperado."
+          }
+          confirmationWord="EXCLUIR"
+          timerSeconds={5}
+          onConfirm={handlePermanentDelete}
+          isLoading={isProcessing}
+          canRestore={false}
+        />
       </div>
-    </AppLayout>
+    </>
   );
 }
 
@@ -233,14 +203,7 @@ interface RecycleBinItemProps {
   getItemName: (item: DeletedRecord) => string;
 }
 
-function RecycleBinItem({
-  item,
-  onRestore,
-  onDelete,
-  isRestoring,
-  getDaysRemaining,
-  getItemName,
-}: RecycleBinItemProps) {
+function RecycleBinItem({ item, onRestore, onDelete, isRestoring, getDaysRemaining, getItemName }: RecycleBinItemProps) {
   const daysRemaining = getDaysRemaining(item.expires_at);
   const isExpiringSoon = daysRemaining <= 7;
 
@@ -249,13 +212,7 @@ function RecycleBinItem({
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{getItemName(item)}</p>
         <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
-          <span>
-            Excluído{" "}
-            {formatDistanceToNow(new Date(item.deleted_at), {
-              addSuffix: true,
-              locale: ptBR,
-            })}
-          </span>
+          <span>Excluído {formatDistanceToNow(new Date(item.deleted_at), { addSuffix: true, locale: ptBR })}</span>
           <span className={`flex items-center gap-1 ${isExpiringSoon ? "text-amber-600" : ""}`}>
             <Clock className="w-3 h-3" />
             {daysRemaining} {daysRemaining === 1 ? "dia" : "dias"} restantes
@@ -263,26 +220,11 @@ function RecycleBinItem({
         </div>
       </div>
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onRestore(item)}
-          disabled={isRestoring}
-          className="gap-1"
-        >
-          {isRestoring ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <RotateCcw className="w-4 h-4" />
-          )}
+        <Button variant="outline" size="sm" onClick={() => onRestore(item)} disabled={isRestoring} className="gap-1">
+          {isRestoring ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
           Restaurar
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => onDelete(item)}
-          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-        >
+        <Button variant="ghost" size="sm" onClick={() => onDelete(item)} className="text-destructive hover:text-destructive hover:bg-destructive/10">
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
