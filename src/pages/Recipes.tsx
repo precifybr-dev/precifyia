@@ -1036,17 +1036,17 @@ export default function Recipes() {
 
         <div className="p-3 sm:p-6">
           {showForm ? (
-            <div className="bg-card rounded-xl border border-border p-6 shadow-card">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <FileSpreadsheet className="w-5 h-5 text-primary" />
+            <div className="bg-card rounded-xl border border-border p-4 shadow-card">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <FileSpreadsheet className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <h2 className="font-display text-lg font-bold text-foreground">
+                    <h2 className="font-display text-base font-bold text-foreground">
                       {editingId ? "Editar Ficha Técnica" : "Nova Ficha Técnica"}
                     </h2>
-                    <p className="text-sm text-muted-foreground">Selecione insumos pelo código para montagem rápida</p>
+                    <p className="text-xs text-muted-foreground">Selecione insumos pelo código para montagem rápida</p>
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" onClick={resetForm}>
@@ -1055,19 +1055,18 @@ export default function Recipes() {
               </div>
 
               {/* Dica de uso */}
-              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-6 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                <div className="text-sm">
-                  <p className="font-medium text-foreground mb-1">Dica: Use o código do insumo</p>
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4 flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="text-xs">
+                  <p className="font-medium text-foreground mb-0.5">Dica: Use o código do insumo</p>
                   <p className="text-muted-foreground">
-                    Digite o número do insumo (ex: 1) para selecionar rapidamente. O custo é calculado automaticamente
-                    baseado na quantidade usada. Ex: 50g de um insumo a R$ 11,20/kg = R$ 0,56
+                    Digite o número do insumo (ex: 1) para selecionar rapidamente. Ex: 50g a R$ 11,20/kg = R$ 0,56
                   </p>
                 </div>
               </div>
 
               {/* Recipe info - Header with Name, Servings, CMV */}
-              <div className="grid sm:grid-cols-3 gap-4 mb-6">
+              <div className="grid sm:grid-cols-3 gap-3 mb-4">
                 <div className="space-y-2">
                   <Label>Nome do Produto *</Label>
                   <Input
