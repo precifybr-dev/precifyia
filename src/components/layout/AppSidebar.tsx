@@ -175,9 +175,9 @@ export function AppSidebar({ open, onClose, user, profile }: AppSidebarProps) {
           </div>
 
           {/* Active Store Section */}
-          <div className="p-4 border-b border-border space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+          <div className="px-3 py-2.5 border-b border-border space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center overflow-hidden flex-shrink-0">
                 {activeStore?.logo_url ? (
                   <img src={activeStore.logo_url} alt={activeStore.name} className="w-full h-full object-cover" />
                 ) : (
