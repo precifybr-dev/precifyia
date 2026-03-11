@@ -613,7 +613,7 @@ export default function Ingredients() {
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
           {/* Row 1: Navigation + Title */}
           <div className="flex items-center gap-3 mb-2 sm:mb-0">
-            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={() => setSidebarOpen(true)}>
+            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={openSidebar}>
               <Menu className="w-5 h-5" />
             </button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-1 px-2 flex-shrink-0">
