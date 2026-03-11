@@ -330,7 +330,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                             </TableCell>
                             <TableCell className="text-sm">
                               {user.subscription_expires_at
-                                ? format(new Date(user.subscription_expires_at), "dd/MM/yyyy")
+                                ? formatDateBR(user.subscription_expires_at)
                                 : "-"}
                             </TableCell>
                             <TableCell>
