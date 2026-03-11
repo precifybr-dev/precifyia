@@ -297,6 +297,45 @@ export function CloudCostsDashboard() {
         </Card>
       </div>
 
+      {/* Domain Renewal */}
+      {(() => {
+        const renewalDate = new Date(2026, 2, 11); // 11/03/2026
+        const daysLeft = differenceInDays(renewalDate, new Date());
+        const badgeVariant = daysLeft <= 0 ? "destructive" : daysLeft <= 7 ? "destructive" : daysLeft <= 30 ? "secondary" : "outline";
+        const badgeText = daysLeft <= 0 ? "Vencido" : daysLeft === 0 ? "Vence hoje" : `${daysLeft} dias restantes`;
+        return (
+          <Card className={daysLeft <= 7 ? "border-destructive/40" : daysLeft <= 30 ? "border-warning/40" : ""}>
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Globe className="h-5 w-5 text-primary" />
+                  <span className="font-semibold text-foreground">Renovação de Domínio</span>
+                </div>
+                <Badge variant={badgeVariant}>{badgeText}</Badge>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Domínio</p>
+                  <p className="font-medium text-foreground">precify.com.br <span className="text-muted-foreground font-normal">(Registro.br)</span></p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Login</p>
+                  <p className="font-medium text-foreground">precify.br@gmail.com</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Titular</p>
+                  <p className="font-medium text-foreground">Amanda</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Renovação</p>
+                  <p className="font-medium text-foreground">11/03/2026</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       {/* Budget Reference */}
       <Card className="border-dashed">
         <CardContent className="pt-6">
