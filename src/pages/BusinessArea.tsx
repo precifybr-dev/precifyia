@@ -60,7 +60,7 @@ import TaxesAndFeesBlock from "@/components/business/TaxesAndFeesBlock";
 import { useStore } from "@/contexts/StoreContext";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
 import { useBusinessMetrics } from "@/hooks/useBusinessMetrics";
 interface BusinessMetrics {
   ingredientsCount: number;
