@@ -503,9 +503,7 @@ export function SupportDashboard() {
                                   {selectedTicket.user_email}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  {format(new Date(selectedTicket.created_at), "dd/MM/yyyy HH:mm", {
-                                    locale: ptBR,
-                                  })}
+                                  {formatDateTimeBR(selectedTicket.created_at)}
                                 </span>
                               </div>
                               <p className="text-sm">{selectedTicket.message}</p>
