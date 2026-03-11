@@ -1531,7 +1531,7 @@ export default function Recipes() {
             </div>
           ) : null}
         </div>
-      </main>
+      
 
       {/* AlertDialog de confirmação de exclusão */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
