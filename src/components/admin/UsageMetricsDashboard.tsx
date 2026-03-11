@@ -235,7 +235,7 @@ export function UsageMetricsDashboard() {
                           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                           <XAxis
                             dataKey="activity_date"
-                            tickFormatter={(v) => format(new Date(v), "dd/MM", { locale: ptBR })}
+                            tickFormatter={(v) => formatDateSP(v, "dd/MM")}
                             className="text-xs"
                           />
                           <YAxis className="text-xs" />
