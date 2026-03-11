@@ -1,63 +1,62 @@
 
 
-## Explicação do Erro
+# Validacao Matematica e Guards Anti-Erro na Importacao iFood
 
-### O que é `_app_role`?
+## Contexto
 
-No PostgreSQL, quando você cria um tipo como `CREATE TYPE app_role AS ENUM (...)`, o banco automaticamente cria um tipo interno chamado `_app_role` que representa **arrays desse tipo** (`app_role[]`). Você nunca cria `_app_role` manualmente — ele é um subproduto automático.
+O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
 
-### Por que o erro acontece?
+O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
 
-Na migration `20260128180111`, linha 27, a tabela `admin_alerts` tem:
+---
 
-```sql
-target_roles app_role[] DEFAULT NULL
-```
+## O que sera implementado
 
-O PostgreSQL traduz `app_role[]` para `_app_role` internamente. Se o tipo `app_role` não existir no momento da execução dessa migration, o erro `tipo "_app_role" não existe` aparece.
+### 1. Camada de Validacao no Processador
 
-**Causa raiz**: A migration que cria o enum `app_role` (`20260128173337`) pode ter falhado ou não ter sido executada antes dessa migration. Isso pode acontecer em re-execuções parciais ou restaurações de banco.
+Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
 
-### Impacto no sistema
+- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
+- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
+- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
+- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
+- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
 
-- **Tabela `admin_alerts`** não foi criada → alertas do admin não funcionam
-- **Funções `get_registration_stats`, `get_mrr_stats`, `get_recent_users`** dessa mesma migration também podem não existir
-- O resto do sistema (RBAC, recipes, ingredients) **não é afetado** pois estão em outras migrations
+Cada validacao retorna `{ level: "error" | "warning", message: string }`.
 
-### Solução
+A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
 
-Criar uma migration corretiva que:
+### 2. Exibicao de Alertas no Dashboard
 
-1. Verifica se o tipo `app_role` existe (deve existir, pois o RBAC funciona)
-2. Recria a tabela `admin_alerts` com `app_role[]` usando `IF NOT EXISTS`
-3. Recria as policies e funções que dependem dessa migration
+No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
 
-```sql
--- Garantir que o enum existe
-DO $$ BEGIN
-  CREATE TYPE public.app_role AS ENUM ('user', 'admin', 'master', 'suporte', 'financeiro', 'analista');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
+- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
+- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
+- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
+- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
 
--- Recriar tabela admin_alerts
-CREATE TABLE IF NOT EXISTS public.admin_alerts (
-  id UUID NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
-  type TEXT NOT NULL CHECK (type IN ('info', 'warning', 'error', 'success')),
-  title TEXT NOT NULL,
-  message TEXT NOT NULL,
-  is_read BOOLEAN NOT NULL DEFAULT false,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  created_by UUID REFERENCES auth.users(id),
-  target_roles app_role[] DEFAULT NULL
-);
+### 3. Info de Agrupamento no Dashboard
 
-ALTER TABLE public.admin_alerts ENABLE ROW LEVEL SECURITY;
+Adicionar um pequeno badge/info no topo do dashboard mostrando:
+- Linhas na planilha: X
+- Pedidos unicos: Y
+- Media de linhas por pedido: X/Y
 
--- Policies (IF NOT EXISTS via DO block)
--- Recriar funções get_registration_stats, get_mrr_stats, get_recent_users
-```
+Isso da confianca ao usuario de que o agrupamento esta correto.
 
-### Arquivos
-- 1 nova migration SQL (corretiva, idempotente)
-- Nenhuma alteração no frontend necessária
+---
+
+## Arquivos modificados
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
+| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
+
+## O que NAO sera alterado
+
+- Banco de dados (sem migrations)
+- Logica de agrupamento por ID (ja funciona corretamente)
+- Fluxo de autenticacao
+- Nenhuma outra funcionalidade do sistema
 
