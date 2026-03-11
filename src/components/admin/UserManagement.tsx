@@ -444,7 +444,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                         <span className="text-muted-foreground">Último acesso:</span>
                         <span>
                           {selectedUser.last_access_at || selectedUser.last_sign_in_at
-                            ? format(new Date(selectedUser.last_access_at || selectedUser.last_sign_in_at!), "dd/MM/yyyy HH:mm")
+                            ? formatDateTimeBR(selectedUser.last_access_at || selectedUser.last_sign_in_at!)
                             : "Nunca"}
                         </span>
                       </div>
