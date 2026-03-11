@@ -40,8 +40,9 @@ import {
   BarChart3,
   Zap,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 const CATEGORY_COLORS = [
   "hsl(var(--primary))",

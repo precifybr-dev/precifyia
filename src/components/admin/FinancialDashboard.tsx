@@ -21,8 +21,9 @@ import {
   UserX, Activity, Download, FileSpreadsheet, Target, ShieldAlert,
   ArrowUpRight, ArrowDownRight, Zap,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 
 const PLAN_COLORS = {

@@ -53,8 +53,9 @@ import {
   ArrowUpCircle,
   XCircle,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP, formatDateTimeBR } from "@/lib/date-utils";
 
 const STATUS_CONFIG: Record<TicketStatus, { label: string; color: string; icon: any }> = {
   open: { label: "Aberto", color: "bg-amber-500", icon: Clock },

@@ -14,8 +14,8 @@ import {
 import {
   Server, Cpu, DollarSign, Activity, RefreshCcw, Users, Globe,
 } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { differenceInDays } from "date-fns";
+import { formatDateSP } from "@/lib/date-utils";
 
 const ENDPOINT_LABELS: Record<string, string> = {
   "generate-combo": "Gerar Combo IA",

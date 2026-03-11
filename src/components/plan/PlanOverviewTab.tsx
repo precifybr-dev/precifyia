@@ -11,7 +11,7 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useStore } from "@/contexts/StoreContext";
 import { PlanUpgradePrompt } from "@/components/upsell/PlanUpgradePrompt";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { formatDateBR } from "@/lib/date-utils";
 import {
   AlertDialog,
   AlertDialogCancel,

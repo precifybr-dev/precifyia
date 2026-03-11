@@ -43,8 +43,9 @@ import {
   ShieldOff,
   Gift,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP, formatDateBR, formatDateTimeBR } from "@/lib/date-utils";
 
 const STATUS_CONFIG = {
   active: { label: "Ativo", color: "text-emerald-600 border-emerald-600", icon: CheckCircle2 },

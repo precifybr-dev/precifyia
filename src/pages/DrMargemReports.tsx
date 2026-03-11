@@ -11,8 +11,7 @@ import { useStore } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
 import { useShell } from "@/components/layout/AppShell";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 interface ProductDetail {
   name: string;

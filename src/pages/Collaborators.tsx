@@ -33,8 +33,7 @@ import {
   allPermissions,
   defaultRolePermissions
 } from "@/lib/permissions";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 interface Collaborator {
   id: string;

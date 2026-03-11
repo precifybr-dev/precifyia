@@ -72,8 +72,9 @@ import {
   BarChart3,
   LayoutDashboard,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 const PLAN_COLORS = {
   free: "hsl(var(--muted-foreground))",

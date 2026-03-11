@@ -18,8 +18,9 @@ import {
   CheckCircle2, RefreshCcw, Send, Plus, Shield, ShieldCheck,
   ShieldOff, Loader2, User, Headphones,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateTimeBR } from "@/lib/date-utils";
 import { PageHeader } from "@/components/layout/AppShell";
 
 const STATUS_CONFIG: Record<TicketStatus, { label: string; icon: any; className: string }> = {

@@ -21,8 +21,7 @@ import {
   History, ClipboardPaste, BarChart3, Trash2, ChevronDown, ChevronRight,
   Layers, BookOpen, ArrowRight, Award, TrendingUp, Activity, Gauge, Copy, Clock,
 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateSP, formatDateBR } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {

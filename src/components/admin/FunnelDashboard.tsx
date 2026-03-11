@@ -8,8 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts";
 import { MousePointerClick, UserPlus, CreditCard, ShoppingCart, TrendingDown, ArrowDown, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 const EVENT_LABELS: Record<string, string> = {
   cta_click: "Clique CTA",
