@@ -75,7 +75,7 @@ export function ComboHistoryList({ combos, objectiveLabels, onDelete }: ComboHis
                     <p className="text-xs text-muted-foreground line-clamp-1">{combo.description}</p>
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground">
                       <span className="flex items-center gap-1"><Target className="w-3 h-3" />{objectiveLabels[combo.objective] || combo.objective}</span>
-                      <span>{new Date(combo.created_at).toLocaleDateString("pt-BR")}</span>
+                      <span>{toLocaleDateBR(combo.created_at)}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">

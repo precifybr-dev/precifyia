@@ -59,7 +59,7 @@ export function useBackupRestore() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast({ title: "Backup realizado!", description: `Arquivo exportado em ${new Date().toLocaleString("pt-BR")}` });
+      toast({ title: "Backup realizado!", description: `Arquivo exportado em ${nowBR()}` });
     } catch (err: any) {
       toast({ title: "Erro no backup", description: err.message, variant: "destructive" });
     } finally {
