@@ -154,7 +154,7 @@ export function CloudCostsDashboard() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis
                     dataKey="day"
-                    tickFormatter={(v) => format(new Date(v), "dd/MM", { locale: ptBR })}
+                    tickFormatter={(v) => formatDateSP(v, "dd/MM")}
                     className="text-xs"
                   />
                   <YAxis tickFormatter={(v) => `$${v}`} className="text-xs" />
