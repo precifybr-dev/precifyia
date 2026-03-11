@@ -3,25 +3,33 @@ import { Link } from "react-router-dom";
 import { Cookie, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+function getCookie(name: string): string | null {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[2]) : null;
+}
+
+function setCookie(name: string, value: string, maxAgeDays: number) {
+  document.cookie = `${name}=${encodeURIComponent(value)}; max-age=${maxAgeDays * 86400}; path=/; SameSite=Lax`;
+}
+
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const consent = localStorage.getItem("cookie-consent");
+    const consent = getCookie("cookie-consent");
     if (!consent) {
-      // Small delay so it doesn't flash on load
       const timer = setTimeout(() => setVisible(true), 1000);
       return () => clearTimeout(timer);
     }
   }, []);
 
   const handleAccept = () => {
-    localStorage.setItem("cookie-consent", "accepted");
+    setCookie("cookie-consent", "accepted", 365);
     setVisible(false);
   };
 
   const handleDecline = () => {
-    localStorage.setItem("cookie-consent", "declined");
+    setCookie("cookie-consent", "declined", 365);
     setVisible(false);
   };
 
