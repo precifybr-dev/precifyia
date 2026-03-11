@@ -197,6 +197,7 @@ export default function Recipes() {
     userId: user?.id || null,
     importType: "recipes",
   });
+  const { openSidebar } = useShell();
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
