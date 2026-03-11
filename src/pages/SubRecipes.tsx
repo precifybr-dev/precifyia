@@ -892,7 +892,7 @@ export default function SubRecipes() {
             </>
           )}
         </div>
-      </main>
+      
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
