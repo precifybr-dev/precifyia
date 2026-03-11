@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toLocaleDateBR } from "@/lib/date-utils";
 import {
   ChevronDown, ChevronUp, Trash2, DollarSign, Target,
   FlaskConical, Sparkles, ShoppingBag, Smartphone,
