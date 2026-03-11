@@ -242,7 +242,7 @@ export default function IfoodSpreadsheetImportModal({
         custoExtraTotal: Number(row.custo_extra_total),
         custoExtraPercentual: Number(row.custo_extra_percentual),
       });
-      setLastImportDate(new Date(row.updated_at).toLocaleDateString("pt-BR"));
+      setLastImportDate(toLocaleDateBR(row.updated_at));
       setStep("dashboard");
     }
   }, [userId, storeId]);
