@@ -12,9 +12,9 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import {
-  Server, Cpu, DollarSign, Activity, RefreshCcw, Users,
+  Server, Cpu, DollarSign, Activity, RefreshCcw, Users, Globe,
 } from "lucide-react";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 const ENDPOINT_LABELS: Record<string, string> = {
