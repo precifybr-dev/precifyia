@@ -16,7 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader } from "@/components/layout/AppShell";
 import { usePackagings, type Packaging } from "@/hooks/usePackagings";
 import { useStore } from "@/contexts/StoreContext";
 import { Textarea } from "@/components/ui/textarea";
