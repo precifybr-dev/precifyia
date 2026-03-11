@@ -1,93 +1,62 @@
 
 
-## Plano: Versionamento de Prompts + Biblioteca Genérica para Novo SaaS
+# Validacao Matematica e Guards Anti-Erro na Importacao iFood
 
-### Resumo
+## Contexto
 
-Três melhorias no painel de Governança:
+O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
 
-1. **Histórico de versões por prompt** — Cada vez que um prompt é editado, a versão anterior é salva automaticamente. Dentro do card do prompt, uma seção "Histórico de Versões" mostra a evolução (v1 → v2 → v3...) com data, diff visual e qual versão está ativa.
-
-2. **Aba "Novo SaaS" aprimorada** — Cada fase do checklist ganha uma lista de prompts genéricos associados (sem referências à Precify). Cada prompt tem botão "Copiar" para uso em qualquer projeto novo.
-
-3. **Prompts atualizados refletindo o código atual** — Os prompts das edge functions que usam IA (generate-combo, generate-menu-strategy, analyze-spreadsheet-columns, generate-weekly-report, generate-combo-details, analyze-menu-performance, parse-ifood-menu) devem estar registrados e atualizados na tabela `architecture_prompts`.
+O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
 
 ---
 
-### Implementação
+## O que sera implementado
 
-#### 1. Nova tabela: `architecture_prompt_versions`
+### 1. Camada de Validacao no Processador
 
-```sql
-CREATE TABLE public.architecture_prompt_versions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  prompt_id UUID NOT NULL REFERENCES public.architecture_prompts(id) ON DELETE CASCADE,
-  version_number INTEGER NOT NULL DEFAULT 1,
-  prompt_text TEXT NOT NULL,
-  description TEXT,
-  change_reason TEXT,
-  created_by UUID,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(prompt_id, version_number)
-);
+Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
 
-ALTER TABLE public.architecture_prompt_versions ENABLE ROW LEVEL SECURITY;
+- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
+- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
+- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
+- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
+- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
 
-CREATE POLICY "Admin read versions" ON public.architecture_prompt_versions
-  FOR SELECT TO authenticated
-  USING (public.has_role(auth.uid(), 'master') OR public.has_role(auth.uid(), 'admin'));
+Cada validacao retorna `{ level: "error" | "warning", message: string }`.
 
-CREATE POLICY "Admin insert versions" ON public.architecture_prompt_versions
-  FOR INSERT TO authenticated
-  WITH CHECK (public.has_role(auth.uid(), 'master') OR public.has_role(auth.uid(), 'admin'));
-```
+A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
 
-#### 2. Nova tabela: `saas_phase_prompts` (prompts genéricos por fase)
+### 2. Exibicao de Alertas no Dashboard
 
-```sql
-CREATE TABLE public.saas_phase_prompts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  phase INTEGER NOT NULL,
-  phase_name TEXT NOT NULL,
-  prompt_title TEXT NOT NULL,
-  prompt_text TEXT NOT NULL,
-  problem_description TEXT,
-  sort_order INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
 
-ALTER TABLE public.saas_phase_prompts ENABLE ROW LEVEL SECURITY;
+- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
+- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
+- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
+- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
 
-CREATE POLICY "Admin read phase prompts" ON public.saas_phase_prompts
-  FOR ALL TO authenticated
-  USING (public.has_role(auth.uid(), 'master') OR public.has_role(auth.uid(), 'admin'));
-```
+### 3. Info de Agrupamento no Dashboard
 
-#### 3. Alterações no frontend
+Adicionar um pequeno badge/info no topo do dashboard mostrando:
+- Linhas na planilha: X
+- Pedidos unicos: Y
+- Media de linhas por pedido: X/Y
 
-**`src/hooks/useArchitectureGovernance.ts`**:
-- Adicionar fetch de `architecture_prompt_versions` por prompt
-- Ao atualizar um prompt, salvar versão anterior automaticamente em `architecture_prompt_versions`
-- Adicionar fetch de `saas_phase_prompts`
-
-**`src/components/admin/ArchitectureGovernanceDashboard.tsx`**:
-- No `PromptCard`: adicionar seção colapsável "Histórico de Versões" com timeline (v1, v2, v3...), mostrando data, texto e motivo da mudança. Botão "Copiar" em cada versão.
-- Na aba "Novo SaaS": para cada fase, listar prompts genéricos da tabela `saas_phase_prompts` com botão "Copiar Prompt". Prompts são escritos de forma genérica (ex: "Implementar RBAC com papéis configuráveis..." sem mencionar Precify).
-
-#### 4. Seed de prompts genéricos por fase
-
-Inserir via migration prompts genéricos para as 5 fases do checklist existente. Exemplos:
-
-- **Fase 1 (Segurança)**: "Implementar RBAC com papéis e permissões granulares", "Configurar RLS em todas as tabelas com dados de usuário"
-- **Fase 2 (Backend)**: "Criar edge functions com rate limiting e validação de ownership"
-- **Fase 3 (Continuidade)**: "Implementar backup/restore com exportação JSON criptografada"
-- **Fase 4 (Ajuda/UX)**: "Criar sistema de ajuda contextual por seção com busca"
-- **Fase 5 (Governança)**: "Implementar dashboard de maturidade com score ponderado"
+Isso da confianca ao usuario de que o agrupamento esta correto.
 
 ---
 
-### Arquivos editados
-- `src/hooks/useArchitectureGovernance.ts` — versões + phase prompts
-- `src/components/admin/ArchitectureGovernanceDashboard.tsx` — UI de versões no PromptCard + aba Novo SaaS com prompts copiáveis
-- 1 migration SQL — tabelas + seed de prompts genéricos
+## Arquivos modificados
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
+| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
+
+## O que NAO sera alterado
+
+- Banco de dados (sem migrations)
+- Logica de agrupamento por ID (ja funciona corretamente)
+- Fluxo de autenticacao
+- Nenhuma outra funcionalidade do sistema
 

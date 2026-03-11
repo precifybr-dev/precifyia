@@ -337,6 +337,47 @@ export type Database = {
           },
         ]
       }
+      architecture_prompt_versions: {
+        Row: {
+          change_reason: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          prompt_id: string
+          prompt_text: string
+          version_number: number
+        }
+        Insert: {
+          change_reason?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          prompt_id: string
+          prompt_text: string
+          version_number?: number
+        }
+        Update: {
+          change_reason?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          prompt_id?: string
+          prompt_text?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "architecture_prompt_versions_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "architecture_prompts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       architecture_prompts: {
         Row: {
           auto_scan_date: string | null
@@ -2941,6 +2982,39 @@ export type Database = {
           id?: string
           permission?: Database["public"]["Enums"]["app_permission"]
           role?: Database["public"]["Enums"]["app_role"]
+        }
+        Relationships: []
+      }
+      saas_phase_prompts: {
+        Row: {
+          created_at: string | null
+          id: string
+          phase: number
+          phase_name: string
+          problem_description: string | null
+          prompt_text: string
+          prompt_title: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          phase: number
+          phase_name: string
+          problem_description?: string | null
+          prompt_text: string
+          prompt_title: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          phase?: number
+          phase_name?: string
+          problem_description?: string | null
+          prompt_text?: string
+          prompt_title?: string
+          sort_order?: number | null
         }
         Relationships: []
       }
