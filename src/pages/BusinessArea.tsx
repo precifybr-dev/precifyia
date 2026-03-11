@@ -60,7 +60,7 @@ import TaxesAndFeesBlock from "@/components/business/TaxesAndFeesBlock";
 import { useStore } from "@/contexts/StoreContext";
 import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
 import { useBusinessMetrics } from "@/hooks/useBusinessMetrics";
 interface BusinessMetrics {
   ingredientsCount: number;
@@ -172,6 +172,7 @@ export default function BusinessArea() {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { openSidebar } = useShell();
 
   const fetchMetrics = async (userId: string, storeId?: string | null) => {
     // Fetch ingredients count (filtered by store)
@@ -406,14 +407,10 @@ export default function BusinessArea() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
-      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} profile={profile} />
-
-      <main className="flex-1 lg:ml-64">
+    <>
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
           <div className="flex items-center gap-3">
-            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={() => setSidebarOpen(true)}>
+            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={openSidebar}>
               <Menu className="w-5 h-5" />
             </button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-1 px-2 flex-shrink-0">
@@ -832,7 +829,7 @@ export default function BusinessArea() {
             </button>
           </div>
         </div>
-      </main>
+      
 
       <AlertDialog open={cmvDialogOpen} onOpenChange={setCmvDialogOpen}>
         <AlertDialogContent>
@@ -865,6 +862,6 @@ export default function BusinessArea() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

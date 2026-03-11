@@ -62,7 +62,7 @@ import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
 import { useDataProtection } from "@/hooks/useDataProtection";
 import { usePackagings } from "@/hooks/usePackagings";
 import {
@@ -197,6 +197,7 @@ export default function Recipes() {
     userId: user?.id || null,
     importType: "recipes",
   });
+  const { openSidebar } = useShell();
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
@@ -949,14 +950,11 @@ export default function Recipes() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} profile={profile} />
-
-      <main className="flex-1 lg:ml-64">
+    <>
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
           {/* Row 1: Navigation + Title */}
           <div className="flex items-center gap-3 mb-2 sm:mb-0">
-            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={() => setSidebarOpen(true)}>
+            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={openSidebar}>
               <Menu className="w-5 h-5" />
             </button>
             <Button variant="ghost" size="sm" onClick={() => {
@@ -1533,7 +1531,7 @@ export default function Recipes() {
             </div>
           ) : null}
         </div>
-      </main>
+      
 
       {/* AlertDialog de confirmação de exclusão */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -1615,6 +1613,6 @@ export default function Recipes() {
         }}
       />
 
-    </div>
+    </>
   );
 }

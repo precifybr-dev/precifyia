@@ -47,7 +47,7 @@ import { useStore } from "@/contexts/StoreContext";
 import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
 import { SearchAndFilter, BEVERAGE_CATEGORIES } from "@/components/ui/SearchAndFilter";
 import { normalizeText } from "@/lib/utils";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
 import { useDataProtection } from "@/hooks/useDataProtection";
 import BeveragePricingPanel from "@/components/beverages/BeveragePricingPanel";
 
@@ -119,6 +119,7 @@ export default function Beverages() {
   const { softDelete } = useDataProtection();
   const formRef = useRef<HTMLDivElement>(null);
   const { activeStore } = useStore();
+  const { openSidebar } = useShell();
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
@@ -537,14 +538,11 @@ export default function Beverages() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} profile={profile} />
-
-      <main className="flex-1 lg:ml-64">
+    <>
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
+              <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={openSidebar}>
                 <Menu className="w-5 h-5" />
               </button>
               <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-2">
@@ -935,7 +933,7 @@ export default function Beverages() {
             </div>
           )}
         </div>
-      </main>
+      
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -954,6 +952,6 @@ export default function Beverages() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

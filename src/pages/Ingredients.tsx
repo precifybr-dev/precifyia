@@ -66,7 +66,7 @@ import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { DeleteIngredientDialog } from "@/components/ingredients/DeleteIngredientDialog";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
 import type { IngredientData } from "@/components/recipes/IngredientSelector";
 
 type Ingredient = {
@@ -128,7 +128,8 @@ export default function Ingredients() {
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
   const { activeStore } = useStore();
-  
+  const { openSidebar } = useShell();
+
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
@@ -608,14 +609,11 @@ export default function Ingredients() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} profile={profile} />
-
-      <main className="flex-1 lg:ml-64">
+    <>
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
           {/* Row 1: Navigation + Title */}
           <div className="flex items-center gap-3 mb-2 sm:mb-0">
-            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={() => setSidebarOpen(true)}>
+            <button className="lg:hidden p-2 hover:bg-muted rounded-lg flex-shrink-0" onClick={openSidebar}>
               <Menu className="w-5 h-5" />
             </button>
             <Button variant="ghost" size="sm" onClick={() => navigate("/app")} className="gap-1 px-2 flex-shrink-0">
@@ -930,7 +928,7 @@ export default function Ingredients() {
             </div>
           </div>
         </div>
-      </main>
+      
 
       {/* Dialog de confirmação de exclusão com contagem e substituição */}
       <DeleteIngredientDialog
@@ -952,6 +950,6 @@ export default function Ingredients() {
           await fetchIngredients(user.id, activeStore?.id);
         }}
       />
-    </div>
+    </>
   );
 }

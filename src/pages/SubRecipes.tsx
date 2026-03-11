@@ -59,7 +59,7 @@ import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
 import { useDataProtection } from "@/hooks/useDataProtection";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { PlanUpgradePrompt } from "@/components/upsell/PlanUpgradePrompt";
@@ -146,6 +146,7 @@ export default function SubRecipes() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { softDelete } = useDataProtection();
+  const { openSidebar } = useShell();
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
@@ -637,14 +638,11 @@ export default function SubRecipes() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} profile={profile} />
-
-      <main className="flex-1 lg:ml-64">
+    <>
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={() => setSidebarOpen(true)}>
+              <button className="lg:hidden p-2 hover:bg-muted rounded-lg" onClick={openSidebar}>
                 <Menu className="w-5 h-5" />
               </button>
               <Button variant="ghost" size="sm" onClick={() => navigate("/app/recipes")} className="gap-2">
@@ -894,7 +892,7 @@ export default function SubRecipes() {
             </>
           )}
         </div>
-      </main>
+      
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -937,6 +935,6 @@ export default function SubRecipes() {
           mode="sub-recipes"
         />
       )}
-    </div>
+    </>
   );
 }

@@ -16,7 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { AppLayout } from "@/components/layout/AppLayout";
+import { PageHeader } from "@/components/layout/AppShell";
 import { usePackagings, type Packaging } from "@/hooks/usePackagings";
 import { useStore } from "@/contexts/StoreContext";
 import { Textarea } from "@/components/ui/textarea";
@@ -249,7 +249,8 @@ export default function Packagings() {
     v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
-    <AppLayout>
+    <>
+      <PageHeader title="Embalagens" subtitle="Monte suas embalagens usando insumos cadastrados" />
       <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -554,6 +555,6 @@ export default function Packagings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AppLayout>
+    </>
   );
 }
