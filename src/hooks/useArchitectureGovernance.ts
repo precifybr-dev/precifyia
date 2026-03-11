@@ -73,6 +73,28 @@ export interface Certification {
   created_by: string | null;
 }
 
+export interface PromptVersion {
+  id: string;
+  prompt_id: string;
+  version_number: number;
+  prompt_text: string;
+  description: string | null;
+  change_reason: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface SaasPhasePrompt {
+  id: string;
+  phase: number;
+  phase_name: string;
+  prompt_title: string;
+  prompt_text: string;
+  problem_description: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
 export type RiskLevel = "baixo" | "medio" | "alto";
 
 export interface MaturityScores {
@@ -115,7 +137,6 @@ const CRITICALITY_LABELS: Record<string, string> = {
 
 export { CATEGORY_LABELS, STATUS_LABELS, CRITICALITY_LABELS };
 
-// ─── Phase weights for maturity score ───
 const PHASE_WEIGHTS: Record<number, { key: keyof MaturityScores; weight: number }> = {
   1: { key: "security", weight: 0.30 },
   2: { key: "backend", weight: 0.20 },
@@ -132,17 +153,21 @@ export function useArchitectureGovernance() {
   const [baseChecks, setBaseChecks] = useState<ArchitectureBaseCheck[]>([]);
   const [scoreHistory, setScoreHistory] = useState<ScoreSnapshot[]>([]);
   const [certifications, setCertifications] = useState<Certification[]>([]);
+  const [promptVersions, setPromptVersions] = useState<PromptVersion[]>([]);
+  const [saasPhasePrompts, setSaasPhasePrompts] = useState<SaasPhasePrompt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
     setIsLoading(true);
     try {
-      const [promptsRes, historyRes, checksRes, scoresRes, certsRes] = await Promise.all([
+      const [promptsRes, historyRes, checksRes, scoresRes, certsRes, versionsRes, phasePromptsRes] = await Promise.all([
         supabase.from("architecture_prompts").select("*").order("created_at", { ascending: false }),
         supabase.from("architecture_history").select("*").order("created_at", { ascending: false }).limit(100),
         supabase.from("architecture_base_checks").select("*").order("sort_order"),
         supabase.from("architecture_score_history").select("*").order("created_at", { ascending: false }).limit(50),
         supabase.from("architecture_certifications").select("*").order("certified_at", { ascending: false }),
+        supabase.from("architecture_prompt_versions").select("*").order("version_number", { ascending: true }),
+        supabase.from("saas_phase_prompts").select("*").order("phase").order("sort_order"),
       ]);
 
       if (promptsRes.data) setPrompts(promptsRes.data as any);
@@ -150,6 +175,8 @@ export function useArchitectureGovernance() {
       if (checksRes.data) setBaseChecks(checksRes.data as any);
       if (scoresRes.data) setScoreHistory(scoresRes.data as any);
       if (certsRes.data) setCertifications(certsRes.data as any);
+      if (versionsRes.data) setPromptVersions(versionsRes.data as any);
+      if (phasePromptsRes.data) setSaasPhasePrompts(phasePromptsRes.data as any);
     } catch (err) {
       console.error("Error fetching governance data:", err);
     } finally {
@@ -158,6 +185,11 @@ export function useArchitectureGovernance() {
   }, []);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
+
+  // ─── Get versions for a specific prompt ───
+  const getVersionsForPrompt = useCallback((promptId: string): PromptVersion[] => {
+    return promptVersions.filter(v => v.prompt_id === promptId);
+  }, [promptVersions]);
 
   // ─── Maturity Score Calculation ───
   const calculateMaturityScores = useCallback((): MaturityScores => {
@@ -175,7 +207,6 @@ export function useArchitectureGovernance() {
       }
     }
 
-    // Overall = weighted average
     scores.overall = Math.round(
       scores.security * 0.30 +
       scores.backend * 0.20 +
@@ -193,7 +224,6 @@ export function useArchitectureGovernance() {
     const scores = calculateMaturityScores();
     const failures: { area: string; description: string; impact: string }[] = [];
 
-    // Check critical failures
     const securityChecks = baseChecks.filter(c => c.phase === 1);
     const backupChecks = baseChecks.filter(c => c.phase === 3);
 
@@ -227,13 +257,11 @@ export function useArchitectureGovernance() {
       failures.push({ area: "Continuidade", description: "Backup não implementado completamente", impact: "Perda de dados em caso de falha" });
     }
 
-    // High criticality prompts not implemented
     const criticalMissing = prompts.filter(p => p.criticality === "alto" && p.status !== "implementado");
     for (const p of criticalMissing) {
       failures.push({ area: CATEGORY_LABELS[p.category] || p.category, description: `Prompt crítico não implementado: ${p.name}`, impact: "Risco estrutural" });
     }
 
-    // Determine level
     let level: RiskLevel = "baixo";
     if (scores.security < 90 || backupIncomplete || failures.length > 0) {
       level = "medio";
@@ -276,7 +304,6 @@ export function useArchitectureGovernance() {
     const { data: session } = await supabase.auth.getSession();
     const userId = session.session?.user?.id;
 
-    // Revoke previous valid certifications
     await supabase.from("architecture_certifications").update({
       is_valid: false,
       revoked_at: new Date().toISOString(),
@@ -296,7 +323,6 @@ export function useArchitectureGovernance() {
       return false;
     }
 
-    // Log history
     await supabase.from("architecture_history").insert({
       action: "certificacao_emitida",
       description: `Selo "Arquitetura Aprovada" emitido com score ${eligibility.scores.overall}/100`,
@@ -349,7 +375,6 @@ export function useArchitectureGovernance() {
       created_by: userId,
     } as any);
 
-    // Auto-revoke certification if conditions no longer met
     const activeCert = certifications.find(c => c.is_valid);
     if (activeCert && (scores.overall < 85 || scores.security < 90 || risk.level === "alto")) {
       await revokeCertification(activeCert.id, `Score caiu para ${scores.overall}/100 ou risco elevado para ${risk.level}`);
@@ -361,7 +386,26 @@ export function useArchitectureGovernance() {
     fetchAll();
   }, [calculateMaturityScores, calculateRisk, certifications, fetchAll, toast]);
 
-  // ─── Existing CRUD methods (unchanged) ───
+  // ─── Auto-save version on prompt update ───
+  const savePromptVersion = async (promptId: string, oldText: string, oldDescription: string, changeReason: string) => {
+    const { data: session } = await supabase.auth.getSession();
+    const userId = session.session?.user?.id;
+
+    // Get current max version number
+    const existing = promptVersions.filter(v => v.prompt_id === promptId);
+    const nextVersion = existing.length > 0 ? Math.max(...existing.map(v => v.version_number)) + 1 : 1;
+
+    await supabase.from("architecture_prompt_versions").insert({
+      prompt_id: promptId,
+      version_number: nextVersion,
+      prompt_text: oldText,
+      description: oldDescription,
+      change_reason: changeReason,
+      created_by: userId,
+    } as any);
+  };
+
+  // ─── CRUD methods ───
   const createPrompt = async (data: Partial<ArchitecturePrompt>) => {
     const { data: session } = await supabase.auth.getSession();
     const userId = session.session?.user?.id;
@@ -401,10 +445,15 @@ export function useArchitectureGovernance() {
     return true;
   };
 
-  const updatePrompt = async (id: string, data: Partial<ArchitecturePrompt>) => {
+  const updatePrompt = async (id: string, data: Partial<ArchitecturePrompt>, changeReason?: string) => {
     const oldPrompt = prompts.find(p => p.id === id);
     const { data: session } = await supabase.auth.getSession();
     const userId = session.session?.user?.id;
+
+    // Auto-save version if prompt_text changed
+    if (oldPrompt && data.prompt_text && data.prompt_text !== oldPrompt.prompt_text) {
+      await savePromptVersion(id, oldPrompt.prompt_text, oldPrompt.description, changeReason || "Atualização de prompt");
+    }
 
     const { error } = await supabase.from("architecture_prompts").update({
       ...data,
@@ -543,9 +592,10 @@ export function useArchitectureGovernance() {
 
   return {
     prompts, history, baseChecks, scoreHistory, certifications, activeCertification,
+    promptVersions, saasPhasePrompts,
     isLoading, stats,
     createPrompt, updatePrompt, deletePrompt, toggleBaseCheck,
-    importFromText, getComplianceReport,
+    importFromText, getComplianceReport, getVersionsForPrompt,
     calculateMaturityScores, calculateRisk, checkCertificationEligibility,
     issueCertification, revokeCertification, saveScoreSnapshot,
     refetch: fetchAll,
