@@ -119,6 +119,7 @@ export default function Beverages() {
   const { softDelete } = useDataProtection();
   const formRef = useRef<HTMLDivElement>(null);
   const { activeStore } = useStore();
+  const { openSidebar } = useShell();
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
