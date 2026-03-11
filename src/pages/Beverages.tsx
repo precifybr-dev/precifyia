@@ -47,7 +47,7 @@ import { useStore } from "@/contexts/StoreContext";
 import { ColorPicker, ColorDot } from "@/components/ui/color-picker";
 import { SearchAndFilter, BEVERAGE_CATEGORIES } from "@/components/ui/SearchAndFilter";
 import { normalizeText } from "@/lib/utils";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
 import { useDataProtection } from "@/hooks/useDataProtection";
 import BeveragePricingPanel from "@/components/beverages/BeveragePricingPanel";
 
