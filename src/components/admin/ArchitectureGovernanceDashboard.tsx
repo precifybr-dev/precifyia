@@ -489,7 +489,7 @@ export function ArchitectureGovernanceDashboard() {
                 </div>
                 <div>
                   <p className="font-bold text-green-600 dark:text-green-400">ARQUITETURA APROVADA</p>
-                  <p className="text-xs text-muted-foreground">Certificado em {format(new Date(activeCertification.certified_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
+                  <p className="text-xs text-muted-foreground">Certificado em {formatDateSP(activeCertification.certified_at, "dd/MM/yyyy HH:mm")}</p>
                   <p className="text-xs text-muted-foreground">Score: {Number(activeCertification.overall_score)}/100</p>
                 </div>
               </div>
