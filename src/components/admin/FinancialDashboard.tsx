@@ -132,7 +132,7 @@ export function FinancialDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${filename}_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `${filename}_${formatDateSP(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
