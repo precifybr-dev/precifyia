@@ -172,6 +172,7 @@ export default function BusinessArea() {
   });
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { openSidebar } = useShell();
 
   const fetchMetrics = async (userId: string, storeId?: string | null) => {
     // Fetch ingredients count (filtered by store)
