@@ -528,9 +528,7 @@ export function SupportDashboard() {
                                     {msg.sender_type === "admin" ? "Suporte" : selectedTicket.user_email}
                                   </span>
                                   <span className="text-xs text-muted-foreground">
-                                    {format(new Date(msg.created_at), "dd/MM/yyyy HH:mm", {
-                                      locale: ptBR,
-                                    })}
+                                    {formatDateTimeBR(msg.created_at)}
                                   </span>
                                 </div>
                                 <p className="text-sm">{msg.message}</p>
