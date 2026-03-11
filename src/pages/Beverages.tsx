@@ -933,7 +933,7 @@ export default function Beverages() {
             </div>
           )}
         </div>
-      </main>
+      
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
