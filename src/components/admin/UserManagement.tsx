@@ -438,7 +438,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                       <Separator />
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Cadastro:</span>
-                        <span>{format(new Date(selectedUser.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+                        <span>{formatDateBR(selectedUser.created_at)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Último acesso:</span>
