@@ -556,7 +556,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                         <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
                           <Shield className="h-3 w-3" />
                           <span>Consentimento ativo até {selectedUser.consent_expires_at 
-                            ? format(new Date(selectedUser.consent_expires_at), "dd/MM HH:mm")
+                            ? formatDateSP(selectedUser.consent_expires_at, "dd/MM HH:mm")
                             : "—"
                           }</span>
                         </div>
