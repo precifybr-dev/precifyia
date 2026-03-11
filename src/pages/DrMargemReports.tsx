@@ -11,8 +11,7 @@ import { useStore } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
 import { useShell } from "@/components/layout/AppShell";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 interface ProductDetail {
   name: string;
@@ -220,7 +219,7 @@ export default function DrMargemReports() {
                 {reports.map((rep) => (
                   <button key={rep.id} onClick={() => setSelectedReport(rep)} className={`flex-shrink-0 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${selectedReport?.id === rep.id ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                     <Calendar className="w-3 h-3 inline mr-1" />
-                    {format(new Date(rep.generated_at), "dd MMM yyyy", { locale: ptBR })}
+                    {formatDateSP(rep.generated_at, "dd MMM yyyy")}
                   </button>
                 ))}
               </div>
@@ -234,7 +233,7 @@ export default function DrMargemReports() {
                 <div>
                   <h2 className="font-display font-semibold text-lg text-foreground">Diagnóstico do Cardápio</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {format(new Date(r.generated_at), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR })}
+                    {formatDateSP(r.generated_at, "dd 'de' MMMM 'de' yyyy, HH:mm")}
                     {" · "}{r.total_products_analyzed} produtos analisados
                   </p>
                 </div>

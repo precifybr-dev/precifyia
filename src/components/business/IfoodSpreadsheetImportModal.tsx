@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { toLocaleDateBR } from "@/lib/date-utils";
 import {
   Dialog,
   DialogContent,
@@ -241,7 +242,7 @@ export default function IfoodSpreadsheetImportModal({
         custoExtraTotal: Number(row.custo_extra_total),
         custoExtraPercentual: Number(row.custo_extra_percentual),
       });
-      setLastImportDate(new Date(row.updated_at).toLocaleDateString("pt-BR"));
+      setLastImportDate(toLocaleDateBR(row.updated_at));
       setStep("dashboard");
     }
   }, [userId, storeId]);
@@ -415,7 +416,7 @@ export default function IfoodSpreadsheetImportModal({
 
       onApply(consolidation);
       setLastImport(consolidation);
-      setLastImportDate(new Date().toLocaleDateString("pt-BR"));
+      setLastImportDate(toLocaleDateBR(new Date()));
       setStep("done");
       toast.success("Dados importados com sucesso!");
       loadMonthlyHistory();

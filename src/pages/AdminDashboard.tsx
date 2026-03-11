@@ -72,8 +72,9 @@ import {
   BarChart3,
   LayoutDashboard,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 const PLAN_COLORS = {
   free: "hsl(var(--muted-foreground))",
@@ -360,14 +361,14 @@ export default function AdminDashboard() {
                             <XAxis
                               dataKey="registration_date"
                               tickFormatter={(value) =>
-                                format(new Date(value), "dd/MM", { locale: ptBR })
+                                formatDateSP(value, "dd/MM")
                               }
                               className="text-xs"
                             />
                             <YAxis className="text-xs" />
                             <Tooltip
                               labelFormatter={(value) =>
-                                format(new Date(value), "dd 'de' MMMM", { locale: ptBR })
+                                formatDateSP(value, "dd 'de' MMMM")
                               }
                               formatter={(value: number) => [value, "Novos usuários"]}
                               contentStyle={{
@@ -651,7 +652,7 @@ export default function AdminDashboard() {
                                 {log.ip_address || "—"}
                               </TableCell>
                               <TableCell className="text-right text-xs text-muted-foreground">
-                                {format(new Date(log.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                                {formatDateSP(log.created_at, "dd/MM HH:mm")}
                               </TableCell>
                             </TableRow>
                           ))}

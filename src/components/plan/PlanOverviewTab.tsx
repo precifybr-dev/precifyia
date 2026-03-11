@@ -11,7 +11,7 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { useStore } from "@/contexts/StoreContext";
 import { PlanUpgradePrompt } from "@/components/upsell/PlanUpgradePrompt";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { formatDateBR } from "@/lib/date-utils";
 import {
   AlertDialog,
   AlertDialogCancel,
@@ -160,7 +160,7 @@ export function PlanOverviewTab() {
     if (!profile || userPlan === "free") return "Sem vencimento (plano gratuito)";
     const expires = profile.subscription_expires_at;
     if (!expires) return "Sem data de vencimento";
-    const formatted = format(new Date(expires), "dd/MM/yyyy");
+    const formatted = formatDateBR(expires);
     if (profile.subscription_status === "canceled") return `Cancelado — Expira em ${formatted}`;
     return `Ativo — Renova em ${formatted}`;
   };

@@ -33,8 +33,7 @@ import {
   allPermissions,
   defaultRolePermissions
 } from "@/lib/permissions";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 interface Collaborator {
   id: string;
@@ -851,7 +850,7 @@ export default function Collaborators() {
                                           )}
                                         </TableCell>
                                         <TableCell className="text-right text-xs text-muted-foreground">
-                                          {format(new Date(log.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                                          {formatDateSP(log.created_at, "dd/MM HH:mm")}
                                         </TableCell>
                                       </TableRow>
                                     ))}

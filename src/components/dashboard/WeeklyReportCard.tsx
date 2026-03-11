@@ -14,8 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useStore } from "@/contexts/StoreContext";
 import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 interface ReportSummary {
   loss_products: number;
@@ -158,7 +157,7 @@ export default function WeeklyReportCard() {
               </h3>
               <Badge variant="secondary" className="text-[10px]">
                 <Calendar className="w-3 h-3 mr-1" />
-                {format(new Date(report.generated_at), "dd MMM", { locale: ptBR })}
+                {formatDateSP(report.generated_at, "dd MMM")}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1 italic leading-relaxed">

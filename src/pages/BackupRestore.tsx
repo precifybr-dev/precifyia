@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { toLocaleStringBR } from "@/lib/date-utils";
 import { useNavigate } from "react-router-dom";
 import {
   HardDrive, Download, Upload, FileCheck, AlertTriangle, Shield, Check,
@@ -164,7 +165,7 @@ export default function BackupRestore() {
                     <Check className="w-5 h-5 text-success" />
                     <div>
                       <p className="font-medium text-foreground">Arquivo válido</p>
-                      <p className="text-sm text-muted-foreground">Exportado em {new Date(preview.exported_at).toLocaleString("pt-BR")}{preview.store_name && ` • Loja: ${preview.store_name}`}</p>
+                      <p className="text-sm text-muted-foreground">Exportado em {toLocaleStringBR(preview.exported_at)}{preview.store_name && ` • Loja: ${preview.store_name}`}</p>
                     </div>
                   </div>
                   <Button variant="ghost" size="icon" onClick={clearPreview}><X className="w-4 h-4" /></Button>

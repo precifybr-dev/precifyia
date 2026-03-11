@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { KPICard } from "@/components/admin/KPICard";
 import { Sparkles, Bot, Target, Users, TrendingUp } from "lucide-react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 interface ComboStats {
   totalCombos: number;
@@ -260,7 +261,7 @@ export function CombosDashboard() {
                         {c.user_email}
                       </TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">
-                        {format(new Date(c.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                        {formatDateSP(c.created_at, "dd/MM HH:mm")}
                       </TableCell>
                     </TableRow>
                   ))

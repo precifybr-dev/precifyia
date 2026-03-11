@@ -14,8 +14,8 @@ import {
 import {
   Server, Cpu, DollarSign, Activity, RefreshCcw, Users, Globe,
 } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { differenceInDays } from "date-fns";
+import { formatDateSP } from "@/lib/date-utils";
 
 const ENDPOINT_LABELS: Record<string, string> = {
   "generate-combo": "Gerar Combo IA",
@@ -154,13 +154,13 @@ export function CloudCostsDashboard() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis
                     dataKey="day"
-                    tickFormatter={(v) => format(new Date(v), "dd/MM", { locale: ptBR })}
+                    tickFormatter={(v) => formatDateSP(v, "dd/MM")}
                     className="text-xs"
                   />
                   <YAxis tickFormatter={(v) => `$${v}`} className="text-xs" />
                   <Tooltip
                     formatter={(value: number) => formatUSD(value)}
-                    labelFormatter={(v) => format(new Date(v), "dd/MM/yyyy", { locale: ptBR })}
+                    labelFormatter={(v) => formatDateSP(v, "dd/MM/yyyy")}
                   />
                   <Area type="monotone" dataKey="ai_cost" name="IA" stackId="1" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} />
                   <Area type="monotone" dataKey="cloud_cost" name="Cloud" stackId="1" stroke="hsl(142 71% 45%)" fill="hsl(142 71% 45%)" fillOpacity={0.3} />

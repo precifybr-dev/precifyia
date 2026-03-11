@@ -21,8 +21,9 @@ import {
   UserX, Activity, Download, FileSpreadsheet, Target, ShieldAlert,
   ArrowUpRight, ArrowDownRight, Zap,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 
 const PLAN_COLORS = {
@@ -131,7 +132,7 @@ export function FinancialDashboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${filename}_${format(new Date(), "yyyy-MM-dd")}.csv`;
+    link.download = `${filename}_${formatDateSP(new Date(), "yyyy-MM-dd")}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -334,9 +335,9 @@ export function FinancialDashboard() {
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={revenueByPeriod}>
                           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                          <XAxis dataKey="period_date" tickFormatter={v => format(new Date(v), "dd/MM", { locale: ptBR })} className="text-xs" />
+                          <XAxis dataKey="period_date" tickFormatter={v => formatDateSP(v, "dd/MM")} className="text-xs" />
                           <YAxis tickFormatter={v => `R$${v}`} className="text-xs" />
-                          <Tooltip labelFormatter={v => format(new Date(v), "dd 'de' MMMM", { locale: ptBR })} formatter={(v: number) => [formatCurrency(v), "Receita"]} />
+                          <Tooltip labelFormatter={v => formatDateSP(v, "dd 'de' MMMM")} formatter={(v: number) => [formatCurrency(v), "Receita"]} />
                           <Area type="monotone" dataKey="revenue" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.2)" />
                         </AreaChart>
                       </ResponsiveContainer>

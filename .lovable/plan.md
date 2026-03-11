@@ -1,74 +1,62 @@
 
 
-## Plano: Padronizar Fuso Horário para São Paulo (America/Sao_Paulo)
+# Validacao Matematica e Guards Anti-Erro na Importacao iFood
 
-### Problema
+## Contexto
 
-O sistema usa `new Date()` e `toISOString()` que geram horários em UTC. Datas exibidas com `format()` e `toLocaleDateString("pt-BR")` usam o fuso do navegador do usuário, que pode variar. O banco de dados também opera em UTC. Não há padronização para `America/Sao_Paulo`.
+O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
 
-### Solução
+O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
 
-Duas frentes: **banco de dados** e **frontend**.
+---
 
-#### 1. Banco de dados — SET timezone na sessão
+## O que sera implementado
 
-Criar migration:
-```sql
-ALTER DATABASE postgres SET timezone TO 'America/Sao_Paulo';
-```
-**Nota**: Isso não é permitido em Lovable Cloud. Em vez disso, usar `AT TIME ZONE 'America/Sao_Paulo'` nas queries onde necessário, e padronizar no frontend.
+### 1. Camada de Validacao no Processador
 
-#### 2. Frontend — Utilitário centralizado
+Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
 
-Criar `src/lib/date-utils.ts` com funções helper que forçam `timeZone: 'America/Sao_Paulo'`:
+- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
+- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
+- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
+- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
+- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
 
-```typescript
-export const SP_TIMEZONE = 'America/Sao_Paulo';
+Cada validacao retorna `{ level: "error" | "warning", message: string }`.
 
-export function formatDateBR(date: string | Date, fmt?: string): string { ... }
-export function formatDateTimeBR(date: string | Date): string { ... }
-export function nowSP(): Date { ... }
-```
+A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
 
-Usar `date-fns-tz` ou `Intl.DateTimeFormat` com `timeZone: 'America/Sao_Paulo'` para garantir consistência.
+### 2. Exibicao de Alertas no Dashboard
 
-#### 3. Substituir usos no código
+No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
 
-Atualizar todos os arquivos que formatam datas para usar os helpers centralizados:
+- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
+- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
+- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
+- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
 
-- **11+ arquivos** com `format(new Date(...), "dd/MM...", { locale: ptBR })` → usar `formatDateBR`
-- **5+ arquivos** com `toLocaleDateString("pt-BR")` → usar `formatDateBR`
-- **`toISOString()`** em logs/tracking permanece UTC (padrão correto para armazenamento)
-- **Edge functions** que geram datas para exibição → adicionar timezone São Paulo
+### 3. Info de Agrupamento no Dashboard
 
-#### 4. Edge functions
+Adicionar um pequeno badge/info no topo do dashboard mostrando:
+- Linhas na planilha: X
+- Pedidos unicos: Y
+- Media de linhas por pedido: X/Y
 
-Nas edge functions que geram conteúdo visível ao usuário (ex: `generate-weekly-report`), formatar com timezone São Paulo:
+Isso da confianca ao usuario de que o agrupamento esta correto.
 
-```typescript
-new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-```
+---
 
-### Arquivos editados
-- **Novo**: `src/lib/date-utils.ts` — helpers centralizados
-- **Editados** (~15 arquivos): todos que formatam datas para exibição, incluindo:
-  - `src/pages/AdminDashboard.tsx`
-  - `src/pages/UserSupport.tsx`
-  - `src/pages/Collaborators.tsx`
-  - `src/components/admin/ArchitectureGovernanceDashboard.tsx`
-  - `src/components/admin/FunnelDashboard.tsx`
-  - `src/components/admin/CombosDashboard.tsx`
-  - `src/components/admin/UserManagement.tsx`
-  - `src/components/admin/FinancialDashboard.tsx`
-  - `src/components/combos/ComboHistoryList.tsx`
-  - `src/components/dashboard/WeeklyReportCard.tsx`
-  - `src/components/business/IfoodSpreadsheetImportModal.tsx`
-  - `src/hooks/useBackupRestore.ts`
-  - `src/hooks/useEventTracking.ts`
-  - Edge functions com datas visíveis
+## Arquivos modificados
 
-### Princípio
-- **Armazenamento**: continua UTC (padrão)
-- **Exibição**: sempre `America/Sao_Paulo`
-- **Logs/tracking**: UTC (correto para auditoria)
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
+| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
+
+## O que NAO sera alterado
+
+- Banco de dados (sem migrations)
+- Logica de agrupamento por ID (ja funciona corretamente)
+- Fluxo de autenticacao
+- Nenhuma outra funcionalidade do sistema
 

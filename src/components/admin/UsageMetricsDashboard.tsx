@@ -40,8 +40,9 @@ import {
   BarChart3,
   Zap,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP } from "@/lib/date-utils";
 
 const CATEGORY_COLORS = [
   "hsl(var(--primary))",
@@ -234,13 +235,13 @@ export function UsageMetricsDashboard() {
                           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                           <XAxis
                             dataKey="activity_date"
-                            tickFormatter={(v) => format(new Date(v), "dd/MM", { locale: ptBR })}
+                            tickFormatter={(v) => formatDateSP(v, "dd/MM")}
                             className="text-xs"
                           />
                           <YAxis className="text-xs" />
                           <Tooltip
                             labelFormatter={(v) =>
-                              format(new Date(v), "dd 'de' MMMM", { locale: ptBR })
+                              formatDateSP(v, "dd 'de' MMMM")
                             }
                             formatter={(v: number) => [v, "Usuários ativos"]}
                           />

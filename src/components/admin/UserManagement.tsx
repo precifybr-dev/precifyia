@@ -43,8 +43,9 @@ import {
   ShieldOff,
   Gift,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP, formatDateBR, formatDateTimeBR } from "@/lib/date-utils";
 
 const STATUS_CONFIG = {
   active: { label: "Ativo", color: "text-emerald-600 border-emerald-600", icon: CheckCircle2 },
@@ -329,7 +330,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                             </TableCell>
                             <TableCell className="text-sm">
                               {user.subscription_expires_at
-                                ? format(new Date(user.subscription_expires_at), "dd/MM/yyyy")
+                                ? formatDateBR(user.subscription_expires_at)
                                 : "-"}
                             </TableCell>
                             <TableCell>
@@ -437,13 +438,13 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                       <Separator />
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Cadastro:</span>
-                        <span>{format(new Date(selectedUser.created_at), "dd/MM/yyyy", { locale: ptBR })}</span>
+                        <span>{formatDateBR(selectedUser.created_at)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Último acesso:</span>
                         <span>
                           {selectedUser.last_access_at || selectedUser.last_sign_in_at
-                            ? format(new Date(selectedUser.last_access_at || selectedUser.last_sign_in_at!), "dd/MM/yyyy HH:mm")
+                            ? formatDateTimeBR(selectedUser.last_access_at || selectedUser.last_sign_in_at!)
                             : "Nunca"}
                         </span>
                       </div>
@@ -451,7 +452,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                         <span className="text-muted-foreground">Vencimento:</span>
                         <span>
                           {selectedUser.subscription_expires_at
-                            ? format(new Date(selectedUser.subscription_expires_at), "dd/MM/yyyy")
+                            ? formatDateBR(selectedUser.subscription_expires_at)
                             : "-"}
                         </span>
                       </div>
@@ -555,7 +556,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                         <div className="flex items-center gap-2 text-xs text-amber-700 dark:text-amber-400">
                           <Shield className="h-3 w-3" />
                           <span>Consentimento ativo até {selectedUser.consent_expires_at 
-                            ? format(new Date(selectedUser.consent_expires_at), "dd/MM HH:mm")
+                            ? formatDateSP(selectedUser.consent_expires_at, "dd/MM HH:mm")
                             : "—"
                           }</span>
                         </div>
@@ -589,7 +590,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                                   </Badge>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                  {format(new Date(payment.created_at), "dd/MM/yyyy HH:mm")}
+                                  {formatDateTimeBR(payment.created_at)}
                                 </p>
                                 {payment.description && (
                                   <p className="text-xs text-muted-foreground mt-1">{payment.description}</p>
@@ -622,7 +623,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                                   {ticket.message}
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  {format(new Date(ticket.created_at), "dd/MM/yyyy HH:mm")}
+                                  {formatDateTimeBR(ticket.created_at)}
                                 </p>
                               </div>
                             ))}

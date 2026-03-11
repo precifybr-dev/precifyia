@@ -27,8 +27,7 @@ import {
   Percent,
   ArrowRight,
 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateSP, formatDateBR } from "@/lib/date-utils";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -343,7 +342,7 @@ export function AffiliatesDashboard() {
                         <TableCell>{coupon.discount_value}%</TableCell>
                         <TableCell>{coupon.current_uses}/{coupon.max_uses ?? "∞"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {coupon.expires_at ? format(new Date(coupon.expires_at), "dd/MM/yyyy") : "Sem limite"}
+                          {coupon.expires_at ? formatDateBR(coupon.expires_at) : "Sem limite"}
                         </TableCell>
                         <TableCell className="text-sm">
                           {coupon.affiliates?.name || "—"}
@@ -512,7 +511,7 @@ export function AffiliatesDashboard() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right text-sm text-muted-foreground">
-                          {format(new Date(c.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                          {formatDateBR(c.created_at)}
                         </TableCell>
                       </TableRow>
                     ))}

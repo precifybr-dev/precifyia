@@ -53,8 +53,9 @@ import {
   ArrowUpCircle,
   XCircle,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateSP, formatDateTimeBR } from "@/lib/date-utils";
 
 const STATUS_CONFIG: Record<TicketStatus, { label: string; color: string; icon: any }> = {
   open: { label: "Aberto", color: "bg-amber-500", icon: Clock },
@@ -502,9 +503,7 @@ export function SupportDashboard() {
                                   {selectedTicket.user_email}
                                 </span>
                                 <span className="text-xs text-muted-foreground">
-                                  {format(new Date(selectedTicket.created_at), "dd/MM/yyyy HH:mm", {
-                                    locale: ptBR,
-                                  })}
+                                  {formatDateTimeBR(selectedTicket.created_at)}
                                 </span>
                               </div>
                               <p className="text-sm">{selectedTicket.message}</p>
@@ -529,9 +528,7 @@ export function SupportDashboard() {
                                     {msg.sender_type === "admin" ? "Suporte" : selectedTicket.user_email}
                                   </span>
                                   <span className="text-xs text-muted-foreground">
-                                    {format(new Date(msg.created_at), "dd/MM/yyyy HH:mm", {
-                                      locale: ptBR,
-                                    })}
+                                    {formatDateTimeBR(msg.created_at)}
                                   </span>
                                 </div>
                                 <p className="text-sm">{msg.message}</p>
@@ -577,9 +574,7 @@ export function SupportDashboard() {
                                   <StickyNote className="h-4 w-4 text-amber-600" />
                                   <span className="text-sm font-medium">{note.admin_name}</span>
                                   <span className="text-xs text-muted-foreground">
-                                    {format(new Date(note.created_at), "dd/MM/yyyy HH:mm", {
-                                      locale: ptBR,
-                                    })}
+                                    {formatDateTimeBR(note.created_at)}
                                   </span>
                                 </div>
                                 <p className="text-sm">{note.note}</p>

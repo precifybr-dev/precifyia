@@ -21,8 +21,7 @@ import {
   History, ClipboardPaste, BarChart3, Trash2, ChevronDown, ChevronRight,
   Layers, BookOpen, ArrowRight, Award, TrendingUp, Activity, Gauge, Copy, Clock,
 } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { formatDateSP, formatDateBR } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
@@ -143,7 +142,7 @@ function VersionTimeline({ versions, currentText }: { versions: PromptVersion[];
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">v{v.version_number}</Badge>
-                      <span className="text-xs text-muted-foreground">{format(new Date(v.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</span>
+                      <span className="text-xs text-muted-foreground">{formatDateSP(v.created_at, "dd/MM/yy HH:mm")}</span>
                     </div>
                     <Button variant="ghost" size="sm" className="h-6 px-2 gap-1 text-xs" onClick={() => copyToClipboard(v.prompt_text, `v${v.version_number}`)}>
                       <Copy className="h-3 w-3" /> Copiar
@@ -296,8 +295,8 @@ function PromptCard({ prompt, versions, onUpdate, onDelete }: { prompt: Architec
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div><span className="text-muted-foreground">Categoria:</span><p className="font-medium">{CATEGORY_LABELS[prompt.category]}</p></div>
               <div><span className="text-muted-foreground">Status:</span><p className="font-medium">{STATUS_LABELS[prompt.status]}</p></div>
-              <div><span className="text-muted-foreground">Implementação:</span><p className="font-medium">{prompt.implementation_date ? format(new Date(prompt.implementation_date), "dd/MM/yyyy") : "—"}</p></div>
-              <div><span className="text-muted-foreground">Atualizado:</span><p className="font-medium">{format(new Date(prompt.updated_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p></div>
+              <div><span className="text-muted-foreground">Implementação:</span><p className="font-medium">{prompt.implementation_date ? formatDateBR(prompt.implementation_date) : "—"}</p></div>
+              <div><span className="text-muted-foreground">Atualizado:</span><p className="font-medium">{formatDateSP(prompt.updated_at, "dd/MM/yyyy HH:mm")}</p></div>
             </div>
             {prompt.prompt_text && (
               <div>
@@ -416,7 +415,7 @@ export function ArchitectureGovernanceDashboard() {
   });
 
   const scoreEvolutionData = scoreHistory.slice().reverse().map(s => ({
-    date: format(new Date(s.created_at), "dd/MM"),
+    date: formatDateSP(s.created_at, "dd/MM"),
     overall: Number(s.overall_score),
     security: Number(s.security_score),
     backend: Number(s.backend_score),
@@ -490,7 +489,7 @@ export function ArchitectureGovernanceDashboard() {
                 </div>
                 <div>
                   <p className="font-bold text-green-600 dark:text-green-400">ARQUITETURA APROVADA</p>
-                  <p className="text-xs text-muted-foreground">Certificado em {format(new Date(activeCertification.certified_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
+                  <p className="text-xs text-muted-foreground">Certificado em {formatDateSP(activeCertification.certified_at, "dd/MM/yyyy HH:mm")}</p>
                   <p className="text-xs text-muted-foreground">Score: {Number(activeCertification.overall_score)}/100</p>
                 </div>
               </div>
@@ -831,8 +830,8 @@ export function ArchitectureGovernanceDashboard() {
                           </TableCell>
                           <TableCell className="font-bold">{Number(c.overall_score)}/100</TableCell>
                           <TableCell><Badge variant="outline" className="text-xs capitalize">{c.risk_level}</Badge></TableCell>
-                          <TableCell className="text-xs">{format(new Date(c.certified_at), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
-                          <TableCell className="text-xs">{c.revoked_at ? format(new Date(c.revoked_at), "dd/MM/yy HH:mm", { locale: ptBR }) : "—"}</TableCell>
+                          <TableCell className="text-xs">{formatDateSP(c.certified_at, "dd/MM/yy HH:mm")}</TableCell>
+                          <TableCell className="text-xs">{c.revoked_at ? formatDateSP(c.revoked_at, "dd/MM/yy HH:mm") : "—"}</TableCell>
                           <TableCell className="text-xs max-w-xs truncate">{c.revocation_reason || "—"}</TableCell>
                         </TableRow>
                       ))}
@@ -871,7 +870,7 @@ export function ArchitectureGovernanceDashboard() {
                               </div>
                             ) : "—"}
                           </TableCell>
-                          <TableCell className="text-right text-xs text-muted-foreground">{format(new Date(h.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">{formatDateSP(h.created_at, "dd/MM/yy HH:mm")}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

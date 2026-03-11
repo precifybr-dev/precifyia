@@ -20,7 +20,7 @@ export async function logAccessAttempt({ action, success, metadata = {} }: LogAc
       userAgent: navigator.userAgent,
       language: navigator.language,
       platform: navigator.platform,
-      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      timezone: "America/Sao_Paulo",
       screenResolution: `${screen.width}x${screen.height}`,
       timestamp: new Date().toISOString(),
       pathname: window.location.pathname,

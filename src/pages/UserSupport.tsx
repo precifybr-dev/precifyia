@@ -18,8 +18,9 @@ import {
   CheckCircle2, RefreshCcw, Send, Plus, Shield, ShieldCheck,
   ShieldOff, Loader2, User, Headphones,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { formatDateTimeBR } from "@/lib/date-utils";
 import { PageHeader } from "@/components/layout/AppShell";
 
 const STATUS_CONFIG: Record<TicketStatus, { label: string; icon: any; className: string }> = {
@@ -216,7 +217,7 @@ export default function UserSupport() {
                       <div className="p-3 rounded-lg bg-muted">
                         <div className="flex items-center gap-2 mb-1">
                           <User className="h-4 w-4" /><span className="text-sm font-medium">Você</span>
-                          <span className="text-xs text-muted-foreground">{format(new Date(selectedTicket.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                          <span className="text-xs text-muted-foreground">{formatDateTimeBR(selectedTicket.created_at)}</span>
                         </div>
                         <p className="text-sm">{selectedTicket.message}</p>
                       </div>
@@ -225,7 +226,7 @@ export default function UserSupport() {
                           <div className="flex items-center gap-2 mb-1">
                             {msg.sender_type === "admin" ? <Shield className="h-4 w-4 text-primary" /> : <User className="h-4 w-4" />}
                             <span className="text-sm font-medium">{msg.sender_type === "admin" ? "Suporte" : "Você"}</span>
-                            <span className="text-xs text-muted-foreground">{format(new Date(msg.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                            <span className="text-xs text-muted-foreground">{formatDateTimeBR(msg.created_at)}</span>
                           </div>
                           <p className="text-sm">{msg.message}</p>
                         </div>
