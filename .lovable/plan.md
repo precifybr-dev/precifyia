@@ -1,62 +1,48 @@
 
 
-# Validacao Matematica e Guards Anti-Erro na Importacao iFood
+## Plano: Remover gap entre menu e conteúdo
 
-## Contexto
+### Diagnóstico
 
-O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
+O `AppShell` já renderiza a sidebar (`w-56` = 224px) e aplica `lg:ml-56` no `<main>`. Porém, 7 páginas que **não foram refatoradas** ainda renderizam sua **própria** `AppSidebar` e aplicam `lg:ml-64` (256px) internamente. Isso cria:
+- Sidebar duplicada (a do Shell fica por trás)
+- Gap de 256px dentro de uma área que já tem 224px de margem = espaço vazio visível
 
-O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
+### Páginas afetadas
 
----
+| Página | Problema |
+|--------|----------|
+| `Dashboard.tsx` | AppSidebar própria + `lg:ml-64` |
+| `Recipes.tsx` | AppSidebar própria + `lg:ml-64` |
+| `Ingredients.tsx` | AppSidebar própria + `lg:ml-64` |
+| `BusinessArea.tsx` | AppSidebar própria + `lg:ml-64` |
+| `SubRecipes.tsx` | AppSidebar própria + `lg:ml-64` |
+| `Beverages.tsx` | AppSidebar própria + `lg:ml-64` |
+| `University.tsx` | Sidebar própria + `lg:ml-64` |
+| `Packagings.tsx` | Usa `AppLayout` (que também renderiza sidebar) |
 
-## O que sera implementado
+### Correção para cada página
 
-### 1. Camada de Validacao no Processador
+Para cada uma das 8 páginas:
+1. **Remover** import e uso de `AppSidebar` / `AppLayout`
+2. **Remover** estado local de `sidebarOpen`, `user`, `profile`, `isLoading` e `checkAuth`
+3. **Remover** wrapper `<div className="min-h-screen bg-background flex">` e `<main className="flex-1 lg:ml-64">`
+4. **Usar** `useShell()` do AppShell para obter `user`, `profile` e `openSidebar`
+5. **Usar** `PageHeader` do AppShell para o header (ou header customizado com `openSidebar`)
+6. Manter apenas o conteúdo interno da página (sem layout wrapper)
 
-Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
+### Resultado
+- Sidebar renderizada **uma única vez** pelo AppShell
+- Sem gap entre menu e conteúdo
+- Páginas mais leves, sem lógica de auth duplicada
 
-- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
-- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
-- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
-- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
-- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
-
-Cada validacao retorna `{ level: "error" | "warning", message: string }`.
-
-A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
-
-### 2. Exibicao de Alertas no Dashboard
-
-No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
-
-- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
-- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
-- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
-- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
-
-### 3. Info de Agrupamento no Dashboard
-
-Adicionar um pequeno badge/info no topo do dashboard mostrando:
-- Linhas na planilha: X
-- Pedidos unicos: Y
-- Media de linhas por pedido: X/Y
-
-Isso da confianca ao usuario de que o agrupamento esta correto.
-
----
-
-## Arquivos modificados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
-| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
-
-## O que NAO sera alterado
-
-- Banco de dados (sem migrations)
-- Logica de agrupamento por ID (ja funciona corretamente)
-- Fluxo de autenticacao
-- Nenhuma outra funcionalidade do sistema
+### Arquivos editados
+- `src/pages/Dashboard.tsx`
+- `src/pages/Recipes.tsx`
+- `src/pages/Ingredients.tsx`
+- `src/pages/BusinessArea.tsx`
+- `src/pages/SubRecipes.tsx`
+- `src/pages/Beverages.tsx`
+- `src/pages/University.tsx`
+- `src/pages/Packagings.tsx`
 
