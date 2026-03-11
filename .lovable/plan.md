@@ -1,45 +1,62 @@
 
 
-## Problemas encontrados no SQL gerado
+# Validacao Matematica e Guards Anti-Erro na Importacao iFood
 
-### 1. Ordem das tabelas causa erro de FK
-As tabelas são geradas em ordem **alfabética**, mas as FOREIGN KEYs são inline. Exemplo:
-- `beverages` (letra B) referencia `stores` (letra S) → erro: `stores` ainda não existe
-- `combo_generation_usage` referencia `combos` → `combos` vem depois
-- `cost_allocations` referencia `fixed_expenses` → `fixed_expenses` vem depois
-- ~20 tabelas referenciam `stores` que só aparece na letra S
+## Contexto
 
-**Solução**: Separar FKs do CREATE TABLE e emitir como `ALTER TABLE ... ADD CONSTRAINT` **após** todas as tabelas serem criadas.
+O processador (`ifood-spreadsheet-processor.ts`) ja agrupa corretamente por ID unico do pedido (campo `pedido_associado_ifood_curto`) e consolida linhas do mesmo pedido antes de contar. A logica de per-order accumulators esta implementada.
 
-### 2. FKs para `auth.users` não funcionam em banco novo
-Muitas tabelas (access_logs, collaborators, profiles, etc.) referenciam `auth.users`. Em um banco Supabase novo, `auth.users` existe mas está vazio. Em um PostgreSQL puro, o schema `auth` não existe.
+O que falta sao **validacoes matematicas pos-processamento** para detectar erros estruturais e alertar o usuario antes de aplicar dados inconsistentes.
 
-**Solução**: Emitir FKs para `auth.users` como comentário SQL (`-- FK: ... REFERENCES auth.users(...)`) com nota explicativa.
+---
 
-### 3. Tipos array sem prefixo `public.`
-Linha 49 do output: `target_roles app_role[]` — deveria ser `public.app_role[]` para consistência com enums custom. O mesmo para `store_permission[]`.
+## O que sera implementado
 
-**Solução**: Quando o tipo array é um enum custom (existe em `pg_type` com `typtype = 'e'`), adicionar prefixo `public.`.
+### 1. Camada de Validacao no Processador
 
-### 4. FKs para tabelas do mesmo schema sem `public.`
-No output, as FKs inline mostram `REFERENCES public.stores(id)` — OK. Mas no novo formato (ALTER TABLE), manter esse padrão.
+Adicionar ao `ifood-spreadsheet-processor.ts` uma interface `ValidationWarning` e uma funcao `validateConsolidation()` que roda apos o processamento e retorna alertas:
 
-### Plano de correção
+- **Validacao 1 -- Cupom vs Bruto**: Se `totalCupons > 40% do faturamentoBruto`, sinalizar erro critico
+- **Validacao 2 -- Pedidos vs Linhas**: Se `totalPedidos === totalLinhas`, avisar que nao houve agrupamento
+- **Validacao 3 -- Percentual iFood**: Se `percentualRealIfood > 60%`, provavel erro de consolidacao
+- **Validacao 4 -- Ticket medio plausivel**: Se ticket medio for maior que o maior valor individual x2, possivel duplicacao
+- **Validacao 5 -- Reconciliacao basica**: Verificar se `bruto - comissao - taxa - cupomLoja ~= liquido` dentro de margem de 5%
 
-**1 migration SQL** — `CREATE OR REPLACE FUNCTION public.generate_schema_ddl()` com:
+Cada validacao retorna `{ level: "error" | "warning", message: string }`.
 
-1. **ENUMs** — sem mudança (já funciona)
-2. **CREATE TABLE** — remover FKs inline, manter apenas colunas, PKs e UNIQUEs
-3. **Nova seção "FOREIGN KEYS"** — após todas as tabelas:
-   - FKs para `public.*` → `ALTER TABLE public.x ADD CONSTRAINT ... REFERENCES public.y(...)`
-   - FKs para `auth.users` → emitidas como comentário com nota
-4. **Array types** — verificar se é enum custom e adicionar `public.` prefix
-5. **Resto** (indexes, RLS, policies, functions, triggers, views, realtime) — sem mudança
+A funcao `processIfoodSpreadsheet` passara a retornar tambem `totalLinhas` (numero de linhas brutas antes do agrupamento) e `warnings: ValidationWarning[]`.
 
-### Resultado esperado
-O SQL gerado poderá ser copiado e executado sequencialmente em um banco Supabase novo sem erros de dependência.
+### 2. Exibicao de Alertas no Dashboard
 
-### Arquivos
-- 1 migration SQL (CREATE OR REPLACE da função)
-- Nenhuma alteração no frontend
+No `IfoodSpreadsheetImportModal.tsx`, apos o dashboard renderizar:
+
+- Se houver warnings do tipo `error`, mostrar bloco vermelho com icone de alerta e a mensagem
+- Se houver warnings do tipo `warning`, mostrar bloco amarelo informativo
+- Se houver erro critico, desabilitar o botao "Aplicar ao Plano" e sugerir reimportacao
+- Adicionar indicador visual mostrando "250 linhas agrupadas em 113 pedidos" para transparencia
+
+### 3. Info de Agrupamento no Dashboard
+
+Adicionar um pequeno badge/info no topo do dashboard mostrando:
+- Linhas na planilha: X
+- Pedidos unicos: Y
+- Media de linhas por pedido: X/Y
+
+Isso da confianca ao usuario de que o agrupamento esta correto.
+
+---
+
+## Arquivos modificados
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `src/lib/ifood-spreadsheet-processor.ts` | Adicionar `ValidationWarning[]`, campo `totalLinhas`, funcao de validacao |
+| `src/components/business/IfoodSpreadsheetImportModal.tsx` | Renderizar warnings, badge de agrupamento, bloquear aplicacao se erro critico |
+
+## O que NAO sera alterado
+
+- Banco de dados (sem migrations)
+- Logica de agrupamento por ID (ja funciona corretamente)
+- Fluxo de autenticacao
+- Nenhuma outra funcionalidade do sistema
 
