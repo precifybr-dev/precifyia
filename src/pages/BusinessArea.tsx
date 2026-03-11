@@ -829,7 +829,7 @@ export default function BusinessArea() {
             </button>
           </div>
         </div>
-      </main>
+      
 
       <AlertDialog open={cmvDialogOpen} onOpenChange={setCmvDialogOpen}>
         <AlertDialogContent>
