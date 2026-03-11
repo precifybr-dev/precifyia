@@ -226,7 +226,7 @@ export default function UserSupport() {
                           <div className="flex items-center gap-2 mb-1">
                             {msg.sender_type === "admin" ? <Shield className="h-4 w-4 text-primary" /> : <User className="h-4 w-4" />}
                             <span className="text-sm font-medium">{msg.sender_type === "admin" ? "Suporte" : "Você"}</span>
-                            <span className="text-xs text-muted-foreground">{format(new Date(msg.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                            <span className="text-xs text-muted-foreground">{formatDateTimeBR(msg.created_at)}</span>
                           </div>
                           <p className="text-sm">{msg.message}</p>
                         </div>

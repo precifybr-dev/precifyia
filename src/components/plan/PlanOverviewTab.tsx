@@ -160,7 +160,7 @@ export function PlanOverviewTab() {
     if (!profile || userPlan === "free") return "Sem vencimento (plano gratuito)";
     const expires = profile.subscription_expires_at;
     if (!expires) return "Sem data de vencimento";
-    const formatted = format(new Date(expires), "dd/MM/yyyy");
+    const formatted = formatDateBR(expires);
     if (profile.subscription_status === "canceled") return `Cancelado — Expira em ${formatted}`;
     return `Ativo — Renova em ${formatted}`;
   };

@@ -233,7 +233,7 @@ export default function DrMargemReports() {
                 <div>
                   <h2 className="font-display font-semibold text-lg text-foreground">Diagnóstico do Cardápio</h2>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {format(new Date(r.generated_at), "dd 'de' MMMM 'de' yyyy, HH:mm", { locale: ptBR })}
+                    {formatDateSP(r.generated_at, "dd 'de' MMMM 'de' yyyy, HH:mm")}
                     {" · "}{r.total_products_analyzed} produtos analisados
                   </p>
                 </div>

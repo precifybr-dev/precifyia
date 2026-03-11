@@ -623,7 +623,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                                   {ticket.message}
                                 </p>
                                 <p className="text-xs text-muted-foreground mt-1">
-                                  {format(new Date(ticket.created_at), "dd/MM/yyyy HH:mm")}
+                                  {formatDateTimeBR(ticket.created_at)}
                                 </p>
                               </div>
                             ))}

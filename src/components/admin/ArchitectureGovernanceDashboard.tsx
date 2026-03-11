@@ -870,7 +870,7 @@ export function ArchitectureGovernanceDashboard() {
                               </div>
                             ) : "—"}
                           </TableCell>
-                          <TableCell className="text-right text-xs text-muted-foreground">{format(new Date(h.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">{formatDateSP(h.created_at, "dd/MM/yy HH:mm")}</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

@@ -157,7 +157,7 @@ export default function WeeklyReportCard() {
               </h3>
               <Badge variant="secondary" className="text-[10px]">
                 <Calendar className="w-3 h-3 mr-1" />
-                {format(new Date(report.generated_at), "dd MMM", { locale: ptBR })}
+                {formatDateSP(report.generated_at, "dd MMM")}
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-1 italic leading-relaxed">
