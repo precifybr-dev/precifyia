@@ -935,6 +935,6 @@ export default function SubRecipes() {
           mode="sub-recipes"
         />
       )}
-    </div>
+    </>
   );
 }

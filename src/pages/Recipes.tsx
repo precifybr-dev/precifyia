@@ -1613,6 +1613,6 @@ export default function Recipes() {
         }}
       />
 
-    </div>
+    </>
   );
 }

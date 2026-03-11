@@ -555,6 +555,6 @@ export default function Packagings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AppLayout>
+    </>
   );
 }

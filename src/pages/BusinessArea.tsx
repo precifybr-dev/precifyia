@@ -862,6 +862,6 @@ export default function BusinessArea() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

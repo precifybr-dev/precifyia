@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { capitalizeWords } from "@/lib/utils";
+import { useShell, PageHeader } from "@/components/layout/AppShell";
 import { useNavigate } from "react-router-dom";
 import { useUniversityModules, useUniversityLessons, useUserProgress } from "@/hooks/useUniversity";
 import type { UniversityModule, UniversityLesson } from "@/types/university";

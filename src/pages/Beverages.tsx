@@ -952,6 +952,6 @@ export default function Beverages() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

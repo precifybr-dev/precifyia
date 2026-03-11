@@ -950,6 +950,6 @@ export default function Ingredients() {
           await fetchIngredients(user.id, activeStore?.id);
         }}
       />
-    </div>
+    </>
   );
 }
