@@ -263,7 +263,7 @@ export function FunnelDashboard() {
                           {event.cta_id ? (CTA_LABELS[event.cta_id] || event.cta_id) : "—"}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground">
-                          {format(new Date(event.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                          {formatDateSP(event.created_at, "dd/MM HH:mm")}
                         </TableCell>
                       </TableRow>
                     ))

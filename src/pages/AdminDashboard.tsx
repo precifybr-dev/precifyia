@@ -652,7 +652,7 @@ export default function AdminDashboard() {
                                 {log.ip_address || "—"}
                               </TableCell>
                               <TableCell className="text-right text-xs text-muted-foreground">
-                                {format(new Date(log.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                                {formatDateSP(log.created_at, "dd/MM HH:mm")}
                               </TableCell>
                             </TableRow>
                           ))}

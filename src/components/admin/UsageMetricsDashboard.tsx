@@ -241,7 +241,7 @@ export function UsageMetricsDashboard() {
                           <YAxis className="text-xs" />
                           <Tooltip
                             labelFormatter={(v) =>
-                              format(new Date(v), "dd 'de' MMMM", { locale: ptBR })
+                              formatDateSP(v, "dd 'de' MMMM")
                             }
                             formatter={(v: number) => [v, "Usuários ativos"]}
                           />

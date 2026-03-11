@@ -574,9 +574,7 @@ export function SupportDashboard() {
                                   <StickyNote className="h-4 w-4 text-amber-600" />
                                   <span className="text-sm font-medium">{note.admin_name}</span>
                                   <span className="text-xs text-muted-foreground">
-                                    {format(new Date(note.created_at), "dd/MM/yyyy HH:mm", {
-                                      locale: ptBR,
-                                    })}
+                                    {formatDateTimeBR(note.created_at)}
                                   </span>
                                 </div>
                                 <p className="text-sm">{note.note}</p>

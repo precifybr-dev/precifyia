@@ -160,7 +160,7 @@ export function CloudCostsDashboard() {
                   <YAxis tickFormatter={(v) => `$${v}`} className="text-xs" />
                   <Tooltip
                     formatter={(value: number) => formatUSD(value)}
-                    labelFormatter={(v) => format(new Date(v), "dd/MM/yyyy", { locale: ptBR })}
+                    labelFormatter={(v) => formatDateSP(v, "dd/MM/yyyy")}
                   />
                   <Area type="monotone" dataKey="ai_cost" name="IA" stackId="1" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.3} />
                   <Area type="monotone" dataKey="cloud_cost" name="Cloud" stackId="1" stroke="hsl(142 71% 45%)" fill="hsl(142 71% 45%)" fillOpacity={0.3} />

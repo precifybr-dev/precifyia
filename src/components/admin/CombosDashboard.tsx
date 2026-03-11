@@ -261,7 +261,7 @@ export function CombosDashboard() {
                         {c.user_email}
                       </TableCell>
                       <TableCell className="text-right text-xs text-muted-foreground">
-                        {format(new Date(c.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                        {formatDateSP(c.created_at, "dd/MM HH:mm")}
                       </TableCell>
                     </TableRow>
                   ))

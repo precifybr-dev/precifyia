@@ -217,7 +217,7 @@ export default function UserSupport() {
                       <div className="p-3 rounded-lg bg-muted">
                         <div className="flex items-center gap-2 mb-1">
                           <User className="h-4 w-4" /><span className="text-sm font-medium">Você</span>
-                          <span className="text-xs text-muted-foreground">{format(new Date(selectedTicket.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>
+                          <span className="text-xs text-muted-foreground">{formatDateTimeBR(selectedTicket.created_at)}</span>
                         </div>
                         <p className="text-sm">{selectedTicket.message}</p>
                       </div>

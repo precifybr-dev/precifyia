@@ -511,7 +511,7 @@ export function AffiliatesDashboard() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right text-sm text-muted-foreground">
-                          {format(new Date(c.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                          {formatDateBR(c.created_at)}
                         </TableCell>
                       </TableRow>
                     ))}
