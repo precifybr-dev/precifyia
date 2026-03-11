@@ -928,7 +928,7 @@ export default function Ingredients() {
             </div>
           </div>
         </div>
-      </main>
+      
 
       {/* Dialog de confirmação de exclusão com contagem e substituição */}
       <DeleteIngredientDialog
