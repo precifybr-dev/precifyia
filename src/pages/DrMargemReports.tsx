@@ -219,7 +219,7 @@ export default function DrMargemReports() {
                 {reports.map((rep) => (
                   <button key={rep.id} onClick={() => setSelectedReport(rep)} className={`flex-shrink-0 px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${selectedReport?.id === rep.id ? "bg-primary/10 border-primary/30 text-primary" : "bg-card border-border text-muted-foreground hover:bg-muted"}`}>
                     <Calendar className="w-3 h-3 inline mr-1" />
-                    {format(new Date(rep.generated_at), "dd MMM yyyy", { locale: ptBR })}
+                    {formatDateSP(rep.generated_at, "dd MMM yyyy")}
                   </button>
                 ))}
               </div>
