@@ -342,7 +342,7 @@ export function AffiliatesDashboard() {
                         <TableCell>{coupon.discount_value}%</TableCell>
                         <TableCell>{coupon.current_uses}/{coupon.max_uses ?? "∞"}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {coupon.expires_at ? format(new Date(coupon.expires_at), "dd/MM/yyyy") : "Sem limite"}
+                          {coupon.expires_at ? formatDateBR(coupon.expires_at) : "Sem limite"}
                         </TableCell>
                         <TableCell className="text-sm">
                           {coupon.affiliates?.name || "—"}
