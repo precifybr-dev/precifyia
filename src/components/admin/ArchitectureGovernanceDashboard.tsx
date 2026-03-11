@@ -295,8 +295,8 @@ function PromptCard({ prompt, versions, onUpdate, onDelete }: { prompt: Architec
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div><span className="text-muted-foreground">Categoria:</span><p className="font-medium">{CATEGORY_LABELS[prompt.category]}</p></div>
               <div><span className="text-muted-foreground">Status:</span><p className="font-medium">{STATUS_LABELS[prompt.status]}</p></div>
-              <div><span className="text-muted-foreground">Implementação:</span><p className="font-medium">{prompt.implementation_date ? format(new Date(prompt.implementation_date), "dd/MM/yyyy") : "—"}</p></div>
-              <div><span className="text-muted-foreground">Atualizado:</span><p className="font-medium">{format(new Date(prompt.updated_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p></div>
+              <div><span className="text-muted-foreground">Implementação:</span><p className="font-medium">{prompt.implementation_date ? formatDateBR(prompt.implementation_date) : "—"}</p></div>
+              <div><span className="text-muted-foreground">Atualizado:</span><p className="font-medium">{formatDateSP(prompt.updated_at, "dd/MM/yyyy HH:mm")}</p></div>
             </div>
             {prompt.prompt_text && (
               <div>
