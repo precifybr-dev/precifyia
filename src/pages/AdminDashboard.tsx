@@ -361,7 +361,7 @@ export default function AdminDashboard() {
                             <XAxis
                               dataKey="registration_date"
                               tickFormatter={(value) =>
-                                format(new Date(value), "dd/MM", { locale: ptBR })
+                                formatDateSP(value, "dd/MM")
                               }
                               className="text-xs"
                             />
