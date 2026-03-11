@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import {
   useArchitectureGovernance, CATEGORY_LABELS, STATUS_LABELS, CRITICALITY_LABELS,
-  type ArchitecturePrompt, type RiskLevel,
+  type ArchitecturePrompt, type RiskLevel, type PromptVersion,
 } from "@/hooks/useArchitectureGovernance";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Shield, Code2, FileText, Plus, Search, CheckCircle2, AlertTriangle, XCircle,
   History, ClipboardPaste, BarChart3, Trash2, ChevronDown, ChevronRight,
-  Layers, BookOpen, ArrowRight, Award, TrendingUp, Activity, Gauge,
+  Layers, BookOpen, ArrowRight, Award, TrendingUp, Activity, Gauge, Copy, Clock,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -29,6 +29,7 @@ import {
   ResponsiveContainer, RadialBarChart, RadialBar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
 } from "recharts";
+import { useToast } from "@/hooks/use-toast";
 
 const STATUS_ICONS = {
   implementado: CheckCircle2,
@@ -89,7 +90,80 @@ function ScoreGauge({ score, label, size = "lg" }: { score: number; label: strin
   );
 }
 
-// ─── New Prompt Dialog (unchanged) ───
+// ─── Version Timeline ───
+function VersionTimeline({ versions, currentText }: { versions: PromptVersion[]; currentText: string }) {
+  const { toast } = useToast();
+  const [showVersions, setShowVersions] = useState(false);
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copiado!", description: `${label} copiado para a área de transferência` });
+  };
+
+  if (versions.length === 0) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+        <Clock className="h-3.5 w-3.5" />
+        <span>Sem histórico de versões (versão atual é a original)</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <Collapsible open={showVersions} onOpenChange={setShowVersions}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="gap-2 text-xs h-7 px-2">
+            <History className="h-3.5 w-3.5" />
+            Histórico de Versões ({versions.length + 1})
+            {showVersions ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="ml-2 pl-3 border-l-2 border-primary/20 space-y-3 mt-2">
+            {/* Current version */}
+            <div className="relative">
+              <div className="absolute -left-[17px] top-1 w-3 h-3 rounded-full bg-primary border-2 border-background" />
+              <div className="bg-primary/5 rounded-lg p-3 space-y-1">
+                <div className="flex items-center justify-between">
+                  <Badge className="bg-primary/10 text-primary border-0 text-xs">v{versions.length + 1} — Atual</Badge>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 gap-1 text-xs" onClick={() => copyToClipboard(currentText, `v${versions.length + 1}`)}>
+                    <Copy className="h-3 w-3" /> Copiar
+                  </Button>
+                </div>
+                <pre className="text-xs whitespace-pre-wrap max-h-20 overflow-y-auto text-muted-foreground">{currentText.substring(0, 200)}{currentText.length > 200 ? "..." : ""}</pre>
+              </div>
+            </div>
+
+            {/* Previous versions (newest first) */}
+            {[...versions].reverse().map((v) => (
+              <div key={v.id} className="relative">
+                <div className="absolute -left-[17px] top-1 w-3 h-3 rounded-full bg-muted-foreground/30 border-2 border-background" />
+                <div className="bg-muted/30 rounded-lg p-3 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">v{v.version_number}</Badge>
+                      <span className="text-xs text-muted-foreground">{format(new Date(v.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-6 px-2 gap-1 text-xs" onClick={() => copyToClipboard(v.prompt_text, `v${v.version_number}`)}>
+                      <Copy className="h-3 w-3" /> Copiar
+                    </Button>
+                  </div>
+                  {v.change_reason && (
+                    <p className="text-xs text-muted-foreground italic">Motivo: {v.change_reason}</p>
+                  )}
+                  <pre className="text-xs whitespace-pre-wrap max-h-20 overflow-y-auto text-muted-foreground">{v.prompt_text.substring(0, 200)}{v.prompt_text.length > 200 ? "..." : ""}</pre>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
+  );
+}
+
+// ─── New Prompt Dialog ───
 function NewPromptDialog({ onSave }: { onSave: (data: Partial<ArchitecturePrompt>) => Promise<boolean> }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Partial<ArchitecturePrompt>>({
@@ -181,11 +255,12 @@ function NewPromptDialog({ onSave }: { onSave: (data: Partial<ArchitecturePrompt
   );
 }
 
-// ─── Prompt Card (unchanged) ───
-function PromptCard({ prompt, onUpdate, onDelete }: { prompt: ArchitecturePrompt; onUpdate: (id: string, data: Partial<ArchitecturePrompt>) => void; onDelete: (id: string) => void }) {
+// ─── Prompt Card with Version History ───
+function PromptCard({ prompt, versions, onUpdate, onDelete }: { prompt: ArchitecturePrompt; versions: PromptVersion[]; onUpdate: (id: string, data: Partial<ArchitecturePrompt>) => void; onDelete: (id: string) => void }) {
   const [expanded, setExpanded] = useState(false);
   const StatusIcon = STATUS_ICONS[prompt.status as keyof typeof STATUS_ICONS] || XCircle;
   const CatIcon = CATEGORY_ICONS[prompt.category] || Code2;
+  const { toast } = useToast();
 
   return (
     <Card className="bg-card">
@@ -200,6 +275,11 @@ function PromptCard({ prompt, onUpdate, onDelete }: { prompt: ArchitecturePrompt
                   <Badge variant="outline" className={cn("text-xs", CRITICALITY_COLORS[prompt.criticality as keyof typeof CRITICALITY_COLORS])}>
                     {CRITICALITY_LABELS[prompt.criticality] || prompt.criticality}
                   </Badge>
+                  {versions.length > 0 && (
+                    <Badge variant="secondary" className="text-xs gap-1">
+                      <History className="h-3 w-3" /> v{versions.length + 1}
+                    </Badge>
+                  )}
                 </div>
                 <CardDescription className="mt-1 line-clamp-2">{prompt.description}</CardDescription>
               </div>
@@ -221,10 +301,19 @@ function PromptCard({ prompt, onUpdate, onDelete }: { prompt: ArchitecturePrompt
             </div>
             {prompt.prompt_text && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Prompt Original:</p>
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-xs font-medium text-muted-foreground">Prompt Atual (v{versions.length + 1}):</p>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 gap-1 text-xs" onClick={() => { navigator.clipboard.writeText(prompt.prompt_text); toast({ title: "Prompt copiado!" }); }}>
+                    <Copy className="h-3 w-3" /> Copiar
+                  </Button>
+                </div>
                 <pre className="text-xs bg-muted/50 p-3 rounded-lg whitespace-pre-wrap max-h-32 overflow-y-auto">{prompt.prompt_text}</pre>
               </div>
             )}
+
+            {/* Version Timeline */}
+            <VersionTimeline versions={versions} currentText={prompt.prompt_text} />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {prompt.related_tables.length > 0 && (<div><p className="text-xs font-medium text-muted-foreground mb-1">Tabelas:</p><div className="flex flex-wrap gap-1">{prompt.related_tables.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}</div></div>)}
               {prompt.related_edge_functions.length > 0 && (<div><p className="text-xs font-medium text-muted-foreground mb-1">Edge Functions:</p><div className="flex flex-wrap gap-1">{prompt.related_edge_functions.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}</div></div>)}
@@ -245,7 +334,7 @@ function PromptCard({ prompt, onUpdate, onDelete }: { prompt: ArchitecturePrompt
   );
 }
 
-// ─── Import Tab (unchanged) ───
+// ─── Import Tab ───
 function ImportTab({ onImport }: { onImport: (text: string) => Promise<{ extracted: Partial<ArchitecturePrompt>[]; report: string }> }) {
   const [text, setText] = useState("");
   const [report, setReport] = useState("");
@@ -289,13 +378,15 @@ function ImportTab({ onImport }: { onImport: (text: string) => Promise<{ extract
 export function ArchitectureGovernanceDashboard() {
   const {
     prompts, history, baseChecks, scoreHistory, certifications, activeCertification,
+    promptVersions, saasPhasePrompts,
     isLoading, stats,
     createPrompt, updatePrompt, deletePrompt, toggleBaseCheck,
-    importFromText, getComplianceReport,
+    importFromText, getComplianceReport, getVersionsForPrompt,
     calculateMaturityScores, calculateRisk, checkCertificationEligibility,
     issueCertification, saveScoreSnapshot,
   } = useArchitectureGovernance();
 
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
@@ -332,15 +423,26 @@ export function ArchitectureGovernanceDashboard() {
     continuity: Number(s.continuity_score),
   }));
 
+  // Group saas phase prompts by phase
+  const phasePromptsGrouped = saasPhasePrompts.reduce<Record<number, typeof saasPhasePrompts>>((acc, p) => {
+    if (!acc[p.phase]) acc[p.phase] = [];
+    acc[p.phase].push(p);
+    return acc;
+  }, {});
+
+  const copyToClipboard = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: "Copiado!", description: `${label} copiado para a área de transferência` });
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center py-20"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
   }
 
   return (
     <div className="space-y-6">
-      {/* ── Executive Dashboard (always visible) ── */}
+      {/* ── Executive Dashboard ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Score Gauge */}
         <Card className="bg-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2"><Gauge className="h-4 w-4" /> Score de Maturidade</CardTitle>
@@ -353,7 +455,6 @@ export function ArchitectureGovernanceDashboard() {
           </CardContent>
         </Card>
 
-        {/* Risk Indicator */}
         <Card className={cn("bg-card border", riskCfg.borderColor)}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2"><Activity className="h-4 w-4" /> Indicador de Risco</CardTitle>
@@ -369,9 +470,7 @@ export function ArchitectureGovernanceDashboard() {
                 {risk.failures.slice(0, 5).map((f, i) => (
                   <div key={i} className="flex items-start gap-2 text-xs p-1.5 rounded bg-muted/30">
                     <XCircle className="h-3.5 w-3.5 text-destructive flex-shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-medium">{f.area}:</span> {f.description}
-                    </div>
+                    <div><span className="font-medium">{f.area}:</span> {f.description}</div>
                   </div>
                 ))}
               </div>
@@ -379,7 +478,6 @@ export function ArchitectureGovernanceDashboard() {
           </CardContent>
         </Card>
 
-        {/* Certification Seal */}
         <Card className={cn("bg-card border", activeCertification ? "border-green-500/30" : "border-muted")}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2"><Award className="h-4 w-4" /> Selo de Certificação</CardTitle>
@@ -392,9 +490,7 @@ export function ArchitectureGovernanceDashboard() {
                 </div>
                 <div>
                   <p className="font-bold text-green-600 dark:text-green-400">ARQUITETURA APROVADA</p>
-                  <p className="text-xs text-muted-foreground">
-                    Certificado em {format(new Date(activeCertification.certified_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                  </p>
+                  <p className="text-xs text-muted-foreground">Certificado em {format(new Date(activeCertification.certified_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
                   <p className="text-xs text-muted-foreground">Score: {Number(activeCertification.overall_score)}/100</p>
                 </div>
               </div>
@@ -413,12 +509,7 @@ export function ArchitectureGovernanceDashboard() {
                     </div>
                   )}
                 </div>
-                <Button
-                  size="sm"
-                  disabled={!eligibility.eligible}
-                  onClick={issueCertification}
-                  className="gap-2"
-                >
+                <Button size="sm" disabled={!eligibility.eligible} onClick={issueCertification} className="gap-2">
                   <Award className="h-4 w-4" />
                   {eligibility.eligible ? "Emitir Certificação" : "Requisitos não atendidos"}
                 </Button>
@@ -520,7 +611,11 @@ export function ArchitectureGovernanceDashboard() {
           {filtered.length === 0 ? (
             <Card className="bg-card"><CardContent className="py-12 text-center text-muted-foreground"><FileText className="h-10 w-10 mx-auto mb-3 opacity-30" /><p className="font-medium">Nenhum prompt registrado</p></CardContent></Card>
           ) : (
-            <div className="space-y-3">{filtered.map(p => (<PromptCard key={p.id} prompt={p} onUpdate={updatePrompt} onDelete={deletePrompt} />))}</div>
+            <div className="space-y-3">
+              {filtered.map(p => (
+                <PromptCard key={p.id} prompt={p} versions={getVersionsForPrompt(p.id)} onUpdate={updatePrompt} onDelete={deletePrompt} />
+              ))}
+            </div>
           )}
         </TabsContent>
 
@@ -559,7 +654,6 @@ export function ArchitectureGovernanceDashboard() {
                     );
                   })}
                   <Separator className="my-4" />
-                  {/* Risk Detail */}
                   <h4 className="text-sm font-semibold flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-destructive" /> Falhas Detectadas ({risk.failures.length})</h4>
                   {risk.failures.length === 0 ? (
                     <p className="text-sm text-green-600 flex items-center gap-2"><CheckCircle2 className="h-4 w-4" /> Nenhuma falha detectada</p>
@@ -614,15 +708,15 @@ export function ArchitectureGovernanceDashboard() {
           </Card>
         </TabsContent>
 
-        {/* ── Novo SaaS Checklist ── */}
+        {/* ── Novo SaaS Checklist with Generic Prompts ── */}
         <TabsContent value="checklist" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="text-base flex items-center gap-2"><Layers className="h-4 w-4" /> Ordem Padrão Obrigatória – Novo SaaS</CardTitle>
-              <CardDescription>Fases 1 e 3 são bloqueantes. Score mínimo para produção: 80.</CardDescription>
+              <CardDescription>Fases 1 e 3 são bloqueantes. Score mínimo para produção: 80. Cada fase contém prompts genéricos copiáveis para qualquer projeto.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {compliance.map((phase, idx) => (
+              {compliance.map((phase) => (
                 <div key={phase.phase}>
                   <div className="flex items-center gap-3 mb-3">
                     <div className={cn(
@@ -644,6 +738,55 @@ export function ArchitectureGovernanceDashboard() {
                       </div>
                     ))}
                   </div>
+
+                  {/* Generic Phase Prompts */}
+                  {phasePromptsGrouped[phase.phase] && phasePromptsGrouped[phase.phase].length > 0 && (
+                    <div className="ml-5 pl-5 border-l-2 border-primary/20 mt-3 space-y-3">
+                      <p className="text-xs font-semibold text-primary flex items-center gap-1">
+                        <Copy className="h-3.5 w-3.5" /> Prompts Genéricos para esta Fase
+                      </p>
+                      {phasePromptsGrouped[phase.phase].map((pp) => (
+                        <Collapsible key={pp.id}>
+                          <div className="bg-muted/30 rounded-lg p-3">
+                            <CollapsibleTrigger asChild>
+                              <div className="flex items-center justify-between cursor-pointer group">
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium group-hover:text-primary transition-colors">{pp.prompt_title}</p>
+                                  {pp.problem_description && (
+                                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{pp.problem_description}</p>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 gap-1 text-xs"
+                                    onClick={(e) => { e.stopPropagation(); copyToClipboard(pp.prompt_text, pp.prompt_title); }}
+                                  >
+                                    <Copy className="h-3 w-3" /> Copiar
+                                  </Button>
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              </div>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <Separator className="my-2" />
+                              {pp.problem_description && (
+                                <div className="mb-2">
+                                  <p className="text-xs font-medium text-destructive/80 mb-1">Problema que resolve:</p>
+                                  <p className="text-xs text-muted-foreground">{pp.problem_description}</p>
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Prompt completo:</p>
+                                <pre className="text-xs bg-background p-3 rounded-lg whitespace-pre-wrap max-h-48 overflow-y-auto border">{pp.prompt_text}</pre>
+                              </div>
+                            </CollapsibleContent>
+                          </div>
+                        </Collapsible>
+                      ))}
+                    </div>
+                  )}
                 </div>
               ))}
             </CardContent>
