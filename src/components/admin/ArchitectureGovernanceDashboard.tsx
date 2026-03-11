@@ -142,7 +142,7 @@ function VersionTimeline({ versions, currentText }: { versions: PromptVersion[];
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary" className="text-xs">v{v.version_number}</Badge>
-                      <span className="text-xs text-muted-foreground">{format(new Date(v.created_at), "dd/MM/yy HH:mm", { locale: ptBR })}</span>
+                      <span className="text-xs text-muted-foreground">{formatDateSP(v.created_at, "dd/MM/yy HH:mm")}</span>
                     </div>
                     <Button variant="ghost" size="sm" className="h-6 px-2 gap-1 text-xs" onClick={() => copyToClipboard(v.prompt_text, `v${v.version_number}`)}>
                       <Copy className="h-3 w-3" /> Copiar
