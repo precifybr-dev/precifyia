@@ -146,6 +146,7 @@ export default function SubRecipes() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { softDelete } = useDataProtection();
+  const { openSidebar } = useShell();
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
