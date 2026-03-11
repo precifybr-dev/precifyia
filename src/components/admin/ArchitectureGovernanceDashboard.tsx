@@ -415,7 +415,7 @@ export function ArchitectureGovernanceDashboard() {
   });
 
   const scoreEvolutionData = scoreHistory.slice().reverse().map(s => ({
-    date: format(new Date(s.created_at), "dd/MM"),
+    date: formatDateSP(s.created_at, "dd/MM"),
     overall: Number(s.overall_score),
     security: Number(s.security_score),
     backend: Number(s.backend_score),
