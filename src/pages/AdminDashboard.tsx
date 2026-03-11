@@ -368,7 +368,7 @@ export default function AdminDashboard() {
                             <YAxis className="text-xs" />
                             <Tooltip
                               labelFormatter={(value) =>
-                                format(new Date(value), "dd 'de' MMMM", { locale: ptBR })
+                                formatDateSP(value, "dd 'de' MMMM")
                               }
                               formatter={(value: number) => [value, "Novos usuários"]}
                               contentStyle={{
