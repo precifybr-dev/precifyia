@@ -609,10 +609,7 @@ export default function Ingredients() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex">
-      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} user={user} profile={profile} />
-
-      <main className="flex-1 lg:ml-64">
+    <>
         <header className="sticky top-0 z-30 bg-background/95 backdrop-blur border-b border-border px-4 py-3">
           {/* Row 1: Navigation + Title */}
           <div className="flex items-center gap-3 mb-2 sm:mb-0">
