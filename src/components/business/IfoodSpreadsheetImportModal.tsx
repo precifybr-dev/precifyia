@@ -416,7 +416,7 @@ export default function IfoodSpreadsheetImportModal({
 
       onApply(consolidation);
       setLastImport(consolidation);
-      setLastImportDate(new Date().toLocaleDateString("pt-BR"));
+      setLastImportDate(toLocaleDateBR(new Date()));
       setStep("done");
       toast.success("Dados importados com sucesso!");
       loadMonthlyHistory();
