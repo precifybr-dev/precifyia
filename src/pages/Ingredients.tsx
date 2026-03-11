@@ -128,7 +128,8 @@ export default function Ingredients() {
   const { toast } = useToast();
   const formRef = useRef<HTMLDivElement>(null);
   const { activeStore } = useStore();
-  
+  const { openSidebar } = useShell();
+
 
   // Memoized search change handler
   const handleSearchChange = useCallback((value: string) => {
