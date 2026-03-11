@@ -452,7 +452,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                         <span className="text-muted-foreground">Vencimento:</span>
                         <span>
                           {selectedUser.subscription_expires_at
-                            ? format(new Date(selectedUser.subscription_expires_at), "dd/MM/yyyy")
+                            ? formatDateBR(selectedUser.subscription_expires_at)
                             : "-"}
                         </span>
                       </div>
