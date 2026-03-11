@@ -66,7 +66,7 @@ import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { DeleteIngredientDialog } from "@/components/ingredients/DeleteIngredientDialog";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
 import type { IngredientData } from "@/components/recipes/IngredientSelector";
 
 type Ingredient = {
