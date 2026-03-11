@@ -830,8 +830,8 @@ export function ArchitectureGovernanceDashboard() {
                           </TableCell>
                           <TableCell className="font-bold">{Number(c.overall_score)}/100</TableCell>
                           <TableCell><Badge variant="outline" className="text-xs capitalize">{c.risk_level}</Badge></TableCell>
-                          <TableCell className="text-xs">{format(new Date(c.certified_at), "dd/MM/yy HH:mm", { locale: ptBR })}</TableCell>
-                          <TableCell className="text-xs">{c.revoked_at ? format(new Date(c.revoked_at), "dd/MM/yy HH:mm", { locale: ptBR }) : "—"}</TableCell>
+                          <TableCell className="text-xs">{formatDateSP(c.certified_at, "dd/MM/yy HH:mm")}</TableCell>
+                          <TableCell className="text-xs">{c.revoked_at ? formatDateSP(c.revoked_at, "dd/MM/yy HH:mm") : "—"}</TableCell>
                           <TableCell className="text-xs max-w-xs truncate">{c.revocation_reason || "—"}</TableCell>
                         </TableRow>
                       ))}
