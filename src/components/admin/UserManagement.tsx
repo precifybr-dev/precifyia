@@ -590,7 +590,7 @@ export function UserManagement({ onImpersonate }: UserManagementProps) {
                                   </Badge>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                  {format(new Date(payment.created_at), "dd/MM/yyyy HH:mm")}
+                                  {formatDateTimeBR(payment.created_at)}
                                 </p>
                                 {payment.description && (
                                   <p className="text-xs text-muted-foreground mt-1">{payment.description}</p>
