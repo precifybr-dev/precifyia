@@ -59,7 +59,7 @@ import { Logo } from "@/components/ui/Logo";
 import { StoreSwitcher } from "@/components/store/StoreSwitcher";
 import { useStore } from "@/contexts/StoreContext";
 import { SearchAndFilter } from "@/components/ui/SearchAndFilter";
-import { AppSidebar } from "@/components/layout/AppSidebar";
+import { useShell } from "@/components/layout/AppShell";
 import { useDataProtection } from "@/hooks/useDataProtection";
 import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { PlanUpgradePrompt } from "@/components/upsell/PlanUpgradePrompt";
